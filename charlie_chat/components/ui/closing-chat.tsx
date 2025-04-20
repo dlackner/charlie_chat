@@ -25,18 +25,6 @@ export function ClosingChat() {
   const [count, setCount] = useState(0);
   const [listings, setListings] = useState([]);
   const [selectedListings, setSelectedListings] = useState([]);
-
-  const handleSearch = async (filters) => {
-    const res = await fetch("/api/rentcast", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(filters),
-    });
-    const data = await res.json();
-     console.log("📦 RentCast Response:", data);
-     console.log("🔍 Raw RentCast data:", data);
-    setListings(data || []);
-  };
   
   const toggleListingSelect = (listing: any) => {
     const exists = selectedListings.some((l) => l.id === listing.id);
