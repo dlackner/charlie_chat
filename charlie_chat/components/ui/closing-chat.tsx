@@ -17,7 +17,7 @@ type Listing = {
 
 const EXAMPLES = [
   "How do I creatively structure seller financing?",
-  "Is it possible to convert a hotel into a multifamnily apartment?",
+  "Is it possible to convert a hotel into a multifamily apartment?",
   "What assumptions should I model for a 5-year hold of a property?",
   "How do I get started in multifamily investing? ",
 ];
@@ -109,7 +109,7 @@ setSelectedListings([]);
       localStorage.setItem("questionCount", "0");
     }
 
-    if (!isPro && count >= 300000) {
+    if (!isPro && count >= 3) {
       setShowModal(true);
       return;
     }
