@@ -1,0 +1,10 @@
+{
+  "title": "Copilots",
+  "pages": [
+    "motivation",
+    "make-assistant-visible",
+    "make-assistant-tool",
+    "use-assistant-instructions",
+    "model-context"
+  ]
+}

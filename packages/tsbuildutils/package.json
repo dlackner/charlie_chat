@@ -1,0 +1,21 @@
+{
+  "name": "@assistant-ui/tsbuildutils",
+  "version": "0.0.1",
+  "private": true,
+  "main": "./src/index.ts",
+  "type": "module",
+  "dependencies": {
+    "@assistant-ui/tsconfig": "workspace:*",
+    "cross-spawn": "^7.0.6",
+    "esbuild-plugin-file-path-extensions": "^2.1.4",
+    "postcss": "^8.5.3",
+    "postcss-js": "^4.0.1",
+    "tsup": "8.4.0",
+    "typescript": "^5.8.3"
+  },
+  "devDependencies": {
+    "@types/cross-spawn": "^6.0.6",
+    "@types/node": "^22.14.1",
+    "@types/postcss-js": "^4.0.4"
+  }
+}

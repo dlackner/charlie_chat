@@ -1,0 +1,393 @@
+---
+title: Tool UIs
+---
+
+You can show a custom UI when a tool is called to let the user know what is happening.
+
+### Tool UI Components
+
+```tsx
+import { makeAssistantToolUI } from "@assistant-ui/react";
+
+type WebSearchArgs = {
+  query: string;
+};
+
+type WebSearchResult = {
+  title: string;
+  description: string;
+  url: string;
+};
+
+export const WebSearchToolUI = makeAssistantToolUI<
+  WebSearchArgs,
+  WebSearchResult
+>({
+  toolName: "web_search",
+  render: ({ args, status }) => {
+    return <p>web_search({args.query})</p>;
+  },
+});
+```
+
+You can put this component anywhere in your app inside the `<AssistantRuntimeProvider />` component.
+
+```tsx {1, 8}
+import { WebSearchToolUI } from '@/tools/WebSearchToolUI';
+
+const MyApp = () => {
+  ...
+  return (
+    <AssistantRuntimeProvider runtime={runtime}>
+      ...
+      <WebSearchToolUI />
+      ...
+    </AssistantRuntimeProvider>
+  );
+};
+```
+
+### Tool UI Hooks
+
+```tsx
+import { makeAssistantToolUI } from "@assistant-ui/react";
+
+type WebSearchArgs = {
+  query: string;
+};
+
+type WebSearchResult = {
+  title: string;
+  description: string;
+  url: string;
+};
+
+export const useWebSearchToolUI = makeAssistantToolUI<
+  WebSearchArgs,
+  WebSearchResult
+>({
+  toolName: "web_search",
+  render: ({ args, status }) => {
+    return <p>web_search({args.query})</p>;
+  },
+});
+```
+
+You can use this hook anywhere in your app inside the `<AssistantRuntimeProvider />` component.
+
+```tsx {1, 4}
+import { useWebSearchToolUI } from '@/tools/useWebSearchToolUI';
+
+const MyComponent = () => {
+  useWebSearchToolUI();
+
+  ...
+};
+
+const MyApp = () => {
+  ...
+  return (
+    <AssistantRuntimeProvider runtime={runtime}>
+      ...
+      <MyComponent />
+      ...
+    </AssistantRuntimeProvider>
+  );
+};
+```
+
+### Inline Tool UI Hooks
+
+If you need access to component props, you can use the `useAssistantToolUI` hook. If you are passing a component inline, you should use the `useInlineRender` hook to prevent the component from being re-mounted on every render.
+
+```tsx {5-11}
+import { useAssistantToolUI, useInlineRender } from "@assistant-ui/react";
+
+const MyComponent = ({ product_id }) => {
+  useAssistantToolUI({
+    toolName: "current_product_info",
+    render: useInlineRender(({ args, status }) => {
+      // you can access component props here
+      return <p>product_info({ product_id })</p>;
+    }),
+  });
+
+  ...
+};
+
+const MyApp = () => {
+  ...
+  return (
+    <AssistantRuntimeProvider runtime={runtime}>
+      ...
+      <MyComponent product_id="123" />
+      ...
+    </AssistantRuntimeProvider>
+  );
+};
+```
+
+### Tool Execution Context
+
+When implementing a tool's execute function, you have access to a context object that includes:
+
+- `toolCallId`: A unique identifier for the current tool execution
+- `abortSignal`: An AbortSignal for handling cancellation
+
+```tsx
+const searchTool = {
+  description: "Search the web",
+  parameters: z.object({
+    query: z.string(),
+  }),
+  execute: async (args, { toolCallId, abortSignal }) => {
+    // You can use toolCallId to track or log specific tool executions
+    console.log(`Executing search with ID: ${toolCallId}`);
+
+    // Use abortSignal to handle cancellation
+    const response = await fetch(
+      `/api/search?q=${encodeURIComponent(args.query)}`,
+      {
+        signal: abortSignal,
+      },
+    );
+
+    return response.json();
+  },
+};
+```
+
+### Schema Validation Error Handling
+
+Tools can now handle schema validation errors through the `experimental_onSchemaValidationError` property. This allows you to provide custom behavior when the tool's parameters fail validation:
+
+```tsx
+const searchTool = {
+  description: "Search the web",
+  parameters: z.object({
+    query: z.string().min(3),
+  }),
+  execute: async (args, context) => {
+    const response = await fetch(`/api/search?q=${args.query}`, {
+      signal: context.abortSignal,
+    });
+    return response.json();
+  },
+  experimental_onSchemaValidationError: async (invalidArgs, context) => {
+    // Handle validation errors gracefully
+    console.warn(`Invalid search query: ${JSON.stringify(invalidArgs)}`);
+    return {
+      error: "Search query must be at least 3 characters long",
+      suggestions: ["Try a longer search term"],
+    };
+  },
+};
+```
+
+### Field-Level Validation Status
+
+You can use the `useToolArgsFieldStatus` hook to check the validation status of individual tool argument fields. This is useful for providing real-time feedback about the validity of specific input fields in your tool UI:
+
+```tsx
+import { useToolArgsFieldStatus } from "@assistant-ui/react";
+
+const SearchToolUI = makeAssistantToolUI<{ query: string }, SearchResult>({
+  toolName: "search",
+  render: ({ args }) => {
+    const status = useToolArgsFieldStatus("query");
+    const isInProgress = status.type === "running";
+
+    return (
+      <div>
+        <QueryInput query={args.query} isInProgress={isInProgress} />
+      </div>
+    );
+  },
+});
+```
+
+### Function Calling for User Input
+
+The following example shows a `date_picker` tool that the AI can call to collect a date from the user.
+
+```tsx {12}
+import { makeAssistantToolUI } from "@assistant-ui/react";
+import { DatePicker } from "@/components/datepicker";
+
+const DatePickerToolUI = makeAssistantToolUI<{}, { date: string }>({
+  toolName: "date_picker",
+  render: ({ result, status, addResult }) => {
+    if (result) {
+      return <p>You picked {result.date}</p>;
+    }
+
+    const handleSubmit = (date: Date) => {
+      addResult({ date: date.toISOString() });
+    };
+
+    return <DatePicker onSubmit={handleSubmit} />;
+  },
+});
+```
+
+# Implementing Tool UIs: A Step-by-Step Guide to Creating Interactive AI Tools
+
+In this tutorial, we'll walk through the process of implementing Tool UIs in assistant-ui. Tool UIs allow you to create custom interfaces for AI tools, enhancing the user experience and providing visual feedback when a tool is called.
+
+## Table of Contents
+
+1. Introduction to Tool UIs
+2. Creating a Basic Tool UI Component
+3. Using Tool UI Hooks
+4. Implementing Inline Tool UI Hooks
+5. Function Calling for User Input
+
+## 1. Introduction to Tool UIs
+
+Tool UIs in assistant-ui provide a way to display custom interfaces when an AI tool is called. This can help users understand what's happening behind the scenes and provide interactive elements when needed.
+
+## 2. Creating a Basic Tool UI Component
+
+Let's start by creating a simple Tool UI component for a web search tool.
+
+```tsx
+import { makeAssistantToolUI } from "@assistant-ui/react";
+
+type WebSearchArgs = {
+  query: string;
+};
+
+type WebSearchResult = {
+  title: string;
+  description: string;
+  url: string;
+};
+
+export const WebSearchToolUI = makeAssistantToolUI<
+  WebSearchArgs,
+  WebSearchResult
+>({
+  toolName: "web_search",
+  render: ({ args, status }) => {
+    return <p>web_search({args.query})</p>;
+  },
+});
+```
+
+To use this component, place it inside the `<AssistantRuntimeProvider />`:
+
+```tsx
+import { WebSearchToolUI } from "@/tools/WebSearchToolUI";
+
+const MyApp = () => {
+  return (
+    <AssistantRuntimeProvider runtime={runtime}>
+      {/* Other components */}
+      <WebSearchToolUI />
+      {/* More components */}
+    </AssistantRuntimeProvider>
+  );
+};
+```
+
+## 3. Using Tool UI Hooks
+
+For more flexibility, you can create a Tool UI hook:
+
+```tsx
+import { makeAssistantToolUI } from "@assistant-ui/react";
+
+type WebSearchArgs = {
+  query: string;
+};
+
+type WebSearchResult = {
+  title: string;
+  description: string;
+  url: string;
+};
+
+export const useWebSearchToolUI = makeAssistantToolUI<
+  WebSearchArgs,
+  WebSearchResult
+>({
+  toolName: "web_search",
+  render: ({ args, status }) => {
+    return <p>web_search({args.query})</p>;
+  },
+});
+```
+
+Use the hook in a component within the `<AssistantRuntimeProvider />`:
+
+```tsx
+import { useWebSearchToolUI } from "@/tools/useWebSearchToolUI";
+
+const MyComponent = () => {
+  useWebSearchToolUI();
+  // Component logic
+};
+
+const MyApp = () => {
+  return (
+    <AssistantRuntimeProvider runtime={runtime}>
+      <MyComponent />
+    </AssistantRuntimeProvider>
+  );
+};
+```
+
+## 4. Implementing Inline Tool UI Hooks
+
+For cases where you need access to component props, use the `useAssistantToolUI` hook with `useInlineRender`:
+
+```tsx
+import { useAssistantToolUI, useInlineRender } from "@assistant-ui/react";
+
+const MyComponent = ({ product_id }) => {
+  useAssistantToolUI({
+    toolName: "current_product_info",
+    render: useInlineRender(({ args, status }) => {
+      return <p>product_info({product_id})</p>;
+    }),
+  });
+
+  // Component logic
+};
+
+const MyApp = () => {
+  return (
+    <AssistantRuntimeProvider runtime={runtime}>
+      <MyComponent product_id="123" />
+    </AssistantRuntimeProvider>
+  );
+};
+```
+
+## 5. Function Calling for User Input
+
+Finally, let's create a Tool UI that allows user input, such as a date picker:
+
+```tsx
+import { makeAssistantToolUI } from "@assistant-ui/react";
+import { DatePicker } from "@/components/datepicker";
+
+const DatePickerToolUI = makeAssistantToolUI<{}, { date: string }>({
+  toolName: "date_picker",
+  render: ({ result, status, addResult }) => {
+    if (result) {
+      return <p>You picked {result.date}</p>;
+    }
+
+    const handleSubmit = (date: Date) => {
+      addResult({ date: date.toISOString() });
+    };
+
+    return <DatePicker onSubmit={handleSubmit} />;
+  },
+});
+```
+
+This Tool UI displays a date picker when called and allows the user to select a date. Once a date is chosen, it's added to the result and displayed.
+
+By following these steps, you can create interactive and informative Tool UIs that enhance the AI chat experience in your application. These UIs provide visual feedback and allow for user interaction when AI tools are called, making your assistant more user-friendly and engaging."

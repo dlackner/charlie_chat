@@ -1,0 +1,126 @@
+---
+title: LangChain LangServe
+---
+
+## Overview
+
+Integration with a LangServe server via Vercel AI SDK.
+
+## Getting Started
+
+import { Steps, Step } from "fumadocs-ui/components/steps";
+
+<Steps>
+  <Step>
+  ### Create a Next.JS project
+
+```sh
+npx create-next-app@latest my-app
+cd my-app
+```
+
+  </Step>
+  <Step>
+
+### Install `@langchain/core`, `ai-sdk` and `@assistant-ui/react`
+
+```sh npm2yarn
+npm install @assistant-ui/react @assistant-ui/react-ai-sdk ai ai/react @langchain/core
+```
+
+  </Step>
+  <Step>
+
+### Setup a backend route under `/api/chat`
+
+```tsx twoslash title="@/app/api/chat/route.ts"
+// @errors: 2558 2345
+import { RemoteRunnable } from "@langchain/core/runnables/remote";
+import type { RunnableConfig } from "@langchain/core/runnables";
+import { streamText, LangChainAdapter, type Message } from "ai";
+
+export const maxDuration = 30;
+
+export async function POST(req: Request) {
+  const { messages } = (await req.json()) as { messages: Message[] };
+
+  // TODO replace with your own langserve URL
+  const remoteChain = new RemoteRunnable<
+    { messages: Message[] },
+    string,
+    RunnableConfig
+  >({
+    url: "<YOUR_LANGSERVE_URL>",
+  });
+
+  const stream = await remoteChain.stream({
+    messages,
+  });
+
+  return LangChainAdapter.toDataStreamResponse(stream);
+}
+```
+
+  </Step>
+  <Step>
+
+### Define a `MyRuntimeProvider` component
+
+```tsx twoslash include MyRuntimeProvider title="@/app/MyRuntimeProvider.tsx"
+// @filename: /app/MyRuntimeProvider.tsx
+// ---cut---
+"use client";
+
+import { useChat } from "ai/react";
+import { AssistantRuntimeProvider } from "@assistant-ui/react";
+import { useVercelUseChatRuntime } from "@assistant-ui/react-ai-sdk";
+
+export function MyRuntimeProvider({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
+  const chat = useChat({
+    api: "/api/chat",
+    unstable_AISDKInterop: true,
+  });
+
+  const runtime = useVercelUseChatRuntime(chat);
+
+  return (
+    <AssistantRuntimeProvider runtime={runtime}>
+      {children}
+    </AssistantRuntimeProvider>
+  );
+}
+```
+
+  </Step>
+  <Step>
+
+### Wrap your app in `MyRuntimeProvider`
+
+```tsx twoslash title="@/app/layout.tsx"
+// @include: MyRuntimeProvider
+// @filename: /app/layout.tsx
+// ---cut---
+import type { ReactNode } from "react";
+import { MyRuntimeProvider } from "@/app/MyRuntimeProvider";
+
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: ReactNode;
+}>) {
+  return (
+    <MyRuntimeProvider>
+      <html lang="en">
+        <body>{children}</body>
+      </html>
+    </MyRuntimeProvider>
+  );
+}
+```
+
+  </Step>
+</Steps>
