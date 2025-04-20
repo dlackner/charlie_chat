@@ -2,12 +2,19 @@
 
 import { useState } from "react";
 
+type Listing = {
+  id: string;
+  formattedAddress: string;
+  bedrooms?: number;
+  rentEstimate?: number;
+  propertyValue?: number;
+};
+
 type Props = {
-  onSearch: (filters: any) => void;
-  listings: any[];
-  selectedListings: any[];
-  toggleListingSelect: (listing: any) => void;
-  onSendToGPT: () => void;
+  onSearch: (filters: Record<string, string | number>) => void;
+  listings: Listing[];
+  selectedListings: Listing[];
+  toggleListingSelect: (listing: Listing) => void;
 };
 
 export const Sidebar = ({

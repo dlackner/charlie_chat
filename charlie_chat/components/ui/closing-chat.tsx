@@ -77,27 +77,6 @@ export function ClosingChat() {
   
     if (savedThreadId) {
       setThreadId(savedThreadId);
-  
-      if (savedThreadId.startsWith("thread_")) {
-        // Only fetch if it's a real OpenAI thread
-        const fetchMessages = async () => {
-          try {
-            const res = await fetch(`/api/chat/history?threadId=${savedThreadId}`);
-            const data = await res.json();
-  
-            const restoredMessages = data.map((m: any) => ({
-              role: m.role,
-              content: m.content,
-            }));
-  
-            setMessages(restoredMessages);
-          } catch (err) {
-            console.error("Failed to load messages for thread:", savedThreadId, err);
-          }
-        };
-  
-        fetchMessages();
-      }
     }
   }, []);
 

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(req: NextRequest) {
   const body = await req.json();
-  const { zipcode, beds, minPrice, maxPrice } = body;
+  const { zipcode, beds} = body;
 
   const apiKey = process.env.RENTCAST_API_KEY;
   const url = `https://api.rentcast.io/v1/properties?postalCode=${zipcode}&bedrooms=${beds}`;
