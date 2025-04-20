@@ -6,6 +6,13 @@ import { useEffect } from "react";
 import ReactMarkdown from "react-markdown";
 import { Sidebar } from "@/components/ui/sidebar";
 
+type Listing = {
+  id: string;
+  formattedAddress: string;
+  bedrooms?: number;
+  rentEstimate?: number;
+  propertyValue?: number;
+};
 
 const EXAMPLES = [
   "How do I creatively structure seller financing?",
@@ -23,8 +30,8 @@ export function ClosingChat() {
 
   const [isPro, setIsPro] = useState(false);
   const [count, setCount] = useState(0);
-  const [listings, setListings] = useState([]);
-  const [selectedListings, setSelectedListings] = useState([]);
+  const [listings, setListings] = useState<Listing[]>([]);
+  const [selectedListings, setSelectedListings] = useState<Listing[]>([]);
   
   const toggleListingSelect = (listing: any) => {
     const exists = selectedListings.some((l) => l.id === listing.id);
