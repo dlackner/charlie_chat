@@ -11,10 +11,11 @@ type Listing = {
 };
 
 type Props = {
-  onSearch: (filters: Record<string, string | number>) => void;
+  onSearch: (filters: Record<string, string | number>) => Promise<void>;
   listings: Listing[];
   selectedListings: Listing[];
   toggleListingSelect: (listing: Listing) => void;
+  onSendToGPT: () => void; // ✅ Add this line!
 };
 
 export const Sidebar = ({
