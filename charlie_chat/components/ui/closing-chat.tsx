@@ -44,29 +44,39 @@ export function ClosingChat() {
   };
 
   const onSendToGPT = () => {
-    const summaryPrompt = `Charlie, I want you to compare these listings. Do you think they would be good candidates for a multifamily hotel conversion?
+    const rows = selectedListings.map((l, i) => {
+      const rent = l.rentEstimate ?? null;
+      const value = l.propertyValue ?? l.lastSalePrice ?? null;
+      const capRate = rent && value ? `${((rent * 12) / value * 100).toFixed(2)}%` : "N/A";
   
-  If any estimated rent is missing, take a reasonable guess based on the number of bedrooms and location.
+      return `**${i + 1}. ${l.formattedAddress}**  
+  Beds: ${l.bedrooms ?? "N/A"}  
+  Estimated Rent: ${rent ? `$${rent.toLocaleString()}` : "N/A"}  
+  Estimated Value: ${value ? `$${value.toLocaleString()}` : "N/A"}  
+  Cap Rate: ${capRate}\n`;
+    });
   
-  Also, calculate the cap rate for each listing using:
-  Cap Rate = (Estimated Rent * 12) / Estimated Value
+    const summaryPrompt = `Charlie, please evaluate the following listings for their potential as multifamily hotel conversions.
+
+  ---
   
-  Here are the listings:
-  ${selectedListings.map((l, i) => {
-    const rent = l.rentEstimate ?? "Guess based on location";
-    const value = l.propertyValue ?? l.lastSalePrice ?? "N/A";
+  ## Cap Rate Analysis  
+  Formula: **Cap Rate = (Rent × 12) ÷ Value**
   
-    return `#${i + 1}
-  Address: ${l.formattedAddress}
-  Bedrooms: ${l.bedrooms ?? "N/A"}
-  Estimated Rent: $${typeof rent === "number" ? rent : rent}
-  Estimated Value: $${value}
-  Cap Rate: ${
-      typeof rent === "number" && typeof value === "number"
-        ? ((rent * 12) / value * 100).toFixed(2) + "%"
-        : "N/A"
-    }\n`;
-  }).join("\n")}`;
+  ${rows.join("\n")}
+  
+  ---
+  
+  ## Evaluation Criteria
+  
+  **1. Most Promising**  
+  Which property shows the strongest potential based on location, rental yield, or zoning feasibility?
+  
+  **2. Red Flags**  
+  Identify any concerns—missing data, anomalous values, or anything that would warrant extra due diligence.
+  
+  **3. Recommendation**  
+  If you had to prioritize one listing for further exploration, which would it be—and why?`;
   
     sendMessage(summaryPrompt);
     setSelectedListings([]);
@@ -122,9 +132,6 @@ export function ClosingChat() {
       body: JSON.stringify({ message, threadId }),
     });
     
-    console.log("📨 Chat response status:", res.status);
-    console.log("📨 Chat headers:", [...res.headers.entries()]);
-
     const reader = res.body?.getReader();
     const decoder = new TextDecoder("utf-8");
     
@@ -151,7 +158,6 @@ export function ClosingChat() {
               for (const block of contentBlocks) {
                 if (block.type === "text" && block.text?.value) {
                   const delta = block.text.value;
-                  console.log("📦 Clean content chunk:", delta);
     
                   fullText += delta;
                   setMessages((prev) => [
@@ -161,7 +167,6 @@ export function ClosingChat() {
                 }
               }
             } else {
-              console.log("🔎 Unexpected delta structure:", parsed);
             }
           } catch (err) {
             console.warn("❌ Failed to parse line:", json, err);
@@ -254,33 +259,46 @@ export function ClosingChat() {
   
           {/* Message list */}
           <div className="mt-8 w-full max-w-xl space-y-4">
-            {messages.map((m, i) => (
+          {messages.map((m, i) => {
+            const isUser = m.role === "user";
+
+            return (
               <div
                 key={i}
-                className={`text-sm leading-relaxed ${
-                  m.role === "user" ? "text-right text-blue-600" : "text-left text-gray-800"
+                className={`text-sm font-sans whitespace-pre-wrap leading-snug ${
+                  isUser ? "text-sky-800" : "text-gray-800"
                 }`}
               >
-                <ReactMarkdown
-                  components={{
-                    p: ({ node, ...props }) => (
-                      <p className="mb-2 leading-relaxed" {...props} />
-                    ),
-                    strong: ({ node, ...props }) => (
-                      <strong className="font-semibold text-black" {...props} />
-                    ),
-                    ul: ({ node, ...props }) => (
-                      <ul className="list-disc pl-5 mb-2" {...props} />
-                    ),
-                    li: ({ node, ...props }) => (
-                      <li className="mb-1" {...props} />
-                    ),
-                  }}
+                <div
+                  className={`inline-block max-w-xl px-4 py-2 rounded-xl ${
+                    isUser ? "bg-sky-100 ml-auto" : "bg-gray-50"
+                  }`}
                 >
-                  {m.content}
-                </ReactMarkdown>
+                  <ReactMarkdown
+                    components={{
+                      p: ({ node, ...props }) => (
+                        <p className="mb-2" {...props} />
+                      ),
+                      strong: ({ node, ...props }) => (
+                        <strong className="font-semibold text-black" {...props} />
+                      ),
+                      ul: ({ node, ...props }) => (
+                        <ul className="list-disc pl-5 mb-2" {...props} />
+                      ),
+                      li: ({ node, ...props }) => (
+                        <li className="mb-1" {...props} />
+                      ),
+                    }}
+                  >
+                    {m.content}
+                  </ReactMarkdown>
+                </div>
               </div>
-            ))}
+            );
+          })}
+
+
+
           </div>
   
           {/* How it works */}

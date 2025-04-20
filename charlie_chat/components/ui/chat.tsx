@@ -41,11 +41,16 @@ export function Chat() {
   return (
     <div className="max-w-xl mx-auto mt-10 space-y-4">
       <div className="bg-white p-4 shadow rounded space-y-2 min-h-[300px]">
-        {messages.map((m, i) => (
-          <div key={i} className={m.role === "user" ? "text-right text-blue-600" : "text-left text-black"}>
-            <span>{m.content}</span>
-          </div>
-        ))}
+      {messages.map((m, i) => (
+        <div
+          key={i}
+          className={`whitespace-pre-wrap ${
+            m.role === "user" ? "text-right text-blue-600" : "text-left text-black"
+          }`}
+        >
+          {m.content}
+        </div>
+      ))}
       </div>
       <div className="flex gap-2">
         <input
