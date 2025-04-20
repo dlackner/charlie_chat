@@ -58,28 +58,31 @@ export function ClosingChat() {
   
     const summaryPrompt = `Charlie, please evaluate the following listings for their potential as multifamily hotel conversions.
 
-  ---
-  
-  ## Cap Rate Analysis  
-  Formula: **Cap Rate = (Rent × 12) ÷ Value**
-  
-  ${rows.join("\n")}
-  
-  ---
-  
-  ## Evaluation Criteria
-  
-  **1. Most Promising**  
-  Which property shows the strongest potential based on location, rental yield, or zoning feasibility?
-  
-  **2. Red Flags**  
-  Identify any concerns—missing data, anomalous values, or anything that would warrant extra due diligence.
-  
-  **3. Recommendation**  
-  If you had to prioritize one listing for further exploration, which would it be—and why?`;
-  
-    sendMessage(summaryPrompt);
-    setSelectedListings([]);
+---
+
+### 📊 Cap Rate Analysis  
+**Formula:** Cap Rate = (Estimated Rent × 12) ÷ Estimated Value
+
+${rows.join("\n")}
+
+---
+
+### 🔍 Evaluation Criteria
+
+**1. Most Promising**  
+Which property stands out based on location, potential rental yield, or zoning feasibility?
+
+**2. Red Flags**  
+Note any missing data, inconsistent values, or concerns that might require deeper due diligence.
+
+**3. Recommendation**  
+If you had to explore one listing further, which would it be — and why?
+
+Please keep it concise, sharp, and grounded in investment logic. A bit of personality is welcome, but let’s keep the insights actionable.
+`;
+
+sendMessage(summaryPrompt);
+setSelectedListings([]);
   };
   
   
