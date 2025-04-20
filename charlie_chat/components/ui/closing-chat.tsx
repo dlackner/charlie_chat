@@ -84,7 +84,7 @@ export function ClosingChat() {
       localStorage.setItem("questionCount", "0");
     }
 
-    if (!isPro && count >= 300) {
+    if (!isPro && count >= 300000) {
       setShowModal(true);
       return;
     }
@@ -109,26 +109,58 @@ export function ClosingChat() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ message, threadId }),
     });
+    
+    console.log("📨 Chat response status:", res.status);
+    console.log("📨 Chat headers:", [...res.headers.entries()]);
 
     const reader = res.body?.getReader();
     const decoder = new TextDecoder("utf-8");
-    let fullText = "";
-
+    
     if (reader) {
-        while (true) {
-          const { value, done } = await reader.read();
-          if (done) break;
-      
-          const chunk = decoder.decode(value);
-          fullText += chunk;
-      
-          // ✅ Update the assistant message live
-          setMessages((prev) => [
-            ...prev.slice(0, -1),
-            { role: "assistant", content: fullText },
-          ]);
+      let buffer = "";
+      let fullText = ""; // ✅ Move it up here
+    
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+    
+        const chunk = decoder.decode(value, { stream: true });
+        const lines = chunk.split("\n").filter((line) => line.trim().startsWith("data:"));
+    
+        for (const line of lines) {
+          const json = line.replace("data: ", "").trim();
+          if (json === "[DONE]") return;
+    
+          try {
+            const parsed = JSON.parse(json);
+            const contentBlocks = parsed?.data?.delta?.content;
+    
+            if (Array.isArray(contentBlocks)) {
+              for (const block of contentBlocks) {
+                if (block.type === "text" && block.text?.value) {
+                  const delta = block.text.value;
+                  console.log("📦 Clean content chunk:", delta);
+    
+                  fullText += delta;
+                  setMessages((prev) => [
+                    ...prev.slice(0, -1),
+                    { role: "assistant", content: fullText },
+                  ]);
+                }
+              }
+            } else {
+              console.log("🔎 Unexpected delta structure:", parsed);
+            }
+          } catch (err) {
+            console.warn("❌ Failed to parse line:", json, err);
+          }
         }
       }
+    }
+    
+    
+    
+    
 
     // Capture threadId if first time
     const newThreadId = res.headers.get("x-thread-id");
