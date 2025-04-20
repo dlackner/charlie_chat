@@ -8,6 +8,7 @@ type Listing = {
   bedrooms?: number;
   rentEstimate?: number;
   propertyValue?: number;
+  lastSalePrice?: number;
 };
 
 type Props = {

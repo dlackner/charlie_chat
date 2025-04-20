@@ -12,6 +12,7 @@ type Listing = {
   bedrooms?: number;
   rentEstimate?: number;
   propertyValue?: number;
+  lastSalePrice?: number;
 };
 
 const EXAMPLES = [
@@ -45,21 +46,32 @@ export function ClosingChat() {
   const onSendToGPT = () => {
     const summaryPrompt = `Charlie, I want you to compare these listings. Do you think they would be good candidates for a multifamily hotel conversion?
   
+  If any estimated rent is missing, take a reasonable guess based on the number of bedrooms and location.
+  
   Also, calculate the cap rate for each listing using:
   Cap Rate = (Estimated Rent * 12) / Estimated Value
   
   Here are the listings:
   ${selectedListings.map((l, i) => {
+    const rent = l.rentEstimate ?? "Guess based on location";
+    const value = l.propertyValue ?? l.lastSalePrice ?? "N/A";
+  
     return `#${i + 1}
   Address: ${l.formattedAddress}
   Bedrooms: ${l.bedrooms ?? "N/A"}
-  Estimated Rent: $${l.rentEstimate ?? "N/A"}
-  Estimated Value: $${l.propertyValue ?? "N/A"}\n`;
+  Estimated Rent: $${typeof rent === "number" ? rent : rent}
+  Estimated Value: $${value}
+  Cap Rate: ${
+      typeof rent === "number" && typeof value === "number"
+        ? ((rent * 12) / value * 100).toFixed(2) + "%"
+        : "N/A"
+    }\n`;
   }).join("\n")}`;
   
-    sendMessage(summaryPrompt);  // This uses your existing chat logic
-    setSelectedListings([]);     // Clears selection after sending
+    sendMessage(summaryPrompt);
+    setSelectedListings([]);
   };
+  
   
   // Safe access to localStorage on client only
   useEffect(() => {

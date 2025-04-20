@@ -5,7 +5,7 @@ export async function POST(req: NextRequest) {
   const { zipcode, beds} = body;
 
   const apiKey = process.env.RENTCAST_API_KEY;
-  const url = `https://api.rentcast.io/v1/properties?postalCode=${zipcode}&bedrooms=${beds}`;
+  const url = `https://api.rentcast.io/v1/properties?zipCode=${zipcode}&bedrooms=${beds}`;
 
   const res = await fetch(url, {
     headers: {
