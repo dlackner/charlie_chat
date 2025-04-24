@@ -16,7 +16,7 @@ type Props = {
   listings: Listing[];
   selectedListings: Listing[];
   toggleListingSelect: (listing: Listing) => void;
-  onSendToGPT: () => void; // ✅ Add this line!
+  onSendToGPT: () => void;
 };
 
 export const Sidebar = ({
@@ -28,12 +28,10 @@ export const Sidebar = ({
 }: Props) => {
   const [zipcode, setZipcode] = useState("90210");
   const [beds, setBeds] = useState(2);
-  const [minPrice, setMinPrice] = useState(1000);
-  const [maxPrice, setMaxPrice] = useState(5000);
 
   return (
     <div className="w-[260px] shrink-0 bg-white border-r border-gray-200 p-4 flex flex-col space-y-6 overflow-y-auto">
-      <h2 className="text-lg font-medium text-gray-800">🔍 RentCast Search</h2>
+      <h2 className="text-lg font-medium text-gray-800">Property Search</h2>
 
       <div className="space-y-2">
         <label className="block text-sm font-medium text-gray-600">Zip Code</label>
@@ -55,27 +53,9 @@ export const Sidebar = ({
         />
       </div>
 
-      <div className="space-y-2">
-        <label className="block text-sm font-medium text-gray-600">Price Range</label>
-        <div className="flex items-center gap-2">
-          <input
-            type="number"
-            className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
-            value={minPrice}
-            onChange={(e) => setMinPrice(Number(e.target.value))}
-          />
-          <span className="text-sm text-gray-500">to</span>
-          <input
-            type="number"
-            className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
-            value={maxPrice}
-            onChange={(e) => setMaxPrice(Number(e.target.value))}
-          />
-        </div>
-      </div>
 
       <button
-        onClick={() => onSearch({ zipcode, beds, minPrice, maxPrice })}
+        onClick={() => onSearch({ zipcode, beds})}
         className="w-full bg-black text-white py-2 rounded hover:bg-gray-900 transition"
       >
         Search Rentals

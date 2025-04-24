@@ -318,7 +318,7 @@ setSelectedListings([]);
                     <span className="text-xl">💬</span>
                   </div>
                   <div>
-                    <h3 className="font-light text-base mb-1">1. Ask Your Question</h3>
+                    <h3 className="font-semibold text-base mb-1">Ask Your Question</h3>
                     <p className="text-sm text-gray-600">
                          Whether it’s about deals, underwriting, or decoding a broker’s “great opportunity,” just ask—I’m here to give it to you straight.
                     </p>
@@ -330,7 +330,7 @@ setSelectedListings([]);
                     <span className="text-xl">📊</span>
                   </div>
                   <div>
-                    <h3 className="font-light text-base mb-1">2. Get My Advice</h3>
+                    <h3 className="font-semibold text-base mb-1">Get My Advice</h3>
                     <p className="text-sm text-gray-600">
                         You’ll get clear, actionable guidance from someone who’s done this a few hundred times (and made all the mistakes so you don’t have to).
                     </p>
@@ -342,7 +342,7 @@ setSelectedListings([]);
                     <span className="text-xl">🏠</span>
                   </div>
                   <div>
-                    <h3 className="font-light text-base mb-1">3. Invest With Confidence</h3>
+                    <h3 className="font-semibold text-base mb-1">Invest With Confidence</h3>
                     <p className="text-sm text-gray-600">
                         You’re not just playing real estate anymore—you’re making smart moves backed by strategy, not guesswork.
                     </p>
@@ -372,7 +372,7 @@ setSelectedListings([]);
               You've hit your free limit 🧠
             </Dialog.Title>
             <Dialog.Description className="text-sm text-gray-500">
-              Sign up to keep chatting with Charlie Chat, your real estate sidekick 🏠
+              Sign up now to keep chatting with Charlie Chat, your multifamily expert advisor 🏠
             </Dialog.Description>
   
             <button
