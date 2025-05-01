@@ -49,7 +49,7 @@ export function ClosingChat() {
       const value = l.propertyValue ?? l.lastSalePrice ?? null;
       const capRate = rent && value ? `${((rent * 12) / value * 100).toFixed(2)}%` : "N/A";
   
-      return `**${i + 1}. ${l.formattedAddress}**\n`;
+      return `**${i + 1}. ${l.formattedAddress}**`;
     });
   
     const summaryPrompt = `Charlie, please evaluate the following listings for their potential as multifamily hotel conversions.
@@ -253,44 +253,43 @@ setSelectedListings([]);
           {/* Message list */}
           <div className="mt-8 w-full max-w-xl space-y-4">
           {messages.map((m, i) => {
-            const isUser = m.role === "user";
+          const isUser = m.role === "user";
+          const cleanContent = m.content.replace(/\n{2,}/g, "\n").trim(); // 🚫 Extra newlines
 
-            return (
+          return (
+            <div
+              key={i}
+              className={`text-sm font-sans whitespace-pre-wrap leading-snug ${
+                isUser ? "text-sky-800" : "text-gray-800"
+              }`}
+            >
               <div
-                key={i}
-                className={`text-sm font-sans whitespace-pre-wrap leading-snug ${
-                  isUser ? "text-sky-800" : "text-gray-800"
+                className={`inline-block max-w-xl px-4 py-2 rounded-xl ${
+                  isUser ? "bg-sky-100 ml-auto" : "bg-gray-50"
                 }`}
               >
-                <div
-                  className={`inline-block max-w-xl px-4 py-2 rounded-xl ${
-                    isUser ? "bg-sky-100 ml-auto" : "bg-gray-50"
-                  }`}
+                <ReactMarkdown
+                  components={{
+                    p: ({ node, ...props }) => (
+                      <p className="mb-1 leading-snug" {...props} />
+                    ),
+                    strong: ({ node, ...props }) => (
+                      <strong className="font-semibold text-black" {...props} />
+                    ),
+                    ul: ({ node, ...props }) => (
+                      <ul className="list-disc pl-5 mb-1" {...props} />
+                    ),
+                    li: ({ node, ...props }) => (
+                      <li className="mb-1" {...props} />
+                    ),
+                  }}
                 >
-                  <ReactMarkdown
-                    components={{
-                      p: ({ node, ...props }) => (
-                        <p className="mb-2" {...props} />
-                      ),
-                      strong: ({ node, ...props }) => (
-                        <strong className="font-semibold text-black" {...props} />
-                      ),
-                      ul: ({ node, ...props }) => (
-                        <ul className="list-disc pl-5 mb-2" {...props} />
-                      ),
-                      li: ({ node, ...props }) => (
-                        <li className="mb-1" {...props} />
-                      ),
-                    }}
-                  >
-                    {m.content}
-                  </ReactMarkdown>
-                </div>
+                  {cleanContent}
+                </ReactMarkdown>
               </div>
-            );
-          })}
-
-
+            </div>
+          );
+        })}
 
           </div>
   
