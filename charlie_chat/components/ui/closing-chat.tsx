@@ -49,24 +49,14 @@ export function ClosingChat() {
       const value = l.propertyValue ?? l.lastSalePrice ?? null;
       const capRate = rent && value ? `${((rent * 12) / value * 100).toFixed(2)}%` : "N/A";
   
-      return `**${i + 1}. ${l.formattedAddress}**  
-  Beds: ${l.bedrooms ?? "N/A"}  
-  Estimated Rent: ${rent ? `$${rent.toLocaleString()}` : "N/A"}  
-  Estimated Value: ${value ? `$${value.toLocaleString()}` : "N/A"}  
-  Cap Rate: ${capRate}\n`;
+      return `**${i + 1}. ${l.formattedAddress}**\n`;
     });
   
     const summaryPrompt = `Charlie, please evaluate the following listings for their potential as multifamily hotel conversions.
-
+    
 ---
-
-### 📊 Cap Rate Analysis  
-**Formula:** Cap Rate = (Estimated Rent × 12) ÷ Estimated Value
-
 ${rows.join("\n")}
-
 ---
-
 ### 🔍 Evaluation Criteria
 
 **1. Most Promising**  
@@ -109,7 +99,7 @@ setSelectedListings([]);
       localStorage.setItem("questionCount", "0");
     }
 
-    if (!isPro && count >= 3) {
+    if (!isPro && count >= 300) {
       setShowModal(true);
       return;
     }

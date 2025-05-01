@@ -19,7 +19,7 @@ export async function POST(req: NextRequest) {
   const data = await res.json();
   if (Array.isArray(data.properties)) {
     console.log(`📦 Retrieved ${data.properties.length} properties from RentCast:\n`);
-    data.properties.forEach((p, i) => {
+    data.properties.forEach((p: any, i: number) => {
       console.log(
         `#${i + 1}: ${p.formattedAddress ?? "Unknown Address"}\n` +
         `  Beds: ${p.bedrooms ?? "?"}\n` +

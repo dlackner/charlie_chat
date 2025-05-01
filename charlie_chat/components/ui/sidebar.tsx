@@ -44,7 +44,7 @@ export const Sidebar = ({
       </div>
 
       <div className="space-y-2">
-        <label className="block text-sm font-medium text-gray-600">Min Bedrooms</label>
+        <label className="block text-sm font-medium text-gray-600">Bedrooms</label>
         <input
           type="number"
           className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
