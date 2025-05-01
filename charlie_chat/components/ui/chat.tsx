@@ -6,7 +6,6 @@ export function Chat() {
   const [messages, setMessages] = useState<{ role: string; content: string }[]>([]);
   const [input, setInput] = useState("");
 
-
   const handleSend = async () => {
     if (!input.trim()) return;
 
@@ -23,11 +22,6 @@ export function Chat() {
     const decoder = new TextDecoder("utf-8");
     let fullText = "";
 
-    const cleaned = fullText
-    .replace(/\r\n/g, '\n')         // Windows line breaks
-    .replace(/\n{2,}/g, '\n')       // Collapse multiple newlines
-    .replace(/[ \t]+\n/g, '\n');    // Remove trailing whitespace before a newline
-
     if (reader) {
       while (true) {
         const { value, done } = await reader.read();
@@ -36,7 +30,7 @@ export function Chat() {
         fullText += chunk;
         setMessages((prev) => [
           ...prev.slice(0, -1),
-          { role: "assistant", content: cleaned }
+          { role: "assistant", content: fullText },
         ]);
       }
     }
@@ -50,7 +44,7 @@ export function Chat() {
       {messages.map((m, i) => (
         <div
           key={i}
-          className={`text-sm leading-snug ${
+          className={`whitespace-pre-wrap ${
             m.role === "user" ? "text-right text-blue-600" : "text-left text-black"
           }`}
         >
