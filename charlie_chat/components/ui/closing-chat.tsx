@@ -2,9 +2,10 @@
 
 import { Dialog } from "@headlessui/react";
 import { useState } from "react";
-import { useEffect } from "react";
 import ReactMarkdown from "react-markdown";
 import { Sidebar } from "@/components/ui/sidebar";
+import { useRef, useEffect } from "react";
+
 
 type Listing = {
   id: string;
@@ -60,10 +61,10 @@ ${rows.join("\n")}
 ### 🔍 Evaluation Criteria
 
 **1. Most Promising**  
-Which property stands out based on location, potential rental yield, or zoning feasibility?
+Which property stands out based on location, potential rental yield, or zoning feasibility?  
 
 **2. Red Flags**  
-Note any missing data, inconsistent values, or concerns that might require deeper due diligence.
+Note any missing data, inconsistent values, or concerns that might require deeper due diligence.  
 
 **3. Recommendation**  
 If you had to explore one listing further, which would it be — and why?
@@ -75,6 +76,8 @@ sendMessage(summaryPrompt);
 setSelectedListings([]);
   };
   
+  const bottomRef = useRef<HTMLDivElement | null>(null);
+
   
   // Safe access to localStorage on client only
   useEffect(() => {
@@ -89,6 +92,12 @@ setSelectedListings([]);
       setThreadId(savedThreadId);
     }
   }, []);
+
+  useEffect(() => {
+    if (bottomRef.current) {
+      bottomRef.current.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [messages]);
 
   const sendMessage = async (message: string) => {
     if (!message.trim()) return;
@@ -214,7 +223,12 @@ setSelectedListings([]);
         />
 
         {/* Left: Chat UI */}
-        <div className="flex-1 flex flex-col items-center justify-start p-6 overflow-y-auto">
+        <div className="flex-1 flex flex-col items-center justify-start overflow-hidden">
+          <img
+            src="/charlie.png"
+            alt="Charlie Headshot"
+            className="w-24 h-24 rounded-full mx-auto mb-4 shadow-md border"
+          />
           <h1 className="text-3xl sm:text-5xl font-light text-center mb-2 tracking-tight">
             Charlie Chat
           </h1>
@@ -222,8 +236,52 @@ setSelectedListings([]);
             Conversational AI for Multifamily Investment Questions
           </p>
   
-          {/* Input box */}
-          <div className="w-full max-w-xl">
+          {/* Message list */}
+          <div className="w-full max-w-xl flex-1 overflow-y-auto px-4 py-6 space-y-4">
+          {messages.map((m, i) => {
+          const isUser = m.role === "user";
+          const cleanContent = m.content.replace(/\n{2,}/g, "\n").trim(); // 🚫 Extra newlines
+
+          return (
+            <div
+              key={i}
+              className={`text-sm font-sans whitespace-pre-wrap leading-snug ${
+                isUser ? "text-sky-800" : "text-gray-800"
+              }`}
+            >
+              <div
+                className={`inline-block max-w-3xl px-4 py-2 rounded-xl ${
+                  isUser ? "bg-sky-100 ml-auto" : "bg-gray-50"
+                }`}
+              >
+                <ReactMarkdown
+                  components={{
+                    p: ({ node, ...props }) => (
+                      <p className="mb-1 leading-snug" {...props} />
+                    ),
+                    strong: ({ node, ...props }) => (
+                      <strong className="font-semibold text-black" {...props} />
+                    ),
+                    ul: ({ node, ...props }) => (
+                      <ul className="list-disc pl-5 mb-1" {...props} />
+                    ),
+                    li: ({ node, ...props }) => (
+                      <li className="mb-1" {...props} />
+                    ),
+                  }}
+                >
+                  {cleanContent}
+                </ReactMarkdown>
+              </div>
+              <div ref={bottomRef} />
+
+            </div>
+            
+          );
+        })}
+
+          {/* Input box pinned to bottom */}
+          <div className="w-full max-w-xl border-t p-4 bg-white sticky bottom-0 z-10">
             <input
               className="w-full border border-gray-300 rounded-lg p-4 text-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-black"
               placeholder="Ask me anything about buying, selling, or investing..."
@@ -249,47 +307,6 @@ setSelectedListings([]);
               ))}
             </div>
           )}
-  
-          {/* Message list */}
-          <div className="mt-8 w-full max-w-xl space-y-4">
-          {messages.map((m, i) => {
-          const isUser = m.role === "user";
-          const cleanContent = m.content.replace(/\n{2,}/g, "\n").trim(); // 🚫 Extra newlines
-
-          return (
-            <div
-              key={i}
-              className={`text-sm font-sans whitespace-pre-wrap leading-snug ${
-                isUser ? "text-sky-800" : "text-gray-800"
-              }`}
-            >
-              <div
-                className={`inline-block max-w-xl px-4 py-2 rounded-xl ${
-                  isUser ? "bg-sky-100 ml-auto" : "bg-gray-50"
-                }`}
-              >
-                <ReactMarkdown
-                  components={{
-                    p: ({ node, ...props }) => (
-                      <p className="mb-1 leading-snug" {...props} />
-                    ),
-                    strong: ({ node, ...props }) => (
-                      <strong className="font-semibold text-black" {...props} />
-                    ),
-                    ul: ({ node, ...props }) => (
-                      <ul className="list-disc pl-5 mb-1" {...props} />
-                    ),
-                    li: ({ node, ...props }) => (
-                      <li className="mb-1" {...props} />
-                    ),
-                  }}
-                >
-                  {cleanContent}
-                </ReactMarkdown>
-              </div>
-            </div>
-          );
-        })}
 
           </div>
   
@@ -342,14 +359,6 @@ setSelectedListings([]);
           )}
         </div>
   
-        {/* Charlie Image */}
-        <div className="hidden lg:flex items-start justify-center w-[300px] shrink-0 pt-10 -ml-50">
-          <img
-            src="/charlie.png"
-            alt="Charlie - Your Real Estate Guide"
-            className="w-full max-w-[260px] object-contain rounded-xl shadow-lg"
-          />
-        </div>
       </div>
   
       {/* 🚨 MODAL 🚨 */}

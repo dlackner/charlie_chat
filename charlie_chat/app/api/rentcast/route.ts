@@ -6,7 +6,7 @@ export async function POST(req: NextRequest) {
 
   //console.log("📨 Incoming RentCast API filters:", body);
   const apiKey = process.env.RENTCAST_API_KEY;
-  const url = `https://api.rentcast.io/v1/properties?zipCode=${zipcode}&propertyType=Multi-Family&bedrooms=${beds}`;
+  const url = `https://api.rentcast.io/v1/properties?zipCode=${zipcode}&propertyType=Multi-Family,Condo&bedrooms=${beds}`;
   //console.log("🌐 Outgoing RentCast URL:", url);
 
 
