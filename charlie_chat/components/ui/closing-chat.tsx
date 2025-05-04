@@ -241,7 +241,12 @@ setSelectedListings([]);
           <div className="w-full max-w-4xl flex-1 overflow-y-auto px-6 py-6 space-y-4">
           {messages.map((m, i) => {
           const isUser = m.role === "user";
-          const cleanContent = m.content.replace(/\n{2,}/g, "\n").trim(); // 🚫 Extra newlines
+          const cleanContent = m.content
+            .replace(/\[\d+:\d+\^source\]/g, "")               // Old style: [4:0^source]
+            .replace(/\[\^?\d+\]/g, "")                        // Old style: [1] or [^1]
+            .replace(/【\d+:\d+†source】/g, "")                // New style:  
+            .replace(/\n{2,}/g, "\n")
+            .trim();
 
           return (
             <div

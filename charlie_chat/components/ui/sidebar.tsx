@@ -7,6 +7,7 @@ type Listing = {
   formattedAddress: string;
   bedrooms?: number;
   rentEstimate?: number;
+  squareFootage?: number;
   propertyValue?: number;
   lastSalePrice?: number;
 };
@@ -90,12 +91,11 @@ export const Sidebar = ({
                     <p className="font-medium text-gray-800">
                       {listing.formattedAddress || "No address"}
                     </p>
-                    <p className="text-gray-600">
-                      {listing.bedrooms ?? "?"} bd •{" "}
-                      {listing.rentEstimate
-                        ? `$${listing.rentEstimate.toLocaleString()}`
-                        : "$--"}/mo
+                    <p className="text-xs text-gray-500 mt-1 font-mono">
+                      {listing.bedrooms ? `${listing.bedrooms} bd` : "?"} •{" "}
+                      {listing.squareFootage ? `${listing.squareFootage.toLocaleString()} sq ft` : "Size unknown"}
                     </p>
+
                   </div>
                   <input
                     type="checkbox"
