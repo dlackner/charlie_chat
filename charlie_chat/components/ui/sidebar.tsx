@@ -27,7 +27,7 @@ export const Sidebar = ({
   onSendToGPT,
 }: Props) => {
   const [zipcode, setZipcode] = useState("90210");
-  const [beds, setBeds] = useState(2);
+  const [propertyType, setPropertyType] = useState("Multi-Family");
 
   return (
     <div className="w-[260px] shrink-0 bg-white border-r border-gray-200 p-4 flex flex-col space-y-6 overflow-y-auto">
@@ -44,18 +44,27 @@ export const Sidebar = ({
       </div>
 
       <div className="space-y-2">
-        <label className="block text-sm font-medium text-gray-600">Bedrooms</label>
-        <input
-          type="number"
-          className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
-          value={beds}
-          onChange={(e) => setBeds(Number(e.target.value))}
-        />
+      <label className="block text-sm font-medium text-gray-600">Property Type</label>
+      <div className="flex flex-col space-y-1">
+        {["Multi-Family", "Apartment"].map((type) => (
+          <label key={type} className="flex items-center space-x-2 text-sm text-gray-700">
+            <input
+              type="radio"
+              name="propertyType"
+              value={type}
+              checked={propertyType === type}
+              onChange={() => setPropertyType(type)}
+              className="accent-blue-600"
+            />
+            <span>{type}</span>
+          </label>
+        ))}
       </div>
+    </div>
 
 
       <button
-        onClick={() => onSearch({ zipcode, beds})}
+        onClick={() => onSearch({ zipcode, propertyType})}
         className="w-full bg-black text-white py-2 rounded hover:bg-gray-900 transition"
       >
         Search Rentals

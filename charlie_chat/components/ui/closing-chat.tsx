@@ -5,7 +5,7 @@ import { useState } from "react";
 import ReactMarkdown from "react-markdown";
 import { Sidebar } from "@/components/ui/sidebar";
 import { useRef, useEffect } from "react";
-
+import { Plus, SendHorizonal } from "lucide-react";
 
 type Listing = {
   id: string;
@@ -28,6 +28,7 @@ export function ClosingChat() {
   const [messages, setMessages] = useState<{ role: string; content: string }[]>([]);
   const [input, setInput] = useState("");
   const [threadId, setThreadId] = useState<string | null>(null);
+  const [showProModal, setShowProModal] = useState(false);
   const [showModal, setShowModal] = useState(false);
 
   const [isPro, setIsPro] = useState(false);
@@ -237,7 +238,7 @@ setSelectedListings([]);
           </p>
   
           {/* Message list */}
-          <div className="w-full max-w-xl flex-1 overflow-y-auto px-4 py-6 space-y-4">
+          <div className="w-full max-w-4xl flex-1 overflow-y-auto px-6 py-6 space-y-4">
           {messages.map((m, i) => {
           const isUser = m.role === "user";
           const cleanContent = m.content.replace(/\n{2,}/g, "\n").trim(); // 🚫 Extra newlines
@@ -250,7 +251,7 @@ setSelectedListings([]);
               }`}
             >
               <div
-                className={`inline-block max-w-3xl px-4 py-2 rounded-xl ${
+                className={`inline-block max-w-4xl px-4 py-2 rounded-xl ${
                   isUser ? "bg-sky-100 ml-auto" : "bg-gray-50"
                 }`}
               >
@@ -281,21 +282,44 @@ setSelectedListings([]);
         })}
 
           {/* Input box pinned to bottom */}
-          <div className="w-full max-w-xl border-t p-4 bg-white sticky bottom-0 z-10">
-            <input
-              className="w-full border border-gray-300 rounded-lg p-4 text-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-black"
-              placeholder="Ask me anything about buying, selling, or investing..."
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") sendMessage(input);
-              }}
-            />
+          <div className="w-full max-w-5xl border-t p-4 bg-white sticky bottom-0 z-10">
+            <div className="flex items-center border border-gray-300 rounded-lg shadow-sm p-2 focus-within:ring-2 focus-within:ring-black">
+              {/* Plus icon */}
+              <button
+                type="button"
+                onClick={() => setShowProModal(true)} // 👈 trigger your modal
+                className="p-2 hover:bg-gray-100 rounded transition"
+                title="Upload or upgrade"
+              >
+                <Plus className="w-5 h-5 text-gray-600" />
+              </button>
+
+              {/* Input field */}
+              <input
+                className="flex-1 px-3 py-2 text-lg focus:outline-none"
+                placeholder="Ask me anything about buying, selling, or investing..."
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") sendMessage(input);
+                }}
+              />
+
+              {/* Send icon */}
+              <button
+                type="button"
+                onClick={() => sendMessage(input)}
+                className="p-2 hover:bg-gray-100 rounded transition"
+                title="Send"
+              >
+                <SendHorizonal className="w-5 h-5 text-gray-600" />
+              </button>
+            </div>
           </div>
   
           {/* Examples (only if no messages yet) */}
           {messages.length === 0 && (
-            <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-xl w-full">
+              <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-3xl w-full mx-auto">
               {EXAMPLES.map((ex, i) => (
                 <button
                   key={i}
@@ -312,7 +336,7 @@ setSelectedListings([]);
   
           {/* How it works */}
           {messages.length === 0 && (
-            <div className="mt-20 border-t pt-10 w-full max-w-4xl">
+            <div className="mt-10 border-t pt-6 mb-15 w-full max-w-4xl">
               <h2 className="text-2xl sm:text-3xl font-light text-center mb-2 tracking-tight">How it works</h2>
               <p className="text-center text-gray-500 mb-10 text-sm sm:text-base">
                 Charlie Chat connects you directly with me for clear, honest advice on multifamily investing.
@@ -358,6 +382,7 @@ setSelectedListings([]);
             </div>
           )}
         </div>
+        
   
       </div>
   
@@ -395,6 +420,29 @@ setSelectedListings([]);
           </Dialog.Panel>
         </div>
       </Dialog>
+
+      <Dialog open={showProModal} onClose={() => setShowProModal(false)} className="relative z-50">
+        <div className="fixed inset-0 bg-black/40" aria-hidden="true" />
+        <div className="fixed inset-0 flex items-center justify-center p-4">
+          <Dialog.Panel className="w-full max-w-md rounded bg-white p-6 text-center space-y-4 shadow-xl">
+            <Dialog.Title className="text-lg font-semibold">
+              Charlie Chat Pro 🔒
+            </Dialog.Title>
+            <Dialog.Description className="text-sm text-gray-500">
+              File uploads and enhanced analysis are available with Charlie Chat Pro.
+            </Dialog.Description>
+                  
+            <button
+              onClick={handleCheckout}
+              className="bg-black text-white px-4 py-2 rounded mt-4 hover:bg-gray-800 transition"
+            >
+              Upgrade Now 💳
+            </button>
+          </Dialog.Panel>
+        </div>
+      </Dialog>
+
+      
     </>
   );
   

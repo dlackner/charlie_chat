@@ -2,11 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(req: NextRequest) {
   const body = await req.json();
-  const { zipcode, beds} = body;
+  const { zipcode, propertyType } = body;
 
   //console.log("📨 Incoming RentCast API filters:", body);
   const apiKey = process.env.RENTCAST_API_KEY;
-  const url = `https://api.rentcast.io/v1/properties?zipCode=${zipcode}&propertyType=Multi-Family,Condo&bedrooms=${beds}`;
+  const url = `https://api.rentcast.io/v1/properties?zipCode=${zipcode}&propertyType=${propertyType}`;
   //console.log("🌐 Outgoing RentCast URL:", url);
 
 
