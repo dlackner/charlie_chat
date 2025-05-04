@@ -47,7 +47,7 @@ export const Sidebar = ({
       <div className="space-y-2">
       <label className="block text-sm font-medium text-gray-600">Property Type</label>
       <div className="flex flex-col space-y-1">
-        {["Multi-Family", "Apartment"].map((type) => (
+        {["Multi-Family (2-4)", "Apartment (5+)"].map((type) => (
           <label key={type} className="flex items-center space-x-2 text-sm text-gray-700">
             <input
               type="radio"

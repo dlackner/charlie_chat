@@ -55,6 +55,7 @@ export async function POST(req: Request) {
         "Content-Type": "text/event-stream",
         "Cache-Control": "no-cache",
         "Connection": "keep-alive",
+        "x-thread-id": threadId, // ✅ this line enables thread persistence!
       },
     });
   } catch (err) {

@@ -118,16 +118,6 @@ setSelectedListings([]);
 
     setMessages((prev) => [...prev, { role: "user", content: message }, { role: "assistant", content: "" }]);
     setInput("");
-    // Only save title on first message of a thread
-    if (
-      messages.length === 0 &&        // This is a new thread
-      message.trim().length > 0 &&    // Ignore blank prompts
-      threadId?.startsWith("thread_") // Only save real OpenAI threads
-    ) {
-      const titles = JSON.parse(localStorage.getItem("chatTitles") || "{}");
-      titles[threadId] = message.slice(0, 50); // Take first 50 chars
-      localStorage.setItem("chatTitles", JSON.stringify(titles));
-    }
 
     const res = await fetch("/api/chat", {
       method: "POST",
@@ -135,6 +125,19 @@ setSelectedListings([]);
       body: JSON.stringify({ message, threadId }),
     });
     
+    // Only save title on first message of a thread
+    // Save title if this is the first message of a new thread
+    if (messages.length === 0 && message.trim().length > 0) {
+      const newThreadId = res.headers.get("x-thread-id");
+    
+      if (newThreadId && newThreadId.startsWith("thread_")) {
+        const titles = JSON.parse(localStorage.getItem("chatTitles") || "{}");
+        titles[newThreadId] = message.slice(0, 50); // Save first message as title
+        localStorage.setItem("chatTitles", JSON.stringify(titles));
+        setThreadId(newThreadId);
+        localStorage.setItem("threadId", newThreadId);
+      }
+    }
     const reader = res.body?.getReader();
     const decoder = new TextDecoder("utf-8");
     
@@ -176,17 +179,16 @@ setSelectedListings([]);
           }
         }
       }
-    }
-    
-    
-    
-    
-
-    // Capture threadId if first time
-    const newThreadId = res.headers.get("x-thread-id");
-    if (newThreadId && !threadId) {
-      setThreadId(newThreadId);
-      localStorage.setItem("threadId", newThreadId);
+      if (!threadId && res.headers) {
+        const newThreadId = res.headers.get("x-thread-id");
+        if (newThreadId && newThreadId.startsWith("thread_")) {
+          const titles = JSON.parse(localStorage.getItem("chatTitles") || "{}");
+          titles[newThreadId] = message.slice(0, 50);
+          localStorage.setItem("chatTitles", JSON.stringify(titles));
+          setThreadId(newThreadId);
+          localStorage.setItem("threadId", newThreadId);
+        }
+      }
     }
   };
 
@@ -242,12 +244,14 @@ setSelectedListings([]);
           {messages.map((m, i) => {
           const isUser = m.role === "user";
           const cleanContent = m.content
-            .replace(/\[\d+:\d+\^source\]/g, "")               // Old style: [4:0^source]
-            .replace(/\[\^?\d+\]/g, "")                        // Old style: [1] or [^1]
-            .replace(/【\d+:\d+†source】/g, "")                // New style:  
+            // remove citations and any surrounding whitespace or dangling periods
+            .replace(/\s?【\d+:\d+†source】\s?/g, "")          // full-width
+            .replace(/\s?\[\d+:\d+\^source\]\s?/g, "")         // standard bracketed
+            .replace(/\s?\[\^?\d+\]\s?/g, "")                  // markdown-style [1] or [^1]
+            .replace(/ +(?=\.|,|!|\?)/g, "")                   // remove extra space before punctuation
             .replace(/\n{2,}/g, "\n")
             .trim();
-
+    
           return (
             <div
               key={i}
