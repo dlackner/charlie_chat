@@ -244,11 +244,15 @@ setSelectedListings([]);
           {messages.map((m, i) => {
           const isUser = m.role === "user";
           const cleanContent = m.content
-            // remove citations and any surrounding whitespace or dangling periods
-            .replace(/\s?【\d+:\d+†source】\s?/g, "")          // full-width
-            .replace(/\s?\[\d+:\d+\^source\]\s?/g, "")         // standard bracketed
-            .replace(/\s?\[\^?\d+\]\s?/g, "")                  // markdown-style [1] or [^1]
-            .replace(/ +(?=\.|,|!|\?)/g, "")                   // remove extra space before punctuation
+            // remove full-width citations like  
+            .replace(/\s?【\d+:\d+†[^】]+】\s?/g, "")
+            // remove bracketed OpenAI citations like [8:5^source]
+            .replace(/\s?\[\d+:\d+\^source\]\s?/g, "")
+            // remove markdown-style footnotes like [1] or [^1]
+            .replace(/\s?\[\^?\d+\]\s?/g, "")
+            // remove trailing space before punctuation
+            .replace(/ +(?=\.|,|!|\?)/g, "")
+            // squash extra newlines
             .replace(/\n{2,}/g, "\n")
             .trim();
     
