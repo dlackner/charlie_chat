@@ -11,11 +11,21 @@ import dynamic from "next/dynamic";
 
 type Listing = {
   id: string;
-  formattedAddress: string;
+  address: {
+    address: string;
+    city?: string;
+    state?: string;
+    zip?: string;
+  };
   bedrooms?: number;
+  squareFeet?: number;
   rentEstimate?: number;
-  propertyValue?: number;
+  assessedValue?: number;
+  estimatedValue?: number;
   lastSalePrice?: number;
+  yearBuilt?: number;
+  pool?: boolean;
+  [key: string]: any; // <-- optional catch-all if you're passing full listing to GPT
 };
 
 const EXAMPLES = [
