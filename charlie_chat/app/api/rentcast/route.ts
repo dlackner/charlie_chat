@@ -3,11 +3,12 @@ import { NextRequest, NextResponse } from "next/server";
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { zip, propertyType } = body;
+    const { zip, propertyType, units_min } = body;
 
     const payload = {
       zip,
       property_type: propertyType,
+      units_min,
       ids_only: false,
       obfuscate: false,
       summary: false,

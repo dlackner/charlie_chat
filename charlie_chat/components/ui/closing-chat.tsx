@@ -72,23 +72,12 @@ ${metadata}
 -->`;
   });
 
-  const summaryPrompt = `Charlie, please evaluate the following listings for their potential as multifamily hotel conversions.
+  const summaryPrompt = `Charlie, look at these properties and give me a short summary of each property and an underwriting strategy.
 
 ---
 ${rows.join("\n\n")}
 ---
-### 🔍 Evaluation Criteria
 
-**1. Most Promising**  
-Which property stands out based on location, potential rental yield, or zoning feasibility?  
-
-**2. Red Flags**  
-Note any missing data, inconsistent values, or concerns that might require deeper due diligence.  
-
-**3. Recommendation**  
-If you had to explore one listing further, which would it be — and why?
-
-Please keep it concise, sharp, and grounded in investment logic. A bit of personality is welcome, but let’s keep the insights actionable.
 `;
 
   sendMessage(summaryPrompt);
@@ -255,7 +244,7 @@ Please keep it concise, sharp, and grounded in investment logic. A bit of person
             Charlie Chat
           </h1>
           <p className="text-center text-gray-500 mb-6 text-sm sm:text-base">
-            Conversational AI for Multifamily Investment Questions
+            Conversational AI for Multifamily Investors
           </p>
   
           {/* Message list */}
