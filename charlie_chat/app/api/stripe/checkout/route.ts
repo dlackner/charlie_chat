@@ -1,9 +1,7 @@
 import Stripe from "stripe";
 import { NextRequest } from "next/server";
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: "2025-03-31.basil",
-});
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
 
 export async function POST(_req: NextRequest) {
   const session = await stripe.checkout.sessions.create({
