@@ -16,6 +16,7 @@
     "@headlessui/react": "^2.2.2",
     "@radix-ui/react-slot": "^1.2.0",
     "@radix-ui/react-tooltip": "^1.2.0",
+    "@reactour/tour": "^3.7.0",
     "ai": "^4.3.5",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
