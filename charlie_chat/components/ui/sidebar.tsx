@@ -4,12 +4,21 @@ import { useState } from "react";
 
 type Listing = {
   id: string;
-  address: string;
+  address: {
+    address: string;
+    city?: string;
+    state?: string;
+    zip?: string;
+  };
   bedrooms?: number;
+  squareFeet?: number;
   rentEstimate?: number;
-  squareFootage?: number;
-  propertyValue?: number;
+  assessedValue?: number;
+  estimatedValue?: number;
   lastSalePrice?: number;
+  yearBuilt?: number;
+  pool?: boolean;
+  [key: string]: any; // <-- optional catch-all if you're passing full listing to GPT
 };
 
 type Props = {
