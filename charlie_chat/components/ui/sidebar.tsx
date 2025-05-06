@@ -159,7 +159,7 @@ export const Sidebar = ({
         <div className="fixed bottom-4 left-4 w-[240px] z-40">
           <div className="p-4 border rounded bg-[#D15834] text-sm shadow text-white">
             <p className="mb-2 font-medium">
-              Select properties for further analysis
+              Add {selectedListings.length} {selectedListings.length === 1 ? "property" : "properties"} to Charlie Chat for analysis
             </p>
             <button
               onClick={onSendToGPT}
