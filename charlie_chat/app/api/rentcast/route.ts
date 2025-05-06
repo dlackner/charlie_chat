@@ -19,12 +19,11 @@ export async function POST(req: NextRequest) {
       headers: {
         accept: "application/json",
         "content-type": "application/json",
-        "x-api-key": "AGENTICCONSULTING-969d-7f45-a300-615207af1afe",
-        "x-user-id": "UniqueUserIdentifier",
+        "x-api-key": process.env.REALESTATE_API_KEY!,
+        "x-user-id": process.env.REALESTATE_API_USER_ID!,
       },
       body: JSON.stringify(payload),
     });
-    
 
     const data = await res.json();
 
@@ -34,7 +33,6 @@ export async function POST(req: NextRequest) {
     }
 
     console.log("📍 Sample listing:", data.data?.[0]);
-
 
     return NextResponse.json(data.data);
   } catch (err) {
