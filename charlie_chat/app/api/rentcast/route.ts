@@ -1,37 +1,44 @@
 import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(req: NextRequest) {
-  const body = await req.json();
-  const { zipcode, propertyType } = body;
+  try {
+    const body = await req.json();
+    const { zip, propertyType } = body;
 
-  //console.log("📨 Incoming RentCast API filters:", body);
-  const apiKey = process.env.RENTCAST_API_KEY;
-  const url = `https://api.rentcast.io/v1/properties?zipCode=${zipcode}&propertyType=${propertyType}`;
-  //console.log("🌐 Outgoing RentCast URL:", url);
+    const payload = {
+      zip,
+      property_type: propertyType,
+      ids_only: false,
+      obfuscate: false,
+      summary: false,
+      size: 50,
+    };
 
-
-  const res = await fetch(url, {
-    headers: {
-      "X-Api-Key": apiKey!,
-    },
-  });
-
-  const data = await res.json();
-  if (Array.isArray(data.properties)) {
-    console.log(`📦 Retrieved ${data.properties.length} properties from RentCast:\n`);
-    data.properties.forEach((p: any, i: number) => {
-      console.log(
-        `#${i + 1}: ${p.formattedAddress ?? "Unknown Address"}\n` +
-        `  Beds: ${p.bedrooms ?? "?"}\n` +
-        `  Rent Estimate: $${p.rentEstimate ?? "N/A"}\n` +
-        `  Last Sale Price: $${p.lastSalePrice ?? "N/A"}\n` +
-        `  -----------------------------`
-      );
+    const res = await fetch("https://api.realestateapi.com/v2/PropertySearch", {
+      method: "POST",
+      headers: {
+        accept: "application/json",
+        "content-type": "application/json",
+        "x-api-key": "AGENTICCONSULTING-969d-7f45-a300-615207af1afe",
+        "x-user-id": "UniqueUserIdentifier",
+      },
+      body: JSON.stringify(payload),
     });
-  } else {
-    console.warn("⚠️ No properties array in RentCast response:", data);
+    
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      console.error("❌ API returned error:", data);
+      return NextResponse.json({ error: data }, { status: res.status });
+    }
+
+    console.log("📍 Sample listing:", data.data?.[0]);
+
+
+    return NextResponse.json(data.data);
+  } catch (err) {
+    console.error("🔥 Uncaught API route error:", err);
+    return NextResponse.json({ error: "Unexpected server error" }, { status: 500 });
   }
-  
-  // You can also filter by price client-side here if needed
-  return NextResponse.json(data);
 }

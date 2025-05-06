@@ -51,18 +51,21 @@ export function ClosingChat() {
   };
 
   const onSendToGPT = () => {
-    const rows = selectedListings.map((l, i) => {
-      const rent = l.rentEstimate ?? null;
-      const value = l.propertyValue ?? l.lastSalePrice ?? null;
-      const capRate = rent && value ? `${((rent * 12) / value * 100).toFixed(2)}%` : "N/A";
-  
-      return `**${i + 1}. ${l.formattedAddress}**`;
-    });
-  
-    const summaryPrompt = `Charlie, please evaluate the following listings for their potential as multifamily hotel conversions.
-    
+  const rows = selectedListings.map((l, i) => {
+    const address = l.address?.address || "Unknown Address";
+    const metadata = JSON.stringify(l, null, 2);
+
+    return `**${i + 1}. ${address}**
+
+<!--
+${metadata}
+-->`;
+  });
+
+  const summaryPrompt = `Charlie, please evaluate the following listings for their potential as multifamily hotel conversions.
+
 ---
-${rows.join("\n")}
+${rows.join("\n\n")}
 ---
 ### 🔍 Evaluation Criteria
 
@@ -78,10 +81,9 @@ If you had to explore one listing further, which would it be — and why?
 Please keep it concise, sharp, and grounded in investment logic. A bit of personality is welcome, but let’s keep the insights actionable.
 `;
 
-sendMessage(summaryPrompt);
-setSelectedListings([]);
-  };
-  
+  sendMessage(summaryPrompt);
+  setSelectedListings([]);
+};
   const bottomRef = useRef<HTMLDivElement | null>(null);
 
   
@@ -308,6 +310,7 @@ setSelectedListings([]);
             <div className="flex items-center border border-gray-300 rounded-lg shadow-sm p-2 focus-within:ring-2 focus-within:ring-black">
               {/* Plus icon */}
               <button
+                id="upload-docs"
                 type="button"
                 onClick={() => setShowProModal(true)} // 👈 trigger your modal
                 className="p-2 hover:bg-gray-100 rounded transition"

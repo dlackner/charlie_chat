@@ -15,8 +15,12 @@ const tourSteps = [
     content: "Use this search panel to pull in RentCast listings."
   },
   {
-    selector: "#send-to-gpt",
-    content: "Select listings, then click here to send them to Charlie for analysis."
+    selector: "#send-to-chat",
+    content: "Send the listings to the chat and have Charlie analyze them"
+  },
+  {
+    selector: "#upload-docs",
+    content: "Upload documents and have Charlie create populated LOI's for you"
   }
 ];
 
