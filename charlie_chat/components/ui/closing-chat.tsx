@@ -6,6 +6,8 @@ import ReactMarkdown from "react-markdown";
 import { Sidebar } from "@/components/ui/sidebar";
 import { useRef, useEffect } from "react";
 import { Plus, SendHorizonal } from "lucide-react";
+import dynamic from "next/dynamic";
+
 
 type Listing = {
   id: string;
@@ -22,6 +24,9 @@ const EXAMPLES = [
   "What assumptions should I model for a 5-year hold of a property?",
   "How do I get started in multifamily investing? ",
 ];
+
+
+const FeatureTour = dynamic(() => import("@/components/ui/feature-tour"), { ssr: false });
 
 export function ClosingChat() {
   
@@ -101,6 +106,7 @@ setSelectedListings([]);
   }, [messages]);
 
   const sendMessage = async (message: string) => {
+    
     if (!message.trim()) return;
     let count = Number(localStorage.getItem("questionCount"));
 
@@ -201,6 +207,7 @@ setSelectedListings([]);
   return (
     <>
       {/* Main layout container */}
+     <FeatureTour />
       <div className="flex h-screen overflow-hidden bg-white text-black">
          {/* Sidebar */}
          <Sidebar
@@ -253,13 +260,15 @@ setSelectedListings([]);
             // remove trailing space before punctuation
             .replace(/ +(?=\.|,|!|\?)/g, "")
             // squash extra newlines
-            .replace(/\n{2,}/g, "\n")
+            .replace(/\n/g, '\n\n')  // squash double newlines to one (optional)
             .trim();
+
+          //console.log("🪵 Cleaned content:\n", JSON.stringify(cleanContent)); // ✅ put this here
     
           return (
             <div
               key={i}
-              className={`text-sm font-sans whitespace-pre-wrap leading-snug ${
+              className={`text-sm font-sans leading-snug ${
                 isUser ? "text-sky-800" : "text-gray-800"
               }`}
             >
@@ -271,7 +280,7 @@ setSelectedListings([]);
                 <ReactMarkdown
                   components={{
                     p: ({ node, ...props }) => (
-                      <p className="mb-1 leading-snug" {...props} />
+                      <p className="mb-1 leading-snug whitespace-pre-line" {...props} />
                     ),
                     strong: ({ node, ...props }) => (
                       <strong className="font-semibold text-black" {...props} />
@@ -309,6 +318,7 @@ setSelectedListings([]);
 
               {/* Input field */}
               <input
+                id="chat-input"
                 className="flex-1 px-3 py-2 text-lg focus:outline-none"
                 placeholder="Ask me anything about buying, selling, or investing..."
                 value={input}
@@ -344,59 +354,8 @@ setSelectedListings([]);
               ))}
             </div>
           )}
-
           </div>
-  
-          {/* How it works */}
-          {messages.length === 0 && (
-            <div className="mt-10 border-t pt-6 mb-15 w-full max-w-4xl">
-              <h2 className="text-2xl sm:text-3xl font-light text-center mb-2 tracking-tight">How it works</h2>
-              <p className="text-center text-gray-500 mb-10 text-sm sm:text-base">
-                Charlie Chat connects you directly with me for clear, honest advice on multifamily investing.
-              </p>
-  
-              <div className="grid sm:grid-cols-3 gap-8">
-                <div className="flex items-start space-x-4">
-                  <div className="bg-gray-100 p-3 rounded-full">
-                    <span className="text-xl">💬</span>
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-base mb-1">Ask Your Question</h3>
-                    <p className="text-sm text-gray-600">
-                         Whether it’s about deals, underwriting, or decoding a broker’s “great opportunity,” just ask—I’m here to give it to you straight.
-                    </p>
-                  </div>
-                </div>
-  
-                <div className="flex items-start space-x-4">
-                  <div className="bg-gray-100 p-3 rounded-full">
-                    <span className="text-xl">📊</span>
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-base mb-1">Get My Advice</h3>
-                    <p className="text-sm text-gray-600">
-                        You’ll get clear, actionable guidance from someone who’s done this a few hundred times (and made all the mistakes so you don’t have to).
-                    </p>
-                  </div>
-                </div>
-  
-                <div className="flex items-start space-x-4">
-                  <div className="bg-gray-100 p-3 rounded-full">
-                    <span className="text-xl">🏠</span>
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-base mb-1">Invest With Confidence</h3>
-                    <p className="text-sm text-gray-600">
-                        You’re not just playing real estate anymore—you’re making smart moves backed by strategy, not guesswork.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
         </div>
-        
-  
       </div>
   
       {/* 🚨 MODAL 🚨 */}

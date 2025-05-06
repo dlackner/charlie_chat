@@ -66,13 +66,13 @@ const useCopyToClipboard = ({
 
 const defaultComponents = memoizeMarkdownComponents({
   h1: ({ className, ...props }) => (
-    <h1 className={cn("mb-8 scroll-m-20 text-4xl font-extrabold tracking-tight last:mb-0", className)} {...props} />
+    <h1 className={cn("text-2xl font-bold mb-1 mt-2", className)} {...props} />
   ),
   h2: ({ className, ...props }) => (
-    <h2 className={cn("mb-4 mt-8 scroll-m-20 text-3xl font-semibold tracking-tight first:mt-0 last:mb-0", className)} {...props} />
+    <h2 className={cn("text-xl font-semibold mb-1 mt-2", className)} {...props} />
   ),
   h3: ({ className, ...props }) => (
-    <h3 className={cn("mb-4 mt-6 scroll-m-20 text-2xl font-semibold tracking-tight first:mt-0 last:mb-0", className)} {...props} />
+    <h3 className={cn("text-lg font-semibold mb-1 mt-2", className)} {...props} />
   ),
   h4: ({ className, ...props }) => (
     <h4 className={cn("mb-4 mt-6 scroll-m-20 text-xl font-semibold tracking-tight first:mt-0 last:mb-0", className)} {...props} />
@@ -84,7 +84,7 @@ const defaultComponents = memoizeMarkdownComponents({
     <h6 className={cn("my-4 font-semibold first:mt-0 last:mb-0", className)} {...props} />
   ),
   p: ({ className, ...props }) => (
-    <p className={cn("mb-5 mt-5 leading-7 first:mt-0 last:mb-0", className)} {...props} />
+    <p className={cn("my-2 leading-relaxed whitespace-pre-line", className)} {...props} />
   ),
   a: ({ className, ...props }) => (
     <a className={cn("text-primary font-medium underline underline-offset-4", className)} {...props} />
@@ -93,10 +93,10 @@ const defaultComponents = memoizeMarkdownComponents({
     <blockquote className={cn("border-l-2 pl-6 italic", className)} {...props} />
   ),
   ul: ({ className, ...props }) => (
-    <ul className={cn("my-5 ml-6 list-disc [&>li]:mt-2", className)} {...props} />
+    <ul className={cn("list-disc pl-5 mb-1", className)} {...props} />
   ),
   ol: ({ className, ...props }) => (
-    <ol className={cn("my-5 ml-6 list-decimal [&>li]:mt-2", className)} {...props} />
+    <ol className={cn("list-decimal pl-5 mb-1", className)} {...props} />
   ),
   hr: ({ className, ...props }) => (
     <hr className={cn("my-5 border-b", className)} {...props} />

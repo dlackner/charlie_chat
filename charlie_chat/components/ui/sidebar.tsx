@@ -66,6 +66,7 @@ export const Sidebar = ({
 
       <button
         onClick={() => onSearch({ zipcode, propertyType})}
+        id="sidebar-search"
         className="w-full bg-black text-white py-2 rounded hover:bg-gray-900 transition"
       >
         Search Rentals
