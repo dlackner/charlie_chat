@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import jsPDF from "jspdf";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 
 type Listing = {
   id: string;
@@ -61,7 +63,58 @@ export const Sidebar = ({
   const [foreclosure, setForeclosure] = useState(false);
   const [preForeclosure, setPreForeclosure] = useState(false);
 
-  const [activeListing, setActiveListing] = useState<Listing | null>(null);
+  const [activeListingIndex, setActiveListingIndex] = useState<number | null>(null);
+  const activeListing = activeListingIndex !== null ? listings[activeListingIndex] : null;
+
+  const downloadLetter = (listing: Listing) => {
+    const doc = new jsPDF();
+    doc.text(`Dear Property Owner,`, 10, 20);
+    doc.text(
+      `I'm writing to express my interest in your property at ${listing.address?.address}.`,
+      10,
+      30
+    );
+    doc.text("Please contact me if you're open to selling.", 10, 40);
+    doc.save("letter.pdf");
+  };
+
+  const downloadProfile = (listing: Listing) => {
+    const doc = new jsPDF();
+    doc.setFontSize(14);
+    doc.text("Property Profile", 10, 15);
+
+    const fields = [
+      [`Address:`, listing.address?.address || "N/A"],
+      [`Bedrooms:`, listing.bedrooms ?? "N/A"],
+      [`Bathrooms:`, listing.bathrooms ?? "N/A"],
+      [`Sq Ft:`, listing.squareFeet?.toLocaleString() ?? "N/A"],
+      [`Year Built:`, listing.yearBuilt ?? "N/A"],
+      [`Estimated Value:`, `$${listing.estimatedValue?.toLocaleString() ?? "N/A"}`],
+      [`Assessed Value:`, `$${listing.assessedValue?.toLocaleString() ?? "N/A"}`],
+      [`Flood Zone:`, listing.floodZoneDescription ?? "N/A"],
+      [`Pool:`, listing.pool ? "Yes" : "No"],
+      [`Owner Occupied:`, listing.ownerOccupied ? "Yes" : "No"],
+      [`Last Sale Date:`, listing.lastSaleDate ?? "N/A"],
+    ];
+
+    fields.forEach(([label, value], index) => {
+      doc.text(`${label} ${value}`, 10, 30 + index * 10);
+    });
+
+    doc.save("property-profile.pdf");
+  };
+
+  const goToPrev = () => {
+    if (activeListingIndex !== null && activeListingIndex > 0) {
+      setActiveListingIndex(activeListingIndex - 1);
+    }
+  };
+
+  const goToNext = () => {
+    if (activeListingIndex !== null && activeListingIndex < listings.length - 1) {
+      setActiveListingIndex(activeListingIndex + 1);
+    }
+  };
 
   return (
     <div className="relative flex">
@@ -142,7 +195,7 @@ export const Sidebar = ({
                     `}
                   >
                     <div className="flex items-start justify-between">
-                      <div onClick={() => setActiveListing(listing)} className="flex-1 cursor-pointer">
+                      <div onClick={() => setActiveListingIndex(i)} className="flex-1 cursor-pointer">
                         <p className="font-medium text-gray-800">
                           {listing.address?.street || "No street info"}
                         </p>
@@ -164,38 +217,69 @@ export const Sidebar = ({
         </div>
 
         {activeListing && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-sm bg-black/20"
+          onClick={() => setActiveListingIndex(null)}
+        >
           <div
-            className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-sm bg-black/20"
-            onClick={() => setActiveListing(null)}
+            className="bg-white px-14 py-6 rounded-lg shadow-xl max-w-3xl w-full relative"
+            onClick={(e) => e.stopPropagation()}
           >
-            <div
-              className="bg-white p-6 rounded-lg shadow-xl max-w-2xl w-full relative"
-              onClick={(e) => e.stopPropagation()}
+            <button
+              onClick={() => setActiveListingIndex(null)}
+              className="absolute top-2 right-3 text-gray-500 hover:text-black text-xl"
             >
+              &times;
+            </button>
+
+            <button
+              onClick={goToPrev}
+              disabled={activeListingIndex === 0}
+              className="absolute left-2 top-1/2 -translate-y-1/2 bg-gray-100 p-2 rounded-full hover:bg-gray-200"
+            >
+              <ChevronLeft className="w-5 h-5 text-gray-700" />
+            </button>
+            <button
+              onClick={goToNext}
+              disabled={activeListingIndex === listings.length - 1}
+              className="absolute right-2 top-1/2 -translate-y-1/2 bg-gray-100 p-2 rounded-full hover:bg-gray-200"
+            >
+              <ChevronRight className="w-5 h-5 text-gray-700" />
+            </button>
+
+            <h2 className="text-2xl font-semibold mb-4 text-gray-800">
+              {activeListing.address?.address || "No Address"}
+            </h2>
+            <div className="grid grid-cols-2 gap-4 text-sm text-gray-700">
+              <p><strong>Bedrooms:</strong> {activeListing.bedrooms ?? "N/A"}</p>
+              <p><strong>Bathrooms:</strong> {activeListing.bathrooms ?? "N/A"}</p>
+              <p><strong>Sq Ft:</strong> {activeListing.squareFeet?.toLocaleString() ?? "N/A"}</p>
+              <p><strong>Year Built:</strong> {activeListing.yearBuilt ?? "N/A"}</p>
+              <p><strong>Estimated Value:</strong> ${activeListing.estimatedValue?.toLocaleString() ?? "N/A"}</p>
+              <p><strong>Assessed Value:</strong> ${activeListing.assessedValue?.toLocaleString() ?? "N/A"}</p>
+              <p><strong>Flood Zone:</strong> {activeListing.floodZoneDescription ?? "N/A"}</p>
+              <p><strong>Pool:</strong> {activeListing.pool ? "Yes" : "No"}</p>
+              <p><strong>Owner Occupied:</strong> {activeListing.ownerOccupied ? "Yes" : "No"}</p>
+              <p><strong>Last Sale Date:</strong> {activeListing.lastSaleDate ?? "N/A"}</p>
+            </div>
+
+            <div className="mt-6 flex gap-4">
               <button
-                onClick={() => setActiveListing(null)}
-                className="absolute top-2 right-3 text-gray-500 hover:text-black text-xl"
+                onClick={() => downloadLetter(activeListing)}
+                className="bg-black text-white px-4 py-2 rounded hover:bg-gray-900 transition"
               >
-                &times;
+                Download Letter 📩
               </button>
-              <h2 className="text-2xl font-semibold mb-4 text-gray-800">
-                {activeListing.address?.address || "No Address"}
-              </h2>
-              <div className="grid grid-cols-2 gap-4 text-sm text-gray-700">
-                <p><strong>Bedrooms:</strong> {activeListing.bedrooms ?? "N/A"}</p>
-                <p><strong>Bathrooms:</strong> {activeListing.bathrooms ?? "N/A"}</p>
-                <p><strong>Sq Ft:</strong> {activeListing.squareFeet?.toLocaleString() ?? "N/A"}</p>
-                <p><strong>Year Built:</strong> {activeListing.yearBuilt ?? "N/A"}</p>
-                <p><strong>Estimated Value:</strong> ${activeListing.estimatedValue?.toLocaleString() ?? "N/A"}</p>
-                <p><strong>Assessed Value:</strong> ${activeListing.assessedValue?.toLocaleString() ?? "N/A"}</p>
-                <p><strong>Flood Zone:</strong> {activeListing.floodZoneDescription ?? "N/A"}</p>
-                <p><strong>Pool:</strong> {activeListing.pool ? "Yes" : "No"}</p>
-                <p><strong>Owner Occupied:</strong> {activeListing.ownerOccupied ? "Yes" : "No"}</p>
-                <p><strong>Last Sale Date:</strong> {activeListing.lastSaleDate ?? "N/A"}</p>
-              </div>
+              <button
+                onClick={() => downloadProfile(activeListing)}
+                className="bg-gray-800 text-white px-4 py-2 rounded hover:bg-gray-900 transition"
+              >
+                Download Profile 📄
+              </button>
             </div>
           </div>
-        )}
+        </div>
+      )}
       </div>
 
       {selectedListings.length > 0 && (
