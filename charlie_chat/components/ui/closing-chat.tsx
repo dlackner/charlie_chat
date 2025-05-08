@@ -215,22 +215,17 @@ ${rows.join("\n\n")}
       <div className="flex h-screen overflow-hidden bg-white text-black">
          {/* Sidebar */}
          <Sidebar
-          onSearch={async (filters) => {
-            if (!isLoggedIn) {
-              setShowModal(true); // 👈 show login modal
-              return;
-            }
-
+          onSearch={async (filters: Record<string, string | number | boolean>) => {
             try {
               const res = await fetch("/api/rentcast", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(filters),
               });
-          
+            
               const data = await res.json();
               console.log("🔍 Raw RentCast data:", data);
-              setListings(data || []); // Adjust depending on RentCast response format
+              setListings(data || []);
             } catch (err) {
               console.error("RentCast API error:", err);
             }
