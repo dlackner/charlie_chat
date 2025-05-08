@@ -2,7 +2,37 @@
 
 import { useState } from "react";
 
-// ...existing Listing and Props types
+type Listing = {
+  id: string;
+  address: {
+    street?: string;
+    address: string;
+    city?: string;
+    state?: string;
+    zip?: string;
+  };
+  bedrooms?: number;
+  bathrooms?: number;
+  squareFeet?: number;
+  rentEstimate?: number;
+  assessedValue?: number;
+  estimatedValue?: number;
+  lastSaleDate?: string;
+  yearBuilt?: number;
+  pool?: boolean;
+  ownerOccupied?: boolean;
+  floodZoneDescription?: string;
+  unitsCount?: number;
+  [key: string]: any;
+};
+
+type Props = {
+  onSearch: (filters: Record<string, any>) => Promise<void>;
+  listings: Listing[];
+  selectedListings: Listing[];
+  toggleListingSelect: (listing: Listing) => void;
+  onSendToGPT: () => void;
+};
 
 export const Sidebar = ({
   onSearch,
@@ -102,7 +132,7 @@ export const Sidebar = ({
               .sort((a, b) => (b.rentEstimate ?? 0) - (a.rentEstimate ?? 0))
               .slice(0, 50)
               .map((listing, i) => {
-                const isSelected = selectedListings.some((l) => l.id === listing.id);
+                const isSelected = selectedListings.some((l: Listing) => l.id === listing.id);
                 return (
                   <div
                     key={i}
