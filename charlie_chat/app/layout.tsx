@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import Link from "next/link";
-import Image from "next/image";
 import "./globals.css";
+import { SessionProvider } from "next-auth/react";
+import Providers from "./providers"; // or "@/components/providers" if you moved it
+import Header from "@/components/ui/header";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -27,43 +28,10 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
-        {/* 🌐 Nav bar */}
-        <header className="w-full px-6 py-4 flex justify-between items-center bg-white border-b border-gray-200 shadow-sm">
-          {/* Left logo */}
-          <div className="flex items-center">
-            <Image
-              src="/logo.png"
-              alt="Logo"
-              width={192}
-              height={192}
-              className="mr-2"
-            />
-          </div>
-
-          {/* Right nav items */}
-          <div className="flex items-center space-x-6 text-sm">
-            <Link
-              href="/"
-              className="text-gray-800 hover:bg-gray-100 transition rounded-md px-3 py-1 font-medium"
-            >
-              Home
-            </Link>
-            <Link
-              href="/pricing"
-              className="text-gray-800 hover:bg-gray-100 transition rounded-md px-3 py-1 font-medium"
-            >
-              Pricing
-            </Link>
-            <button
-              className="bg-black text-white text-sm px-4 py-2 rounded-lg hover:brightness-110 transition duration-200"
-            >
-              Sign in
-            </button>
-          </div>
-        </header>
-
-        {/* Main content */}
-        <main>{children}</main>
+        <Providers>
+          <Header />
+          <main>{children}</main>
+        </Providers>
       </body>
     </html>
   );

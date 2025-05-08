@@ -2,36 +2,7 @@
 
 import { useState } from "react";
 
-type Listing = {
-  id: string;
-  address: {
-    street?: string
-    address: string;
-    city?: string;
-    state?: string;
-    zip?: string;
-  };
-  bedrooms?: number;
-  bathrooms?: number;
-  squareFeet?: number;
-  rentEstimate?: number;
-  assessedValue?: number;
-  estimatedValue?: number;
-  lastSaleDate?: string;
-  yearBuilt?: number;
-  pool?: boolean;
-  ownerOccupied?: boolean;
-  floodZoneDescription?: string;
-  [key: string]: any;
-};
-
-type Props = {
-  onSearch: (filters: Record<string, string | number>) => Promise<void>;
-  listings: Listing[];
-  selectedListings: Listing[];
-  toggleListingSelect: (listing: Listing) => void;
-  onSendToGPT: () => void;
-};
+// ...existing Listing and Props types
 
 export const Sidebar = ({
   onSearch,
@@ -42,11 +13,29 @@ export const Sidebar = ({
 }: Props) => {
   const [zipcode, setZipcode] = useState("90210");
   const [minUnits, setMinUnits] = useState(2);
+  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [mlsActive, setMlsActive] = useState(false);
+  const [hasPool, setHasPool] = useState(false);
+  const [minBeds, setMinBeds] = useState(0);
+  const [minBaths, setMinBaths] = useState(0);
+  const [hasGarage, setHasGarage] = useState(false);
+  const [minYearBuilt, setMinYearBuilt] = useState(0);
+  const [minSqFt, setMinSqFt] = useState(0);
+
+  const [street, setStreet] = useState("");
+  const [city, setCity] = useState("");
+  const [state, setState] = useState("");
+  const [county, setCounty] = useState("");
+  const [radius, setRadius] = useState(5);
+
+  const [foreclosure, setForeclosure] = useState(false);
+  const [preForeclosure, setPreForeclosure] = useState(false);
+
   const [activeListing, setActiveListing] = useState<Listing | null>(null);
 
   return (
-    <>
-      <div className="w-[260px] shrink-0 bg-white border-r border-gray-200 p-4 flex flex-col space-y-6 overflow-y-auto">
+    <div className="relative flex">
+      <div className="w-[260px] shrink-0 bg-white border-r border-gray-200 p-4 flex flex-col space-y-6 overflow-y-auto h-screen z-20">
         <h2 className="text-lg font-medium text-gray-800">Property Search</h2>
 
         <div className="space-y-4">
@@ -70,17 +59,43 @@ export const Sidebar = ({
               onChange={(e) => setMinUnits(parseInt(e.target.value) || 0)}
             />
           </div>
+
+          <button
+            onClick={() => setShowAdvanced(!showAdvanced)}
+            className="w-full text-sm text-blue-700 underline hover:text-blue-900 transition"
+          >
+            {showAdvanced ? "Hide Advanced Filters" : "Show Advanced Filters"}
+          </button>
         </div>
 
         <button
-          onClick={() => onSearch({ zip: zipcode, units_min: minUnits, propertyType: "MFR" })}
+          onClick={() =>
+            onSearch({
+              zip: zipcode,
+              units_min: minUnits,
+              propertyType: "MFR",
+              mls_active: mlsActive,
+              pool: hasPool,
+              garage: hasGarage,
+              beds_min: minBeds,
+              baths_min: minBaths,
+              year_built_min: minYearBuilt,
+              building_size_min: minSqFt,
+              street,
+              city,
+              state,
+              county,
+              radius,
+              foreclosure,
+              pre_foreclosure: preForeclosure,
+            })
+          }
           id="sidebar-search"
           className="w-full bg-black text-white py-2 rounded hover:bg-gray-900 transition"
         >
           Search
         </button>
 
-        {/* Listings & Compare Section */}
         <div className="flex-1 space-y-2 overflow-y-auto relative">
           {Array.isArray(listings) &&
             listings
@@ -118,7 +133,6 @@ export const Sidebar = ({
               })}
         </div>
 
-        {/* Modal */}
         {activeListing && (
           <div
             className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-sm bg-black/20"
@@ -154,7 +168,6 @@ export const Sidebar = ({
         )}
       </div>
 
-      {/* 📌 Fixed GPT Callout (outside sidebar) */}
       {selectedListings.length > 0 && (
         <div className="fixed bottom-4 left-4 w-[240px] z-40">
           <div className="p-4 border rounded bg-[#D15834] text-sm shadow text-white">
@@ -170,6 +183,48 @@ export const Sidebar = ({
           </div>
         </div>
       )}
-    </>
+
+      {showAdvanced && (
+        <div className="absolute top-0 left-[260px] w-[340px] h-full bg-white border-r border-gray-200 p-6 shadow-xl z-30 overflow-y-auto">
+          <h3 className="text-base text-gray-700 mb-4 font-normal">Advanced Filters</h3>
+          <div className="grid grid-cols-2 gap-4">
+            <input type="text" placeholder="Street" value={street} onChange={(e) => setStreet(e.target.value)} className="border px-2 py-1 rounded text-sm" />
+            <input type="text" placeholder="City" value={city} onChange={(e) => setCity(e.target.value)} className="border px-2 py-1 rounded text-sm" />
+            <input type="text" placeholder="State" value={state} onChange={(e) => setState(e.target.value)} className="border px-2 py-1 rounded text-sm" />
+            <input type="text" placeholder="County" value={county} onChange={(e) => setCounty(e.target.value)} className="border px-2 py-1 rounded text-sm" />
+            <div className="col-span-2">
+              <label className="text-sm text-gray-600">Search Radius (miles): {radius}</label>
+              <input
+                type="range"
+                min={0.1}
+                max={10}
+                step={0.1}
+                value={radius}
+                onChange={(e) => setRadius(parseFloat(e.target.value))}
+                className="w-full"
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={foreclosure}
+                onChange={(e) => setForeclosure(e.target.checked)}
+                className="h-4 w-4"
+              />
+              <label className="text-sm text-gray-700">Foreclosure</label>
+            </div>
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={preForeclosure}
+                onChange={(e) => setPreForeclosure(e.target.checked)}
+                className="h-4 w-4"
+              />
+              <label className="text-sm text-gray-700">Pre-Foreclosure</label>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
   );
 };

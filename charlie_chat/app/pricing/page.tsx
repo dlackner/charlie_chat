@@ -36,7 +36,7 @@ export default function PricingPage() {
           <p className="text-sm italic text-gray-600 mb-3">Try for free! Unlimited searches for 3 days</p>
           <button
             onClick={handleCheckout}
-            className="mt-auto w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded font-semibold transition"
+            className="mt-auto w-full bg-black hover:bg-gray-900 text-white py-2 rounded font-semibold transition"
           >
             Get Access
           </button>
@@ -53,11 +53,11 @@ export default function PricingPage() {
           <ul className="text-sm space-y-1 text-gray-800 mb-4 flex flex-col">
             <li>✔️ Everything in Charlie Chat</li>
             <li>✔️ Access to my Master Class Training Program</li>
-            <li>✔️ 10 free national property searches to start you on your way</li>
+            <li>✔️ 100 free national property searches per month</li>
           </ul>
           <button
             onClick={handleCheckout}
-            className="mt-auto w-full bg-blue-700 hover:bg-blue-700 text-white py-2 rounded font-semibold transition"
+            className="mt-auto w-full bg-black hover:bg-gray-900 text-white py-2 rounded font-semibold transition"
           >
             Get Access
           </button>
@@ -80,7 +80,7 @@ export default function PricingPage() {
           </p>
           <button
             onClick={handleCheckout}
-            className="mt-auto w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded font-semibold transition"
+            className="mt-auto w-full bg-black hover:bg-gray-900 text-white py-2 rounded font-semibold transition"
           >
             Apply Now
           </button>

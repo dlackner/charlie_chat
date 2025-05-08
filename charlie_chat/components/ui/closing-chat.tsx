@@ -7,6 +7,7 @@ import { Sidebar } from "@/components/ui/sidebar";
 import { useRef, useEffect } from "react";
 import { Plus, SendHorizonal } from "lucide-react";
 import dynamic from "next/dynamic";
+import { useSession } from "next-auth/react";
 
 
 type Listing = {
@@ -39,7 +40,8 @@ const EXAMPLES = [
 const FeatureTour = dynamic(() => import("@/components/ui/feature-tour"), { ssr: false });
 
 export function ClosingChat() {
-  
+  const { data: session } = useSession();
+  const isLoggedIn = !!session?.user;
   const [messages, setMessages] = useState<{ role: string; content: string }[]>([]);
   const [input, setInput] = useState("");
   const [threadId, setThreadId] = useState<string | null>(null);
@@ -116,10 +118,11 @@ ${rows.join("\n\n")}
       localStorage.setItem("questionCount", "0");
     }
 
-    if (!isPro && count >= 300) {
+    if (!isLoggedIn && !isPro && count >= 3) {
       setShowModal(true);
       return;
     }
+
     localStorage.setItem("questionCount", String(count + 1));
     setCount((prev) => prev + 1);
 
@@ -213,6 +216,11 @@ ${rows.join("\n\n")}
          {/* Sidebar */}
          <Sidebar
           onSearch={async (filters) => {
+            if (!isLoggedIn) {
+              setShowModal(true); // 👈 show login modal
+              return;
+            }
+
             try {
               const res = await fetch("/api/rentcast", {
                 method: "POST",
@@ -366,12 +374,13 @@ ${rows.join("\n\n")}
         <div className="fixed inset-0 flex items-center justify-center p-4">
           <Dialog.Panel className="w-full max-w-md rounded bg-white p-6 text-center space-y-4 shadow-xl">
             <Dialog.Title className="text-lg font-semibold">
-              You've hit your free limit 🧠
+              You've hit your free limit
             </Dialog.Title>
             <Dialog.Description className="text-sm text-gray-500">
-              Sign up now to keep chatting with Charlie Chat, your multifamily expert advisor 🏠
+              Sign in or upgrade to keep chatting with Charlie Chat, your multifamily expert advisor
             </Dialog.Description>
-  
+
+            {/* 🔒 Unlock Button */}
             <button
               onClick={async () => {
                 try {
@@ -387,13 +396,24 @@ ${rows.join("\n\n")}
                   alert("Something went wrong launching checkout.");
                 }
               }}
-              className="bg-black text-white px-4 py-2 rounded mt-4 hover:bg-gray-800 transition"
+              className="w-full bg-black text-white px-4 py-2 rounded hover:bg-gray-800 transition"
             >
               Unlock Unlimited Access 💳
+            </button>
+            
+            {/* 🔐 Sign In Button */}
+            <button
+              onClick={() => {
+                window.location.href = "/login"; // or use router.push("/login") if using next/router
+              }}
+              className="w-full border border-gray-300 text-gray-700 px-4 py-2 rounded hover:bg-gray-100 transition"
+            >
+              Sign In to Your Account
             </button>
           </Dialog.Panel>
         </div>
       </Dialog>
+
 
       <Dialog open={showProModal} onClose={() => setShowProModal(false)} className="relative z-50">
         <div className="fixed inset-0 bg-black/40" aria-hidden="true" />
