@@ -12,7 +12,7 @@ export async function POST(req: NextRequest) {
       ids_only: false,
       obfuscate: false,
       summary: false,
-      size: 50,
+      size: 1,
     };
 
     const res = await fetch("https://api.realestateapi.com/v2/PropertySearch", {
