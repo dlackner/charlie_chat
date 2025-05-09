@@ -3,6 +3,7 @@
 import { useState } from "react";
 import jsPDF from "jspdf";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import { useSession } from "next-auth/react";
 
 type Listing = {
   id: string;
@@ -34,6 +35,8 @@ type Props = {
   selectedListings: Listing[];
   toggleListingSelect: (listing: Listing) => void;
   onSendToGPT: () => void;
+  isLoggedIn: boolean;
+  triggerAuthModal: () => void;
 };
 
 export const Sidebar = ({
@@ -42,6 +45,8 @@ export const Sidebar = ({
   selectedListings,
   toggleListingSelect,
   onSendToGPT,
+  isLoggedIn: userIsLoggedIn,
+  triggerAuthModal,
 }: Props) => {
   const [zipcode, setZipcode] = useState("90210");
   const [minUnits, setMinUnits] = useState(2);
@@ -65,6 +70,9 @@ export const Sidebar = ({
 
   const [activeListingIndex, setActiveListingIndex] = useState<number | null>(null);
   const activeListing = activeListingIndex !== null ? listings[activeListingIndex] : null;
+
+  const { data: session } = useSession();
+  const isLoggedIn = !!session?.user;
 
   const downloadLetter = (listing: Listing) => {
     const doc = new jsPDF();
@@ -201,7 +209,11 @@ export const Sidebar = ({
         </div>
 
         <button
-          onClick={() =>
+          onClick={() => {
+            if (!isLoggedIn) {
+              triggerAuthModal();;
+              return;
+            }
             onSearch({
               zip: zipcode,
               units_min: minUnits,
@@ -220,8 +232,8 @@ export const Sidebar = ({
               radius,
               foreclosure,
               pre_foreclosure: preForeclosure,
-            })
-          }
+            });;
+          }}
           id="sidebar-search"
           className="w-full bg-black text-white py-2 rounded hover:bg-gray-900 transition"
         >

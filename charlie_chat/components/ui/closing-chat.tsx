@@ -234,6 +234,8 @@ ${rows.join("\n\n")}
           selectedListings={selectedListings}
           toggleListingSelect={toggleListingSelect}
           onSendToGPT={onSendToGPT}
+          isLoggedIn={isLoggedIn}
+          triggerAuthModal={() => setShowModal(true)}
         />
 
         {/* Left: Chat UI */}
