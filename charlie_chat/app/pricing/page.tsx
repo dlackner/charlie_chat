@@ -36,7 +36,7 @@ export default function PricingPage() {
           <p className="text-sm italic text-gray-600 mb-3">Try for free! Unlimited searches for 3 days</p>
           <button
             onClick={handleCheckout}
-            className="mt-auto w-full bg-black hover:bg-gray-900 text-white py-2 rounded font-semibold transition"
+            className="mt-auto w-full bg-black text-white py-2 rounded font-semibold transition duration-200 transform hover:scale-105 hover:bg-orange-600 hover:shadow-xl"
           >
             Get Access
           </button>
@@ -53,11 +53,11 @@ export default function PricingPage() {
           <ul className="text-sm space-y-1 text-gray-800 mb-4 flex flex-col">
             <li>✔️ Everything in Charlie Chat</li>
             <li>✔️ Access to my Master Class Training Program</li>
-            <li>✔️ 100 free national property searches per month</li>
+            <li>✔️ Includes 100 national property matches every month</li>
           </ul>
           <button
             onClick={handleCheckout}
-            className="mt-auto w-full bg-black hover:bg-gray-900 text-white py-2 rounded font-semibold transition"
+            className="mt-auto w-full bg-black text-white py-2 rounded font-semibold transition duration-200 transform hover:scale-105 hover:bg-orange-600 hover:shadow-xl"
           >
             Get Access
           </button>
@@ -74,13 +74,11 @@ export default function PricingPage() {
             <li>✔️ Weekly expert sessions led by me</li>
             <li>✔️ A supportive community of peers & investors</li>
             <li>✔️ Step-by-step roadmap for your multifamily investing journey</li>
+            <li>✔️ Includes 250 national property matches every month for your first 6 months</li>
           </ul>
-          <p className="text-sm italic text-gray-600 mb-3">
-            Plus unlimited national property searches
-          </p>
           <button
             onClick={handleCheckout}
-            className="mt-auto w-full bg-black hover:bg-gray-900 text-white py-2 rounded font-semibold transition"
+            className="mt-auto w-full bg-black text-white py-2 rounded font-semibold transition duration-200 transform hover:scale-105 hover:bg-orange-600 hover:shadow-xl"
           >
             Apply Now
           </button>

@@ -96,7 +96,7 @@ export const Sidebar = ({
     const rightX = 150;
     let startY = 30;
 
-    doc.addImage("/logo.png", "PNG", 10, 8, 40, 15);
+    doc.addImage("/MFOS.png", "PNG", 10, 8, 50, 10);
 
     doc.setFont("helvetica", "bold");
     doc.setFontSize(18);
@@ -180,7 +180,7 @@ export const Sidebar = ({
 
         <div className="space-y-4">
           <div className="space-y-2">
-            <label className="block text-sm font-medium text-gray-600">Zip Code</label>
+            <label className="block text-sm font-medium text-gray-600">Zip Code*</label>
             <input
               type="text"
               className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
@@ -190,7 +190,7 @@ export const Sidebar = ({
           </div>
 
           <div className="space-y-2">
-            <label className="block text-sm font-medium text-gray-600">Min # of Units</label>
+            <label className="block text-sm font-medium text-gray-600">Min # of Units*</label>
             <input
               type="number"
               min={1}
