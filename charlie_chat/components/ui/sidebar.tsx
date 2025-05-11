@@ -14,7 +14,6 @@ type Listing = {
     state?: string;
     zip?: string;
   };
-  id?: number;
   bedrooms?: number;
   bathrooms?: number;
   lastSaleAmount?: number;
