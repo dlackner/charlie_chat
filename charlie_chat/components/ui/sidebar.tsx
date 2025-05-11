@@ -14,8 +14,13 @@ type Listing = {
     state?: string;
     zip?: string;
   };
+  id?: number;
   bedrooms?: number;
   bathrooms?: number;
+  lastSaleAmount?: number;
+  lotSquareFeet?: number;
+  yearsOwned?: number;
+  outOfStateAbsenteeOwner?: number;
   squareFeet?: number;
   rentEstimate?: number;
   assessedValue?: number;
@@ -312,16 +317,16 @@ export const Sidebar = ({
               {activeListing.address?.address || "No Address"}
             </h2>
             <div className="grid grid-cols-2 gap-4 text-sm text-gray-700">
-              <p><strong>Bedrooms:</strong> {activeListing.bedrooms ?? "N/A"}</p>
-              <p><strong>Bathrooms:</strong> {activeListing.bathrooms ?? "N/A"}</p>
-              <p><strong>Sq Ft:</strong> {activeListing.squareFeet?.toLocaleString() ?? "N/A"}</p>
+              <p><strong>Property ID:</strong> {activeListing.id ?? "N/A"}</p>
+              <p><strong>Out-of-State Absentee Owner:</strong> {activeListing.outOfStateAbsenteeOwner ? "Yes" : "No"}</p>
+              <p><strong>Units:</strong> {activeListing.unitsCount ?? "N/A"}</p>
+              <p><strong>Flood Zone Description:</strong> {activeListing.floodZoneDescription ?? "N/A"}</p>
               <p><strong>Year Built:</strong> {activeListing.yearBuilt ?? "N/A"}</p>
-              <p><strong>Estimated Value:</strong> ${activeListing.estimatedValue?.toLocaleString() ?? "N/A"}</p>
-              <p><strong>Assessed Value:</strong> ${activeListing.assessedValue?.toLocaleString() ?? "N/A"}</p>
-              <p><strong>Flood Zone:</strong> {activeListing.floodZoneDescription ?? "N/A"}</p>
-              <p><strong>Pool:</strong> {activeListing.pool ? "Yes" : "No"}</p>
-              <p><strong>Owner Occupied:</strong> {activeListing.ownerOccupied ? "Yes" : "No"}</p>
+              <p><strong>MLS Active:</strong> {activeListing.mlsActive ? "Yes" : "No"}</p>
+              <p><strong>Lot Size:</strong> {activeListing.lotSquareFeet ? `${activeListing.lotSquareFeet.toLocaleString()} sq ft` : "N/A"}</p>
               <p><strong>Last Sale Date:</strong> {activeListing.lastSaleDate ?? "N/A"}</p>
+              <p><strong>Years Owned:</strong> {activeListing.yearsOwned ?? "N/A"}</p>
+              <p><strong>Last Sale Amount:</strong>{" "}{activeListing.lastSaleAmount ? `$${Number(activeListing.lastSaleAmount).toLocaleString()}` : "N/A"}</p>
             </div>
 
             <div className="mt-6 flex gap-4">
