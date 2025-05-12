@@ -3,17 +3,36 @@ import { NextRequest, NextResponse } from "next/server";
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { zip, propertyType, units_min } = body;
+    console.log("📝 Raw body from client ➡️", body);
+    const { zip, propertyType, units_min, mls_active, flood_zone, year_built_min, year_built_max, lot_size_min, lot_size_max, mortgage_min, mortgage_max, assessed_value_min, assessed_value_max, value_min, value_max, estimated_equity_min, estimated_equity_max, stories_min, stories_max    } = body;
 
     const payload = {
       zip,
       property_type: propertyType,
       units_min,
+      mls_active,
+      flood_zone,
+      year_built_min,
+      year_built_max,
+      lot_size_min,
+      lot_size_max,
+      mortgage_min,
+      mortgage_max,
+      assessed_value_min,
+      assessed_value_max,
+      value_min,
+      value_max,
+      estimated_equity_min,
+      estimated_equity_max,
+      //stories_min,
+      //stories_max,
       ids_only: false,
       obfuscate: false,
       summary: false,
       size: 2,
     };
+
+    console.log("📦 Outgoing payload ➡️", payload);
 
     const res = await fetch("https://api.realestateapi.com/v2/PropertySearch", {
       method: "POST",

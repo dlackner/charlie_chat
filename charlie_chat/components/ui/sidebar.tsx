@@ -1,9 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import jsPDF from "jspdf";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useSession } from "next-auth/react";
+import { Range, getTrackBackground } from "react-range";
+
 
 type Listing = {
   id: string;
@@ -56,27 +58,173 @@ export const Sidebar = ({
   const [minUnits, setMinUnits] = useState(2);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [mlsActive, setMlsActive] = useState(false);
-  const [hasPool, setHasPool] = useState(false);
-  const [minBeds, setMinBeds] = useState(0);
-  const [minBaths, setMinBaths] = useState(0);
-  const [hasGarage, setHasGarage] = useState(false);
-  const [minYearBuilt, setMinYearBuilt] = useState(0);
-  const [minSqFt, setMinSqFt] = useState(0);
+  const [radius, setRadius] = useState(5);
 
   const [street, setStreet] = useState("");
   const [city, setCity] = useState("");
   const [state, setState] = useState("");
   const [county, setCounty] = useState("");
-  const [radius, setRadius] = useState(5);
 
   const [foreclosure, setForeclosure] = useState(false);
   const [preForeclosure, setPreForeclosure] = useState(false);
+  const [floodZone, setFloodZone] = useState("");
+  const [assumable, setAssumable] = useState("");
+  const [lastSaleArmsLength, setLastSaleArmsLength] = useState("");
+
+  const [yearBuiltRange, setYearBuiltRange] = useState<[number, number]>([1800, 2025]);
+  const [lotSizeRange, setLotSizeRange] = useState<[number, number]>([0, 100000]);
+  const [storiesRange, setStoriesRange] = useState<[number, number]>([1, 10]);
+  const [mortgageBalanceRange, setMortgageBalanceRange] = useState<[number, number]>([0, 1000000]);
+  const [assessedValueRange, setAssessedValueRange] = useState<[number, number]>([0, 1000000]);
+  const [estimatedValueRange, setEstimatedValueRange] = useState<[number, number]>([0, 1000000]);
+  const [estimatedEquityRange, setEstimatedEquityRange] = useState<[number, number]>([0, 1000000]);
+
+  const [yearsOwnedRange, setYearsOwnedRange] = useState<[number, number]>([0, 50]); // <-- New state for Years Owned (e.g., 0-50 years)
+
+  const [inStateOwner, setInStateOwner] = useState<string>("");
+  const [outOfStateOwner, setOutOfStateOwner] = useState<string>(""); // Ensure this exists
+  const [corporateOwned, setCorporateOwned] = useState<string>(""); // Ensure this exists
 
   const [activeListingIndex, setActiveListingIndex] = useState<number | null>(null);
   const activeListing = activeListingIndex !== null ? listings[activeListingIndex] : null;
 
   const { data: session } = useSession();
   const isLoggedIn = !!session?.user;
+
+  const panelRef = useRef<HTMLDivElement>(null);
+  const advancedFiltersToggleRef = useRef<HTMLButtonElement>(null);
+
+  const renderRange = (
+    label: string,
+    values: [number, number],
+    onValuesChange: (newValues: [number, number]) => void,
+    min: number,
+    max: number,
+    step = 1
+  ) => {
+    // Helper function to format the display values based on the label
+    const formatDisplayValue = (value: number, rangeLabel: string): string => {
+      if (rangeLabel === "Year Built") {
+        return value.toString(); // Displays year without a comma
+      } else if (rangeLabel === "Lot Size") {
+        return `${value.toLocaleString()} sq ft`; // Adds "sq ft"
+      } else if (
+        rangeLabel === "Mortgage Balance" ||
+        rangeLabel === "Assessed Value" ||
+        rangeLabel === "Estimated Value" ||
+        rangeLabel === "Estimated Equity"
+      ) {
+        return value.toLocaleString('en-US', { // Formats as currency (USD, no cents)
+          style: "currency",
+          currency: "USD",
+          minimumFractionDigits: 0,
+          maximumFractionDigits: 0,
+        });
+      }
+      // Default formatting for other ranges like "Number of Stories"
+      return value.toLocaleString();
+    };
+  
+    return (
+      <div className="col-span-2">
+        <label className="text-sm block mb-1">
+          {/* Use the helper function for formatting */}
+          {label}: {formatDisplayValue(values[0], label)} – {formatDisplayValue(values[1], label)}
+        </label>
+  
+        <Range
+          values={values}
+          step={step}
+          min={min}
+          max={max}
+          onChange={(updatedValuesFromReactRange: number[]) => {
+            if (Array.isArray(updatedValuesFromReactRange) && updatedValuesFromReactRange.length === 2) {
+              onValuesChange(updatedValuesFromReactRange as [number, number]);
+            } else {
+              console.warn("Range onChange callback provided an unexpected value:", updatedValuesFromReactRange);
+            }
+          }}
+          renderTrack={({ props: trackProps, children }) => {
+            return (
+              <div
+                {...trackProps}
+                style={{
+                  ...trackProps.style,
+                  height: 8,
+                  borderRadius: 4,
+                  background: getTrackBackground({
+                    values: values,
+                    colors: ["#d1d5db", "#2563eb", "#d1d5db"],
+                    min,
+                    max,
+                  }),
+                }}
+              >
+                {children}
+              </div>
+            );
+          }}
+          renderThumb={({ props: thumbProps }) => {
+            const { key: thumbKey, ...restOfThumbProps } = thumbProps;
+            return (
+              <div
+                key={thumbKey}
+                {...restOfThumbProps}
+                style={{
+                  ...restOfThumbProps.style,
+                  height: 16,
+                  width: 16,
+                  borderRadius: "50%",
+                  backgroundColor: "#2563eb",
+                  boxShadow: "0 0 2px rgba(0,0,0,0.4)",
+                }}
+              />
+            );
+          }}
+        />
+      </div>
+    );
+  };
+  
+  
+
+  const useClickOutside = (
+    panelToCloseRef: React.RefObject<HTMLElement | null>,
+    ignoreClickRefs: Array<React.RefObject<HTMLElement | null>>, // Accepts an array of refs to ignore
+    onOutsideClickCallback: () => void
+  ) => {
+    useEffect(() => {
+      const handleClick = (event: MouseEvent) => {
+        const target = event.target as Node;
+  
+        // 1. Check if the click was inside any of the ignored elements
+        for (const ignoreRef of ignoreClickRefs) {
+          if (ignoreRef.current && ignoreRef.current.contains(target)) {
+            return; // Click is on an ignored element, so do nothing from this hook.
+          }
+        }
+  
+        // 2. If not on an ignored element, check if it was outside the main panel
+        if (panelToCloseRef.current && !panelToCloseRef.current.contains(target)) {
+          onOutsideClickCallback(); // Call the callback to close the panel
+        }
+      };
+  
+      document.addEventListener("mousedown", handleClick);
+      return () => {
+        document.removeEventListener("mousedown", handleClick);
+      };
+      // Add ignoreClickRefs to the dependency array
+    }, [panelToCloseRef, ignoreClickRefs, onOutsideClickCallback]);
+  };
+
+
+  useClickOutside(
+    panelRef,
+    [advancedFiltersToggleRef], // Pass the toggle button's ref here
+    () => setShowAdvanced(false)
+  );
+
 
   const downloadLetter = (listing: Listing) => {
     const doc = new jsPDF();
@@ -145,7 +293,7 @@ export const Sidebar = ({
 
     addSection("SALES & TRANSACTION HISTORY", [
       ["Last Sale Date:", listing.lastSaleDate ?? "N/A"],
-      ["Last Sale Amount:", formatCurrency(listing.lastSaleamount)],
+      ["Last Sale Amount:", formatCurrency(listing.lastSaleAmount)],
       ["Arms-Length Sale:", listing.lastSaleArmsLength ? "Yes" : "No"],
       ["MLS Active:", listing.mlsActive ? "Yes" : "No"],
     ], rightX, startY);
@@ -205,6 +353,7 @@ export const Sidebar = ({
           </div>
 
           <button
+            ref={advancedFiltersToggleRef} // <-- Assign the ref here
             onClick={() => setShowAdvanced(!showAdvanced)}
             className="w-full text-sm text-blue-700 underline hover:text-blue-900 transition"
           >
@@ -223,12 +372,21 @@ export const Sidebar = ({
               units_min: minUnits,
               propertyType: "MFR",
               mls_active: mlsActive,
-              pool: hasPool,
-              garage: hasGarage,
-              beds_min: minBeds,
-              baths_min: minBaths,
-              year_built_min: minYearBuilt,
-              building_size_min: minSqFt,
+              flood_zone: floodZone || undefined,
+              year_built_min: yearBuiltRange[0],
+              year_built_max: yearBuiltRange[1],
+              lot_size_min: lotSizeRange[0],
+              lot_size_max: lotSizeRange[1],
+              mortgage_min: mortgageBalanceRange[0],
+              mortgage_max: mortgageBalanceRange[1],
+              assessed_value_min: assessedValueRange[0],
+              assessed_value_max: assessedValueRange[1],
+              value_min: estimatedValueRange[0],
+              value_max: estimatedValueRange[1],
+              estimated_equity_min: estimatedEquityRange[0],
+              estimated_equity_max: estimatedEquityRange[1],
+              stories_min: storiesRange[0],
+              stories_max: storiesRange[1],              
               street,
               city,
               state,
@@ -364,45 +522,103 @@ export const Sidebar = ({
       )}
 
       {showAdvanced && (
-        <div className="absolute top-0 left-[260px] w-[340px] h-full bg-white border-r border-gray-200 p-6 shadow-xl z-30 overflow-y-auto">
-          <h3 className="text-base text-gray-700 mb-4 font-normal">Advanced Filters</h3>
+        <div ref={panelRef} className="absolute top-0 left-[260px] w-[440px] h-full bg-white border-r border-gray-200 p-6 shadow-xl z-30 overflow-y-auto">
+          <h3 className="text-lg text-gray-800 mb-4 font-semibold">Advanced Filters</h3>
+          
+          {/* Ownership & Sales History */}
+          <h4 className="text-md font-semibold text-gray-700 mt-6 mb-2">Ownership & Sales History</h4>
+          <div className="grid grid-cols-2 gap-4 mb-4">
+            {/* In State Owner Dropdown */}
+            <select
+              value={inStateOwner}
+              onChange={(e) => setInStateOwner(e.target.value)}
+              className="border px-2 py-1 rounded text-sm"
+            >
+              <option value="">In State Owner?</option>
+              <option value="true">Yes</option>
+              <option value="false">No</option>
+            </select>
+
+            {/* Out of State Owner Dropdown */}
+            <select
+              value={outOfStateOwner}
+              onChange={(e) => setOutOfStateOwner(e.target.value)}
+              className="border px-2 py-1 rounded text-sm"
+            >
+              <option value="">Out of State Owner?</option>
+              <option value="true">Yes</option>
+              <option value="false">No</option>
+            </select>
+
+            {/* Corporate Owned Dropdown */}
+            <select
+              value={corporateOwned}
+              onChange={(e) => setCorporateOwned(e.target.value)}
+              className="border px-2 py-1 rounded text-sm"
+            >
+              <option value="">Corporate Owned?</option>
+              <option value="true">Yes</option>
+              <option value="false">No</option>
+            </select>
+
+            {/* Years Owned Slider */}
+            {renderRange(
+              "Years Owned",
+              yearsOwnedRange,
+              setYearsOwnedRange,
+              0,  // Min years
+              75, // Max years (adjust as needed)
+              1   // Step
+            )}
+
+            {/* Existing inputs/selects like Last Sale Price, Last Sale Date, etc. */}
+            <input type="text" placeholder="Last Sale Price" className="border px-2 py-1 rounded text-sm" />
+            <input type="text" placeholder="Last Sale Date" className="border px-2 py-1 rounded text-sm" />
+            <select
+              value={String(mlsActive)}
+              onChange={(e) => setMlsActive(e.target.value === "true")}
+              className="border px-2 py-1 rounded text-sm">
+              <option value="">Active MLS?</option>
+              <option value="true">Yes</option>
+              <option value="false">No</option>
+            </select>
+            <select value={lastSaleArmsLength} onChange={(e) => setLastSaleArmsLength(e.target.value)} className="border px-2 py-1 rounded text-sm">
+              <option value="">Last Sale Arms Length?</option>
+              <option value="true">Yes</option>
+              <option value="false">No</option>
+            </select>
+          </div>
+
+          {/* Physical Characteristics */}
+          <h4 className="text-md font-semibold text-gray-700 mt-6 mb-2">Physical Characteristics</h4>
+          <div className="grid grid-cols-2 gap-4 mb-4">
+            {renderRange("Year Built", yearBuiltRange, setYearBuiltRange, 1800, 2025)}
+            {renderRange("Lot Size", lotSizeRange, setLotSizeRange, 0, 100000)}
+            {renderRange("Number of Stories", storiesRange, setStoriesRange, 1, 10)}
+            <select value={floodZone} onChange={(e) => setFloodZone(e.target.value)} className="col-span-2 border px-2 py-1 rounded text-sm">
+              <option value="">Flood Zone?</option>
+              <option value="true">Yes</option>
+              <option value="false">No</option>
+            </select>
+          </div>
+
+          {/* Financials */}
+          <h4 className="text-md font-semibold text-gray-700 mt-6 mb-2">Financials</h4>
           <div className="grid grid-cols-2 gap-4">
-            <input type="text" placeholder="Street" value={street} onChange={(e) => setStreet(e.target.value)} className="border px-2 py-1 rounded text-sm" />
-            <input type="text" placeholder="City" value={city} onChange={(e) => setCity(e.target.value)} className="border px-2 py-1 rounded text-sm" />
-            <input type="text" placeholder="State" value={state} onChange={(e) => setState(e.target.value)} className="border px-2 py-1 rounded text-sm" />
-            <input type="text" placeholder="County" value={county} onChange={(e) => setCounty(e.target.value)} className="border px-2 py-1 rounded text-sm" />
-            <div className="col-span-2">
-              <label className="text-sm text-gray-600">Search Radius (miles): {radius}</label>
-              <input
-                type="range"
-                min={0.1}
-                max={10}
-                step={0.1}
-                value={radius}
-                onChange={(e) => setRadius(parseFloat(e.target.value))}
-                className="w-full"
-              />
-            </div>
-            <div className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                checked={foreclosure}
-                onChange={(e) => setForeclosure(e.target.checked)}
-                className="h-4 w-4"
-              />
-              <label className="text-sm text-gray-700">Foreclosure</label>
-            </div>
-            <div className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                checked={preForeclosure}
-                onChange={(e) => setPreForeclosure(e.target.checked)}
-                className="h-4 w-4"
-              />
-              <label className="text-sm text-gray-700">Pre-Foreclosure</label>
-            </div>
+            {renderRange("Mortgage Balance", mortgageBalanceRange, setMortgageBalanceRange, 0, 1000000, 10000)}
+            {renderRange("Assessed Value", assessedValueRange, setAssessedValueRange, 0, 1000000, 10000)}
+            {renderRange("Estimated Value", estimatedValueRange, setEstimatedValueRange, 0, 1000000, 10000)}
+            {renderRange("Estimated Equity", estimatedEquityRange, setEstimatedEquityRange, 0, 1000000, 10000)}
+
+            <select value={assumable} onChange={(e) => setAssumable(e.target.value)} className="col-span-2 border px-2 py-1 rounded text-sm">
+              <option value="">Assumable?</option>
+              <option value="true">Yes</option>
+              <option value="false">No</option>
+            </select>
+
           </div>
         </div>
+
       )}
     </div>
   );
