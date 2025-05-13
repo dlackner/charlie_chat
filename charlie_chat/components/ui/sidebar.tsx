@@ -58,10 +58,10 @@ export const Sidebar = ({
   isLoggedIn: userIsLoggedIn,
   triggerAuthModal,
 }: Props) => {
-  const [zipcode, setZipcode] = useState("90210");
+  const [zipcode, setZipcode] = useState("02840");
   const [minUnits, setMinUnits] = useState(2);
   const [showAdvanced, setShowAdvanced] = useState(false);
-  const [mlsActive, setMlsActive] = useState(false);
+  const [mlsActive, setMlsActive] = useState("");
   const [radius, setRadius] = useState(5);
 
   const [street, setStreet] = useState("");
@@ -75,19 +75,22 @@ export const Sidebar = ({
   const [assumable, setAssumable] = useState("");
   const [lastSaleArmsLength, setLastSaleArmsLength] = useState("");
 
+
+  const [lastSaleDateRange, setlastSaleDateRange] = useState<[number, number]>([0, 2025]);
+  const [lastSalePriceRange, setLastSalePriceRange] = useState<[number, number]>([0, 10000000]);
   const [yearBuiltRange, setYearBuiltRange] = useState<[number, number]>([1800, 2025]);
   const [lotSizeRange, setLotSizeRange] = useState<[number, number]>([0, 100000]);
-  const [storiesRange, setStoriesRange] = useState<[number, number]>([1, 10]);
-  const [mortgageBalanceRange, setMortgageBalanceRange] = useState<[number, number]>([0, 1000000]);
-  const [assessedValueRange, setAssessedValueRange] = useState<[number, number]>([0, 1000000]);
-  const [estimatedValueRange, setEstimatedValueRange] = useState<[number, number]>([0, 1000000]);
-  const [estimatedEquityRange, setEstimatedEquityRange] = useState<[number, number]>([0, 1000000]);
+  const [storiesRange, setStoriesRange] = useState<[number, number]>([0, 20]);
+  const [mortgageBalanceRange, setMortgageBalanceRange] = useState<[number, number]>([0, 10000000]);
+  const [assessedValueRange, setAssessedValueRange] = useState<[number, number]>([0, 10000000]);
+  const [estimatedValueRange, setEstimatedValueRange] = useState<[number, number]>([0, 10000000]);
+  const [estimatedEquityRange, setEstimatedEquityRange] = useState<[number, number]>([0, 10000000]);
 
-  const [yearsOwnedRange, setYearsOwnedRange] = useState<[number, number]>([0, 50]); // <-- New state for Years Owned (e.g., 0-50 years)
+  const [yearsOwnedRange, setYearsOwnedRange] = useState<[number, number]>([0, 50]);
 
-  const [inStateOwner, setInStateOwner] = useState<string>("");
-  const [outOfStateOwner, setOutOfStateOwner] = useState<string>(""); // Ensure this exists
-  const [corporateOwned, setCorporateOwned] = useState<string>(""); // Ensure this exists
+  const [inStateOwner, setInStateOwner] = useState("");
+  const [outOfStateOwner, setOutOfStateOwner] = useState("");
+  const [corporateOwned, setCorporateOwned] = useState("");
 
   const [activeListingIndex, setActiveListingIndex] = useState<number | null>(null);
   const activeListing = activeListingIndex !== null ? listings[activeListingIndex] : null;
@@ -108,12 +111,13 @@ export const Sidebar = ({
   ) => {
     // Helper function to format the display values based on the label
     const formatDisplayValue = (value: number, rangeLabel: string): string => {
-      if (rangeLabel === "Year Built") {
+      if (rangeLabel === "Year Built" || rangeLabel === "Last Sale Date") {
         return value.toString(); // Displays year without a comma
       } else if (rangeLabel === "Lot Size") {
         return `${value.toLocaleString()} sq ft`; // Adds "sq ft"
       } else if (
         rangeLabel === "Mortgage Balance" ||
+        rangeLabel === "Last Sale Price" ||
         rangeLabel === "Assessed Value" ||
         rangeLabel === "Estimated Value" ||
         rangeLabel === "Estimated Equity"
@@ -533,7 +537,7 @@ export const Sidebar = ({
               zip: zipcode,
               units_min: minUnits,
               propertyType: "MFR",
-              mls_active: mlsActive,
+              mls_active: mlsActive || undefined,
               flood_zone: floodZone || undefined,
               year_built_min: yearBuiltRange[0],
               year_built_max: yearBuiltRange[1],
@@ -548,7 +552,18 @@ export const Sidebar = ({
               estimated_equity_min: estimatedEquityRange[0],
               estimated_equity_max: estimatedEquityRange[1],
               stories_min: storiesRange[0],
-              stories_max: storiesRange[1],              
+              stories_max: storiesRange[1],
+              in_state_owner: inStateOwner || undefined,
+              out_of_state_owner: outOfStateOwner || undefined,
+              corporate_owned: corporateOwned || undefined,
+              years_owned_min: yearsOwnedRange[0],
+              years_owned_max: yearsOwnedRange[1],
+              last_sale_price_min: lastSalePriceRange[0],
+              last_sale_price_max: lastSalePriceRange[1],
+              last_sale_date_min: lastSaleDateRange[0],
+              last_sale_date_max: lastSaleDateRange[1],
+              last_sale_arms_length: lastSaleArmsLength || undefined,
+              assumable: assumable || undefined,
               street,
               city,
               state,
@@ -690,38 +705,107 @@ export const Sidebar = ({
           {/* Ownership & Sales History */}
           <h4 className="text-md font-semibold text-gray-700 mt-6 mb-2">Ownership & Sales History</h4>
           <div className="grid grid-cols-2 gap-4 mb-4">
-            {/* In State Owner Dropdown */}
-            <select
-              value={inStateOwner}
-              onChange={(e) => setInStateOwner(e.target.value)}
-              className="border px-2 py-1 rounded text-sm"
-            >
-              <option value="">In State Owner?</option>
-              <option value="true">Yes</option>
-              <option value="false">No</option>
-            </select>
+            {/* In State Owner Toggle Button Group */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">In State Owner?</label>
+              <div className="flex rounded-md"> {/* Removed shadow-sm from here if it's causing issues, can add to individual buttons if needed or keep if it's for the group appearance */}
+                <button
+                  type="button"
+                  onClick={() => setInStateOwner("")} // Set to "Any"
+                  className={`relative inline-flex items-center px-4 py-2 rounded-l-md border border-gray-300 text-sm font-medium
+                              ${inStateOwner === "" ? 'bg-orange-500 text-white z-10 ring-1 ring-orange-500 border-orange-500' : 'bg-white text-gray-700 hover:bg-gray-50'} 
+                              focus:z-10 focus:outline-none focus:ring-1 focus:ring-orange-500 focus:border-orange-500`}
+                >
+                  Any
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setInStateOwner("true")} // Set to "Yes"
+                  className={`relative inline-flex items-center px-4 py-2 -ml-px border border-gray-300 text-sm font-medium 
+                              ${inStateOwner === "true" ? 'bg-orange-500 text-white z-10 ring-1 ring-orange-500 border-orange-500' : 'bg-white text-gray-700 hover:bg-gray-50'} 
+                              focus:z-10 focus:outline-none focus:ring-1 focus:ring-orange-500 focus:border-orange-500`}
+                >
+                  Yes
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setInStateOwner("false")} // Set to "No"
+                  className={`relative inline-flex items-center px-4 py-2 -ml-px rounded-r-md border border-gray-300 text-sm font-medium 
+                              ${inStateOwner === "false" ? 'bg-orange-500 text-white z-10 ring-1 ring-orange-500 border-orange-500' : 'bg-white text-gray-700 hover:bg-gray-50'} 
+                              focus:z-10 focus:outline-none focus:ring-1 focus:ring-orange-500 focus:border-orange-500`}
+                >
+                  No
+                </button>
+              </div>
+            </div>
 
             {/* Out of State Owner Dropdown */}
-            <select
-              value={outOfStateOwner}
-              onChange={(e) => setOutOfStateOwner(e.target.value)}
-              className="border px-2 py-1 rounded text-sm"
-            >
-              <option value="">Out of State Owner?</option>
-              <option value="true">Yes</option>
-              <option value="false">No</option>
-            </select>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Out of State Owner?</label>
+              <div className="flex rounded-md"> {/* Removed shadow-sm from here if it's causing issues, can add to individual buttons if needed or keep if it's for the group appearance */}
+                <button
+                  type="button"
+                  onClick={() => setOutOfStateOwner("")} // Set to "Any"
+                  className={`relative inline-flex items-center px-4 py-2 rounded-l-md border border-gray-300 text-sm font-medium
+                              ${outOfStateOwner === "" ? 'bg-orange-500 text-white z-10 ring-1 ring-orange-500 border-orange-500' : 'bg-white text-gray-700 hover:bg-gray-50'} 
+                              focus:z-10 focus:outline-none focus:ring-1 focus:ring-orange-500 focus:border-orange-500`}
+                >
+                  Any
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setOutOfStateOwner("true")} // Set to "Yes"
+                  className={`relative inline-flex items-center px-4 py-2 -ml-px border border-gray-300 text-sm font-medium 
+                              ${outOfStateOwner === "true" ? 'bg-orange-500 text-white z-10 ring-1 ring-orange-500 border-orange-500' : 'bg-white text-gray-700 hover:bg-gray-50'} 
+                              focus:z-10 focus:outline-none focus:ring-1 focus:ring-orange-500 focus:border-orange-500`}
+                >
+                  Yes
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setOutOfStateOwner("false")} // Set to "No"
+                  className={`relative inline-flex items-center px-4 py-2 -ml-px rounded-r-md border border-gray-300 text-sm font-medium 
+                              ${outOfStateOwner === "false" ? 'bg-orange-500 text-white z-10 ring-1 ring-orange-500 border-orange-500' : 'bg-white text-gray-700 hover:bg-gray-50'} 
+                              focus:z-10 focus:outline-none focus:ring-1 focus:ring-orange-500 focus:border-orange-500`}
+                >
+                  No
+                </button>
+              </div>
+            </div>
 
             {/* Corporate Owned Dropdown */}
-            <select
-              value={corporateOwned}
-              onChange={(e) => setCorporateOwned(e.target.value)}
-              className="border px-2 py-1 rounded text-sm"
-            >
-              <option value="">Corporate Owned?</option>
-              <option value="true">Yes</option>
-              <option value="false">No</option>
-            </select>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Corporate Owned?</label>
+              <div className="flex rounded-md"> {/* Removed shadow-sm from here if it's causing issues, can add to individual buttons if needed or keep if it's for the group appearance */}
+                <button
+                  type="button"
+                  onClick={() => setCorporateOwned("")} // Set to "Any"
+                  className={`relative inline-flex items-center px-4 py-2 rounded-l-md border border-gray-300 text-sm font-medium
+                              ${corporateOwned === "" ? 'bg-orange-500 text-white z-10 ring-1 ring-orange-500 border-orange-500' : 'bg-white text-gray-700 hover:bg-gray-50'} 
+                              focus:z-10 focus:outline-none focus:ring-1 focus:ring-orange-500 focus:border-orange-500`}
+                >
+                  Any
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCorporateOwned("true")} // Set to "Yes"
+                  className={`relative inline-flex items-center px-4 py-2 -ml-px border border-gray-300 text-sm font-medium 
+                              ${corporateOwned === "true" ? 'bg-orange-500 text-white z-10 ring-1 ring-orange-500 border-orange-500' : 'bg-white text-gray-700 hover:bg-gray-50'} 
+                              focus:z-10 focus:outline-none focus:ring-1 focus:ring-orange-500 focus:border-orange-500`}
+                >
+                  Yes
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCorporateOwned("false")} // Set to "No"
+                  className={`relative inline-flex items-center px-4 py-2 -ml-px rounded-r-md border border-gray-300 text-sm font-medium 
+                              ${corporateOwned === "false" ? 'bg-orange-500 text-white z-10 ring-1 ring-orange-500 border-orange-500' : 'bg-white text-gray-700 hover:bg-gray-50'} 
+                              focus:z-10 focus:outline-none focus:ring-1 focus:ring-orange-500 focus:border-orange-500`}
+                >
+                  No
+                </button>
+              </div>
+            </div>
 
             {/* Years Owned Slider */}
             {renderRange(
@@ -729,26 +813,86 @@ export const Sidebar = ({
               yearsOwnedRange,
               setYearsOwnedRange,
               0,  // Min years
-              75, // Max years (adjust as needed)
+              100, // Max years (adjust as needed)
               1   // Step
             )}
 
-            {/* Existing inputs/selects like Last Sale Price, Last Sale Date, etc. */}
-            <input type="text" placeholder="Last Sale Price" className="border px-2 py-1 rounded text-sm" />
-            <input type="text" placeholder="Last Sale Date" className="border px-2 py-1 rounded text-sm" />
-            <select
-              value={String(mlsActive)}
-              onChange={(e) => setMlsActive(e.target.value === "true")}
-              className="border px-2 py-1 rounded text-sm">
-              <option value="">Active MLS?</option>
-              <option value="true">Yes</option>
-              <option value="false">No</option>
-            </select>
-            <select value={lastSaleArmsLength} onChange={(e) => setLastSaleArmsLength(e.target.value)} className="border px-2 py-1 rounded text-sm">
-              <option value="">Last Sale Arms Length?</option>
-              <option value="true">Yes</option>
-              <option value="false">No</option>
-            </select>
+            {/* Last Sale Price Slider */}
+            {renderRange(
+              "Last Sale Price",
+              lastSalePriceRange,
+              setLastSalePriceRange,
+              0, 
+              10000000,
+              1 
+            )}
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Active MLS?</label>
+              <div className="flex rounded-md"> {/* Removed shadow-sm from here if it's causing issues, can add to individual buttons if needed or keep if it's for the group appearance */}
+                <button
+                  type="button"
+                  onClick={() => setMlsActive("")} // Set to "Any"
+                  className={`relative inline-flex items-center px-4 py-2 rounded-l-md border border-gray-300 text-sm font-medium
+                              ${mlsActive === "" ? 'bg-orange-500 text-white z-10 ring-1 ring-orange-500 border-orange-500' : 'bg-white text-gray-700 hover:bg-gray-50'} 
+                              focus:z-10 focus:outline-none focus:ring-1 focus:ring-orange-500 focus:border-orange-500`}
+                >
+                  Any
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMlsActive("Yes")} // Set to "Any"
+                  className={`relative inline-flex items-center px-4 py-2 rounded-l-md border border-gray-300 text-sm font-medium
+                              ${mlsActive === "true" ? 'bg-orange-500 text-white z-10 ring-1 ring-orange-500 border-orange-500' : 'bg-white text-gray-700 hover:bg-gray-50'} 
+                              focus:z-10 focus:outline-none focus:ring-1 focus:ring-orange-500 focus:border-orange-500`}
+                >
+                  Yes
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMlsActive("false")} // Set to "No"
+                  className={`relative inline-flex items-center px-4 py-2 -ml-px rounded-r-md border border-gray-300 text-sm font-medium 
+                              ${mlsActive === "false" ? 'bg-orange-500 text-white z-10 ring-1 ring-orange-500 border-orange-500' : 'bg-white text-gray-700 hover:bg-gray-50'} 
+                              focus:z-10 focus:outline-none focus:ring-1 focus:ring-orange-500 focus:border-orange-500`}
+                >
+                  No
+                </button>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Last Sale Arms Length?</label>
+              <div className="flex rounded-md"> {/* Removed shadow-sm from here if it's causing issues, can add to individual buttons if needed or keep if it's for the group appearance */}
+                <button
+                  type="button"
+                  onClick={() => setLastSaleArmsLength("")} // Set to "Any"
+                  className={`relative inline-flex items-center px-4 py-2 rounded-l-md border border-gray-300 text-sm font-medium
+                              ${lastSaleArmsLength === "" ? 'bg-orange-500 text-white z-10 ring-1 ring-orange-500 border-orange-500' : 'bg-white text-gray-700 hover:bg-gray-50'} 
+                              focus:z-10 focus:outline-none focus:ring-1 focus:ring-orange-500 focus:border-orange-500`}
+                >
+                  Any
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setLastSaleArmsLength("true")} // Set to "Yes"
+                  className={`relative inline-flex items-center px-4 py-2 -ml-px border border-gray-300 text-sm font-medium 
+                              ${lastSaleArmsLength === "true" ? 'bg-orange-500 text-white z-10 ring-1 ring-orange-500 border-orange-500' : 'bg-white text-gray-700 hover:bg-gray-50'} 
+                              focus:z-10 focus:outline-none focus:ring-1 focus:ring-orange-500 focus:border-orange-500`}
+                >
+                  Yes
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setLastSaleArmsLength("false")} // Set to "No"
+                  className={`relative inline-flex items-center px-4 py-2 -ml-px rounded-r-md border border-gray-300 text-sm font-medium 
+                              ${lastSaleArmsLength === "false" ? 'bg-orange-500 text-white z-10 ring-1 ring-orange-500 border-orange-500' : 'bg-white text-gray-700 hover:bg-gray-50'} 
+                              focus:z-10 focus:outline-none focus:ring-1 focus:ring-orange-500 focus:border-orange-500`}
+                >
+                  No
+                </button>
+              </div>
+            </div>
+
           </div>
 
           {/* Physical Characteristics */}
@@ -756,27 +900,83 @@ export const Sidebar = ({
           <div className="grid grid-cols-2 gap-4 mb-4">
             {renderRange("Year Built", yearBuiltRange, setYearBuiltRange, 1800, 2025)}
             {renderRange("Lot Size", lotSizeRange, setLotSizeRange, 0, 100000)}
-            {renderRange("Number of Stories", storiesRange, setStoriesRange, 1, 10)}
-            <select value={floodZone} onChange={(e) => setFloodZone(e.target.value)} className="col-span-2 border px-2 py-1 rounded text-sm">
-              <option value="">Flood Zone?</option>
-              <option value="true">Yes</option>
-              <option value="false">No</option>
-            </select>
+            {renderRange("Number of Stories", storiesRange, setStoriesRange, 0, 20)}
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Flood Zone?</label>
+              <div className="flex rounded-md"> {/* Removed shadow-sm from here if it's causing issues, can add to individual buttons if needed or keep if it's for the group appearance */}
+                <button
+                  type="button"
+                  onClick={() => setFloodZone("")} // Set to "Any"
+                  className={`relative inline-flex items-center px-4 py-2 rounded-l-md border border-gray-300 text-sm font-medium
+                              ${floodZone === "" ? 'bg-orange-500 text-white z-10 ring-1 ring-orange-500 border-orange-500' : 'bg-white text-gray-700 hover:bg-gray-50'} 
+                              focus:z-10 focus:outline-none focus:ring-1 focus:ring-orange-500 focus:border-orange-500`}
+                >
+                  Any
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFloodZone("true")} // Set to "Yes"
+                  className={`relative inline-flex items-center px-4 py-2 -ml-px border border-gray-300 text-sm font-medium 
+                              ${floodZone === "true" ? 'bg-orange-500 text-white z-10 ring-1 ring-orange-500 border-orange-500' : 'bg-white text-gray-700 hover:bg-gray-50'} 
+                              focus:z-10 focus:outline-none focus:ring-1 focus:ring-orange-500 focus:border-orange-500`}
+                >
+                  Yes
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFloodZone("false")} // Set to "No"
+                  className={`relative inline-flex items-center px-4 py-2 -ml-px rounded-r-md border border-gray-300 text-sm font-medium 
+                              ${floodZone === "false" ? 'bg-orange-500 text-white z-10 ring-1 ring-orange-500 border-orange-500' : 'bg-white text-gray-700 hover:bg-gray-50'} 
+                              focus:z-10 focus:outline-none focus:ring-1 focus:ring-orange-500 focus:border-orange-500`}
+                >
+                  No
+                </button>
+              </div>
+            </div>
+
           </div>
 
           {/* Financials */}
           <h4 className="text-md font-semibold text-gray-700 mt-6 mb-2">Financials</h4>
           <div className="grid grid-cols-2 gap-4">
-            {renderRange("Mortgage Balance", mortgageBalanceRange, setMortgageBalanceRange, 0, 1000000, 10000)}
-            {renderRange("Assessed Value", assessedValueRange, setAssessedValueRange, 0, 1000000, 10000)}
-            {renderRange("Estimated Value", estimatedValueRange, setEstimatedValueRange, 0, 1000000, 10000)}
-            {renderRange("Estimated Equity", estimatedEquityRange, setEstimatedEquityRange, 0, 1000000, 10000)}
+            {renderRange("Mortgage Balance", mortgageBalanceRange, setMortgageBalanceRange, 0, 10000000, 10000)}
+            {renderRange("Assessed Value", assessedValueRange, setAssessedValueRange, 0, 10000000, 10000)}
+            {renderRange("Estimated Value", estimatedValueRange, setEstimatedValueRange, 0, 10000000, 10000)}
+            {renderRange("Estimated Equity", estimatedEquityRange, setEstimatedEquityRange, 0, 10000000, 10000)}
 
-            <select value={assumable} onChange={(e) => setAssumable(e.target.value)} className="col-span-2 border px-2 py-1 rounded text-sm">
-              <option value="">Assumable?</option>
-              <option value="true">Yes</option>
-              <option value="false">No</option>
-            </select>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Assumable?</label>
+              <div className="flex rounded-md"> {/* Removed shadow-sm from here if it's causing issues, can add to individual buttons if needed or keep if it's for the group appearance */}
+                <button
+                  type="button"
+                  onClick={() => setAssumable("")} // Set to "Any"
+                  className={`relative inline-flex items-center px-4 py-2 rounded-l-md border border-gray-300 text-sm font-medium
+                              ${assumable === "" ? 'bg-orange-500 text-white z-10 ring-1 ring-orange-500 border-orange-500' : 'bg-white text-gray-700 hover:bg-gray-50'} 
+                              focus:z-10 focus:outline-none focus:ring-1 focus:ring-orange-500 focus:border-orange-500`}
+                >
+                  Any
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAssumable("true")} // Set to "Yes"
+                  className={`relative inline-flex items-center px-4 py-2 -ml-px border border-gray-300 text-sm font-medium 
+                              ${assumable === "true" ? 'bg-orange-500 text-white z-10 ring-1 ring-orange-500 border-orange-500' : 'bg-white text-gray-700 hover:bg-gray-50'} 
+                              focus:z-10 focus:outline-none focus:ring-1 focus:ring-orange-500 focus:border-orange-500`}
+                >
+                  Yes
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAssumable("false")} // Set to "No"
+                  className={`relative inline-flex items-center px-4 py-2 -ml-px rounded-r-md border border-gray-300 text-sm font-medium 
+                              ${assumable === "false" ? 'bg-orange-500 text-white z-10 ring-1 ring-orange-500 border-orange-500' : 'bg-white text-gray-700 hover:bg-gray-50'} 
+                              focus:z-10 focus:outline-none focus:ring-1 focus:ring-orange-500 focus:border-orange-500`}
+                >
+                  No
+                </button>
+              </div>
+            </div>
 
           </div>
         </div>

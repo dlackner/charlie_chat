@@ -4,7 +4,35 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     console.log("📝 Raw body from client ➡️", body);
-    const { zip, propertyType, units_min, mls_active, flood_zone, year_built_min, year_built_max, lot_size_min, lot_size_max, mortgage_min, mortgage_max, assessed_value_min, assessed_value_max, value_min, value_max, estimated_equity_min, estimated_equity_max, stories_min, stories_max    } = body;
+    const { zip, 
+      propertyType, 
+      units_min, 
+      mls_active, 
+      flood_zone, 
+      year_built_min, 
+      year_built_max, 
+      lot_size_min, 
+      lot_size_max, 
+      mortgage_min, 
+      mortgage_max, 
+      assessed_value_min, 
+      assessed_value_max, 
+      value_min, 
+      value_max, 
+      estimated_equity_min, 
+      estimated_equity_max, 
+      stories_min, 
+      stories_max,
+      in_state_owner,
+      out_of_state_owner,
+      corporate_owned,
+      years_owned_min,
+      years_owned_max,
+      last_sale_arms_length,
+      last_sale_price_min,
+      last_sale_price_max,
+      assumable
+        } = body;
 
     const payload = {
       zip,
@@ -24,12 +52,21 @@ export async function POST(req: NextRequest) {
       value_max,
       estimated_equity_min,
       estimated_equity_max,
-      //stories_min,
-      //stories_max,
+      stories_min,
+      stories_max,
       ids_only: false,
       obfuscate: false,
       summary: false,
-      size: 2,
+      size: 4,
+      in_state_owner,
+      out_of_state_owner,
+      corporate_owned,
+      years_owned_min,
+      years_owned_max,
+      last_sale_arms_length,
+      last_sale_price_min,
+      last_sale_price_max,
+      assumable,
     };
 
     console.log("📦 Outgoing payload ➡️", payload);
