@@ -135,6 +135,28 @@ ${rows.join("\n\n")}
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ message, threadId }),
     });
+
+    const resClone = res.clone();
+let resJson: any = {};
+
+try {
+  const contentType = resClone.headers.get("Content-Type") || "";
+  if (contentType.includes("application/json")) {
+    resJson = await resClone.json();
+
+    if (resJson.autoSwitched && resJson.threadId) {
+      console.warn("⚠️ Backend forked to new thread due to stuck run:", resJson.threadId);
+      setThreadId(resJson.threadId);
+      localStorage.setItem("threadId", resJson.threadId);
+
+      const titles = JSON.parse(localStorage.getItem("chatTitles") || "{}");
+      titles[resJson.threadId] = message.slice(0, 50);
+      localStorage.setItem("chatTitles", JSON.stringify(titles));
+    }
+  }
+} catch (e) {
+  // all good — fallback to stream
+}
     
     // Only save title on first message of a thread
     // Save title if this is the first message of a new thread
@@ -255,98 +277,104 @@ ${rows.join("\n\n")}
   
           {/* Message list */}
           <div className="w-full max-w-4xl flex-1 overflow-y-auto px-6 py-6 space-y-4">
-          {messages.map((m, i) => {
-          const isUser = m.role === "user";
-          const cleanContent = m.content
-            // remove full-width citations like  
-            .replace(/\s?【\d+:\d+†[^】]+】\s?/g, "")
-            // remove bracketed OpenAI citations like [8:5^source]
-            .replace(/\s?\[\d+:\d+\^source\]\s?/g, "")
-            // remove markdown-style footnotes like [1] or [^1]
-            .replace(/\s?\[\^?\d+\]\s?/g, "")
-            // remove trailing space before punctuation
-            .replace(/ +(?=\.|,|!|\?)/g, "")
-            // squash extra newlines
-            .replace(/\n/g, '\n\n')  // squash double newlines to one (optional)
-            .trim();
+            {messages.map((m, i) => {
+            const isUser = m.role === "user";
+            const cleanContent = m.content
+              // remove full-width citations like  
+              .replace(/\s?【\d+:\d+†[^】]+】\s?/g, "")
+              // remove bracketed OpenAI citations like [8:5^source]
+              .replace(/\s?\[\d+:\d+\^source\]\s?/g, "")
+              // remove markdown-style footnotes like [1] or [^1]
+              .replace(/\s?\[\^?\d+\]\s?/g, "")
+              // remove trailing space before punctuation
+              .replace(/ +(?=\.|,|!|\?)/g, "")
+              // squash extra newlines
+              .replace(/\n/g, '\n\n')  // squash double newlines to one (optional)
+              .trim();
 
-          //console.log("🪵 Cleaned content:\n", JSON.stringify(cleanContent)); // ✅ put this here
-    
-          return (
-            <div
-              key={i}
-              className={`text-sm font-sans leading-snug ${
-                isUser ? "text-sky-800" : "text-gray-800"
-              }`}
-            >
-              <div
-                className={`inline-block max-w-4xl px-4 py-2 rounded-xl ${
-                  isUser ? "bg-sky-100 ml-auto" : "bg-gray-50"
-                }`}
-              >
-                <ReactMarkdown
-                  components={{
-                    p: ({ node, ...props }) => (
-                      <p className="mb-1 leading-snug whitespace-pre-line" {...props} />
-                    ),
-                    strong: ({ node, ...props }) => (
-                      <strong className="font-semibold text-black" {...props} />
-                    ),
-                    ul: ({ node, ...props }) => (
-                      <ul className="list-disc pl-5 mb-1" {...props} />
-                    ),
-                    li: ({ node, ...props }) => (
-                      <li className="mb-1" {...props} />
-                    ),
-                  }}
-                >
-                  {cleanContent}
-                </ReactMarkdown>
-              </div>
-              <div ref={bottomRef} />
-
-            </div>
+            //console.log("🪵 Cleaned content:\n", JSON.stringify(cleanContent)); // ✅ put this here
             
-          );
-        })}
+            return (
+              <div
+                key={i}
+                className={`flex ${isUser ? "justify-end" : "justify-start"}`} // Ensures bubble aligns left/right
+              >
+                <div
+                  // Added a subtle shadow to bubbles like Gemini often has.
+                  // Increased max-width slightly for messages, but max-w-4xl on parent is good.
+                  className={`inline-block max-w-[85%] sm:max-w-[75%] px-4 py-3 rounded-xl shadow-sm ${ 
+                    isUser
+                      ? "bg-sky-100 text-sky-900 rounded-br-none" // User bubble specific rounding
+                      : "bg-gray-100 text-gray-800 rounded-bl-none" // Assistant bubble specific rounding
+                  }`}
+                >
+                  {/* Apply text size and line height to ReactMarkdown content */}
+                  <div className="text-base leading-relaxed font-sans"> 
+                    <ReactMarkdown
+                      components={{
+                        p: ({ node, ...props }) => (
+                          // whitespace-pre-line handles newlines in content
+                          // mb-2 adds space between paragraphs within a single bubble
+                          <p className="mb-2 last:mb-0 whitespace-pre-line" {...props} />
+                        ),
+                        strong: ({ node, ...props }) => (
+                          <strong className="font-semibold" {...props} /> // Removed text-black to inherit bubble color
+                        ),
+                        ul: ({ node, ...props }) => (
+                          <ul className="list-disc pl-5 my-2" {...props} />
+                        ),
+                        li: ({ node, ...props }) => (
+                          <li className="mb-1" {...props} />
+                        ),
+                        // You can add more components like a, code, blockquote if your markdown uses them
+                      }}
+                    >
+                      {cleanContent}
+                    </ReactMarkdown>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+          <div ref={bottomRef} />
 
           {/* Input box pinned to bottom */}
           <div className="w-full max-w-5xl border-t p-4 bg-white sticky bottom-0 z-10">
-            <div className="flex items-center border border-gray-300 rounded-lg shadow-sm p-2 focus-within:ring-2 focus-within:ring-black">
-              {/* Plus icon */}
+          {/* ... (input box structure remains mostly the same, text-lg is good for input) ... */}
+           <div className="flex items-center border border-gray-300 rounded-lg shadow-sm p-2 focus-within:ring-2 focus-within:ring-black">
               <button
                 id="upload-docs"
                 type="button"
-                onClick={() => setShowProModal(true)} // 👈 trigger your modal
+                onClick={() => setShowProModal(true)}
                 className="p-2 hover:bg-gray-100 rounded transition"
                 title="Upload or upgrade"
               >
                 <Plus className="w-5 h-5 text-gray-600" />
               </button>
-
-              {/* Input field */}
               <input
                 id="chat-input"
-                className="flex-1 px-3 py-2 text-lg focus:outline-none"
-                placeholder="Ask me anything about buying, selling, or investing..."
+                className="flex-1 px-3 py-2 text-base sm:text-lg focus:outline-none placeholder-gray-500" // text-base for consistency, sm:text-lg on larger
+                placeholder="Ask me anything..." // Shorter placeholder
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={(e) => {
-                  if (e.key === "Enter") sendMessage(input);
+                  if (e.key === "Enter" && !e.shiftKey) { // Send on Enter, allow Shift+Enter for newline
+                    e.preventDefault(); // Prevents newline in input on Enter
+                    sendMessage(input);
+                  }
                 }}
               />
-
-              {/* Send icon */}
               <button
                 type="button"
                 onClick={() => sendMessage(input)}
-                className="p-2 hover:bg-gray-100 rounded transition"
+                disabled={!input.trim()} // Disable if input is empty
+                className="p-2 hover:bg-gray-100 rounded transition disabled:opacity-50"
                 title="Send"
               >
                 <SendHorizonal className="w-5 h-5 text-gray-600" />
               </button>
             </div>
-          </div>
+        </div>
   
           {/* Examples (only if no messages yet) */}
           {messages.length === 0 && (

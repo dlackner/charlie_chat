@@ -89,11 +89,23 @@ export async function POST(req: Request) {
                 attempts++;
             }
           
-            if (runIsStillActive) { // Check again after loop
-                console.error(`Run ${latestRun.id} did not reach a terminal state in time. Current status: ${latestRun.status}`);
-                return new Response(JSON.stringify({
-                    error: `The previous operation on run ${latestRun.id} is still processing (${latestRun.status}). Please try again shortly.`
-                }), { status: 409 }); // 409 Conflict
+            if (runIsStillActive) {
+              console.warn(`Run ${latestRun.id} is stuck. Creating a new thread instead.`);
+            
+              const newThread = await openai.beta.threads.create();
+              threadId = newThread.id;
+            
+              return new Response(JSON.stringify({
+                threadId,
+                warning: `Previous run ${latestRun.id} was stuck in ${latestRun.status}. A new thread (${threadId}) was created automatically.`,
+                autoSwitched: true,
+              }), {
+                status: 200,
+                headers: {
+                  "Content-Type": "application/json",
+                  "x-new-thread-id": threadId,
+                },
+              });
             }
             console.log(`Run ${latestRun.id} is now in a terminal state: ${latestRun.status}`);
         }
