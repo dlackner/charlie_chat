@@ -5,7 +5,8 @@ import jsPDF from "jspdf";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { Range, getTrackBackground } from "react-range";
-
+import { Document, Packer, Paragraph, TextRun, ISpacingProperties, LineRuleType } from 'docx';
+import { saveAs } from 'file-saver';
 
 type Listing = {
   id: string;
@@ -32,6 +33,9 @@ type Listing = {
   ownerOccupied?: boolean;
   floodZoneDescription?: string;
   unitsCount?: number;
+  owner1FirstName?: string;
+  owner1LastName?: string;
+  stories?: number;
   [key: string]: any;
 };
 
@@ -226,16 +230,174 @@ export const Sidebar = ({
   );
 
 
-  const downloadLetter = (listing: Listing) => {
-    const doc = new jsPDF();
-    doc.text(`Dear Property Owner,`, 10, 20);
-    doc.text(
-      `I'm writing to express my interest in your property at ${listing.address?.address}.`,
-      10,
-      30
-    );
-    doc.text("Please contact me if you're open to selling.", 10, 40);
-    doc.save("letter.pdf");
+  const downloadLetter = async (listing: Listing) => {
+    // --- Gather Data ---
+    const yourDataPlaceholders = {
+      name: "[Your Name]",
+      address: "[Your Address]",
+      cityStateZip: "[City, State, Zip Code]",
+      phone: "[Phone Number]",
+      email: "[Email Address]",
+    };
+  
+    const today = new Date().toLocaleDateString('en-US', {
+      month: 'long',
+      day: 'numeric',
+      year: 'numeric',
+    });
+  
+    const ownerFirstName = listing.owner1FirstName || "[OwnerFirstName]";
+    const ownerLastName = listing.owner1LastName || ""; // Default to empty if not present
+    const ownerFullName = `${ownerFirstName} ${ownerLastName}`.trim() || "[Owner Name]";
+  
+    // Owner's Mailing Address:
+    // Prioritize specific fields if they exist (e.g., listing.ownerStreet).
+    // Otherwise, use listing.ownerAddress or fall back to placeholders.
+    let ownerMailStreet = "[Mail Address: Street]";
+    let ownerMailCityStateZip = "[Mail Address: City, State, Zip]";
+  
+    if (listing.ownerStreet) {
+      ownerMailStreet = listing.ownerStreet;
+      if (listing.ownerCity && listing.ownerState && listing.ownerZip) {
+        ownerMailCityStateZip = `${listing.ownerCity}, ${listing.ownerState} ${listing.ownerZip}`;
+      } else if (listing.ownerCity && listing.ownerState) {
+          ownerMailCityStateZip = `${listing.ownerCity}, ${listing.ownerState}`;
+      } else if (listing.ownerCity) {
+          ownerMailCityStateZip = listing.ownerCity;
+      }
+    } else if (listing.ownerAddress) { // Fallback to ownerAddress if specific fields are not present
+      const addressParts = listing.ownerAddress.split(',');
+      ownerMailStreet = addressParts[0]?.trim();
+      if (addressParts.length > 1) {
+        ownerMailCityStateZip = addressParts.slice(1).join(',').trim();
+      } else {
+        // If ownerAddress is just one line, maybe it's only the street, or the full thing
+        // Keep placeholder for city/state/zip if we can't clearly separate
+      }
+    }
+  
+  
+    const propertyStreet = listing.address?.street || "[Property Street]";
+    const propertyCity = listing.address?.city || "[Property City]";
+    // For "I focus on acquiring multifamily properties in [State]"
+    const acquisitionFocusState = listing.address?.state || "[Property's State]";
+  
+    // --- Helper to create Paragraphs with specific spacing and line height ---
+    // Spacing in docx.js is in twentieths of a point (1/20 pt).
+    // Pt(X) from python-docx means X points. So, X * 20 units.
+    // Default line spacing 1.0 in python-docx is `line: 240` (single) in docx.js.
+    const createStyledParagraph = (
+      text?: string,
+      {
+        bold = false,
+        spaceAfterPt = 2,
+        // Use the actual string literal values of the enum for the type
+        lineRule = LineRuleType.AUTO, // Default value is still an enum member
+        lines = 240,
+        children,
+      }: {
+        bold?: boolean;
+        spaceAfterPt?: number;
+        // Corrected type for lineRule:
+        lineRule?: "auto" | "exact" | "atLeast";
+        lines?: number;
+        children?: TextRun[];
+      } = {}
+    ): Paragraph => {
+      const spacingOptions: ISpacingProperties = {
+        after: spaceAfterPt * 20,
+        line: lines,
+        // When assigning, ensure the value is one of the accepted strings
+        lineRule: lineRule as "auto" | "exact" | "atLeast",
+      };
+    
+      return new Paragraph({
+        children: children || (text !== undefined ? [new TextRun({ text, bold })] : []),
+        spacing: spacingOptions,
+      });
+    };
+  
+  
+    // --- Document Content Construction ---
+    const letterElements: Paragraph[] = [
+      // Your Info (Placeholders)
+      createStyledParagraph(yourDataPlaceholders.name),
+      createStyledParagraph(yourDataPlaceholders.address),
+      createStyledParagraph(yourDataPlaceholders.cityStateZip),
+      createStyledParagraph(yourDataPlaceholders.phone),
+      createStyledParagraph(yourDataPlaceholders.email, { spaceAfterPt: 12 }), // More space after this block
+  
+      // Date
+      createStyledParagraph(today, { spaceAfterPt: 6 }),
+  
+      // Owner Info
+      createStyledParagraph(ownerFullName),
+      createStyledParagraph(ownerMailStreet),
+      createStyledParagraph(ownerMailCityStateZip, { spaceAfterPt: 6 }),
+  
+      // Salutation
+      createStyledParagraph(`Dear ${ownerFirstName || "[Owner Name(s)]"},`, { spaceAfterPt: 6 }),
+  
+      // Paragraph 1
+      createStyledParagraph(
+        `I hope this note finds you well. I’m reaching out to express sincere interest in your property located at ${propertyStreet}${propertyCity && propertyCity !== "[Property City]" ? `, ${propertyCity}` : ''}. I focus on acquiring multifamily properties in ${acquisitionFocusState}, and this building stood out due to its location, character, and the strength of the local rental market.`,
+        { spaceAfterPt: 10 }
+      ),
+      // Paragraph 2
+      createStyledParagraph(
+        `Whether or not you’ve ever considered selling, I understand that owning and managing multifamily assets can be demanding – especially in today’s environment. Rising operating costs, shifting tenant expectations, and market volatility have prompted many property owners to explore their options.`,
+        { spaceAfterPt: 10 }
+      ),
+      // Paragraph 3
+      createStyledParagraph(
+        `I’m not a broker, and this isn’t a listing solicitation. I’m a direct buyer looking to engage in a straightforward, respectful conversation about a potential off-market purchase. My goal is to understand your situation and see if there’s a way to align my interest with your goal – on your timeline.`,
+        { spaceAfterPt: 10 }
+      ),
+      // Paragraph 4
+      createStyledParagraph(
+        `In past acquisitions, we’ve structured deals with flexible terms including delayed closings, continued property management, partial seller financing, and even 1031 exchange participation for owners looking to defer capital gains taxes. Depending on your goals, there may be creative options available that help maximize value while minimizing tax exposure.`,
+        { spaceAfterPt: 10 }
+      ),
+      // Paragraph 5
+      createStyledParagraph(
+        `If you’d simply like to know what your property might be worth in today’s market, I’d be happy to offer an informal valuation – no pressure, no obligation.`,
+        { spaceAfterPt: 10 }
+      ),
+      // Paragraph 6
+      createStyledParagraph(
+        `You can reach me directly at ${yourDataPlaceholders.phone} or ${yourDataPlaceholders.email}. Even if now isn’t the right time, I’d welcome the opportunity to stay in touch.`,
+        { spaceAfterPt: 10 }
+      ),
+      // Paragraph 7
+      createStyledParagraph(
+        `Wishing you all the best and appreciation for your time.`,
+        { spaceAfterPt: 10 }
+      ),
+  
+      // Closing
+      createStyledParagraph("Best regards,", { spaceAfterPt: 2 }),
+      new Paragraph({ spacing: { after: 240 } }), // Empty paragraph for signature space (approx 1 line)
+  
+      // Signature Name (Placeholder)
+      createStyledParagraph(yourDataPlaceholders.name, { spaceAfterPt: 2 }),
+    ];
+  
+    const doc = new Document({
+      sections: [{
+        properties: {}, // Default page properties (margins, etc.)
+        children: letterElements,
+      }],
+    });
+  
+    // --- Save and Download ---
+    try {
+      const blob = await Packer.toBlob(doc);
+      const safePropertyAddress = (propertyStreet || "property").replace(/[^a-zA-Z0-9]/g, "_");
+      saveAs(blob, `LOI_for_${safePropertyAddress}.docx`);
+    } catch (error) {
+      console.error("Error generating .docx file:", error);
+      alert("Error generating document. Please try again."); // Optional: user feedback
+    }
   };
 
   const formatCurrency = (val: number | undefined) =>
@@ -304,7 +466,7 @@ export const Sidebar = ({
     ], rightX, startY + 35);
 
     addSection("OWNERSHIP DETAILS", [
-      ["Owner Name:", `${listing.ownerFirstName ?? ""} ${listing.ownerLastName ?? ""}`],
+      ["Owner Name:", `${listing.owner1FirstName ?? ""} ${listing.owner1LastName ?? ""}`],
       ["Owner Address:", listing.ownerAddress ?? "N/A"],
       ["In-State Absentee Owner:", listing.inStateAbsenteeOwner ? "Yes" : "No"],
       ["Out-of-State Absentee Owner:", listing.outOfStateAbsenteeOwner ? "Yes" : "No"],
