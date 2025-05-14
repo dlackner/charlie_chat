@@ -58,7 +58,7 @@ export default function PricingPage() {
             <li>✔️ Access to my Master Class Training Program</li>
             <li>✔️ Upload broker documents and offer memorandums</li>
             <li>✔️ Access to best practice templates</li>
-            <li>✔️ Includes 100 national property matches every month</li>
+            <li>✔️ Includes 50 national property matches every month</li>
           </ul>
           <button
             onClick={handleCheckout}
