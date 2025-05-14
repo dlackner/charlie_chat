@@ -67,7 +67,9 @@ export const Sidebar = ({
   triggerAuthModal,
 }: Props) => {
   const [zipcode, setZipcode] = useState("02840");
-  const [minUnits, setMinUnits] = useState(2);
+  const [minUnits, setMinUnits] = useState<number | string>(2);
+  const [maxUnits, setMaxUnits] = useState<number | string>("");
+
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [mlsActive, setMlsActive] = useState("");
   const [radius, setRadius] = useState(5);
@@ -593,16 +595,58 @@ export const Sidebar = ({
             />
           </div>
 
-          <div className="space-y-2">
-            <label className="block text-sm font-medium text-gray-600">Min # of Units*</label>
-            <input
-              type="number"
-              min={1}
-              className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
-              value={minUnits}
-              onChange={(e) => setMinUnits(parseInt(e.target.value) || 0)}
-            />
+          {/* Min/Max Units Inputs */}
+          <div className="space-y-1"> {/* Reduced space-y if label is directly above the row */}
+            <label className="block text-sm font-medium text-gray-600 mb-1">Number of Units*</label>
+            <div className="flex items-center space-x-2"> {/* Flex container for side-by-side layout */}
+              {/* Min Units Input */}
+              <div className="flex-1"> {/* flex-1 makes each input container take up equal available space */}
+                <input
+                  type="number"
+                  min={1}
+                  name="minUnits"
+                  placeholder="Min"
+                  className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
+                  value={minUnits}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    if (val === "") {
+                      setMinUnits("");
+                    } else {
+                      const num = parseInt(val, 10);
+                      setMinUnits(isNaN(num) ? "" : num);
+                    }
+                  }}
+                  aria-label="Minimum units"
+                />
+              </div>
+                
+              <span className="text-gray-500">-</span> {/* Optional: separator between inputs */}
+                
+              {/* Max Units Input */}
+              <div className="flex-1"> {/* flex-1 makes each input container take up equal available space */}
+                <input
+                  type="number"
+                  min={typeof minUnits === 'number' ? minUnits : 1}
+                  name="maxUnits"
+                  placeholder="Max"
+                  className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
+                  value={maxUnits}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    if (val === "") {
+                      setMaxUnits("");
+                    } else {
+                      const num = parseInt(val, 10);
+                      setMaxUnits(isNaN(num) ? "" : num);
+                    }
+                  }}
+                  aria-label="Maximum units"
+                />
+              </div>
+            </div>
           </div>
+          
 
           <button
             ref={advancedFiltersToggleRef} // <-- Assign the ref here
@@ -622,6 +666,7 @@ export const Sidebar = ({
             onSearch({
               zip: zipcode,
               units_min: minUnits,
+              units_max: maxUnits || undefined,
               propertyType: "MFR",
               mls_active: mlsActive || undefined,
               flood_zone: floodZone || undefined,
@@ -660,7 +705,7 @@ export const Sidebar = ({
             });;
           }}
           id="sidebar-search"
-          className="w-full bg-black text-white py-2 rounded hover:bg-gray-900 transition"
+          className="w-full bg-orange-500 text-white py-2 px-4 rounded-lg font-semibold transition duration-200 ease-in-out transform hover:scale-105 hover:bg-orange-600 focus:outline-none focus:ring-2 focus:ring-orange-400 focus:ring-opacity-75 hover:shadow-lg active:scale-95"
         >
           Search
         </button>
