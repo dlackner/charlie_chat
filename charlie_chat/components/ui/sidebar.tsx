@@ -17,6 +17,14 @@ type Listing = {
     state?: string;
     zip?: string;
   };
+  mailAddress?: {
+    address?: string;
+    city?: string;
+    county?: string;
+    state?: string;
+    street?: string;
+    zip?: string;
+  };
   bedrooms?: number;
   bathrooms?: number;
   lastSaleAmount?: number;
@@ -250,35 +258,83 @@ export const Sidebar = ({
       year: 'numeric',
     });
   
-    const ownerFirstName = listing.owner1FirstName || "[OwnerFirstName]";
-    const ownerLastName = listing.owner1LastName || ""; // Default to empty if not present
-    const ownerFullName = `${ownerFirstName} ${ownerLastName}`.trim() || "[Owner Name]";
+    const rawOwnerFirstName = listing.owner1FirstName?.trim(); // Get raw first name, trim, handle if undefined
+    const rawOwnerLastName = listing.owner1LastName?.trim();  // Get raw last name, trim, handle if undefined
+
+    let displayOwnerFullName: string | null = null;
+    let salutationName = "Property Owner"; // Default salutation name
+
+    if (rawOwnerFirstName && rawOwnerLastName) {
+      displayOwnerFullName = `${rawOwnerFirstName} ${rawOwnerLastName}`;
+      salutationName = rawOwnerFirstName;
+    } else if (rawOwnerFirstName) {
+      displayOwnerFullName = rawOwnerFirstName;
+      salutationName = rawOwnerFirstName;
+    } else if (rawOwnerLastName) {
+      // If only last name, you might choose how to display it in the address block.
+      // For example, you could use it, or use a generic term like "Current Resident"
+      // For simplicity, let's use it if it's there, but keep salutation generic.
+      displayOwnerFullName = rawOwnerLastName;
+      // salutationName remains "Property Owner" as "Dear [LastName]," might be odd without context.
+    }
   
     // Owner's Mailing Address:
     // Prioritize specific fields if they exist (e.g., listing.ownerStreet).
     // Otherwise, use listing.ownerAddress or fall back to placeholders.
-    let ownerMailStreet = "[Mail Address: Street]";
-    let ownerMailCityStateZip = "[Mail Address: City, State, Zip]";
-  
-    if (listing.ownerStreet) {
-      ownerMailStreet = listing.ownerStreet;
-      if (listing.ownerCity && listing.ownerState && listing.ownerZip) {
-        ownerMailCityStateZip = `${listing.ownerCity}, ${listing.ownerState} ${listing.ownerZip}`;
-      } else if (listing.ownerCity && listing.ownerState) {
-          ownerMailCityStateZip = `${listing.ownerCity}, ${listing.ownerState}`;
-      } else if (listing.ownerCity) {
-          ownerMailCityStateZip = listing.ownerCity;
-      }
-    } else if (listing.ownerAddress) { // Fallback to ownerAddress if specific fields are not present
-      const addressParts = listing.ownerAddress.split(',');
-      ownerMailStreet = addressParts[0]?.trim();
-      if (addressParts.length > 1) {
-        ownerMailCityStateZip = addressParts.slice(1).join(',').trim();
-      } else {
-        // If ownerAddress is just one line, maybe it's only the street, or the full thing
-        // Keep placeholder for city/state/zip if we can't clearly separate
-      }
+    let finalOwnerMailStreet = "";
+  let finalOwnerMailCityStateZip = "";
+
+  if (listing.mailAddress) {
+    finalOwnerMailStreet = listing.mailAddress.street || ""; // Use street from mailAddress first
+    
+    const city = listing.mailAddress.city;
+    const stateAbbr = listing.mailAddress.state; // Assuming state is an abbreviation like "RI"
+    const zipCode = listing.mailAddress.zip;
+
+    let cityStateZipParts = [];
+    if (city) cityStateZipParts.push(city);
+    if (stateAbbr) cityStateZipParts.push(stateAbbr);
+    if (zipCode) cityStateZipParts.push(zipCode);
+    
+    // Join with comma for city,state and space for state zip
+    if (city && stateAbbr && zipCode) {
+        finalOwnerMailCityStateZip = `${city}, ${stateAbbr} ${zipCode}`;
+    } else if (city && stateAbbr) {
+        finalOwnerMailCityStateZip = `${city}, ${stateAbbr}`;
+    } else if (city && zipCode) {
+        finalOwnerMailCityStateZip = `${city} ${zipCode}`; // Or `${city}, ${zipCode}` if comma preferred
+    } else {
+        finalOwnerMailCityStateZip = cityStateZipParts.join(' '); // Fallback join with space
     }
+
+    // If individual street is empty but full mailAddress.address exists, use it for street.
+    // And clear city/state/zip if it wasn't populated from specific fields.
+    if (!finalOwnerMailStreet && listing.mailAddress.address) {
+        const addressParts = listing.mailAddress.address.split(',');
+        finalOwnerMailStreet = addressParts[0]?.trim() || "";
+        if (addressParts.length > 1 && !finalOwnerMailCityStateZip) { // only if not already set
+            finalOwnerMailCityStateZip = addressParts.slice(1).join(',').trim();
+        }
+    }
+
+  } else if (listing.ownerAddress) { // Fallback to old top-level ownerAddress (string)
+    const addressParts = listing.ownerAddress.split(',');
+    finalOwnerMailStreet = addressParts[0]?.trim() || "";
+    if (addressParts.length > 1) {
+      finalOwnerMailCityStateZip = addressParts.slice(1).join(',').trim();
+    }
+  }
+
+  // Use placeholders if still empty after logic
+  if (!finalOwnerMailStreet && !finalOwnerMailCityStateZip && !displayOwnerFullName) {
+      // If there's absolutely no owner name or address info, maybe skip the owner block
+      // or use a generic "Property Owner" block
+      finalOwnerMailStreet = "[Owner Address Line 1]";
+      finalOwnerMailCityStateZip = "[Owner Address Line 2]";
+  } else {
+      if (!finalOwnerMailStreet) finalOwnerMailStreet = "[Mail Address: Street]";
+      if (!finalOwnerMailCityStateZip) finalOwnerMailCityStateZip = "[Mail Address: City, State, Zip]";
+  }
   
   
     const propertyStreet = listing.address?.street || "[Property Street]";
@@ -323,75 +379,105 @@ export const Sidebar = ({
   
   
     // --- Document Content Construction ---
-    const letterElements: Paragraph[] = [
-      // Your Info (Placeholders)
-      createStyledParagraph(yourDataPlaceholders.name),
-      createStyledParagraph(yourDataPlaceholders.address),
-      createStyledParagraph(yourDataPlaceholders.cityStateZip),
-      createStyledParagraph(yourDataPlaceholders.phone),
-      createStyledParagraph(yourDataPlaceholders.email, { spaceAfterPt: 12 }), // More space after this block
-  
-      // Date
-      createStyledParagraph(today, { spaceAfterPt: 6 }),
-  
-      // Owner Info
-      createStyledParagraph(ownerFullName),
-      createStyledParagraph(ownerMailStreet),
-      createStyledParagraph(ownerMailCityStateZip, { spaceAfterPt: 6 }),
-  
-      // Salutation
-      createStyledParagraph(`Dear ${ownerFirstName || "[Owner Name(s)]"},`, { spaceAfterPt: 6 }),
-  
-      // Paragraph 1
-      createStyledParagraph(
-        `I hope this note finds you well. I’m reaching out to express sincere interest in your property located at ${propertyStreet}${propertyCity && propertyCity !== "[Property City]" ? `, ${propertyCity}` : ''}. I focus on acquiring multifamily properties in ${acquisitionFocusState}, and this building stood out due to its location, character, and the strength of the local rental market.`,
-        { spaceAfterPt: 10 }
-      ),
-      // Paragraph 2
-      createStyledParagraph(
-        `Whether or not you’ve ever considered selling, I understand that owning and managing multifamily assets can be demanding – especially in today’s environment. Rising operating costs, shifting tenant expectations, and market volatility have prompted many property owners to explore their options.`,
-        { spaceAfterPt: 10 }
-      ),
-      // Paragraph 3
-      createStyledParagraph(
-        `I’m not a broker, and this isn’t a listing solicitation. I’m a direct buyer looking to engage in a straightforward, respectful conversation about a potential off-market purchase. My goal is to understand your situation and see if there’s a way to align my interest with your goal – on your timeline.`,
-        { spaceAfterPt: 10 }
-      ),
-      // Paragraph 4
-      createStyledParagraph(
-        `In past acquisitions, we’ve structured deals with flexible terms including delayed closings, continued property management, partial seller financing, and even 1031 exchange participation for owners looking to defer capital gains taxes. Depending on your goals, there may be creative options available that help maximize value while minimizing tax exposure.`,
-        { spaceAfterPt: 10 }
-      ),
-      // Paragraph 5
-      createStyledParagraph(
-        `If you’d simply like to know what your property might be worth in today’s market, I’d be happy to offer an informal valuation – no pressure, no obligation.`,
-        { spaceAfterPt: 10 }
-      ),
-      // Paragraph 6
-      createStyledParagraph(
-        `You can reach me directly at ${yourDataPlaceholders.phone} or ${yourDataPlaceholders.email}. Even if now isn’t the right time, I’d welcome the opportunity to stay in touch.`,
-        { spaceAfterPt: 10 }
-      ),
-      // Paragraph 7
-      createStyledParagraph(
-        `Wishing you all the best and appreciation for your time.`,
-        { spaceAfterPt: 10 }
-      ),
-  
-      // Closing
-      createStyledParagraph("Best regards,", { spaceAfterPt: 2 }),
-      new Paragraph({ spacing: { after: 240 } }), // Empty paragraph for signature space (approx 1 line)
-  
-      // Signature Name (Placeholder)
-      createStyledParagraph(yourDataPlaceholders.name, { spaceAfterPt: 2 }),
-    ];
-  
-    const doc = new Document({
-      sections: [{
-        properties: {}, // Default page properties (margins, etc.)
-        children: letterElements,
-      }],
-    });
+    const letterElements: Paragraph[] = []; // START WITH AN EMPTY ARRAY
+
+  // Your Info (Placeholders)
+  letterElements.push(createStyledParagraph(yourDataPlaceholders.name));
+  letterElements.push(createStyledParagraph(yourDataPlaceholders.address));
+  letterElements.push(createStyledParagraph(yourDataPlaceholders.cityStateZip));
+  letterElements.push(createStyledParagraph(yourDataPlaceholders.phone));
+  letterElements.push(createStyledParagraph(yourDataPlaceholders.email, { spaceAfterPt: 12 }));
+
+  // Date
+  letterElements.push(createStyledParagraph(today, { spaceAfterPt: 6 }));
+
+  // Owner Info - Conditional based on your new logic
+  // Owner Info Block
+  let addedAnyOwnerInfo = false;
+  if (displayOwnerFullName) {
+    letterElements.push(createStyledParagraph(displayOwnerFullName));
+    addedAnyOwnerInfo = true;
+  }
+  if (finalOwnerMailStreet && finalOwnerMailStreet !== "[Mail Address: Street]") {
+    // If city/state/zip is also present and not a placeholder, give street less space after. Otherwise, more.
+    const spaceAfterStreet = (finalOwnerMailCityStateZip && finalOwnerMailCityStateZip !== "[Mail Address: City, State, Zip]" && finalOwnerMailCityStateZip.trim() !== "") ? 2 : 6;
+    letterElements.push(createStyledParagraph(finalOwnerMailStreet, { spaceAfterPt: spaceAfterStreet }));
+    addedAnyOwnerInfo = true;
+  }
+  if (finalOwnerMailCityStateZip && finalOwnerMailCityStateZip !== "[Mail Address: City, State, Zip]" && finalOwnerMailCityStateZip.trim() !== "") {
+    letterElements.push(createStyledParagraph(finalOwnerMailCityStateZip, { spaceAfterPt: 6 }));
+    addedAnyOwnerInfo = true;
+  } else if (addedAnyOwnerInfo && !(finalOwnerMailCityStateZip && finalOwnerMailCityStateZip !== "[Mail Address: City, State, Zip]" && finalOwnerMailCityStateZip.trim() !== "")) {
+      // If we added name or street, but NOT city/state/zip, ensure the last added item has enough space
+      // This might mean adjusting the last pushed paragraph's spaceAfter, or ensuring default is 6
+      // The logic in spaceAfterStreet above tries to handle this.
+  }
+
+  if (!addedAnyOwnerInfo) { // If no name AND no address was added, maybe add a placeholder for the block
+      letterElements.push(createStyledParagraph("[Property Owner Address Block]", { spaceAfterPt: 6 }));
+  }
+
+  // Salutation
+  letterElements.push(createStyledParagraph(`Dear ${salutationName},`, { spaceAfterPt: 6 }));
+
+  // --- Main Body Paragraphs (Paragraph 1 to 7) ---
+  letterElements.push(
+    createStyledParagraph(
+      `I hope this note finds you well. I’m reaching out to express sincere interest in your property located at ${propertyStreet}${propertyCity && propertyCity !== "[Property City]" ? `, ${propertyCity}` : ''}. I focus on acquiring multifamily properties in ${acquisitionFocusState}, and this building stood out due to its location, character, and the strength of the local rental market.`,
+      { spaceAfterPt: 10 }
+    )
+  );
+  letterElements.push(
+    createStyledParagraph(
+      `Whether or not you’ve ever considered selling, I understand that owning and managing multifamily assets can be demanding – especially in today’s environment. Rising operating costs, shifting tenant expectations, and market volatility have prompted many property owners to explore their options.`, // Full text
+      { spaceAfterPt: 10 }
+    )
+  );
+  letterElements.push(
+    createStyledParagraph(
+      `I’m not a broker, and this isn’t a listing solicitation. I’m a direct buyer looking to engage in a straightforward, respectful conversation about a potential off-market purchase. My goal is to understand your situation and see if there’s a way to align my interest with your goal – on your timeline.`, // Full text
+      { spaceAfterPt: 10 }
+    )
+  );
+  letterElements.push(
+    createStyledParagraph(
+      `In past acquisitions, we’ve structured deals with flexible terms including delayed closings, continued property management, partial seller financing, and even 1031 exchange participation for owners looking to defer capital gains taxes. Depending on your goals, there may be creative options available that help maximize value while minimizing tax exposure.`, // Full text
+      { spaceAfterPt: 10 }
+    )
+  );
+  letterElements.push(
+    createStyledParagraph(
+      `If you’d simply like to know what your property might be worth in today’s market, I’d be happy to offer an informal valuation – no pressure, no obligation..`, // Full text
+      { spaceAfterPt: 10 }
+    )
+  );
+  letterElements.push(
+    createStyledParagraph(
+      `You can reach me directly at ${yourDataPlaceholders.phone} or ${yourDataPlaceholders.email}. Even if now isn’t the right time, I’d welcome the opportunity to stay in touch.`, // Full text
+      { spaceAfterPt: 10 }
+    )
+  );
+  letterElements.push(
+    createStyledParagraph(
+      `Wishing you all the best and appreciation for your time.`,
+      { spaceAfterPt: 10 }
+    )
+  );
+
+  // Closing
+  letterElements.push(createStyledParagraph("Best regards,", { spaceAfterPt: 2 }));
+  letterElements.push(new Paragraph({ spacing: { after: 240 } })); // Empty paragraph for signature space
+
+  // Signature Name (Placeholder)
+  letterElements.push(createStyledParagraph(yourDataPlaceholders.name, { spaceAfterPt: 2 }));
+
+  // Now construct the document with the fully built letterElements array
+  const doc = new Document({
+    sections: [{
+      properties: {},
+      children: letterElements,
+    }],
+  });
   
     // --- Save and Download ---
     try {
