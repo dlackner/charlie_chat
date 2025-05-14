@@ -37,8 +37,6 @@ const EXAMPLES = [
 ];
 
 
-const FeatureTour = dynamic(() => import("@/components/ui/feature-tour"), { ssr: false });
-
 export function ClosingChat() {
   const { data: session } = useSession();
   const isLoggedIn = !!session?.user;
@@ -234,7 +232,6 @@ try {
   return (
     <>
       {/* Main layout container */}
-     <FeatureTour />
       <div className="flex h-screen overflow-hidden bg-white text-black">
          {/* Sidebar */}
          <Sidebar
