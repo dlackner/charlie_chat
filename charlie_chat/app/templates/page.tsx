@@ -129,20 +129,68 @@ export default function TemplatesPage() {
         new Paragraph({
             children: [
                 new TextRun(
-                    `This Letter of Intent is provided to you to acknowledge the interest and intent of ${data.yourName} to acquire the fee simple interest of the Property, on the general terms and conditions set forth below. The terms listed below are not intended to be all-inclusive. Moreover, all of the terms and conditions, and all covenants, warranties and representations between the parties relating to this proposed transaction must be reflected in a definitive written agreement (“Agreement”) executed by all of the parties.`
+                    `Please find outlined below the general terms and conditions under which ${data.yourName} (“Purchaser”) would be willing to purchase the above referenced Property. This letter will serve as a non-binding letter of intent between Purchaser or its Assignee, and the Owner of Record (“Seller”). Let this letter serve as our expression of intent to purchase the above referenced Property under the following terms and conditions:`
                 ),
             ],
             spacing: { after: 200 },
         }),
     ];
     const loiSectionsContent = [
-        { num: "1", heading: "Seller", content: "Owner of Record" },
-        { num: "2", heading: "Purchaser", content: `${data.yourName}, and/or assigns` },
-        { num: "3", heading: "Property", content: data.propertyAddress },
-        { num: "4", heading: "Purchase Price", content: `${data.purchasePriceFormatted}: The Purchase Price shall not include any liabilities or obligations owed by Seller to any person or entities on or before the Closing Date, unless expressly assumed in writing by Purchaser.`},
-        { num: "5", heading: "Earnest Money Deposit", content: `${data.earnestMoneyFormatted} is to be deposited with Title Company within two (2) business days after the Effective Date as defined below. The Earnest Money Deposit is fully refundable to Purchaser at any time prior to expiration of the Inspection Period, and any time thereafter only upon Purchaser’s failure to obtain acceptable financing, or as a consequence of a default by Seller, or by mutual agreement of the parties.`},
-         { num: "22", heading: "Execution Instructions", content: `If you are agreeable to the foregoing terms and conditions, please sign and date this letter in the space provided below, and return a signed copy to me, by email or facsimile, on or before 5:00PM, PST on the fifth day after the date of this letter. Upon receipt, we will commence preparation of a draft of the Agreement.` }
-    ];
+        {
+          num: "1",
+          heading: "Purchase Price",
+          content: `${data.purchasePriceFormatted}` // Using the formatted purchase price from user input
+        },
+        {
+          num: "2", // Note: Original had "Earnest Money Deposit" here, new content also has it at #4. I'll follow new list.
+          heading: "Earnest Money Deposit",
+          // Using the formatted earnest money from user input.
+          // The new item #4 below has a fixed $15,000. Decide which one to use or if both are needed.
+          // For now, I'll use the input one for section 2 as per your new content.
+          content: `${data.earnestMoneyFormatted}`
+        },
+        {
+          num: "3",
+          heading: "Purchase Agreement",
+          content: 'Both parties will strive to execute a mutually acceptable Purchase Agreement within thirty (30) days after the execution of this Letter of Intent.' // Corrected quote and number
+        },
+        {
+          num: "4",
+          heading: "Earnest Money Deposit", // This is a second "Earnest Money Deposit" section
+          content: 'A refundable Earnest Money Deposit in the amount of $15,000 will be deposited with the Escrow Agent within five (5) business days.'
+        },
+        {
+          num: "5",
+          heading: "Inspection Period",
+          content: 'Purchaser shall have an Inspection Period of thirty (30) days to inspect the property and conduct any due diligence. If the Purchaser finds the Property unsuitable, this LOI shall be void and the Earnest Money refunded.'
+        },
+        {
+          num: "6",
+          heading: "Closing Date",
+          content: 'The Closing will occur on or before thirty (30) days after the end of the Inspection Period. An additional 30-day extension may be granted upon written request.'
+        },
+        {
+          num: "7",
+          heading: "Closing Costs",
+          content: 'The Seller will pay for basic title insurance, transfer taxes, survey and documentary stamps.'
+        },
+        {
+          num: "8",
+          heading: "Brokerage Fees",
+          content: 'To be paid by Seller as per seller agreement with Seller’s agent.'
+        },
+        {
+          num: "9",
+          heading: "General Terms",
+          content: 'The above represents the general terms and conditions of the proposed transaction. A full agreement will be prepared after mutual acceptance.'
+        },
+        {
+          num: "10",
+          heading: "Execution Instructions",
+          content: 'Should the above proposal be acceptable to you, please execute your signature below and Purchaser will begin preparation of the Purchase Agreement.'
+        }
+      ];
+  
     loiSectionsContent.forEach(section => {
         sections.push(new Paragraph({
             children: [ new TextRun(`${section.num}. `), new TextRun({ text: `${section.heading}: `, bold: true }), new TextRun(section.content), ],
@@ -168,8 +216,16 @@ export default function TemplatesPage() {
     const scheduleItemsContent = [
         "(a) Copies of ad valorem and personal property tax statements covering the Property for the three (3) years prior to the Effective Date (or the period of time Seller has owned the Real Property, whichever is less) and, if and when available, for the current year, together with a copy of the current year Tax Assessment Notice from applicable appraisal district office.",
         "(b) Copies of all licenses and permits with respect to Seller’s ownership and operation of the Property, including, without limitation, building permits, swimming pool permits, boiler permits, mechanical permits and certificates of occupancy, wind mitigation reports, flood plan certifications.",
+        "(c) To the extent that Seller has possession of these items: Copies of as-built engineering and architectural plans. Drawings, specifications, geotechnical subsoil tests or analyses, termite inspection reports, structural reports, foundation reports, and all amendments or changes thereto, and all blueprints, schematics, renderings, architect’s drawings and all other reports, plans or studies held by or for Seller which relate to the Property (collectively, the “Plans”).", // Removed trailing comma inside string if any
+        "(d) Copies of all Leases (including, without limitation, all modifications, amendments, or supplements thereto) in effect with respect to the Property, as a certified rent roll (”Rent Roll”) prepared as of the first day of the month in which the Contract is executed, which Rent Roll shall reflect, as of the date thereof with respect to each tenant occupying the Property or with respect to prospective tenants who have executed leases but have not yet occupied the Property: (i) the space occupied (or to be occupied); (ii) names of tenants, (iii) monthly rent, including escalations; (iv) the amount of the security deposit (and any other deposits) and any prepaid rent or charges; (v) amount of rent in arrearage; (vi) the date through which rent is paid, (vii)the commencement date and the expiration date of the lease term; (viii) any concessions granted which are now effective or which may in the future become effective; and (ix) tenant responsibility for water, sewage and other utility charges. The Rent Roll shall be accompanied by Seller’s signed certificate that the Rent Roll is complete and correct as of the date shown on said Rent Roll, and that there has been no material adverse change with respect to any item shown on the Rent Roll during the period from the date thereof to the date of such certificate.",
+        "(e) Copies of all service contracts, landscaping, pool and/or other maintenance agreements, management contracts, warranties, guaranties, or other agreements relating to the Property, including, without limitation, all laundry leases, other equipment leases and particularly all coin-operated vending or other machines.",
+        "(f) A reasonably detailed list for the Seller showing the description and approximate quantity of all of Seller’s Personal Property included as part of this transaction, together with copies of any lease, rental, or other agreements with respect to any such Personal Property.",
+        "(g) A statement (”Operating Statement”) with respect to the results of the ownership and operation of the Property at least for the period of Seller’s ownership of the Property (and information in Seller’s possession from the previous owner of the Property) and which shall set forth (i) ad valorem taxes for the city, county and state; (ii) insurance premiums for fire, extended coverage, workmen’s compensation, vandalism and malicious mischief, general liability, rent continuation and other forms of insurance; (iii) expenses incurred for water, electricity, natural gas, and other utilities; (iv) total rents and other charges collected and total rents and other charges due from the tenants; (v) management fees paid by Seller; (vi) maintenance, repair, and other expenses relating to the management and operation of the Property; (vii) amounts paid for capital improvements to the Property; and (viii) all other income from the Property or expenses of operation of the Property. The Operating Statement shall be accompanied by Seller’s certificate that said Operating statement is true, complete and correct to Seller’s actual knowledge as of the date provided.",
+        "(h) Copies of all correspondence, reports, inspections, and other documents held by or for Seller including, without limitation, and Phase I reports or Phase II reports regarding the environmental aspects of the Property or any toxic or hazardous substances affecting or relating to the Property including, without limitation, any asbestos testing results.",
+        "(i) Copies of all geotechnical reports, and soil compaction tests performed by or on behalf of Seller or which Seller has in its possession relating to the Property.",
+        "(j) Copies of the most recent MAI or other type of property appraisal on the Property.",
         "(k) Certified copies of the last twelve months of monthly, itemized bank statements regarding operations at the Property."
-    ];
+      ];
     scheduleItemsContent.forEach(item => { sections.push(new Paragraph({ text: item, spacing: { after: 120 } })); });
     const doc = new Document({ sections: [{ properties: {}, children: sections, }], });
     Packer.toBlob(doc).then(blob => {

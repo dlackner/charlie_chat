@@ -74,7 +74,7 @@ ${metadata}
 -->`;
   });
 
-  const summaryPrompt = `Give me a summary of this property as an investment, and ask me for rent and expense estimates so you can calculate a cap rate and compare it to typical market returns. We don’t have income data in the file. Can you provide the estimated gross annual rent and either annual expenses or an expense ratio? I’ll use those to calculate an estimated cap rate.
+  const summaryPrompt = `Give me a market summary and an underwriting strategy for each property
 
 
 ---

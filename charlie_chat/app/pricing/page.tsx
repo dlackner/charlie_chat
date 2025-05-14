@@ -51,8 +51,13 @@ export default function PricingPage() {
             My entire Master Class training at your fingertips. Hundreds of hours of additional training on multifamily investing, plus:
           </p>
           <ul className="text-sm space-y-1 text-gray-800 mb-4 flex flex-col">
-            <li>✔️ Everything in Charlie Chat</li>
+            <li className="flex items-baseline">
+              <span className="text-orange-500 text-l mr-2">✔️</span>
+              <span className="text-lg font-semibold text-orange-500">Everything in Charlie Chat</span>
+            </li>
             <li>✔️ Access to my Master Class Training Program</li>
+            <li>✔️ Upload broker documents and offer memorandums</li>
+            <li>✔️ Access to best practice templates</li>
             <li>✔️ Includes 100 national property matches every month</li>
           </ul>
           <button
@@ -70,7 +75,10 @@ export default function PricingPage() {
             Connect with me and a community of like-minded investors and experienced professionals who provide the guidance and support needed to achieve your goals.
           </p>
           <ul className="text-sm space-y-1 text-gray-800 mb-4 flex flex-col">
-            <li>✔️ Everything in Charlie Chat Pro</li>
+            <li className="flex items-baseline">
+              <span className="text-orange-500 text-l mr-2">✔️</span>
+              <span className="text-lg font-semibold text-orange-500">Everything in Charlie Chat Pro</span>
+            </li>
             <li>✔️ Weekly expert sessions led by me</li>
             <li>✔️ A supportive community of peers & investors</li>
             <li>✔️ Step-by-step roadmap for your multifamily investing journey</li>

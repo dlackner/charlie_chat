@@ -397,7 +397,7 @@ export const Sidebar = ({
     try {
       const blob = await Packer.toBlob(doc);
       const safePropertyAddress = (propertyStreet || "property").replace(/[^a-zA-Z0-9]/g, "_");
-      saveAs(blob, `LOI_for_${safePropertyAddress}.docx`);
+      saveAs(blob, `Marketing_Letter_${safePropertyAddress}.docx`);
     } catch (error) {
       console.error("Error generating .docx file:", error);
       alert("Error generating document. Please try again."); // Optional: user feedback
