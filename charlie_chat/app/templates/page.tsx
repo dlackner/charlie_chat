@@ -157,7 +157,7 @@ export default function TemplatesPage() {
         {
           num: "4",
           heading: "Earnest Money Deposit", // This is a second "Earnest Money Deposit" section
-          content: 'A refundable Earnest Money Deposit in the amount of $15,000 will be deposited with the Escrow Agent within five (5) business days.'
+          content: `A refundable Earnest Money Deposit in the amount of ${data.earnestMoneyFormatted} will be deposited with the Escrow Agent within five (5) business days.`
         },
         {
           num: "5",

@@ -1,13 +1,13 @@
 "use client";
 
 import { Dialog } from "@headlessui/react";
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import ReactMarkdown from "react-markdown";
 import { Sidebar } from "@/components/ui/sidebar";
-import { useRef, useEffect } from "react";
 import { Plus, SendHorizonal } from "lucide-react";
-import dynamic from "next/dynamic";
-import { useSession } from "next-auth/react";
+import { createSupabaseBrowserClient } from '@/lib/supabase/client'; // Adjust path if needed
+import type { User } from '@supabase/supabase-js';
+import { useRouter } from "next/navigation"; // Import useRouter
 
 
 type Listing = {
@@ -26,7 +26,7 @@ type Listing = {
   lastSalePrice?: number;
   yearBuilt?: number;
   pool?: boolean;
-  [key: string]: any; // <-- optional catch-all if you're passing full listing to GPT
+  [key: string]: any;
 };
 
 const EXAMPLES = [
@@ -38,18 +38,38 @@ const EXAMPLES = [
 
 
 export function ClosingChat() {
-  const { data: session } = useSession();
-  const isLoggedIn = !!session?.user;
+  // Step 1: Remove useSession
+  // const { data: session } = useSession();
+  // const isLoggedIn = !!session?.user;
+
+  // Step 3: Initialize Supabase client and state for Supabase user
+  const supabase = createSupabaseBrowserClient();
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [isLoadingAuth, setIsLoadingAuth] = useState(true); // Optional: for loading state
+  const [userCredits, setUserCredits] = useState<number | null>(null); // <-- ADD THIS LINE
+  const router = useRouter(); // For router.refresh()
+
+  // Step 4: Derive isLoggedIn from currentUser
+  const isLoggedIn = !!currentUser;
+
   const [messages, setMessages] = useState<{ role: string; content: string }[]>([]);
   const [input, setInput] = useState("");
   const [threadId, setThreadId] = useState<string | null>(null);
   const [showProModal, setShowProModal] = useState(false);
   const [showModal, setShowModal] = useState(false);
 
-  const [isPro, setIsPro] = useState(false);
-  const [count, setCount] = useState(0);
+  const [isPro, setIsPro] = useState(false); // Keep for now, ideally move to DB
+  const [count, setCount] = useState(0); // Keep for now, ideally move to DB
   const [listings, setListings] = useState<Listing[]>([]);
   const [selectedListings, setSelectedListings] = useState<Listing[]>([]);
+
+  const handleCreditsUpdated = (newBalance: number) => {
+    console.log("[ClosingChat] handleCreditsUpdated CALLED with newBalance:", newBalance);
+    setUserCredits(prevCredits => {
+      console.log("[ClosingChat] Previous credits state:", prevCredits, "New credits to set:", newBalance);
+      return newBalance;
+    });
+  };
   
   const toggleListingSelect = (listing: any) => {
     const exists = selectedListings.some((l) => l.id === listing.id);
@@ -61,18 +81,16 @@ export function ClosingChat() {
   };
 
   const onSendToGPT = () => {
-  const rows = selectedListings.map((l, i) => {
-    const address = l.address?.address || "Unknown Address";
-    const metadata = JSON.stringify(l, null, 2);
+    const rows = selectedListings.map((l, i) => {
+      const address = l.address?.address || "Unknown Address";
+      const metadata = JSON.stringify(l, null, 2);
 
-    return `**${i + 1}. ${address}**
+      return `**${i + 1}. ${address}**
 
-<!--
-${metadata}
--->`;
-  });
+`;
+    });
 
-  const summaryPrompt = `Give me a market summary and an underwriting strategy for each property
+    const summaryPrompt = `Give me a market summary and an underwriting strategy for each property
 
 
 ---
@@ -81,25 +99,114 @@ ${rows.join("\n\n")}
 
 `;
 
-  sendMessage(summaryPrompt);
-  setSelectedListings([]);
-};
+    sendMessage(summaryPrompt);
+    setSelectedListings([]);
+  };
   const bottomRef = useRef<HTMLDivElement | null>(null);
 
-  
-  // Safe access to localStorage on client only
+  // Step 5: useEffect to manage Supabase auth state
+ // Step 5: useEffect to manage Supabase auth state (MODIFIED)
+ useEffect(() => {
+  let isMounted = true; // Flag to check if component is still mounted
+  setIsLoadingAuth(true);
+
+  const fetchAndSetUserAndProfile = async (user: User | null) => {
+    if (!isMounted) return; // Don't proceed if component unmounted
+
+    if (user) {
+      setCurrentUser(user); // Set current user
+      try {
+        const { data: profile, error: profileError } = await supabase
+          .from('profiles')
+          .select('credits')
+          .eq('user_id', user.id)
+          .single();
+
+        if (!isMounted) return; // Check again after await
+
+        if (profileError) {
+          console.error('Error fetching user profile in fetchAndSetUserAndProfile:', profileError.message);
+          setUserCredits(null);
+        } else if (profile) {
+          setUserCredits(profile.credits);
+        } else {
+          console.warn('No profile found for user in fetchAndSetUserAndProfile:', user.id);
+          setUserCredits(0); // Default if no profile
+        }
+      } catch (e) {
+        if (isMounted) {
+          console.error("Error in fetchAndSetUserAndProfile's try block:", e);
+          setUserCredits(null); // Set to null or a default on error
+        }
+      }
+    } else { // No user
+      setCurrentUser(null);
+      setUserCredits(null);
+    }
+
+    if (isMounted) {
+      setIsLoadingAuth(false); // Set loading to false after all operations for this path
+    }
+  };
+
+  // 1. Get the initial session state
+  supabase.auth.getSession()
+    .then(async ({ data: { session } }) => {
+      if (isMounted) {
+        await fetchAndSetUserAndProfile(session?.user ?? null);
+      }
+    })
+    .catch(error => {
+      if (isMounted) {
+        console.error("Error getting initial session:", error);
+        setCurrentUser(null); // Ensure user state is cleared
+        setUserCredits(null);  // Ensure credits state is cleared
+        setIsLoadingAuth(false); // Crucial: ensure loading is false on error too
+      }
+    });
+
+  // 2. Set up the auth state change listener
+  const { data: { subscription: authListener } } = supabase.auth.onAuthStateChange(
+    async (event, session) => {
+      if (!isMounted) return;
+
+      // This will re-fetch profile and set loading to false
+      await fetchAndSetUserAndProfile(session?.user ?? null);
+
+      if (isMounted) { // Check isMounted again before router actions
+        if (event === "SIGNED_IN" && session?.user) {
+          console.log("User signed in via listener.");
+          router.refresh();
+        } else if (event === "SIGNED_OUT") {
+          console.log("User signed out via listener.");
+          router.refresh();
+        }
+      }
+    }
+  );
+
+  // Cleanup function for the useEffect
+  return () => {
+    isMounted = false;
+    authListener?.unsubscribe();
+  };
+
+}, [supabase, router]);
+
+  // Safe access to localStorage on client only (for non-auth critical things or fallbacks)
   useEffect(() => {
-    const storedPro = localStorage.getItem("charlie_chat_pro") === "true";
-    const storedCount = Number(localStorage.getItem("questionCount") || 0);
+    // Only set from localStorage if NOT logged in or if these are supplementary
+    if (!isLoggedIn) {
+      const storedPro = localStorage.getItem("charlie_chat_pro") === "true";
+      const storedCount = Number(localStorage.getItem("questionCount") || 0);
+      setIsPro(storedPro); // This might be overridden if logged in and fetching from DB
+      setCount(isNaN(storedCount) ? 0 : storedCount);
+    }
     const savedThreadId = localStorage.getItem("threadId");
-  
-    setIsPro(storedPro);
-    setCount(isNaN(storedCount) ? 0 : storedCount);
-  
     if (savedThreadId) {
       setThreadId(savedThreadId);
     }
-  }, []);
+  }, [isLoggedIn]); // Re-run if login status changes
 
   useEffect(() => {
     if (bottomRef.current) {
@@ -108,22 +215,28 @@ ${rows.join("\n\n")}
   }, [messages]);
 
   const sendMessage = async (message: string) => {
-    
     if (!message.trim()) return;
-    let count = Number(localStorage.getItem("questionCount"));
-
-    if (isNaN(count)) {
-      count = 0;
-      localStorage.setItem("questionCount", "0");
+    
+    // The 'count' and 'isPro' are now potentially managed by Supabase user data for logged-in users
+    // For guests, it still uses localStorage or default values
+    let currentMessageCount = count;
+    if (!isLoggedIn) {
+        let guestCount = Number(localStorage.getItem("questionCount") || 0);
+        if (isNaN(guestCount)) guestCount = 0;
+        currentMessageCount = guestCount;
     }
 
-    if (!isLoggedIn && !isPro && count >= 3) {
+    if (!isLoggedIn && !isPro && currentMessageCount >= 3) {
       setShowModal(true);
       return;
     }
 
-    localStorage.setItem("questionCount", String(count + 1));
-    setCount((prev) => prev + 1);
+    if (!isLoggedIn) {
+        localStorage.setItem("questionCount", String(currentMessageCount + 1));
+    }
+    // If logged in, token decrementing should happen server-side or via a call to update Supabase DB
+
+    setCount((prev) => prev + 1); // This now reflects either guest count or DB-driven count
 
     setMessages((prev) => [...prev, { role: "user", content: message }, { role: "assistant", content: "" }]);
     setInput("");
@@ -135,35 +248,33 @@ ${rows.join("\n\n")}
     });
 
     const resClone = res.clone();
-let resJson: any = {};
+    let resJson: any = {};
 
-try {
-  const contentType = resClone.headers.get("Content-Type") || "";
-  if (contentType.includes("application/json")) {
-    resJson = await resClone.json();
+    try {
+      const contentType = resClone.headers.get("Content-Type") || "";
+      if (contentType.includes("application/json")) {
+        resJson = await resClone.json();
 
-    if (resJson.autoSwitched && resJson.threadId) {
-      console.warn("⚠️ Backend forked to new thread due to stuck run:", resJson.threadId);
-      setThreadId(resJson.threadId);
-      localStorage.setItem("threadId", resJson.threadId);
+        if (resJson.autoSwitched && resJson.threadId) {
+          console.warn("⚠️ Backend forked to new thread due to stuck run:", resJson.threadId);
+          setThreadId(resJson.threadId);
+          localStorage.setItem("threadId", resJson.threadId);
 
-      const titles = JSON.parse(localStorage.getItem("chatTitles") || "{}");
-      titles[resJson.threadId] = message.slice(0, 50);
-      localStorage.setItem("chatTitles", JSON.stringify(titles));
+          const titles = JSON.parse(localStorage.getItem("chatTitles") || "{}");
+          titles[resJson.threadId] = message.slice(0, 50);
+          localStorage.setItem("chatTitles", JSON.stringify(titles));
+        }
+      }
+    } catch (e) {
+      // all good — fallback to stream
     }
-  }
-} catch (e) {
-  // all good — fallback to stream
-}
     
-    // Only save title on first message of a thread
-    // Save title if this is the first message of a new thread
     if (messages.length === 0 && message.trim().length > 0) {
       const newThreadId = res.headers.get("x-thread-id");
     
       if (newThreadId && newThreadId.startsWith("thread_")) {
         const titles = JSON.parse(localStorage.getItem("chatTitles") || "{}");
-        titles[newThreadId] = message.slice(0, 50); // Save first message as title
+        titles[newThreadId] = message.slice(0, 50); 
         localStorage.setItem("chatTitles", JSON.stringify(titles));
         setThreadId(newThreadId);
         localStorage.setItem("threadId", newThreadId);
@@ -173,8 +284,7 @@ try {
     const decoder = new TextDecoder("utf-8");
     
     if (reader) {
-      let buffer = "";
-      let fullText = ""; // ✅ Move it up here
+      let fullText = ""; 
     
       while (true) {
         const { value, done } = await reader.read();
@@ -185,7 +295,7 @@ try {
     
         for (const line of lines) {
           const json = line.replace("data: ", "").trim();
-          if (json === "[DONE]") return;
+          if (json === "[DONE]") return; // Stream finished
     
           try {
             const parsed = JSON.parse(json);
@@ -197,13 +307,17 @@ try {
                   const delta = block.text.value;
     
                   fullText += delta;
-                  setMessages((prev) => [
-                    ...prev.slice(0, -1),
-                    { role: "assistant", content: fullText },
-                  ]);
+                  setMessages((prev) => {
+                    const newMessages = [...prev];
+                    if (newMessages.length > 0 && newMessages[newMessages.length - 1].role === 'assistant') {
+                        newMessages[newMessages.length - 1].content = fullText;
+                        return newMessages;
+                    }
+                    // Should not happen if we added an empty assistant message first
+                    return [...newMessages, { role: "assistant", content: fullText }];
+                  });
                 }
               }
-            } else {
             }
           } catch (err) {
             console.warn("❌ Failed to parse line:", json, err);
@@ -229,9 +343,32 @@ try {
     window.location.href = data.url;
   };
 
+  // Step 6: Conceptual Sign Out (you'd call this from your header/button)
+  const handleSignOut = async () => {
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+      console.error('Error signing out:', error);
+    } else {
+      // onAuthStateChange will handle setting currentUser to null
+      // and router.refresh() if configured.
+      // You might want to redirect explicitly if needed:
+      // router.push('/login');
+    }
+  };
+  
+  if (isLoadingAuth) {
+    return (
+        <div className="flex h-screen w-full items-center justify-center">
+            <p>Loading chat...</p> {/* Or a proper spinner component */}
+        </div>
+    );
+  }
+
   return (
     <>
       {/* Main layout container */}
+      {/* Your Header component would go here, passing isLoggedIn and handleSignOut */}
+      {/* Example: <Header isLoggedIn={isLoggedIn} onSignOut={handleSignOut} /> */}
       <div className="flex h-screen overflow-hidden bg-white text-black">
          {/* Sidebar */}
          <Sidebar
@@ -254,8 +391,9 @@ try {
           selectedListings={selectedListings}
           toggleListingSelect={toggleListingSelect}
           onSendToGPT={onSendToGPT}
-          isLoggedIn={isLoggedIn}
+          isLoggedIn={isLoggedIn} // Now uses Supabase auth state
           triggerAuthModal={() => setShowModal(true)}
+          onCreditsUpdate={handleCreditsUpdated}
         />
 
         {/* Left: Chat UI */}
@@ -277,45 +415,33 @@ try {
             {messages.map((m, i) => {
             const isUser = m.role === "user";
             const cleanContent = m.content
-              // remove full-width citations like  
               .replace(/\s?【\d+:\d+†[^】]+】\s?/g, "")
-              // remove bracketed OpenAI citations like [8:5^source]
               .replace(/\s?\[\d+:\d+\^source\]\s?/g, "")
-              // remove markdown-style footnotes like [1] or [^1]
               .replace(/\s?\[\^?\d+\]\s?/g, "")
-              // remove trailing space before punctuation
               .replace(/ +(?=\.|,|!|\?)/g, "")
-              // squash extra newlines
-              .replace(/\n/g, '\n\n')  // squash double newlines to one (optional)
+              .replace(/\n/g, '\n\n') 
               .trim();
-
-            //console.log("🪵 Cleaned content:\n", JSON.stringify(cleanContent)); // ✅ put this here
             
             return (
               <div
                 key={i}
-                className={`flex ${isUser ? "justify-end" : "justify-start"}`} // Ensures bubble aligns left/right
+                className={`flex ${isUser ? "justify-end" : "justify-start"}`}
               >
                 <div
-                  // Added a subtle shadow to bubbles like Gemini often has.
-                  // Increased max-width slightly for messages, but max-w-4xl on parent is good.
                   className={`inline-block max-w-[85%] sm:max-w-[75%] px-4 py-3 rounded-xl shadow-sm ${ 
                     isUser
-                      ? "bg-sky-100 text-sky-900 rounded-br-none" // User bubble specific rounding
-                      : "bg-gray-100 text-gray-800 rounded-bl-none" // Assistant bubble specific rounding
+                      ? "bg-sky-100 text-sky-900 rounded-br-none" 
+                      : "bg-gray-100 text-gray-800 rounded-bl-none" 
                   }`}
                 >
-                  {/* Apply text size and line height to ReactMarkdown content */}
                   <div className="text-base leading-relaxed font-sans"> 
                     <ReactMarkdown
                       components={{
                         p: ({ node, ...props }) => (
-                          // whitespace-pre-line handles newlines in content
-                          // mb-2 adds space between paragraphs within a single bubble
                           <p className="mb-2 last:mb-0 whitespace-pre-line" {...props} />
                         ),
                         strong: ({ node, ...props }) => (
-                          <strong className="font-semibold" {...props} /> // Removed text-black to inherit bubble color
+                          <strong className="font-semibold" {...props} />
                         ),
                         ul: ({ node, ...props }) => (
                           <ul className="list-disc pl-5 my-2" {...props} />
@@ -323,7 +449,6 @@ try {
                         li: ({ node, ...props }) => (
                           <li className="mb-1" {...props} />
                         ),
-                        // You can add more components like a, code, blockquote if your markdown uses them
                       }}
                     >
                       {cleanContent}
@@ -335,28 +460,35 @@ try {
           })}
           <div ref={bottomRef} />
 
-          {/* Input box pinned to bottom */}
           <div className="w-full max-w-5xl border-t p-4 bg-white sticky bottom-0 z-10">
-          {/* ... (input box structure remains mostly the same, text-lg is good for input) ... */}
            <div className="flex items-center border border-gray-300 rounded-lg shadow-sm p-2 focus-within:ring-2 focus-within:ring-black">
               <button
                 id="upload-docs"
                 type="button"
-                onClick={() => setShowProModal(true)}
+                onClick={() => {
+                    if (!isLoggedIn) {
+                        setShowModal(true); // Show login/upgrade modal if not logged in
+                    } else if (!isPro) { // If logged in but not Pro
+                        setShowProModal(true); // Show Pro upgrade modal
+                    } else {
+                        // TODO: Implement file upload logic for Pro users
+                        alert("File upload for Pro users coming soon!");
+                    }
+                }}
                 className="p-2 hover:bg-gray-100 rounded transition"
-                title="Upload or upgrade"
+                title={isPro ? "Upload documents (Pro)" : "Upgrade to Pro to upload"}
               >
                 <Plus className="w-5 h-5 text-gray-600" />
               </button>
               <input
                 id="chat-input"
-                className="flex-1 px-3 py-2 text-base sm:text-lg focus:outline-none placeholder-gray-500" // text-base for consistency, sm:text-lg on larger
-                placeholder="Ask me anything..." // Shorter placeholder
+                className="flex-1 px-3 py-2 text-base sm:text-lg focus:outline-none placeholder-gray-500"
+                placeholder="Ask me anything..."
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={(e) => {
-                  if (e.key === "Enter" && !e.shiftKey) { // Send on Enter, allow Shift+Enter for newline
-                    e.preventDefault(); // Prevents newline in input on Enter
+                  if (e.key === "Enter" && !e.shiftKey) { 
+                    e.preventDefault(); 
                     sendMessage(input);
                   }
                 }}
@@ -364,7 +496,7 @@ try {
               <button
                 type="button"
                 onClick={() => sendMessage(input)}
-                disabled={!input.trim()} // Disable if input is empty
+                disabled={!input.trim()} 
                 className="p-2 hover:bg-gray-100 rounded transition disabled:opacity-50"
                 title="Send"
               >
@@ -373,7 +505,6 @@ try {
             </div>
         </div>
   
-          {/* Examples (only if no messages yet) */}
           {messages.length === 0 && (
               <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-3xl w-full mx-auto">
               {EXAMPLES.map((ex, i) => (
@@ -391,19 +522,17 @@ try {
         </div>
       </div>
   
-      {/* 🚨 MODAL 🚨 */}
       <Dialog open={showModal} onClose={() => setShowModal(false)} className="relative z-50">
         <div className="fixed inset-0 bg-black/40" aria-hidden="true" />
         <div className="fixed inset-0 flex items-center justify-center p-4">
           <Dialog.Panel className="w-full max-w-md rounded bg-white p-6 text-center space-y-4 shadow-xl">
             <Dialog.Title className="text-lg font-semibold">
-              You've hit your free limit
+              You've hit your free limit or need to sign in
             </Dialog.Title>
             <Dialog.Description className="text-sm text-gray-500">
-              Sign in or upgrade to keep chatting with Charlie Chat, your multifamily expert advisor
+              Sign in to continue chatting or upgrade for unlimited access.
             </Dialog.Description>
 
-            {/* 🔒 Unlock Button */}
             <button
               onClick={async () => {
                 try {
@@ -424,10 +553,9 @@ try {
               Unlock Unlimited Access 💳
             </button>
             
-            {/* 🔐 Sign In Button */}
             <button
               onClick={() => {
-                window.location.href = "/login"; // or use router.push("/login") if using next/router
+                router.push("/login"); // Use Next.js router for client-side navigation
               }}
               className="w-full border border-gray-300 text-gray-700 px-4 py-2 rounded hover:bg-gray-100 transition"
             >
@@ -459,10 +587,15 @@ try {
         </div>
       </Dialog>
 
-      
+
+      {isLoggedIn && userCredits !== null && (
+        <div 
+          className="fixed bottom-4 right-4 z-50 bg-orange-500 bg-opacity-75 text-white font-bold p-3 rounded-lg shadow-lg"
+          title={`You have ${userCredits} credits remaining.`}
+        >
+          Credits: {userCredits}
+        </div>
+      )}
     </>
   );
-  
-
-
 }
