@@ -1,8 +1,11 @@
-"use client"; // This will be a client component due to useState and event handlers
+"use client";
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react'; // Added useEffect
 import { Document, Packer, Paragraph, TextRun, AlignmentType, PageBreak } from 'docx';
-import { saveAs } from 'file-saver'; // Helper to trigger download
+import { saveAs } from 'file-saver';
+import { createSupabaseBrowserClient } from '@/lib/supabase/client'; // Ensure this path is correct
+import type { User } from '@supabase/supabase-js';
+import { useRouter } from 'next/navigation'; // For potential redirection
 
 // Define an interface for your form data
 interface LOIFormData {
@@ -63,6 +66,12 @@ export default function TemplatesPage() {
     ownerZip: '',
   });
 
+  const supabase = createSupabaseBrowserClient();
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [isLoadingAuth, setIsLoadingAuth] = useState(true);
+  const router = useRouter();
+  const isLoggedIn = !!currentUser;
+
   const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
@@ -85,6 +94,57 @@ export default function TemplatesPage() {
     }
   };
 
+  useEffect(() => {
+    setIsLoadingAuth(true); // Set loading true when the effect runs
+    let isMounted = true;
+  
+    const setAuthDataAndLoading = (user: User | null, loadingState: boolean) => {
+      if (isMounted) {
+        setCurrentUser(user);
+        setIsLoadingAuth(loadingState);
+      }
+    };
+  
+    // Check initial session
+    supabase.auth.getSession()
+      .then(({ data: { session } }) => {
+        if (isMounted) {
+          // This is the primary path for determining initial auth state and turning off loading
+          setAuthDataAndLoading(session?.user ?? null, false);
+        }
+      })
+      .catch(error => {
+        console.error("Error getting initial session for TemplatesPage:", error);
+        if (isMounted) {
+          setAuthDataAndLoading(null, false); // Turn off loading even on error
+        }
+      });
+  
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (_event, session) => {
+        if (isMounted) {
+          setCurrentUser(session?.user ?? null);
+          // isLoadingAuth should already be false from getSession() by the time most events fire.
+          // If INITIAL_SESSION fires and getSession() was slow or errored,
+          // this ensures loading is set to false.
+          if (_event === 'INITIAL_SESSION') {
+              setIsLoadingAuth(false);
+          }
+        }
+      }
+    );
+  
+    return () => {
+      isMounted = false;
+      subscription?.unsubscribe();
+    };
+  // ONLY include dependencies that, if they change, require the effect to be re-run
+  // In this case, `supabase` (the client instance) is the main external dependency.
+  // `router` was previously there; if it's used inside the effect (e.g. for redirects), keep it. If not, it can be removed.
+  // For this specific auth effect, just `supabase` is typically sufficient.
+  }, [supabase]); // REMOVED isLoadingAuth from here
+
   const formatPhoneJS = (value: string): string => {
     const digits = value.replace(/\D/g, '');
     if (digits.length === 10) {
@@ -97,6 +157,12 @@ export default function TemplatesPage() {
   const generateAndDownloadLOI = async () => {
     // ... (keep your existing generateAndDownloadLOI function content) ...
     // This function's logic doesn't need to change for the layout update.
+
+    if (!isLoggedIn) {
+        alert("Authentication error. Please ensure you are signed in.");
+        return;
+      }
+
     const data = {
       ...formData,
       yourPhoneFormatted: formatPhoneJS(formData.yourPhone),
@@ -235,13 +301,32 @@ export default function TemplatesPage() {
     }).catch(err => { console.error('Error creating document: ', err); });
   };
 
+  const handleFormSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (isLoadingAuth) {
+      alert("Please wait, checking authentication status...");
+      return;
+    }
+
+    if (!isLoggedIn) {
+      alert("You must be signed in to generate an LOI. Please log in or sign up.");
+      // Optional: Redirect to login page
+      // router.push('/login?redirect=/templates'); // Replace /templates with the actual path to this page if needed
+      return;
+    }
+
+    // If logged in, proceed to generate
+    await generateAndDownloadLOI();
+  };
+
 
   return (
     <div className="container mx-auto p-6 bg-gray-50 min-h-screen">
       <h1 className="text-3xl font-bold text-gray-800 mb-8 text-center">Generate Letter of Intent (LOI)</h1>
-      <form onSubmit={(e) => { e.preventDefault(); generateAndDownloadLOI(); }} className="space-y-8 bg-white p-8 rounded-lg shadow-lg max-w-4xl mx-auto">
+      <form onSubmit={handleFormSubmit} className="space-y-8 bg-white p-8 rounded-lg shadow-lg max-w-4xl mx-auto">
 
-        {/* Your Info Section */}
+        {/* Your Info Section (remains the same) */}
         <section>
           <h2 className="text-xl font-semibold text-gray-700 mb-4 border-b pb-2">Your Information</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -253,11 +338,11 @@ export default function TemplatesPage() {
           </div>
         </section>
 
-        {/* Property & Offer Info Section */}
+        {/* Property & Offer Info Section (remains the same) */}
         <section>
           <h2 className="text-xl font-semibold text-gray-700 mb-4 border-b pb-2">Property & Offer Information</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="md:col-span-2"> {/* Property Address spans full width */}
+            <div className="md:col-span-2">
               <FormField label="Property Address" name="propertyAddress" value={formData.propertyAddress} onChange={handleChange} />
             </div>
             <FormField label="Purchase Price ($)" name="purchasePrice" value={formData.purchasePrice} onChange={handleChange} />
@@ -265,7 +350,7 @@ export default function TemplatesPage() {
           </div>
         </section>
 
-        {/* Owner Info Section */}
+        {/* Owner Info Section (remains the same) */}
         <section>
           <h2 className="text-xl font-semibold text-gray-700 mb-4 border-b pb-2">Owner Information</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -280,9 +365,12 @@ export default function TemplatesPage() {
 
         <button
           type="submit"
-          className="w-full md:w-auto mt-6 bg-orange-500 text-white py-3 px-6 rounded-lg font-semibold text-lg transition duration-200 transform hover:scale-105 hover:bg-orange-600 hover:shadow-xl focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 focus:ring-offset-gray-50"
+          disabled={isLoadingAuth || !isLoggedIn} // Disable button based on auth state
+          className={`w-full md:w-auto mt-6 text-white py-3 px-6 rounded-lg font-semibold text-lg transition duration-200 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 focus:ring-offset-gray-50 ${
+            (isLoadingAuth || !isLoggedIn) ? 'bg-gray-400 cursor-not-allowed' : 'bg-orange-500 hover:bg-orange-600 hover:shadow-xl'
+          }`}
         >
-          Generate and Download LOI
+          {isLoadingAuth ? "Verifying Access..." : (isLoggedIn ? "Generate and Download LOI" : "Sign In to Generate LOI")}
         </button>
       </form>
     </div>
