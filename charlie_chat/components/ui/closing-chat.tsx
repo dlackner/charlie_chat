@@ -81,27 +81,70 @@ export function ClosingChat() {
   };
 
   const onSendToGPT = () => {
-    const rows = selectedListings.map((l, i) => {
-      const address = l.address?.address || "Unknown Address";
-      const metadata = JSON.stringify(l, null, 2);
+    // Define the list of fields you want to send for each property
+    const fieldsToSend = [
+      "absenteeOwner", "address", "adjustableRate", "assessedValue", "assumable",
+      "corporateOwned", "estimatedEquity", "estimatedValue", "floodZone", "floodZoneDescription",
+      "forSale", "inStateAbsenteeOwner", "lastSaleAmount", "lastSaleArmsLength", "lastSaleDate",
+      "lenderName", "listingAmount", "lotSquareFeet", "maturityDateFirst", "mlsActive",
+      "mlsLastSaleDate", "openMortgageBalance", "outOfStateAbsenteeOwner", "owner1FirstName",
+      "owner1LastName", "propertyId", "stories", "unitsCount", "yearBuilt", "yearsOwned"
+    ];
 
-      return `**${i + 1}. ${address}**
+    const rows = selectedListings.map((listing: Listing, index: number) => {
+      const mainDisplayAddress = listing.address?.address || "Unknown Address";
+      let propertyDetails = "";
 
-`;
+      for (const field of fieldsToSend) {
+        if (listing.hasOwnProperty(field)) {
+          let value = listing[field as keyof Listing]; // Type assertion
+
+          // Skip if value is null or undefined to keep the prompt clean
+          if (value === null || value === undefined) {
+            continue;
+          }
+
+          // Special formatting for specific fields or types
+          if (field === "address" && typeof value === 'object' && value !== null) {
+            // If 'address' field itself is an object (like your Listing.address type)
+            // We'll format it nicely.
+            const addrObj = value as Listing['address']; // Type assertion for address object
+            let formattedAddress = addrObj.address || "";
+            if (addrObj.city) formattedAddress += `, ${addrObj.city}`;
+            if (addrObj.state) formattedAddress += `, ${addrObj.state}`;
+            if (addrObj.zip) formattedAddress += ` ${addrObj.zip}`;
+            value = formattedAddress.trim() || "N/A";
+          } else if (typeof value === 'boolean') {
+            value = value ? "Yes" : "No";
+          } else if (typeof value === 'object' && value !== null) {
+            // For any other unexpected objects, stringify them, or skip/handle as needed
+            value = JSON.stringify(value);
+          } else if (value === "") { // Skip empty strings
+            continue;
+          }
+
+
+          // Use a more descriptive label if needed, e.g., "Year Built" instead of "yearBuilt"
+          // For now, we'll use the field name as is, but you could map them to nicer names.
+          const fieldLabel = field.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase()); // Add spaces and capitalize
+
+          propertyDetails += `${fieldLabel}: ${value}\n`;
+        }
+      }
+
+      if (propertyDetails.trim() === "") {
+        propertyDetails = "No additional specified details available for this property.\n";
+      }
+
+      return `**${index + 1}. ${mainDisplayAddress}**\n${propertyDetails.trim()}`;
     });
 
-    const summaryPrompt = `Give me a market summary and an underwriting strategy for each property
+    const summaryPrompt = `Give me a market summary and an underwriting strategy for each property. For each property, consider the following details if available:\n\n---\n${rows.join("\n\n---\n")}\n---`;
 
-
----
-${rows.join("\n\n")}
----
-
-`;
-
-    sendMessage(summaryPrompt);
-    setSelectedListings([]);
+    sendMessage(summaryPrompt); // Assuming sendMessage is defined elsewhere and sends to OpenAI
+    setSelectedListings([]); // Clear selections after sending
   };
+
   const bottomRef = useRef<HTMLDivElement | null>(null);
 
   // Step 5: useEffect to manage Supabase auth state
