@@ -399,13 +399,13 @@ export function ClosingChat() {
     }
   };
   
-  if (isLoadingAuth) {
-    return (
-        <div className="flex h-screen w-full items-center justify-center">
-            <p>Loading chat...</p> {/* Or a proper spinner component */}
-        </div>
-    );
-  }
+  //if (isLoadingAuth) {
+  //  return (
+  //      <div className="flex h-screen w-full items-center justify-center">
+  //          <p>Loading chat...</p> {/* Or a proper spinner component */}
+  //      </div>
+  //  );
+  //}
 
   return (
     <>
