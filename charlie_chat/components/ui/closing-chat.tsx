@@ -77,7 +77,6 @@ export function ClosingChat() {
   };
 
   const onSendToGPT = () => {
-    // Define the list of fields you want to send for each property
     const fieldsToSend = [
       "absenteeOwner", "address", "adjustableRate", "assessedValue", "assumable",
       "corporateOwned", "estimatedEquity", "estimatedValue", "floodZone", "floodZoneDescription",
@@ -99,7 +98,6 @@ export function ClosingChat() {
             continue;
           }
 
-          // Special formatting for specific fields or types
           if (field === "address" && typeof value === 'object' && value !== null) {
             const addrObj = value as Listing['address'];
             let formattedAddress = addrObj.address || "";
@@ -110,14 +108,13 @@ export function ClosingChat() {
           } else if (typeof value === 'boolean') {
             value = value ? "Yes" : "No";
           } else if (typeof value === 'object' && value !== null) {
-            // For any other unexpected objects, stringify them, or skip/handle as needed
             value = JSON.stringify(value);
           } else if (value === "") { // Skip empty strings
             continue;
           }
 
 
-          const fieldLabel = field.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase()); // Add spaces and capitalize
+          const fieldLabel = field.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
 
           propertyDetails += `${fieldLabel}: ${value}\n`;
         }
@@ -142,7 +139,7 @@ export function ClosingChat() {
     let isMounted = true;
 
     const fetchUserCredits = async (userToFetchFor: User) => {
-      if (!supabase) { // Should always have supabase from context if AuthProvider is set up
+      if (!supabase) {
         console.error("[ClosingChat CreditsEffect] Supabase client not available.");
         if (isMounted) setUserCredits(null);
         return;
@@ -264,7 +261,6 @@ export function ClosingChat() {
         }
       }
     } catch (e) {
-      // all good — fallback to stream
     }
     
     if (messages.length === 0 && message.trim().length > 0) {
@@ -293,7 +289,7 @@ export function ClosingChat() {
     
         for (const line of lines) {
           const json = line.replace("data: ", "").trim();
-          if (json === "[DONE]") return; // Stream finished
+          if (json === "[DONE]") return;
     
           try {
             const parsed = JSON.parse(json);
@@ -311,7 +307,6 @@ export function ClosingChat() {
                         newMessages[newMessages.length - 1].content = fullText;
                         return newMessages;
                     }
-                    // Should not happen if we added an empty assistant message first
                     return [...newMessages, { role: "assistant", content: fullText }];
                   });
                 }
@@ -353,8 +348,6 @@ export function ClosingChat() {
   return (
     <>
       {/* Main layout container */}
-      {/* Your Header component would go here, passing isLoggedIn and handleSignOut */}
-      {/* Example: <Header isLoggedIn={isLoggedIn} onSignOut={handleSignOut} /> */}
       <div className="flex h-screen overflow-hidden bg-white text-black">
          {/* Sidebar */}
          <Sidebar
@@ -377,7 +370,7 @@ export function ClosingChat() {
           selectedListings={selectedListings}
           toggleListingSelect={toggleListingSelect}
           onSendToGPT={onSendToGPT}
-          isLoggedIn={isLoggedIn} // Now uses Supabase auth state
+          isLoggedIn={isLoggedIn}
           triggerAuthModal={() => setShowModal(true)}
           onCreditsUpdate={handleCreditsUpdated}
         />
@@ -453,9 +446,9 @@ export function ClosingChat() {
                 type="button"
                 onClick={() => {
                     if (!isLoggedIn) {
-                        setShowModal(true); // Show login/upgrade modal if not logged in
-                    } else if (!isPro) { // If logged in but not Pro
-                        setShowProModal(true); // Show Pro upgrade modal
+                        setShowModal(true);
+                    } else if (!isPro) {
+                        setShowProModal(true);
                     } else {
                         // TODO: Implement file upload logic for Pro users
                         alert("File upload for Pro users coming soon!");
@@ -513,7 +506,7 @@ export function ClosingChat() {
         <div className="fixed inset-0 flex items-center justify-center p-4">
           <Dialog.Panel className="w-full max-w-md rounded bg-white p-6 text-center space-y-4 shadow-xl">
             <Dialog.Title className="text-lg font-semibold">
-              You've hit your free limit or need to sign in
+              You've hit your limit or need to sign in
             </Dialog.Title>
             <Dialog.Description className="text-sm text-gray-500">
               Sign in to continue chatting or upgrade for unlimited access.
@@ -541,7 +534,7 @@ export function ClosingChat() {
             
             <button
               onClick={() => {
-                router.push("/login"); // Use Next.js router for client-side navigation
+                router.push("/login");
               }}
               className="w-full border border-gray-300 text-gray-700 px-4 py-2 rounded hover:bg-gray-100 transition"
             >

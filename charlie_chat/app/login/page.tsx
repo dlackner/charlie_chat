@@ -2,22 +2,14 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-// Step 1: Import createBrowserClient (or your utility function)
-// If using the utility file:
-// import { createSupabaseBrowserClient } from '@/lib/supabase/client';
-// For direct use in this example:
 import { createBrowserClient } from '@supabase/ssr';
 
 export default function LoginPage() {
-  const [email, setEmail] = useState(""); // Default for testing, remove for production
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState<string | null>(null); // Use string | null for error
+  const [error, setError] = useState<string | null>(null);
   const router = useRouter();
 
-  // Step 2: Initialize the Supabase client
-  // If using the utility file:
-  // const supabase = createSupabaseBrowserClient();
-  // For direct use:
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
@@ -25,23 +17,18 @@ export default function LoginPage() {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError(null); // Reset error before new attempt
+    setError(null);
 
-    // Step 3: Use Supabase's signInWithPassword
     const { error: signInError } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
 
     if (signInError) {
-      setError(signInError.message); // Display Supabase error message
+      setError(signInError.message);
     } else {
-      // Successful login
-      // Supabase handles session cookies automatically via @supabase/ssr middleware (see Step 7)
-      // You might want to refresh the page or navigate to ensure the session is recognized server-side if needed
-      // or rely on Supabase's onAuthStateChange for real-time updates.
-      router.push("/"); // Redirect to home after login
-      router.refresh(); // Good practice to refresh server components after auth change
+      router.push("/");
+      router.refresh();
     }
   };
 
@@ -80,7 +67,6 @@ export default function LoginPage() {
             Sign In
           </button>
         </form>
-        {/* Optional: Add a link to a sign-up page */}
         <p className="mt-4 text-center text-sm text-gray-600">
           Don't have an account?{' '}
           <a href="/signup" className="font-medium text-blue-600 hover:text-blue-500">

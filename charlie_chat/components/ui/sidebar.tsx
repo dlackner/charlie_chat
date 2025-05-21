@@ -3,11 +3,10 @@
 import { useEffect, useRef, useState } from "react";
 import jsPDF from "jspdf";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-// import { useSession } from "next-auth/react"; // REMOVED - Using Supabase auth state via prop
 import { Range, getTrackBackground } from "react-range";
 import { Document, Packer, Paragraph, TextRun, ISpacingProperties, LineRuleType } from 'docx';
 import { saveAs } from 'file-saver';
-import { createBrowserClient } from '@supabase/ssr'; // ADDED - For Supabase client
+import { createBrowserClient } from '@supabase/ssr';
 
 type Listing = {
   id: string;
@@ -110,13 +109,11 @@ export const Sidebar = ({
   const panelRef = useRef<HTMLDivElement>(null);
   const advancedFiltersToggleRef = useRef<HTMLButtonElement>(null);
 
-  // ADDED - Supabase client initialization
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   );
 
-  // ADDED - State for search processing and credit errors
   const [isSearching, setIsSearching] = useState(false);
   const [creditsError, setCreditsError] = useState<string | null>(null);
 
@@ -238,10 +235,7 @@ export const Sidebar = ({
     () => setShowAdvanced(false)
   );
 
-  // --- downloadLetter and downloadProfile functions remain unchanged ---
-  // (Assuming they don't need auth or credit checks for the download action itself)
   const downloadLetter = async (listing: Listing) => {
-    // ... (your existing downloadLetter logic)
     const yourDataPlaceholders = {
       name: "[Your Name]",
       address: "[Your Address]",
@@ -377,7 +371,6 @@ export const Sidebar = ({
     val ? `$${val.toLocaleString()}` : "N/A";
 
   const downloadProfile = (listing: Listing) => {
-    // ... (your existing downloadProfile logic)
     const doc = new jsPDF({ orientation: "landscape" });
     const leftX = 10;
     const rightX = 150;
@@ -385,7 +378,21 @@ export const Sidebar = ({
     doc.addImage("/MFOS.png", "PNG", 10, 8, 50, 10);
     doc.setFont("helvetica", "bold");
     doc.setFontSize(18);
-    doc.text(listing.address?.address || "No Address", doc.internal.pageSize.getWidth() / 2, startY, { align: "center" });
+    const address = listing.address?.address || "No Address";
+    const googleMapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`;
+    const centerX = doc.internal.pageSize.getWidth() / 2;
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(18); 
+    doc.text(address, centerX, startY, { align: "center" });
+    const textWidth = doc.getTextWidth(address);
+    const linkX = centerX + textWidth / 2 + 5;
+    doc.setFontSize(10);
+    doc.setTextColor(0, 0, 238);
+    doc.textWithLink("View Map", linkX, startY, { url: googleMapsUrl });
+    doc.setTextColor(0, 0, 0);
+    doc.setFontSize(18);
+    doc.setFont("helvetica", "normal");
+
     startY = 45;
     const addSection = (title: string, fields: [string, any][], x: number, y: number) => {
       doc.setFont("helvetica", "bold");
@@ -420,7 +427,6 @@ export const Sidebar = ({
     }
   };
 
-  // ADDED - handleSearch function for credit check and search logic
   const handleSearch = async () => {
     if (!userIsLoggedIn) {
       triggerAuthModal();
@@ -434,10 +440,7 @@ export const Sidebar = ({
       const { data: newCreditBalance, error: rpcError } = await supabase.rpc('decrement_search_credits');
 
       if (rpcError) {
-        // Log the raw rpcError object to see its structure in the browser's interactive console
         console.log("Raw rpcError object from Supabase:", rpcError);
-        // console.dir(rpcError); // Often gives a better, inspectable view in the console
-
         let errorMessage = "An unexpected error occurred with the RPC call.";
         let errorCode = null;
 
@@ -596,15 +599,14 @@ export const Sidebar = ({
         </div>
 
         <button
-          onClick={handleSearch} // MODIFIED - Use new handler
+          onClick={handleSearch}
           id="sidebar-search"
-          disabled={isSearching} // ADDED - Disable button during search
+          disabled={isSearching}
           className="w-full bg-orange-500 text-white py-2 px-4 rounded-lg font-semibold transition duration-200 ease-in-out transform hover:scale-105 hover:bg-orange-600 focus:outline-none focus:ring-2 focus:ring-orange-400 focus:ring-opacity-75 hover:shadow-lg active:scale-95 disabled:opacity-75 disabled:cursor-not-allowed" // Added disabled styles
         >
-          {isSearching ? "Processing..." : "Search"} {/* MODIFIED - Button text */}
+          {isSearching ? "Processing..." : "Search"}
         </button>
 
-        {/* ADDED - Display credit error messages */}
         {creditsError && (
           <p className="text-red-600 text-xs mt-1 text-center">{creditsError}</p>
         )}

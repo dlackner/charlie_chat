@@ -4,7 +4,6 @@ import { useEffect } from "react";
 
 export default function SuccessPage() {
   useEffect(() => {
-    // 🎉 Reset question limit and mark user as PRO
     localStorage.setItem("questionCount", "0");
     localStorage.setItem("charlie_chat_pro", "true");
   }, []);

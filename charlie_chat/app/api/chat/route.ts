@@ -77,7 +77,6 @@ export async function POST(req: Request) {
                     latestRun = await openai.beta.threads.runs.retrieve(threadId!, latestRun.id);
                 } catch (retrieveError: any) {
                     console.error(`Error retrieving run ${latestRun.id} during polling:`, retrieveError);
-                    // If retrieve fails (e.g., 404 if it got deleted/expired quickly after cancel), assume it's no longer active.
                     runIsStillActive = false; 
                     break;
                 }
@@ -127,12 +126,12 @@ export async function POST(req: Request) {
       async start(controller) {
         const encoder = new TextEncoder();
     
-        console.log("🔥 Starting OpenAI run stream..."); // ✅ this is the key one
+        //console.log("🔥 Starting OpenAI run stream..."); // ✅ this is the key one
     
         controller.enqueue(encoder.encode(`data: ${JSON.stringify({ threadId, messageId: createdMessage.id })}\n\n`));
     
         for await (const chunk of runStream) {
-          console.log("📦 Streaming chunk:", chunk); // ✅ log every chunk
+          //console.log("📦 Streaming chunk:", chunk); // ✅ log every chunk
     
           controller.enqueue(encoder.encode(`data: ${JSON.stringify(chunk)}\n\n`));
         }
@@ -148,11 +147,11 @@ export async function POST(req: Request) {
         "Content-Type": "text/event-stream",
         "Cache-Control": "no-cache",
         "Connection": "keep-alive",
-        "x-thread-id": threadId, // ✅ this line enables thread persistence!
+        "x-thread-id": threadId,
       },
     });
   } catch (err) {
-    console.error("🔥 Assistant error:", err);
+    //console.error("🔥 Assistant error:", err);
     return new Response("Internal Server Error", { status: 500 });
   }
 }

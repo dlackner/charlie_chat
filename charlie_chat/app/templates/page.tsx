@@ -1,12 +1,11 @@
 "use client";
 
-import { useState, useCallback, useEffect } from 'react'; // Added useEffect
+import { useState, useCallback, useEffect } from 'react';
 import { Document, Packer, Paragraph, TextRun, AlignmentType, PageBreak } from 'docx';
 import { saveAs } from 'file-saver';
-import { useRouter } from 'next/navigation'; // For potential redirection
+import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext'; 
 
-// Define an interface for your form data
 interface LOIFormData {
   yourName: string;
   yourAddress: string;
@@ -24,7 +23,6 @@ interface LOIFormData {
   ownerZip: string;
 }
 
-  // Helper component for form fields to reduce repetition
   const FormField = ({ label, name, type = "text", value, onChange, placeholder }: {
     label: string;
     name: keyof LOIFormData;
@@ -74,8 +72,6 @@ export default function TemplatesPage() {
     setFormData(prev => ({ ...prev, [name]: value }));
   }, []);
 
-  // --- JavaScript Helper Functions (formatCurrencyJS, formatPhoneJS) ---
-  // (Keep these as they are)
   const formatCurrencyJS = (value: string): string => {
     try {
       const numberValue = parseFloat(value.replace(/[^0-9.-]+/g,""));
@@ -101,8 +97,6 @@ export default function TemplatesPage() {
 
 
   const generateAndDownloadLOI = async () => {
-    // ... (keep your existing generateAndDownloadLOI function content) ...
-    // This function's logic doesn't need to change for the layout update.
 
     if (!isLoggedIn) {
         alert("Authentication error. Please ensure you are signed in.");
@@ -151,14 +145,11 @@ export default function TemplatesPage() {
         {
           num: "1",
           heading: "Purchase Price",
-          content: `${data.purchasePriceFormatted}` // Using the formatted purchase price from user input
+          content: `${data.purchasePriceFormatted}`
         },
         {
-          num: "2", // Note: Original had "Earnest Money Deposit" here, new content also has it at #4. I'll follow new list.
+          num: "2",
           heading: "Earnest Money Deposit",
-          // Using the formatted earnest money from user input.
-          // The new item #4 below has a fixed $15,000. Decide which one to use or if both are needed.
-          // For now, I'll use the input one for section 2 as per your new content.
           content: `${data.earnestMoneyFormatted}`
         },
         {
@@ -168,7 +159,7 @@ export default function TemplatesPage() {
         },
         {
           num: "4",
-          heading: "Earnest Money Deposit", // This is a second "Earnest Money Deposit" section
+          heading: "Earnest Money Deposit",
           content: `A refundable Earnest Money Deposit in the amount of ${data.earnestMoneyFormatted} will be deposited with the Escrow Agent within five (5) business days.`
         },
         {
@@ -257,12 +248,9 @@ export default function TemplatesPage() {
 
     if (!isLoggedIn) {
       alert("You must be signed in to generate an LOI. Please log in or sign up.");
-      // Optional: Redirect to login page
-      // router.push('/login?redirect=/templates'); // Replace /templates with the actual path to this page if needed
       return;
     }
 
-    // If logged in, proceed to generate
     await generateAndDownloadLOI();
   };
 
@@ -272,7 +260,6 @@ export default function TemplatesPage() {
       <h1 className="text-3xl font-bold text-gray-800 mb-8 text-center">Generate Letter of Intent (LOI)</h1>
       <form onSubmit={handleFormSubmit} className="space-y-8 bg-white p-8 rounded-lg shadow-lg max-w-4xl mx-auto">
 
-        {/* Your Info Section (remains the same) */}
         <section>
           <h2 className="text-xl font-semibold text-gray-700 mb-4 border-b pb-2">Your Information</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -284,7 +271,6 @@ export default function TemplatesPage() {
           </div>
         </section>
 
-        {/* Property & Offer Info Section (remains the same) */}
         <section>
           <h2 className="text-xl font-semibold text-gray-700 mb-4 border-b pb-2">Property & Offer Information</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -296,7 +282,6 @@ export default function TemplatesPage() {
           </div>
         </section>
 
-        {/* Owner Info Section (remains the same) */}
         <section>
           <h2 className="text-xl font-semibold text-gray-700 mb-4 border-b pb-2">Owner Information</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -311,7 +296,7 @@ export default function TemplatesPage() {
 
         <button
           type="submit"
-          disabled={isLoadingAuth || !isLoggedIn} // Disable button based on auth state
+          disabled={isLoadingAuth || !isLoggedIn}
           className={`w-full md:w-auto mt-6 text-white py-3 px-6 rounded-lg font-semibold text-lg transition duration-200 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 focus:ring-offset-gray-50 ${
             (isLoadingAuth || !isLoggedIn) ? 'bg-gray-400 cursor-not-allowed' : 'bg-orange-500 hover:bg-orange-600 hover:shadow-xl'
           }`}

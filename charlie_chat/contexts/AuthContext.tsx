@@ -1,11 +1,9 @@
-// contexts/AuthContext.tsx
 "use client";
 
 import React, { createContext, useContext, useEffect, useState, useMemo } from 'react';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import type { User, SupabaseClient, Session } from '@supabase/supabase-js';
 
-// ... (AuthContextType and AuthContext definitions remain the same)
 type AuthContextType = {
   supabase: SupabaseClient;
   user: User | null;
@@ -20,20 +18,14 @@ export const SupabaseAuthProvider = ({ children }: { children: React.ReactNode }
   const supabase = useMemo(() => createSupabaseBrowserClient(), []);
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
-  const [isLoading, setIsLoading] = useState(true); // Initial state
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     let isMounted = true;
-    console.log("[AuthContext] useEffect RUNNING. Initial isLoading:", isLoading); // Log if effect re-runs
+    console.log("[AuthContext] useEffect RUNNING. Initial isLoading:", isLoading);
 
-    // Set loading to true only if it's not already true (e.g. on initial mount)
-    // This helps if the effect re-runs due to a dependency change but loading is already handled.
-    // However, with [supabase] as the only dep, it should only run once unless supabase instance changes.
-    if (isMounted && !isLoading) { // Check current state before setting
-        // This scenario is less likely with stable supabase dep, but for safety:
-        // setIsLoading(true); 
+    if (isMounted && !isLoading) {
     } else if (isMounted && isLoading) {
-        // It's already true, which is expected on first run.
     }
 
 
@@ -50,7 +42,7 @@ export const SupabaseAuthProvider = ({ children }: { children: React.ReactNode }
           setSession(initialSession ?? null);
         }
       })
-      .catch((err) => { // Catch for the getSession promise itself
+      .catch((err) => {
         if (!isMounted) return;
         console.error("[AuthContext] CATCH block for initial getSession:", err);
         setUser(null);
@@ -59,7 +51,7 @@ export const SupabaseAuthProvider = ({ children }: { children: React.ReactNode }
       .finally(() => {
         if (isMounted) {
           console.log("[AuthContext] Initial getSession flow FINISHED. Setting isLoading to false.");
-          setIsLoading(false); // Crucial: set loading to false after initial check completes
+          setIsLoading(false);
         }
       });
 
@@ -70,8 +62,6 @@ export const SupabaseAuthProvider = ({ children }: { children: React.ReactNode }
         setUser(currentSession?.user ?? null);
         setSession(currentSession ?? null);
         
-        // If an event like SIGNED_IN or INITIAL_SESSION occurs and loading is still somehow true,
-        // ensure it gets set to false. This is a fallback.
         if (isLoading && (event === 'INITIAL_SESSION' || event === 'SIGNED_IN' || event === 'SIGNED_OUT')) {
             console.log(`[AuthContext] onAuthStateChange (${event}) is also setting isLoading to false as a fallback.`);
             setIsLoading(false);
@@ -84,7 +74,7 @@ export const SupabaseAuthProvider = ({ children }: { children: React.ReactNode }
       subscription?.unsubscribe();
       console.log("[AuthContext] Unsubscribed from onAuthStateChange.");
     };
-  }, [supabase]); // supabase instance is stable due to useMemo
+  }, [supabase]);
 
   const contextValue = useMemo(() => ({
     supabase,
@@ -93,7 +83,6 @@ export const SupabaseAuthProvider = ({ children }: { children: React.ReactNode }
     isLoading,
   }), [supabase, user, session, isLoading]);
 
-  // Log the value being provided by the context
   useEffect(() => {
     console.log("[AuthContext] PROVIDING VALUE:", contextValue);
   }, [contextValue]);

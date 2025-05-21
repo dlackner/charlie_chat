@@ -1,4 +1,3 @@
-// /app/api/auth/[...nextauth]/route.ts
 import NextAuth from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 
@@ -11,7 +10,6 @@ const handler = NextAuth({
         password: { label: "Password", type: "password" },
       },
       async authorize(credentials) {
-        // 👉 Replace this with your own user lookup logic
         const hardcodedUser = {
           id: "1",
           email: "test@example.com",

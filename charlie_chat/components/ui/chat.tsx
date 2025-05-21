@@ -9,7 +9,6 @@ export function Chat() {
   const handleSend = async () => {
     if (!input.trim()) return;
 
-    // Add user message immediately
     setMessages((prev) => [...prev, { role: "user", content: input }, { role: "assistant", content: "" }]);
 
     const res = await fetch("/api/chat", {

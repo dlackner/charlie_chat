@@ -2,28 +2,18 @@
 
 import Link from "next/link";
 import Image from "next/image";
-// Remove useState and useEffect if no longer needed for other purposes after this refactor.
-// For now, we'll keep them in case, but the auth-specific ones are gone.
-// import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 
-// Step 1: Import useAuth hook instead of creating a client here
-import { useAuth } from "@/contexts/AuthContext"; // Make sure this path is correct!
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function Header() {
-  // Step 2: Get auth state and Supabase client from the useAuth hook
   const { user: currentUser, isLoading: isLoadingAuth, supabase, session } = useAuth();
   const router = useRouter();
 
-  // Step 3: Derive isLoggedIn from the user object from context
   const isLoggedIn = !!currentUser;
 
-  // Step 4: useEffect for auth management is GONE from this component.
-  // It's now handled in AuthContext.tsx.
-
-  // Step 5: Implement handleSignOut function using supabase instance from context
   const handleSignOut = async () => {
-    if (!supabase) { // Should always exist if context is set up
+    if (!supabase) { 
         console.error("Supabase client not available for sign out.");
         return;
     }
@@ -31,12 +21,7 @@ export default function Header() {
     if (error) {
       console.error("Error signing out:", error);
     } else {
-      // User state will update via onAuthStateChange in AuthContext.
-      // Redirect the user after sign out.
-      router.push("/"); // Or router.push("/login");
-      // router.refresh(); // Optionally call if you need to ensure server components re-fetch
-                           // but be mindful if this was causing loops elsewhere.
-                           // Often, onAuthStateChange updating context is enough for client components.
+      router.push("/");
     }
   };
 
@@ -52,7 +37,7 @@ export default function Header() {
             height={48}
             className="mr-2 cursor-pointer"
             style={{ width: '192px', height: 'auto' }}
-            priority // Added priority as suggested by Next.js for LCP images
+            priority
           />
         </Link>
       </div>
