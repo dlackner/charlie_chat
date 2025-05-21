@@ -352,6 +352,8 @@ export function ClosingChat() {
          {/* Sidebar */}
          <Sidebar
           onSearch={async (filters: Record<string, string | number | boolean>) => {
+            console.log("🚀 Sending API request:", filters); 
+
             try {
               const res = await fetch("/api/rentcast", {
                 method: "POST",
@@ -360,7 +362,7 @@ export function ClosingChat() {
               });
             
               const data = await res.json();
-              console.log("🔍 Raw RentCast data:", data);
+              console.log("🔍 Raw Returned data:", data);
               setListings(data || []);
             } catch (err) {
               console.error("RentCast API error:", err);
