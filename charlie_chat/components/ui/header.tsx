@@ -1,62 +1,42 @@
 "use client";
 
-// Step 1: Remove next-auth imports
-// import { useSession, signIn, signOut } from "next-auth/react";
 import Link from "next/link";
 import Image from "next/image";
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation"; // For navigation after sign out, if needed
+// Remove useState and useEffect if no longer needed for other purposes after this refactor.
+// For now, we'll keep them in case, but the auth-specific ones are gone.
+// import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 
-// Step 2: Import Supabase client and User type
-import { createSupabaseBrowserClient } from '@/lib/supabase/client'; // Adjust path if needed
-import type { User } from '@supabase/supabase-js';
+// Step 1: Import useAuth hook instead of creating a client here
+import { useAuth } from "@/contexts/AuthContext"; // Make sure this path is correct!
 
 export default function Header() {
-  // Step 1: Remove useSession hook
-  // const { data: session } = useSession();
-
-  // Step 3: Initialize Supabase client and state for Supabase user
-  const supabase = createSupabaseBrowserClient();
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [isLoadingAuth, setIsLoadingAuth] = useState(true);
+  // Step 2: Get auth state and Supabase client from the useAuth hook
+  const { user: currentUser, isLoading: isLoadingAuth, supabase, session } = useAuth();
   const router = useRouter();
 
-  // Step 4: Derive isLoggedIn from currentUser
+  // Step 3: Derive isLoggedIn from the user object from context
   const isLoggedIn = !!currentUser;
 
-  // Step 5: useEffect to manage Supabase auth state
-  useEffect(() => {
-    setIsLoadingAuth(true);
-    const { data: { subscription: authListener } } = supabase.auth.onAuthStateChange((event, session) => {
-      setCurrentUser(session?.user ?? null);
-      setIsLoadingAuth(false);
-      // Optional: You might want to refresh parts of your app or redirect on auth changes
-      // if (event === 'SIGNED_OUT') router.push('/');
-      // if (event === 'SIGNED_IN') router.refresh(); // if you have server components depending on auth
-    });
+  // Step 4: useEffect for auth management is GONE from this component.
+  // It's now handled in AuthContext.tsx.
 
-    // Fetch initial session
-    const getInitialSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      setCurrentUser(session?.user ?? null);
-      setIsLoadingAuth(false);
-    };
-    getInitialSession();
-
-    return () => {
-      authListener?.unsubscribe();
-    };
-  }, [supabase]); // supabase can be a dependency if its creation is memoized or stable
-
-  // Step 6: Implement handleSignOut function
+  // Step 5: Implement handleSignOut function using supabase instance from context
   const handleSignOut = async () => {
+    if (!supabase) { // Should always exist if context is set up
+        console.error("Supabase client not available for sign out.");
+        return;
+    }
     const { error } = await supabase.auth.signOut();
     if (error) {
       console.error("Error signing out:", error);
     } else {
-      // setCurrentUser(null) will be handled by onAuthStateChange
-      // Optionally redirect the user after sign out
+      // User state will update via onAuthStateChange in AuthContext.
+      // Redirect the user after sign out.
       router.push("/"); // Or router.push("/login");
+      // router.refresh(); // Optionally call if you need to ensure server components re-fetch
+                           // but be mindful if this was causing loops elsewhere.
+                           // Often, onAuthStateChange updating context is enough for client components.
     }
   };
 
@@ -64,9 +44,16 @@ export default function Header() {
     <header className="w-full px-6 py-4 flex justify-between items-center bg-white border-b border-gray-200 shadow-sm">
       {/* Logo */}
       <div className="flex items-center">
-        <Link href="/"> {/* Make logo clickable, linking to home */}
-            <Image src="/logo.png" alt="Logo" width={192} height={48} // Adjusted height for typical logo aspect
-                   className="mr-2 cursor-pointer" style={{width: '192px', height: 'auto'}}/>
+        <Link href="/">
+          <Image
+            src="/logo.png"
+            alt="Logo"
+            width={192}
+            height={48}
+            className="mr-2 cursor-pointer"
+            style={{ width: '192px', height: 'auto' }}
+            priority // Added priority as suggested by Next.js for LCP images
+          />
         </Link>
       </div>
 
@@ -76,20 +63,29 @@ export default function Header() {
         <Link href="/templates" className="text-gray-800 hover:bg-gray-100 transition rounded-md px-3 py-1 font-medium">Templates</Link>
         <Link href="/pricing" className="text-gray-800 hover:bg-gray-100 transition rounded-md px-3 py-1 font-medium">Pricing</Link>
 
-        {/* Step 7: Update JSX based on isLoggedIn (from Supabase) */}
+        {/* Step 6: JSX uses isLoadingAuth and isLoggedIn from context */}
         {isLoadingAuth ? (
-          // Optional: Show a loading state or a placeholder to prevent flicker
-          <div className="w-24 h-9 bg-gray-200 animate-pulse rounded-lg"></div>
+          <div className="w-24 h-9 bg-gray-200 animate-pulse rounded-lg" aria-label="Loading authentication status"></div>
         ) : isLoggedIn ? (
           <button
-            onClick={handleSignOut} // Use the new sign out handler
-            className="bg-gray-800 text-white text-sm px-4 py-2 rounded-lg hover:bg-gray-700 transition"
+            onClick={handleSignOut}
+            className="bg-black text-white text-sm px-4 py-2 rounded-lg 
+                         hover:brightness-110 hover:scale-105 hover:shadow-lg 
+                         active:scale-95 {/* Kept this for good measure, remove if you dislike the click effect */}
+                         focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-opacity-75 {/* Subtle focus for black button */}
+                         transform transition-all duration-200 ease-in-out"
           >
             Sign out
           </button>
         ) : (
           <Link href="/login">
-            <button className="bg-black text-white text-sm px-4 py-2 rounded-lg hover:brightness-110 transition">
+            <button
+              className="bg-black text-white text-sm px-4 py-2 rounded-lg 
+                         hover:brightness-110 hover:scale-105 hover:shadow-lg 
+                         active:scale-95 {/* Kept this for good measure, remove if you dislike the click effect */}
+                         focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-opacity-75 {/* Subtle focus for black button */}
+                         transform transition-all duration-200 ease-in-out"
+            >
               Sign in
             </button>
           </Link>

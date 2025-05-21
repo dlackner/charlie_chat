@@ -3,9 +3,8 @@
 import { useState, useCallback, useEffect } from 'react'; // Added useEffect
 import { Document, Packer, Paragraph, TextRun, AlignmentType, PageBreak } from 'docx';
 import { saveAs } from 'file-saver';
-import { createSupabaseBrowserClient } from '@/lib/supabase/client'; // Ensure this path is correct
-import type { User } from '@supabase/supabase-js';
 import { useRouter } from 'next/navigation'; // For potential redirection
+import { useAuth } from '@/contexts/AuthContext'; 
 
 // Define an interface for your form data
 interface LOIFormData {
@@ -66,9 +65,7 @@ export default function TemplatesPage() {
     ownerZip: '',
   });
 
-  const supabase = createSupabaseBrowserClient();
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [isLoadingAuth, setIsLoadingAuth] = useState(true);
+  const { user: currentUser, isLoading: isLoadingAuth, supabase } = useAuth();
   const router = useRouter();
   const isLoggedIn = !!currentUser;
 
@@ -93,57 +90,6 @@ export default function TemplatesPage() {
       return value;
     }
   };
-
-  useEffect(() => {
-    setIsLoadingAuth(true); // Set loading true when the effect runs
-    let isMounted = true;
-  
-    const setAuthDataAndLoading = (user: User | null, loadingState: boolean) => {
-      if (isMounted) {
-        setCurrentUser(user);
-        setIsLoadingAuth(loadingState);
-      }
-    };
-  
-    // Check initial session
-    supabase.auth.getSession()
-      .then(({ data: { session } }) => {
-        if (isMounted) {
-          // This is the primary path for determining initial auth state and turning off loading
-          setAuthDataAndLoading(session?.user ?? null, false);
-        }
-      })
-      .catch(error => {
-        console.error("Error getting initial session for TemplatesPage:", error);
-        if (isMounted) {
-          setAuthDataAndLoading(null, false); // Turn off loading even on error
-        }
-      });
-  
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
-        if (isMounted) {
-          setCurrentUser(session?.user ?? null);
-          // isLoadingAuth should already be false from getSession() by the time most events fire.
-          // If INITIAL_SESSION fires and getSession() was slow or errored,
-          // this ensures loading is set to false.
-          if (_event === 'INITIAL_SESSION') {
-              setIsLoadingAuth(false);
-          }
-        }
-      }
-    );
-  
-    return () => {
-      isMounted = false;
-      subscription?.unsubscribe();
-    };
-  // ONLY include dependencies that, if they change, require the effect to be re-run
-  // In this case, `supabase` (the client instance) is the main external dependency.
-  // `router` was previously there; if it's used inside the effect (e.g. for redirects), keep it. If not, it can be removed.
-  // For this specific auth effect, just `supabase` is typically sufficient.
-  }, [supabase]); // REMOVED isLoadingAuth from here
 
   const formatPhoneJS = (value: string): string => {
     const digits = value.replace(/\D/g, '');

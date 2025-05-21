@@ -54,9 +54,9 @@ type Props = {
   selectedListings: Listing[];
   toggleListingSelect: (listing: Listing) => void;
   onSendToGPT: () => void;
-  isLoggedIn: boolean; // This should reflect Supabase auth status from parent
+  isLoggedIn: boolean;
   triggerAuthModal: () => void;
-  onCreditsUpdate?: (newBalance: number) => void; // ADDED - To update parent's credit display
+  onCreditsUpdate?: (newBalance: number) => void;
 };
 
 export const Sidebar = ({
@@ -65,7 +65,7 @@ export const Sidebar = ({
   selectedListings,
   toggleListingSelect,
   onSendToGPT,
-  isLoggedIn: userIsLoggedIn, // Using the destructured prop name
+  isLoggedIn: userIsLoggedIn,
   triggerAuthModal,
   onCreditsUpdate,
 }: Props) => {
@@ -78,6 +78,7 @@ export const Sidebar = ({
   const [radius, setRadius] = useState(5);
 
   const [street, setStreet] = useState("");
+  const [house, setNumber] = useState("");
   const [city, setCity] = useState("");
   const [state, setState] = useState("");
   const [county, setCounty] = useState("");
@@ -105,9 +106,6 @@ export const Sidebar = ({
 
   const [activeListingIndex, setActiveListingIndex] = useState<number | null>(null);
   const activeListing = activeListingIndex !== null ? listings[activeListingIndex] : null;
-
-  // const { data: session } = useSession(); // REMOVED
-  // const isLoggedIn = !!session?.user; // REMOVED - Relying on userIsLoggedIn prop
 
   const panelRef = useRef<HTMLDivElement>(null);
   const advancedFiltersToggleRef = useRef<HTMLButtonElement>(null);
@@ -405,7 +403,8 @@ export const Sidebar = ({
     addSection("SALES & TRANSACTION HISTORY", [["Last Sale Date:", listing.lastSaleDate ?? "N/A"], ["Last Sale Amount:", formatCurrency(listing.lastSaleAmount)], ["Arms-Length Sale:", listing.lastSaleArmsLength ? "Yes" : "No"], ["MLS Active:", listing.mlsActive ? "Yes" : "No"],], rightX, startY);
     addSection("FLOOD ZONE INFORMATION", [["Flood Zone:", listing.floodZone ? "Yes" : "No"], ["Flood Zone Description:", listing.floodZoneDescription ?? "N/A"],], rightX, startY + 35);
     addSection("OWNERSHIP DETAILS", [["Owner Name:", `${listing.owner1FirstName ?? ""} ${listing.owner1LastName ?? ""}`], ["Owner Address:", listing.ownerAddress ?? "N/A"], ["In-State Absentee Owner:", listing.inStateAbsenteeOwner ? "Yes" : "No"], ["Out-of-State Absentee Owner:", listing.outOfStateAbsenteeOwner ? "Yes" : "No"],], rightX, startY + 60);
-    doc.save("property-profile.pdf");
+    const safeAddress = (listing.address?.address || "property").replace(/[^a-zA-Z0-9]/g, "_");
+    doc.save(`Property_Profile_${safeAddress}.pdf`);
   };
 
 
@@ -518,6 +517,7 @@ export const Sidebar = ({
         last_sale_arms_length: lastSaleArmsLength || undefined,
         assumable: assumable || undefined,
         street: street || undefined,
+        house: house || undefined,
         city,
         state,
         county,
@@ -672,9 +672,25 @@ export const Sidebar = ({
                 <p><strong>Last Sale Amount:</strong>{" "}{activeListing.lastSaleAmount ? `$${Number(activeListing.lastSaleAmount).toLocaleString()}` : "N/A"}</p>
               </div>
               <div className="mt-6 flex gap-4">
-                <button onClick={() => downloadLetter(activeListing)} className="bg-black text-white px-4 py-2 rounded hover:bg-gray-900 transition">Download Letter 📩</button>
-                <button onClick={() => downloadProfile(activeListing)} className="bg-gray-800 text-white px-4 py-2 rounded hover:bg-gray-900 transition">Download Profile 📄</button>
-              </div>
+                <button 
+                  onClick={() => downloadLetter(activeListing)} 
+                  className="bg-black text-white px-4 py-2 rounded hover:bg-gray-900 
+                             transform transition-all duration-150 ease-in-out 
+                             hover:scale-105 active:scale-90 
+                             focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500"
+                >
+                  Download Letter 📩
+                </button>               
+                <button 
+                  onClick={() => downloadProfile(activeListing)} 
+                  className="bg-black text-white px-4 py-2 rounded hover:bg-gray-900 
+                             transform transition-all duration-150 ease-in-out 
+                             hover:scale-105 active:scale-90 
+                             focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500"
+                >
+                  Download Profile 📄
+                </button>
+             </div>
             </div>
           </div>
         )}
@@ -696,14 +712,28 @@ export const Sidebar = ({
           <div className="grid grid-cols-2 gap-4 mb-4">
             <div className="mb-4">
               <label htmlFor="advanced-street-filter" className="block text-sm font-medium text-gray-700 mb-1">
-                Street Address
+                Street Number
               </label>
               <input
                 type="text"
                 id="advanced-street-filter"
                 name="advanced-street-filter"
                 className="w-full border border-gray-300 rounded px-3 py-2 text-sm shadow-sm focus:ring-orange-500 focus:border-orange-500"
-                placeholder="E.g., 123 Main St"
+                placeholder="E.g., 123"
+                value={house}
+                onChange={(e) => setNumber(e.target.value)}
+              />
+            </div>
+            <div className="mb-4">
+              <label htmlFor="advanced-street-filter" className="block text-sm font-medium text-gray-700 mb-1">
+                Street Name
+              </label>
+              <input
+                type="text"
+                id="advanced-street-filter"
+                name="advanced-street-filter"
+                className="w-full border border-gray-300 rounded px-3 py-2 text-sm shadow-sm focus:ring-orange-500 focus:border-orange-500"
+                placeholder="E.g., Main St"
                 value={street}
                 onChange={(e) => setStreet(e.target.value)}
               />

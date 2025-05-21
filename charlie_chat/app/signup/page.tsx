@@ -92,7 +92,7 @@ export default function SignUpPage() {
           {successMessage && <p className="text-green-600 text-sm">{successMessage}</p>}
           <button
             type="submit"
-            className="w-full bg-black hover:bg-gray-900 text-white py-2 rounded transition duration-150 ease-in-out"
+            className="w-full bg-orange-500 text-white py-2 px-4 rounded-lg font-semibold transition duration-200 ease-in-out transform hover:scale-105 hover:bg-orange-600 focus:outline-none focus:ring-2 focus:ring-orange-400 focus:ring-opacity-75 hover:shadow-lg active:scale-95"
           >
             Sign Up
           </button>

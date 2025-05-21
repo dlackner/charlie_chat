@@ -5,10 +5,9 @@ import { useState, useRef, useEffect } from "react";
 import ReactMarkdown from "react-markdown";
 import { Sidebar } from "@/components/ui/sidebar";
 import { Plus, SendHorizonal } from "lucide-react";
-import { createSupabaseBrowserClient } from '@/lib/supabase/client'; // Adjust path if needed
-import type { User } from '@supabase/supabase-js';
-import { useRouter } from "next/navigation"; // Import useRouter
-
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/contexts/AuthContext";
+import type { User } from '@supabase/supabase-js'
 
 type Listing = {
   id: string;
@@ -38,18 +37,16 @@ const EXAMPLES = [
 
 
 export function ClosingChat() {
-  // Step 1: Remove useSession
-  // const { data: session } = useSession();
-  // const isLoggedIn = !!session?.user;
 
-  // Step 3: Initialize Supabase client and state for Supabase user
-  const supabase = createSupabaseBrowserClient();
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [isLoadingAuth, setIsLoadingAuth] = useState(true); // Optional: for loading state
-  const [userCredits, setUserCredits] = useState<number | null>(null); // <-- ADD THIS LINE
-  const router = useRouter(); // For router.refresh()
+  const { 
+    user: currentUser,    // User object from context
+    isLoading: isLoadingAuth, // Global loading state for auth
+    supabase              // Shared Supabase client instance
+  } = useAuth();
 
-  // Step 4: Derive isLoggedIn from currentUser
+  const router = useRouter();
+  const [userCredits, setUserCredits] = useState<number | null>(null);
+
   const isLoggedIn = !!currentUser;
 
   const [messages, setMessages] = useState<{ role: string; content: string }[]>([]);
@@ -57,9 +54,8 @@ export function ClosingChat() {
   const [threadId, setThreadId] = useState<string | null>(null);
   const [showProModal, setShowProModal] = useState(false);
   const [showModal, setShowModal] = useState(false);
-
-  const [isPro, setIsPro] = useState(false); // Keep for now, ideally move to DB
-  const [count, setCount] = useState(0); // Keep for now, ideally move to DB
+  const [isPro, setIsPro] = useState(false);
+  const [count, setCount] = useState(0);
   const [listings, setListings] = useState<Listing[]>([]);
   const [selectedListings, setSelectedListings] = useState<Listing[]>([]);
 
@@ -97,18 +93,15 @@ export function ClosingChat() {
 
       for (const field of fieldsToSend) {
         if (listing.hasOwnProperty(field)) {
-          let value = listing[field as keyof Listing]; // Type assertion
+          let value = listing[field as keyof Listing];
 
-          // Skip if value is null or undefined to keep the prompt clean
           if (value === null || value === undefined) {
             continue;
           }
 
           // Special formatting for specific fields or types
           if (field === "address" && typeof value === 'object' && value !== null) {
-            // If 'address' field itself is an object (like your Listing.address type)
-            // We'll format it nicely.
-            const addrObj = value as Listing['address']; // Type assertion for address object
+            const addrObj = value as Listing['address'];
             let formattedAddress = addrObj.address || "";
             if (addrObj.city) formattedAddress += `, ${addrObj.city}`;
             if (addrObj.state) formattedAddress += `, ${addrObj.state}`;
@@ -124,8 +117,6 @@ export function ClosingChat() {
           }
 
 
-          // Use a more descriptive label if needed, e.g., "Year Built" instead of "yearBuilt"
-          // For now, we'll use the field name as is, but you could map them to nicer names.
           const fieldLabel = field.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase()); // Add spaces and capitalize
 
           propertyDetails += `${fieldLabel}: ${value}\n`;
@@ -141,100 +132,64 @@ export function ClosingChat() {
 
     const summaryPrompt = `Give me a market summary and an underwriting strategy for each property. For each property, consider the following details if available:\n\n---\n${rows.join("\n\n---\n")}\n---`;
 
-    sendMessage(summaryPrompt); // Assuming sendMessage is defined elsewhere and sends to OpenAI
-    setSelectedListings([]); // Clear selections after sending
+    sendMessage(summaryPrompt);
+    setSelectedListings([]);
   };
 
   const bottomRef = useRef<HTMLDivElement | null>(null);
 
-  // Step 5: useEffect to manage Supabase auth state
- // Step 5: useEffect to manage Supabase auth state (MODIFIED)
- useEffect(() => {
-  let isMounted = true; // Flag to check if component is still mounted
-  setIsLoadingAuth(true);
+  useEffect(() => {
+    let isMounted = true;
 
-  const fetchAndSetUserAndProfile = async (user: User | null) => {
-    if (!isMounted) return; // Don't proceed if component unmounted
-
-    if (user) {
-      setCurrentUser(user); // Set current user
+    const fetchUserCredits = async (userToFetchFor: User) => {
+      if (!supabase) { // Should always have supabase from context if AuthProvider is set up
+        console.error("[ClosingChat CreditsEffect] Supabase client not available.");
+        if (isMounted) setUserCredits(null);
+        return;
+      }
+      console.log(`[ClosingChat CreditsEffect] Attempting to fetch profile/credits for user ${userToFetchFor.id}`);
       try {
+        // Using the shared Supabase client from context
         const { data: profile, error: profileError } = await supabase
           .from('profiles')
           .select('credits')
-          .eq('user_id', user.id)
+          .eq('user_id', userToFetchFor.id)
           .single();
 
-        if (!isMounted) return; // Check again after await
+        if (!isMounted) return;
 
         if (profileError) {
-          console.error('Error fetching user profile in fetchAndSetUserAndProfile:', profileError.message);
-          setUserCredits(null);
+          console.error(`[ClosingChat CreditsEffect] Error fetching profile for ${userToFetchFor.id}:`, profileError.message);
+          setUserCredits(null); // Or set to 0 if that's your preferred error state for credits
         } else if (profile) {
+          console.log(`[ClosingChat CreditsEffect] Profile fetched for ${userToFetchFor.id}, credits: ${profile.credits}`);
           setUserCredits(profile.credits);
         } else {
-          console.warn('No profile found for user in fetchAndSetUserAndProfile:', user.id);
+          console.warn(`[ClosingChat CreditsEffect] No profile found for user ${userToFetchFor.id}. Setting credits to 0.`);
           setUserCredits(0); // Default if no profile
         }
-      } catch (e) {
-        if (isMounted) {
-          console.error("Error in fetchAndSetUserAndProfile's try block:", e);
-          setUserCredits(null); // Set to null or a default on error
-        }
+      } catch (e: any) {
+        if (!isMounted) return;
+        console.error(`[ClosingChat CreditsEffect] Exception during profile fetch for ${userToFetchFor.id}:`, e.message, e);
+        setUserCredits(null);
       }
-    } else { // No user
-      setCurrentUser(null);
+    };
+
+    if (currentUser && isMounted) {
+      // currentUser is from useAuth(). If it exists, fetch their credits.
+      fetchUserCredits(currentUser);
+    } else if (!currentUser && isMounted) {
+      // No user (logged out, or initial state before user is loaded by AuthContext)
+      // Clear local credits if the user logs out or if there's no user from context.
+      console.log("[ClosingChat CreditsEffect] No current user from context, clearing local credits.");
       setUserCredits(null);
     }
 
-    if (isMounted) {
-      setIsLoadingAuth(false); // Set loading to false after all operations for this path
-    }
-  };
-
-  // 1. Get the initial session state
-  supabase.auth.getSession()
-    .then(async ({ data: { session } }) => {
-      if (isMounted) {
-        await fetchAndSetUserAndProfile(session?.user ?? null);
-      }
-    })
-    .catch(error => {
-      if (isMounted) {
-        console.error("Error getting initial session:", error);
-        setCurrentUser(null); // Ensure user state is cleared
-        setUserCredits(null);  // Ensure credits state is cleared
-        setIsLoadingAuth(false); // Crucial: ensure loading is false on error too
-      }
-    });
-
-  // 2. Set up the auth state change listener
-  const { data: { subscription: authListener } } = supabase.auth.onAuthStateChange(
-    async (event, session) => {
-      if (!isMounted) return;
-
-      // This will re-fetch profile and set loading to false
-      await fetchAndSetUserAndProfile(session?.user ?? null);
-
-      if (isMounted) { // Check isMounted again before router actions
-        if (event === "SIGNED_IN" && session?.user) {
-          console.log("User signed in via listener.");
-          router.refresh();
-        } else if (event === "SIGNED_OUT") {
-          console.log("User signed out via listener.");
-          router.refresh();
-        }
-      }
-    }
-  );
-
-  // Cleanup function for the useEffect
-  return () => {
-    isMounted = false;
-    authListener?.unsubscribe();
-  };
-
-}, [supabase, router]);
+    return () => {
+      isMounted = false;
+      console.log("[ClosingChat CreditsEffect] Cleanup.");
+    };
+  }, [currentUser, supabase]);
 
   // Safe access to localStorage on client only (for non-auth critical things or fallbacks)
   useEffect(() => {
@@ -386,26 +341,14 @@ export function ClosingChat() {
     window.location.href = data.url;
   };
 
-  // Step 6: Conceptual Sign Out (you'd call this from your header/button)
-  const handleSignOut = async () => {
-    const { error } = await supabase.auth.signOut();
-    if (error) {
-      console.error('Error signing out:', error);
-    } else {
-      // onAuthStateChange will handle setting currentUser to null
-      // and router.refresh() if configured.
-      // You might want to redirect explicitly if needed:
-      // router.push('/login');
-    }
-  };
   
-  //if (isLoadingAuth) {
-  //  return (
-  //      <div className="flex h-screen w-full items-center justify-center">
-  //          <p>Loading chat...</p> {/* Or a proper spinner component */}
-  //      </div>
-  //  );
-  //}
+  if (isLoadingAuth) {
+    return (
+        <div className="flex h-screen w-full items-center justify-center">
+            <p>Loading chat...</p> {/* Or a proper spinner component */}
+        </div>
+    );
+  }
 
   return (
     <>

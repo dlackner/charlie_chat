@@ -33,7 +33,8 @@ export async function POST(req: NextRequest) {
       last_sale_price_min,
       last_sale_price_max,
       assumable,
-      street
+      street,
+      house
         } = body;
 
     const payload = {
@@ -70,7 +71,8 @@ export async function POST(req: NextRequest) {
       last_sale_price_min,
       last_sale_price_max,
       assumable,
-      street
+      street,
+      house
     };
 
     console.log("📦 Outgoing payload ➡️", payload);
