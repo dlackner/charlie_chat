@@ -12,7 +12,6 @@ import remarkGfm from "remark-gfm";
 import { FC, memo, useState } from "react";
 import { CheckIcon, CopyIcon } from "lucide-react";
 
-import { TooltipIconButton } from "@/components/assistant-ui/tooltip-icon-button";
 import { cn } from "@/lib/utils";
 
 const MarkdownTextImpl = () => {
@@ -37,10 +36,17 @@ const CodeHeader: FC<CodeHeaderProps> = ({ language, code }) => {
   return (
     <div className="flex items-center justify-between gap-4 rounded-t-lg bg-zinc-900 px-4 py-2 text-sm font-semibold text-white">
       <span className="lowercase [&>span]:text-xs">{language}</span>
-      <TooltipIconButton tooltip="Copy" onClick={onCopy}>
+      {/* Replace TooltipIconButton with a regular button */}
+      <button
+        type="button" // Good practice for buttons not submitting forms
+        onClick={onCopy}
+        aria-label="Copy code" // For accessibility, as the button only contains an icon
+        className="p-1 rounded text-white hover:bg-zinc-700 focus:outline-none focus:ring-2 focus:ring-zinc-500 focus:ring-opacity-75" // Basic styling for an icon button
+        disabled={isCopied} // Optional: disable button briefly after copy if isCopied state implies this
+      >
         {!isCopied && <CopyIcon />}
         {isCopied && <CheckIcon />}
-      </TooltipIconButton>
+      </button>
     </div>
   );
 };

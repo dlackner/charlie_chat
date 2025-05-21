@@ -20,7 +20,6 @@ import { cn } from "@/lib/utils";
 
 import { Button } from "@/components/ui/button";
 import { MarkdownText } from "@/components/assistant-ui/markdown-text";
-import { TooltipIconButton } from "@/components/assistant-ui/tooltip-icon-button";
 
 export const Thread: FC = () => {
   return (
@@ -57,13 +56,15 @@ export const Thread: FC = () => {
 const ThreadScrollToBottom: FC = () => {
   return (
     <ThreadPrimitive.ScrollToBottom asChild>
-      <TooltipIconButton
-        tooltip="Scroll to bottom"
-        variant="outline"
-        className="absolute -top-8 rounded-full disabled:invisible"
+      <button
+        type="button"
+        aria-label="Scroll to bottom"
+        className="absolute -top-8 rounded-full disabled:invisible 
+                   p-2 border bg-background hover:bg-accent hover:text-accent-foreground 
+                   focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1"
       >
-        <ArrowDownIcon />
-      </TooltipIconButton>
+        <ArrowDownIcon className="size-4" />
+      </button>
     </ThreadPrimitive.ScrollToBottom>
   );
 };
@@ -123,28 +124,36 @@ const Composer: FC = () => {
 };
 
 const ComposerAction: FC = () => {
+  const commonButtonClasses = "my-2.5 size-8 p-2 transition-opacity ease-in rounded-md focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1";
+  // `variant="default"` usually implies a solid background, often primary color.
+  // Using classes from shadcn/ui Button for `variant="default"` as inspiration:
+  // `bg-primary text-primary-foreground hover:bg-primary/90`
+  // We can combine with existing classes. `size-8 p-2` already defines size.
+  const defaultVariantClasses = "bg-primary text-primary-foreground hover:bg-primary/80";
+
+
   return (
     <>
       <ThreadPrimitive.If running={false}>
         <ComposerPrimitive.Send asChild>
-          <TooltipIconButton
-            tooltip="Send"
-            variant="default"
-            className="my-2.5 size-8 p-2 transition-opacity ease-in"
+          <button
+            type="button"
+            aria-label="Send"
+            className={cn(commonButtonClasses, defaultVariantClasses)}
           >
-            <SendHorizontalIcon />
-          </TooltipIconButton>
+            <SendHorizontalIcon className="size-4"/> {/* Ensure icon has a size if not intrinsic */}
+          </button>
         </ComposerPrimitive.Send>
       </ThreadPrimitive.If>
       <ThreadPrimitive.If running>
         <ComposerPrimitive.Cancel asChild>
-          <TooltipIconButton
-            tooltip="Cancel"
-            variant="default"
-            className="my-2.5 size-8 p-2 transition-opacity ease-in"
+          <button
+            type="button"
+            aria-label="Cancel"
+            className={cn(commonButtonClasses, defaultVariantClasses)} // Assuming cancel also uses default style
           >
-            <CircleStopIcon />
-          </TooltipIconButton>
+            <CircleStopIcon /> {/* This is already sized 16x16 (size-4 equivalent) */}
+          </button>
         </ComposerPrimitive.Cancel>
       </ThreadPrimitive.If>
     </>
@@ -173,9 +182,16 @@ const UserActionBar: FC = () => {
       className="flex flex-col items-end col-start-1 row-start-2 mr-3 mt-2.5"
     >
       <ActionBarPrimitive.Edit asChild>
-        <TooltipIconButton tooltip="Edit">
-          <PencilIcon />
-        </TooltipIconButton>
+        <button
+          type="button"
+          aria-label="Edit"
+          className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent 
+                     focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1"
+          // Assuming a ghost-like appearance is desired here as no variant/className was specified before.
+          // Added p-1 for click area, rounded-md, hover effects, and focus rings.
+        >
+          <PencilIcon className="size-4" /> {/* Ensure icon has a size */}
+        </button>
       </ActionBarPrimitive.Edit>
     </ActionBarPrimitive.Root>
   );
@@ -213,6 +229,9 @@ const AssistantMessage: FC = () => {
 };
 
 const AssistantActionBar: FC = () => {
+  // Common classes for icon buttons in this action bar
+  const actionBarButtonClasses = "p-1 rounded-md hover:bg-accent focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1";
+
   return (
     <ActionBarPrimitive.Root
       hideWhenRunning
@@ -221,19 +240,27 @@ const AssistantActionBar: FC = () => {
       className="text-muted-foreground flex gap-1 col-start-3 row-start-2 -ml-1 data-[floating]:bg-background data-[floating]:absolute data-[floating]:rounded-md data-[floating]:border data-[floating]:p-1 data-[floating]:shadow-sm"
     >
       <ActionBarPrimitive.Copy asChild>
-        <TooltipIconButton tooltip="Copy">
+        <button
+          type="button"
+          aria-label="Copy"
+          className={actionBarButtonClasses}
+        >
           <MessagePrimitive.If copied>
-            <CheckIcon />
+            <CheckIcon className="size-4" />
           </MessagePrimitive.If>
           <MessagePrimitive.If copied={false}>
-            <CopyIcon />
+            <CopyIcon className="size-4" />
           </MessagePrimitive.If>
-        </TooltipIconButton>
+        </button>
       </ActionBarPrimitive.Copy>
       <ActionBarPrimitive.Reload asChild>
-        <TooltipIconButton tooltip="Refresh">
-          <RefreshCwIcon />
-        </TooltipIconButton>
+        <button
+          type="button"
+          aria-label="Refresh"
+          className={actionBarButtonClasses}
+        >
+          <RefreshCwIcon className="size-4" />
+        </button>
       </ActionBarPrimitive.Reload>
     </ActionBarPrimitive.Root>
   );
@@ -243,6 +270,10 @@ const BranchPicker: FC<BranchPickerPrimitive.Root.Props> = ({
   className,
   ...rest
 }) => {
+  // Common classes for icon buttons in the branch picker
+  // text-muted-foreground is on the parent, hover can enhance it.
+  const branchPickerButtonClasses = "p-0.5 rounded hover:bg-accent focus:outline-none focus:ring-1 focus:ring-ring";
+
   return (
     <BranchPickerPrimitive.Root
       hideWhenSingleBranch
@@ -253,17 +284,25 @@ const BranchPicker: FC<BranchPickerPrimitive.Root.Props> = ({
       {...rest}
     >
       <BranchPickerPrimitive.Previous asChild>
-        <TooltipIconButton tooltip="Previous">
-          <ChevronLeftIcon />
-        </TooltipIconButton>
+        <button
+          type="button"
+          aria-label="Previous"
+          className={branchPickerButtonClasses}
+        >
+          <ChevronLeftIcon className="size-4" /> {/* text-xs on parent might make icons small, size-4 is explicit */}
+        </button>
       </BranchPickerPrimitive.Previous>
-      <span className="font-medium">
+      <span className="font-medium mx-1"> {/* Added mx-1 for spacing */}
         <BranchPickerPrimitive.Number /> / <BranchPickerPrimitive.Count />
       </span>
       <BranchPickerPrimitive.Next asChild>
-        <TooltipIconButton tooltip="Next">
-          <ChevronRightIcon />
-        </TooltipIconButton>
+        <button
+          type="button"
+          aria-label="Next"
+          className={branchPickerButtonClasses}
+        >
+          <ChevronRightIcon className="size-4" />
+        </button>
       </BranchPickerPrimitive.Next>
     </BranchPickerPrimitive.Root>
   );

@@ -6,7 +6,6 @@ import {
 import { ArchiveIcon, PlusIcon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { TooltipIconButton } from "@/components/assistant-ui/tooltip-icon-button";
 
 export const ThreadList: FC = () => {
   return (
@@ -54,13 +53,15 @@ const ThreadListItemTitle: FC = () => {
 const ThreadListItemArchive: FC = () => {
   return (
     <ThreadListItemPrimitive.Archive asChild>
-      <TooltipIconButton
-        className="hover:text-primary text-foreground ml-auto mr-3 size-4 p-0"
-        variant="ghost"
-        tooltip="Archive thread"
+      <button
+        type="button"
+        aria-label="Archive thread"
+        className="hover:text-primary text-foreground ml-auto mr-3 size-4 p-0 
+                   focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-1 
+                   rounded"
       >
         <ArchiveIcon />
-      </TooltipIconButton>
+      </button>
     </ThreadListItemPrimitive.Archive>
   );
 };
