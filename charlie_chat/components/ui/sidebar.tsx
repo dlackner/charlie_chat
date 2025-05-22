@@ -486,48 +486,63 @@ export const Sidebar = ({
         console.log("[Sidebar] onCreditsUpdate should have been called.");
       }
 
-      // Proceed with the actual search
-      await onSearch({
-        zip: zipcode,
-        units_min: minUnits,
-        units_max: maxUnits || undefined,
-        propertyType: "MFR",
-        mls_active: mlsActive || undefined,
-        flood_zone: floodZone || undefined,
-        year_built_min: yearBuiltRange[0],
-        year_built_max: yearBuiltRange[1],
-        lot_size_min: lotSizeRange[0],
-        lot_size_max: lotSizeRange[1],
-        mortgage_min: mortgageBalanceRange[0],
-        mortgage_max: mortgageBalanceRange[1],
-        assessed_value_min: assessedValueRange[0],
-        assessed_value_max: assessedValueRange[1],
-        value_min: estimatedValueRange[0],
-        value_max: estimatedValueRange[1],
-        estimated_equity_min: estimatedEquityRange[0],
-        estimated_equity_max: estimatedEquityRange[1],
-        stories_min: storiesRange[0],
-        stories_max: storiesRange[1],
-        in_state_owner: inStateOwner || undefined,
-        out_of_state_owner: outOfStateOwner || undefined,
-        corporate_owned: corporateOwned || undefined,
-        years_owned_min: yearsOwnedRange[0],
-        years_owned_max: yearsOwnedRange[1],
-        last_sale_price_min: lastSalePriceRange[0],
-        last_sale_price_max: lastSalePriceRange[1],
-        last_sale_date_min: lastSaleDateRange[0],
-        last_sale_date_max: lastSaleDateRange[1],
-        last_sale_arms_length: lastSaleArmsLength || undefined,
-        assumable: assumable || undefined,
-        street: street || undefined,
-        house: house || undefined,
-        city,
-        state,
-        county,
-        radius,
-        foreclosure,
-        pre_foreclosure: preForeclosure,
-      });
+      let searchParameters;
+
+      if (zipcode && typeof zipcode === 'string' && zipcode.trim() !== "" &&
+      house && typeof house === 'string' && house.trim() !== "" &&
+      street && typeof street === 'string' && street.trim() !== "") {
+        searchParameters = {
+          zip: zipcode,
+          house: house,
+          street: street,
+          propertyType: "MFR",
+          ids_only: false,
+          obfuscate: false,
+          summary: false,
+        };
+        console.log("[Sidebar] Performing specific address search with:", searchParameters);
+      } else {
+        console.log("[Sidebar] GENERAL:", searchParameters);
+
+        searchParameters = {
+          zip: zipcode || undefined,
+          units_min: minUnits || undefined,
+          units_max: maxUnits || undefined,
+          propertyType: "MFR",
+          mls_active: mlsActive || undefined,
+          flood_zone: floodZone || undefined,
+          year_built_min: yearBuiltRange[0],
+          year_built_max: yearBuiltRange[1],
+          lot_size_min: lotSizeRange[0],
+          lot_size_max: lotSizeRange[1],
+          mortgage_min: mortgageBalanceRange[0],
+          mortgage_max: mortgageBalanceRange[1],
+          assessed_value_min: assessedValueRange[0],
+          assessed_value_max: assessedValueRange[1],
+          value_min: estimatedValueRange[0],
+          value_max: estimatedValueRange[1],
+          estimated_equity_min: estimatedEquityRange[0],
+          estimated_equity_max: estimatedEquityRange[1],
+          stories_min: storiesRange[0],
+          stories_max: storiesRange[1],
+          in_state_owner: inStateOwner || undefined,
+          out_of_state_owner: outOfStateOwner || undefined,
+          corporate_owned: corporateOwned || undefined,
+          years_owned_min: yearsOwnedRange[0],
+          years_owned_max: yearsOwnedRange[1],
+          last_sale_price_min: lastSalePriceRange[0],
+          last_sale_price_max: lastSalePriceRange[1],
+          last_sale_arms_length: lastSaleArmsLength || undefined,
+          assumable: assumable || undefined,
+          street: street || undefined,
+          house: house || undefined,
+          ids_only: false,
+          obfuscate: false,
+          summary: false,
+        };
+      }
+
+      await onSearch(searchParameters);
 
     } catch (error) {
       console.error("Unexpected error during search handling:", error);
@@ -788,7 +803,7 @@ export const Sidebar = ({
           <div className="grid grid-cols-2 gap-4 mb-4">
             {renderRange("Year Built", yearBuiltRange, setYearBuiltRange, 1800, 2025)}
             {renderRange("Lot Size", lotSizeRange, setLotSizeRange, 0, 100000)}
-            {renderRange("Number of Stories", storiesRange, setStoriesRange, 0, 20)}
+            {renderRange("Number of Stories", storiesRange, setStoriesRange, 0, 100)}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Flood Zone?</label>
               <div className="flex rounded-md">
