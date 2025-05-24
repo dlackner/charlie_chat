@@ -87,20 +87,29 @@ export const Sidebar = ({
   const [floodZone, setFloodZone] = useState("");
   const [assumable, setAssumable] = useState("");
   const [lastSaleArmsLength, setLastSaleArmsLength] = useState("");
-
+  const DEFAULT_LAST_SALE_PRICE_RANGE: [number, number] = [0, 10000000];
   const [lastSaleDateRange, setlastSaleDateRange] = useState<[number, number]>([0, 2025]);
   const [lastSalePriceRange, setLastSalePriceRange] = useState<[number, number]>([0, 10000000]);
-  const [yearBuiltRange, setYearBuiltRange] = useState<[number, number]>([1800, 2025]);
+  const DEFAULT_YEAR_RANGE: [number, number] = [1800, 2025];
+  const [yearBuiltRange, setYearBuiltRange] = useState<[number, number]>(DEFAULT_YEAR_RANGE);
+  const DEFAULT_LOT_SIZE_RANGE: [number, number] = [0, 100000];
   const [lotSizeRange, setLotSizeRange] = useState<[number, number]>([0, 100000]);
+  const DEFAULT_STORIES_RANGE: [number, number] = [0, 20];
   const [storiesRange, setStoriesRange] = useState<[number, number]>([0, 20]);
+  const DEFAULT_MORTGAGE_BALANCE_RANGE: [number, number] = [0, 10000000];
   const [mortgageBalanceRange, setMortgageBalanceRange] = useState<[number, number]>([0, 10000000]);
+  const DEFAULT_ASSESSED_VALUE_RANGE: [number, number] = [0, 10000000];
   const [assessedValueRange, setAssessedValueRange] = useState<[number, number]>([0, 10000000]);
+  const DEFAULT_ESTIMATED_VALUE_RANGE: [number, number] = [0, 10000000];
   const [estimatedValueRange, setEstimatedValueRange] = useState<[number, number]>([0, 10000000]);
+  const DEFAULT_ESTIMATED_EQUITY_RANGE: [number, number] = [0, 10000000];
   const [estimatedEquityRange, setEstimatedEquityRange] = useState<[number, number]>([0, 10000000]);
+  const DEFAULT_YEARS_OWNED_RANGE: [number, number] = [0, 50];
   const [yearsOwnedRange, setYearsOwnedRange] = useState<[number, number]>([0, 50]);
+  const [ownerLocation, setOwnerLocation] = useState<"any" | "instate" | "outofstate">("any"); //new code for testing
 
-  const [inStateOwner, setInStateOwner] = useState("");
-  const [outOfStateOwner, setOutOfStateOwner] = useState("");
+  //const [inStateOwner, setInStateOwner] = useState("");
+  //const [outOfStateOwner, setOutOfStateOwner] = useState("");
   const [corporateOwned, setCorporateOwned] = useState("");
 
   const [activeListingIndex, setActiveListingIndex] = useState<number | null>(null);
@@ -503,7 +512,78 @@ export const Sidebar = ({
         console.log("[Sidebar] Performing specific address search with:", searchParameters);
       } else {
         console.log("[Sidebar] GENERAL:", searchParameters);
-
+const [lastSalePriceMin, lastSalePriceMax] = lastSalePriceRange;
+const includeLastSalePrice =
+  lastSalePriceMin !== DEFAULT_LAST_SALE_PRICE_RANGE[0] || lastSalePriceMax !== DEFAULT_LAST_SALE_PRICE_RANGE[1]
+    ? {
+        last_sale_price_min: lastSalePriceMin,
+        last_sale_price_max: lastSalePriceMax,
+      }
+    : {};
+const [lotSizeMin, lotSizeMax] = lotSizeRange;
+const includeLotSize =
+  lotSizeMin !== DEFAULT_LOT_SIZE_RANGE[0] || lotSizeMax !== DEFAULT_LOT_SIZE_RANGE[1]
+    ? {
+        lot_size_min: lotSizeMin,
+        lot_size_max: lotSizeMax,
+      }
+    : {};
+const [storiesMin, storiesMax] = storiesRange;
+const includeStories =
+  storiesMin !== DEFAULT_STORIES_RANGE[0] || storiesMax !== DEFAULT_STORIES_RANGE[1]
+    ? {
+        stories_min: storiesMin,
+        stories_max: storiesMax,
+      }
+    : {};
+const [yearsOwnedMin, yearsOwnedMax] = yearsOwnedRange;
+const includeYearsOwned =
+  yearsOwnedMin !== DEFAULT_YEARS_OWNED_RANGE[0] || yearsOwnedMax !== DEFAULT_YEARS_OWNED_RANGE[1]
+    ? {
+        years_owned_min: yearsOwnedMin,
+        years_owned_max: yearsOwnedMax,
+      }
+    : {};
+const [yearBuiltMin, yearBuiltMax] = yearBuiltRange;
+const includeYearBuilt =
+  yearBuiltMin !== DEFAULT_YEAR_RANGE[0] || yearBuiltMax !== DEFAULT_YEAR_RANGE[1]
+    ? {
+        year_built_min: yearBuiltMin,
+        year_built_max: yearBuiltMax,
+      }
+    : {};
+const [mortgageMin, mortgageMax] = mortgageBalanceRange;
+const includeMortgageBalance =
+mortgageMin !== DEFAULT_MORTGAGE_BALANCE_RANGE[0] || mortgageMax !== DEFAULT_MORTGAGE_BALANCE_RANGE[1]
+    ? {
+        mortgage_min: mortgageMin,
+        mortgage_max: mortgageMax,
+      }
+    : {};
+const [assessedMin, assessedMax] = assessedValueRange;
+const includeAssessedValue =
+  assessedMin !== DEFAULT_ASSESSED_VALUE_RANGE[0] || assessedMax !== DEFAULT_ASSESSED_VALUE_RANGE[1]
+    ? {
+        assessed_value_min: assessedMin,
+        assessed_value_max: assessedMax,
+      }
+    : {};
+const [estimatedMin, estimatedMax] = estimatedValueRange;
+const includeEstimatedValue =
+  estimatedMin !== DEFAULT_ESTIMATED_VALUE_RANGE[0] || estimatedMax !== DEFAULT_ESTIMATED_VALUE_RANGE[1]
+    ? {
+        value_min: estimatedMin,
+        value_max: estimatedMax,
+      }
+    : {};
+const [equityMin, equityMax] = estimatedEquityRange;
+const includeEstimatedEquity =
+  equityMin !== DEFAULT_ESTIMATED_EQUITY_RANGE[0] || equityMax !== DEFAULT_ESTIMATED_EQUITY_RANGE[1]
+    ? {
+        estimated_equity_min: equityMin,
+        estimated_equity_max: equityMax,
+      }
+    : {};
         searchParameters = {
           zip: zipcode || undefined,
           units_min: minUnits || undefined,
@@ -511,27 +591,18 @@ export const Sidebar = ({
           propertyType: "MFR",
           mls_active: mlsActive || undefined,
           flood_zone: floodZone || undefined,
-          year_built_min: yearBuiltRange[0],
-          year_built_max: yearBuiltRange[1],
-          lot_size_min: lotSizeRange[0],
-          lot_size_max: lotSizeRange[1],
-          mortgage_min: mortgageBalanceRange[0],
-          mortgage_max: mortgageBalanceRange[1],
-          assessed_value_min: assessedValueRange[0],
-          assessed_value_max: assessedValueRange[1],
-          value_min: estimatedValueRange[0],
-          value_max: estimatedValueRange[1],
-          estimated_equity_min: estimatedEquityRange[0],
-          estimated_equity_max: estimatedEquityRange[1],
-          stories_min: storiesRange[0],
-          stories_max: storiesRange[1],
-          in_state_owner: inStateOwner || undefined,
-          out_of_state_owner: outOfStateOwner || undefined,
+          ...includeYearBuilt, //Conditionally include year built only if changed
+          ...includeLotSize, //Conditionally include lot size only if changed
+          ...includeMortgageBalance, //Conditionally include mortgage balance only if changed
+          ...includeAssessedValue,//Conditionally include assessed value only if changed
+          ...includeEstimatedValue, //Conditionally include estimated value only if changed
+          ...includeEstimatedEquity, //Conditionally include estimated equity only if changed
+          ...includeStories, //Conditionally include stories only if changed
+          ...(ownerLocation === "instate" && { in_state_owner: true, out_of_state_owner: false }),
+          ...(ownerLocation === "outofstate" && { in_state_owner: false, out_of_state_owner: true }),
           corporate_owned: corporateOwned || undefined,
-          years_owned_min: yearsOwnedRange[0],
-          years_owned_max: yearsOwnedRange[1],
-          last_sale_price_min: lastSalePriceRange[0],
-          last_sale_price_max: lastSalePriceRange[1],
+          ...includeYearsOwned, //Conditionally include years owned only if changed
+          ...includeLastSalePrice, //Conditionally include last sale price only if changed
           last_sale_arms_length: lastSaleArmsLength || undefined,
           assumable: assumable || undefined,
           street: street || undefined,
@@ -756,22 +827,36 @@ export const Sidebar = ({
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">In State Owner?</label>
-              <div className="flex rounded-md">
-                <button type="button" onClick={() => setInStateOwner("")} className={`relative inline-flex items-center px-4 py-2 rounded-l-md border border-gray-300 text-sm font-medium ${inStateOwner === "" ? 'bg-orange-500 text-white z-10 ring-1 ring-orange-500 border-orange-500' : 'bg-white text-gray-700 hover:bg-gray-50'} focus:z-10 focus:outline-none focus:ring-1 focus:ring-orange-500 focus:border-orange-500`}>Any</button>
-                <button type="button" onClick={() => setInStateOwner("true")} className={`relative inline-flex items-center px-4 py-2 -ml-px border border-gray-300 text-sm font-medium ${inStateOwner === "true" ? 'bg-orange-500 text-white z-10 ring-1 ring-orange-500 border-orange-500' : 'bg-white text-gray-700 hover:bg-gray-50'} focus:z-10 focus:outline-none focus:ring-1 focus:ring-orange-500 focus:border-orange-500`}>Yes</button>
-                <button type="button" onClick={() => setInStateOwner("false")} className={`relative inline-flex items-center px-4 py-2 -ml-px rounded-r-md border border-gray-300 text-sm font-medium ${inStateOwner === "false" ? 'bg-orange-500 text-white z-10 ring-1 ring-orange-500 border-orange-500' : 'bg-white text-gray-700 hover:bg-gray-50'} focus:z-10 focus:outline-none focus:ring-1 focus:ring-orange-500 focus:border-orange-500`}>No</button>
-              </div>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Out of State Owner?</label>
-              <div className="flex rounded-md">
-                <button type="button" onClick={() => setOutOfStateOwner("")} className={`relative inline-flex items-center px-4 py-2 rounded-l-md border border-gray-300 text-sm font-medium ${outOfStateOwner === "" ? 'bg-orange-500 text-white z-10 ring-1 ring-orange-500 border-orange-500' : 'bg-white text-gray-700 hover:bg-gray-50'} focus:z-10 focus:outline-none focus:ring-1 focus:ring-orange-500 focus:border-orange-500`}>Any</button>
-                <button type="button" onClick={() => setOutOfStateOwner("true")} className={`relative inline-flex items-center px-4 py-2 -ml-px border border-gray-300 text-sm font-medium ${outOfStateOwner === "true" ? 'bg-orange-500 text-white z-10 ring-1 ring-orange-500 border-orange-500' : 'bg-white text-gray-700 hover:bg-gray-50'} focus:z-10 focus:outline-none focus:ring-1 focus:ring-orange-500 focus:border-orange-500`}>Yes</button>
-                <button type="button" onClick={() => setOutOfStateOwner("false")} className={`relative inline-flex items-center px-4 py-2 -ml-px rounded-r-md border border-gray-300 text-sm font-medium ${outOfStateOwner === "false" ? 'bg-orange-500 text-white z-10 ring-1 ring-orange-500 border-orange-500' : 'bg-white text-gray-700 hover:bg-gray-50'} focus:z-10 focus:outline-none focus:ring-1 focus:ring-orange-500 focus:border-orange-500`}>No</button>
-              </div>
-            </div>
-            <div>
+  <label className="block text-sm font-medium text-gray-700 mb-1">Owner Location</label>
+  <div className="flex rounded-md">
+    <button
+      type="button"
+      onClick={() => setOwnerLocation("any")}
+      className={`relative inline-flex items-center px-4 py-2 rounded-l-md border border-gray-300 text-sm font-medium ${
+        ownerLocation === "any" ? 'bg-orange-500 text-white z-10 ring-1 ring-orange-500 border-orange-500' : 'bg-white text-gray-700 hover:bg-gray-50'
+      }`}
+    >
+      Any
+    </button>
+    <button
+      type="button"
+      onClick={() => setOwnerLocation("instate")}
+      className={`relative inline-flex items-center px-8 py-2 -ml-px border border-gray-300 text-sm font-medium ${
+        ownerLocation === "instate" ? 'bg-orange-500 text-white z-10 ring-1 ring-orange-500 border-orange-500' : 'bg-white text-gray-700 hover:bg-gray-50'
+      }`}
+    >
+       In&nbsp;State
+    </button>
+    <button
+      type="button"
+      onClick={() => setOwnerLocation("outofstate")}
+      className={`relative inline-flex items-center px-8 py-2 -ml-px rounded-r-md border border-gray-300 text-sm font-medium ${
+        ownerLocation === "outofstate" ? 'bg-orange-500 text-white z-10 ring-1 ring-orange-500 border-orange-500' : 'bg-white text-gray-700 hover:bg-gray-50'
+      }`}
+    >
+      Out&nbsp;of&nbsp;State
+    </button>
+  </div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Corporate Owned?</label>
               <div className="flex rounded-md">
                 <button type="button" onClick={() => setCorporateOwned("")} className={`relative inline-flex items-center px-4 py-2 rounded-l-md border border-gray-300 text-sm font-medium ${corporateOwned === "" ? 'bg-orange-500 text-white z-10 ring-1 ring-orange-500 border-orange-500' : 'bg-white text-gray-700 hover:bg-gray-50'} focus:z-10 focus:outline-none focus:ring-1 focus:ring-orange-500 focus:border-orange-500`}>Any</button>
@@ -784,9 +869,9 @@ export const Sidebar = ({
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Active MLS?</label>
               <div className="flex rounded-md">
-                <button type="button" onClick={() => setMlsActive("")} className={`relative inline-flex items-center px-4 py-2 rounded-l-md border border-gray-300 text-sm font-medium ${mlsActive === "" ? 'bg-orange-500 text-white z-10 ring-1 ring-orange-500 border-orange-500' : 'bg-white text-gray-700 hover:bg-gray-50'} focus:z-10 focus:outline-none focus:ring-1 focus:ring-orange-500 focus:border-orange-500`}>Any</button>
-                <button type="button" onClick={() => setMlsActive("true")} className={`relative inline-flex items-center px-4 py-2 -ml-px border border-gray-300 text-sm font-medium ${mlsActive === "true" ? 'bg-orange-500 text-white z-10 ring-1 ring-orange-500 border-orange-500' : 'bg-white text-gray-700 hover:bg-gray-50'} focus:z-10 focus:outline-none focus:ring-1 focus:ring-orange-500 focus:border-orange-500`}>Yes</button>
-                <button type="button" onClick={() => setMlsActive("false")} className={`relative inline-flex items-center px-4 py-2 -ml-px rounded-r-md border border-gray-300 text-sm font-medium ${mlsActive === "false" ? 'bg-orange-500 text-white z-10 ring-1 ring-orange-500 border-orange-500' : 'bg-white text-gray-700 hover:bg-gray-50'} focus:z-10 focus:outline-none focus:ring-1 focus:ring-orange-500 focus:border-orange-500`}>No</button>
+                <button type="button" onClick={() => setMlsActive("")} className={`relative inline-flex items-center px-8 py-2 rounded-l-md border border-gray-300 text-sm font-medium ${mlsActive === "" ? 'bg-orange-500 text-white z-10 ring-1 ring-orange-500 border-orange-500' : 'bg-white text-gray-700 hover:bg-gray-50'} focus:z-10 focus:outline-none focus:ring-1 focus:ring-orange-500 focus:border-orange-500`}>Any</button>
+                <button type="button" onClick={() => setMlsActive("true")} className={`relative inline-flex items-center px-8 py-2 -ml-px border border-gray-300 text-sm font-medium ${mlsActive === "true" ? 'bg-orange-500 text-white z-10 ring-1 ring-orange-500 border-orange-500' : 'bg-white text-gray-700 hover:bg-gray-50'} focus:z-10 focus:outline-none focus:ring-1 focus:ring-orange-500 focus:border-orange-500`}>Yes</button>
+                <button type="button" onClick={() => setMlsActive("false")} className={`relative inline-flex items-center px-8 py-2 -ml-px rounded-r-md border border-gray-300 text-sm font-medium ${mlsActive === "false" ? 'bg-orange-500 text-white z-10 ring-1 ring-orange-500 border-orange-500' : 'bg-white text-gray-700 hover:bg-gray-50'} focus:z-10 focus:outline-none focus:ring-1 focus:ring-orange-500 focus:border-orange-500`}>No</button>
               </div>
             </div>
             <div>
