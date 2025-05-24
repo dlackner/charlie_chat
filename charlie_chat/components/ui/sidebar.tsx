@@ -857,7 +857,7 @@ const includeEstimatedEquity =
       Out&nbsp;of&nbsp;State
     </button>
   </div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Corporate Owned?</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Corporate Owned</label>
               <div className="flex rounded-md">
                 <button type="button" onClick={() => setCorporateOwned("")} className={`relative inline-flex items-center px-4 py-2 rounded-l-md border border-gray-300 text-sm font-medium ${corporateOwned === "" ? 'bg-orange-500 text-white z-10 ring-1 ring-orange-500 border-orange-500' : 'bg-white text-gray-700 hover:bg-gray-50'} focus:z-10 focus:outline-none focus:ring-1 focus:ring-orange-500 focus:border-orange-500`}>Any</button>
                 <button type="button" onClick={() => setCorporateOwned("true")} className={`relative inline-flex items-center px-4 py-2 -ml-px border border-gray-300 text-sm font-medium ${corporateOwned === "true" ? 'bg-orange-500 text-white z-10 ring-1 ring-orange-500 border-orange-500' : 'bg-white text-gray-700 hover:bg-gray-50'} focus:z-10 focus:outline-none focus:ring-1 focus:ring-orange-500 focus:border-orange-500`}>Yes</button>
@@ -867,7 +867,7 @@ const includeEstimatedEquity =
             {renderRange("Years Owned", yearsOwnedRange, setYearsOwnedRange, 0, 100, 1)}
             {renderRange("Last Sale Price", lastSalePriceRange, setLastSalePriceRange, 0, 10000000, 1)}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Active MLS?</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Active MLS</label>
               <div className="flex rounded-md">
                 <button type="button" onClick={() => setMlsActive("")} className={`relative inline-flex items-center px-8 py-2 rounded-l-md border border-gray-300 text-sm font-medium ${mlsActive === "" ? 'bg-orange-500 text-white z-10 ring-1 ring-orange-500 border-orange-500' : 'bg-white text-gray-700 hover:bg-gray-50'} focus:z-10 focus:outline-none focus:ring-1 focus:ring-orange-500 focus:border-orange-500`}>Any</button>
                 <button type="button" onClick={() => setMlsActive("true")} className={`relative inline-flex items-center px-8 py-2 -ml-px border border-gray-300 text-sm font-medium ${mlsActive === "true" ? 'bg-orange-500 text-white z-10 ring-1 ring-orange-500 border-orange-500' : 'bg-white text-gray-700 hover:bg-gray-50'} focus:z-10 focus:outline-none focus:ring-1 focus:ring-orange-500 focus:border-orange-500`}>Yes</button>
@@ -875,7 +875,7 @@ const includeEstimatedEquity =
               </div>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Last Sale Arms Length?</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Last Sale Arms Length</label>
               <div className="flex rounded-md">
                 <button type="button" onClick={() => setLastSaleArmsLength("")} className={`relative inline-flex items-center px-4 py-2 rounded-l-md border border-gray-300 text-sm font-medium ${lastSaleArmsLength === "" ? 'bg-orange-500 text-white z-10 ring-1 ring-orange-500 border-orange-500' : 'bg-white text-gray-700 hover:bg-gray-50'} focus:z-10 focus:outline-none focus:ring-1 focus:ring-orange-500 focus:border-orange-500`}>Any</button>
                 <button type="button" onClick={() => setLastSaleArmsLength("true")} className={`relative inline-flex items-center px-4 py-2 -ml-px border border-gray-300 text-sm font-medium ${lastSaleArmsLength === "true" ? 'bg-orange-500 text-white z-10 ring-1 ring-orange-500 border-orange-500' : 'bg-white text-gray-700 hover:bg-gray-50'} focus:z-10 focus:outline-none focus:ring-1 focus:ring-orange-500 focus:border-orange-500`}>Yes</button>
@@ -890,7 +890,7 @@ const includeEstimatedEquity =
             {renderRange("Lot Size", lotSizeRange, setLotSizeRange, 0, 100000)}
             {renderRange("Number of Stories", storiesRange, setStoriesRange, 0, 100)}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Flood Zone?</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Flood Zone</label>
               <div className="flex rounded-md">
                 <button type="button" onClick={() => setFloodZone("")} className={`relative inline-flex items-center px-4 py-2 rounded-l-md border border-gray-300 text-sm font-medium ${floodZone === "" ? 'bg-orange-500 text-white z-10 ring-1 ring-orange-500 border-orange-500' : 'bg-white text-gray-700 hover:bg-gray-50'} focus:z-10 focus:outline-none focus:ring-1 focus:ring-orange-500 focus:border-orange-500`}>Any</button>
                 <button type="button" onClick={() => setFloodZone("true")} className={`relative inline-flex items-center px-4 py-2 -ml-px border border-gray-300 text-sm font-medium ${floodZone === "true" ? 'bg-orange-500 text-white z-10 ring-1 ring-orange-500 border-orange-500' : 'bg-white text-gray-700 hover:bg-gray-50'} focus:z-10 focus:outline-none focus:ring-1 focus:ring-orange-500 focus:border-orange-500`}>Yes</button>
@@ -906,7 +906,7 @@ const includeEstimatedEquity =
             {renderRange("Estimated Value", estimatedValueRange, setEstimatedValueRange, 0, 10000000, 10000)}
             {renderRange("Estimated Equity", estimatedEquityRange, setEstimatedEquityRange, 0, 10000000, 10000)}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Assumable?</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Assumable</label>
               <div className="flex rounded-md">
                 <button type="button" onClick={() => setAssumable("")} className={`relative inline-flex items-center px-4 py-2 rounded-l-md border border-gray-300 text-sm font-medium ${assumable === "" ? 'bg-orange-500 text-white z-10 ring-1 ring-orange-500 border-orange-500' : 'bg-white text-gray-700 hover:bg-gray-50'} focus:z-10 focus:outline-none focus:ring-1 focus:ring-orange-500 focus:border-orange-500`}>Any</button>
                 <button type="button" onClick={() => setAssumable("true")} className={`relative inline-flex items-center px-4 py-2 -ml-px border border-gray-300 text-sm font-medium ${assumable === "true" ? 'bg-orange-500 text-white z-10 ring-1 ring-orange-500 border-orange-500' : 'bg-white text-gray-700 hover:bg-gray-50'} focus:z-10 focus:outline-none focus:ring-1 focus:ring-orange-500 focus:border-orange-500`}>Yes</button>
