@@ -68,7 +68,7 @@ export const Sidebar = ({
   triggerAuthModal,
   onCreditsUpdate,
 }: Props) => {
-  const [zipcode, setZipcode] = useState("02840");
+  const [zipcode, setZipcode] = useState("");
   const [minUnits, setMinUnits] = useState<number | string>(2);
   const [maxUnits, setMaxUnits] = useState<number | string>("");
 
@@ -106,7 +106,7 @@ export const Sidebar = ({
   const [estimatedEquityRange, setEstimatedEquityRange] = useState<[number, number]>([0, 10000000]);
   const DEFAULT_YEARS_OWNED_RANGE: [number, number] = [0, 50];
   const [yearsOwnedRange, setYearsOwnedRange] = useState<[number, number]>([0, 50]);
-  const [ownerLocation, setOwnerLocation] = useState<"any" | "instate" | "outofstate">("any"); //new code for testing
+  const [ownerLocation, setOwnerLocation] = useState<"any" | "instate" | "outofstate">("any");
 
   //const [inStateOwner, setInStateOwner] = useState("");
   //const [outOfStateOwner, setOutOfStateOwner] = useState("");
@@ -436,6 +436,35 @@ export const Sidebar = ({
     }
   };
 
+  const resetFilters = () => {
+    setZipcode("");
+    setMinUnits(2);
+    setMaxUnits("");
+    setMlsActive("");
+    setStreet("");
+    setNumber("");
+    setCity("");
+    setState("");
+    setCounty("");
+    setForeclosure(false);
+    setPreForeclosure(false);
+    setFloodZone("");
+    setAssumable("");
+    setLastSaleArmsLength("");
+    setlastSaleDateRange([0, 2025]);
+    setLastSalePriceRange([0, 10000000]);
+    setYearBuiltRange([1800, 2025]);
+    setLotSizeRange([0, 100000]);
+    setStoriesRange([0, 20]);
+    setMortgageBalanceRange([0, 10000000]);
+    setAssessedValueRange([0, 10000000]);
+    setEstimatedValueRange([0, 10000000]);
+    setEstimatedEquityRange([0, 10000000]);
+    setYearsOwnedRange([0, 50]);
+    setOwnerLocation("any");
+    setCorporateOwned("");
+  };
+
   const handleSearch = async () => {
     if (!userIsLoggedIn) {
       triggerAuthModal();
@@ -446,60 +475,15 @@ export const Sidebar = ({
     setCreditsError(null);
 
     try {
-      const { data: newCreditBalance, error: rpcError } = await supabase.rpc('decrement_search_credits');
-
-      if (rpcError) {
-        console.log("Raw rpcError object from Supabase:", rpcError);
-        let errorMessage = "An unexpected error occurred with the RPC call.";
-        let errorCode = null;
-
-        // Attempt to get a more specific message
-        if (rpcError && typeof rpcError.message === 'string') {
-          errorMessage = rpcError.message;
-        } else if (typeof rpcError === 'string') { // Sometimes the error itself might be the message string
-          errorMessage = rpcError;
-        }
-        
-        // Attempt to get an error code if available (PostgreSQL error codes can be useful)
-        if (rpcError && typeof rpcError.code === 'string') {
-            errorCode = rpcError.code;
-        }
-
-
-        // Now use the extracted errorMessage for your conditional logic
-        if (errorMessage.includes("Insufficient credits")) {
-          // Try to extract the "Available: X" part if present
-          const availableMatch = errorMessage.match(/Available: (\d+)/);
-          const searchCostMatch = errorMessage.match(/Search costs (\d+)/);
-          const currentCredits = availableMatch ? availableMatch[1] : "some";
-          const cost = searchCostMatch ? searchCostMatch[1] : "100";
-
-          setCreditsError(`Not enough credits. Search costs ${cost}. Please add more credits.`);
-        } else if (errorMessage.includes("User not authenticated") || errorMessage.includes("Profile not found")) {
-          setCreditsError("There was an issue accessing your account. Please log in again.");
-          // Potentially triggerAuthModal();
-        } else {
-          // Generic error for other RPC issues
-          setCreditsError(`Search Error: ${errorMessage}. (Code: ${errorCode || 'N/A'})`);
-        }
-        
-        setIsSearching(false);
-        return;
-      }
-
-      // If RPC call was successful...
-      console.log("[Sidebar] RPC success. New balance from DB:", newCreditBalance);
-      if (onCreditsUpdate && typeof newCreditBalance === 'number') {
-        console.log("[Sidebar] Attempting to call onCreditsUpdate with:", newCreditBalance);
-        onCreditsUpdate(newCreditBalance);
-        console.log("[Sidebar] onCreditsUpdate should have been called.");
-      }
-
+      // Build searchParameters FIRST before anything else
       let searchParameters;
-
-      if (zipcode && typeof zipcode === 'string' && zipcode.trim() !== "" &&
-      house && typeof house === 'string' && house.trim() !== "" &&
-      street && typeof street === 'string' && street.trim() !== "") {
+  
+      if (
+        zipcode && typeof zipcode === 'string' && zipcode.trim() !== '' &&
+        house && typeof house === 'string' && house.trim() !== '' &&
+        street && typeof street === 'string' && street.trim() !== ''
+      ) {
+        // Specific address search
         searchParameters = {
           zip: zipcode,
           house: house,
@@ -509,81 +493,21 @@ export const Sidebar = ({
           obfuscate: false,
           summary: false,
         };
-        console.log("[Sidebar] Performing specific address search with:", searchParameters);
       } else {
-        console.log("[Sidebar] GENERAL:", searchParameters);
-const [lastSalePriceMin, lastSalePriceMax] = lastSalePriceRange;
-const includeLastSalePrice =
-  lastSalePriceMin !== DEFAULT_LAST_SALE_PRICE_RANGE[0] || lastSalePriceMax !== DEFAULT_LAST_SALE_PRICE_RANGE[1]
-    ? {
-        last_sale_price_min: lastSalePriceMin,
-        last_sale_price_max: lastSalePriceMax,
-      }
-    : {};
-const [lotSizeMin, lotSizeMax] = lotSizeRange;
-const includeLotSize =
-  lotSizeMin !== DEFAULT_LOT_SIZE_RANGE[0] || lotSizeMax !== DEFAULT_LOT_SIZE_RANGE[1]
-    ? {
-        lot_size_min: lotSizeMin,
-        lot_size_max: lotSizeMax,
-      }
-    : {};
-const [storiesMin, storiesMax] = storiesRange;
-const includeStories =
-  storiesMin !== DEFAULT_STORIES_RANGE[0] || storiesMax !== DEFAULT_STORIES_RANGE[1]
-    ? {
-        stories_min: storiesMin,
-        stories_max: storiesMax,
-      }
-    : {};
-const [yearsOwnedMin, yearsOwnedMax] = yearsOwnedRange;
-const includeYearsOwned =
-  yearsOwnedMin !== DEFAULT_YEARS_OWNED_RANGE[0] || yearsOwnedMax !== DEFAULT_YEARS_OWNED_RANGE[1]
-    ? {
-        years_owned_min: yearsOwnedMin,
-        years_owned_max: yearsOwnedMax,
-      }
-    : {};
-const [yearBuiltMin, yearBuiltMax] = yearBuiltRange;
-const includeYearBuilt =
-  yearBuiltMin !== DEFAULT_YEAR_RANGE[0] || yearBuiltMax !== DEFAULT_YEAR_RANGE[1]
-    ? {
-        year_built_min: yearBuiltMin,
-        year_built_max: yearBuiltMax,
-      }
-    : {};
-const [mortgageMin, mortgageMax] = mortgageBalanceRange;
-const includeMortgageBalance =
-mortgageMin !== DEFAULT_MORTGAGE_BALANCE_RANGE[0] || mortgageMax !== DEFAULT_MORTGAGE_BALANCE_RANGE[1]
-    ? {
-        mortgage_min: mortgageMin,
-        mortgage_max: mortgageMax,
-      }
-    : {};
-const [assessedMin, assessedMax] = assessedValueRange;
-const includeAssessedValue =
-  assessedMin !== DEFAULT_ASSESSED_VALUE_RANGE[0] || assessedMax !== DEFAULT_ASSESSED_VALUE_RANGE[1]
-    ? {
-        assessed_value_min: assessedMin,
-        assessed_value_max: assessedMax,
-      }
-    : {};
-const [estimatedMin, estimatedMax] = estimatedValueRange;
-const includeEstimatedValue =
-  estimatedMin !== DEFAULT_ESTIMATED_VALUE_RANGE[0] || estimatedMax !== DEFAULT_ESTIMATED_VALUE_RANGE[1]
-    ? {
-        value_min: estimatedMin,
-        value_max: estimatedMax,
-      }
-    : {};
-const [equityMin, equityMax] = estimatedEquityRange;
-const includeEstimatedEquity =
-  equityMin !== DEFAULT_ESTIMATED_EQUITY_RANGE[0] || equityMax !== DEFAULT_ESTIMATED_EQUITY_RANGE[1]
-    ? {
-        estimated_equity_min: equityMin,
-        estimated_equity_max: equityMax,
-      }
-    : {};
+        // General search
+        const [lastSalePriceMin, lastSalePriceMax] = lastSalePriceRange;
+        const [lotSizeMin, lotSizeMax] = lotSizeRange;
+        const [storiesMin, storiesMax] = storiesRange;
+        const [yearsOwnedMin, yearsOwnedMax] = yearsOwnedRange;
+        const [yearBuiltMin, yearBuiltMax] = yearBuiltRange;
+        const [mortgageMin, mortgageMax] = mortgageBalanceRange;
+        const [assessedMin, assessedMax] = assessedValueRange;
+        const [estimatedMin, estimatedMax] = estimatedValueRange;
+        const [equityMin, equityMax] = estimatedEquityRange;
+  
+        const includeIfChanged = (min: number, max: number, defaultRange: [number, number], keys: [string, string]) =>
+          min !== defaultRange[0] || max !== defaultRange[1] ? { [keys[0]]: min, [keys[1]]: max } : {};
+  
         searchParameters = {
           zip: zipcode || undefined,
           units_min: minUnits || undefined,
@@ -591,18 +515,20 @@ const includeEstimatedEquity =
           propertyType: "MFR",
           mls_active: mlsActive || undefined,
           flood_zone: floodZone || undefined,
-          ...includeYearBuilt, //Conditionally include year built only if changed
-          ...includeLotSize, //Conditionally include lot size only if changed
-          ...includeMortgageBalance, //Conditionally include mortgage balance only if changed
-          ...includeAssessedValue,//Conditionally include assessed value only if changed
-          ...includeEstimatedValue, //Conditionally include estimated value only if changed
-          ...includeEstimatedEquity, //Conditionally include estimated equity only if changed
-          ...includeStories, //Conditionally include stories only if changed
+          ...includeIfChanged(yearBuiltMin, yearBuiltMax, DEFAULT_YEAR_RANGE, ["year_built_min", "year_built_max"]),
+          ...includeIfChanged(lotSizeMin, lotSizeMax, DEFAULT_LOT_SIZE_RANGE, ["lot_size_min", "lot_size_max"]),
+          ...includeIfChanged(mortgageMin, mortgageMax, DEFAULT_MORTGAGE_BALANCE_RANGE, ["mortgage_min", "mortgage_max"]),
+          ...includeIfChanged(assessedMin, assessedMax, DEFAULT_ASSESSED_VALUE_RANGE, ["assessed_value_min", "assessed_value_max"]),
+          ...includeIfChanged(estimatedMin, estimatedMax, DEFAULT_ESTIMATED_VALUE_RANGE, ["value_min", "value_max"]),
+          ...includeIfChanged(equityMin, equityMax, DEFAULT_ESTIMATED_EQUITY_RANGE, ["estimated_equity_min", "estimated_equity_max"]),
+          ...includeIfChanged(storiesMin, storiesMax, DEFAULT_STORIES_RANGE, ["stories_min", "stories_max"]),
+          ...includeIfChanged(yearsOwnedMin, yearsOwnedMax, DEFAULT_YEARS_OWNED_RANGE, ["years_owned_min", "years_owned_max"]),
+          ...(lastSalePriceMin !== DEFAULT_LAST_SALE_PRICE_RANGE[0] || lastSalePriceMax !== DEFAULT_LAST_SALE_PRICE_RANGE[1]
+            ? { last_sale_price_min: lastSalePriceMin, last_sale_price_max: lastSalePriceMax }
+            : {}),
           ...(ownerLocation === "instate" && { in_state_owner: true, out_of_state_owner: false }),
           ...(ownerLocation === "outofstate" && { in_state_owner: false, out_of_state_owner: true }),
           corporate_owned: corporateOwned || undefined,
-          ...includeYearsOwned, //Conditionally include years owned only if changed
-          ...includeLastSalePrice, //Conditionally include last sale price only if changed
           last_sale_arms_length: lastSaleArmsLength || undefined,
           assumable: assumable || undefined,
           street: street || undefined,
@@ -613,8 +539,57 @@ const includeEstimatedEquity =
         };
       }
 
+  const countResponse = await fetch("/api/realestateapi", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ ...searchParameters, ids_only: true }),
+  });
+  
+  if (!countResponse.ok) {
+    const errorText = await countResponse.text();
+    console.error("Count API failed:", countResponse.status, errorText);
+    setCreditsError("There was a problem with your search. Please try again or adjust your filters.");
+    setIsSearching(false);
+    return;
+  }
+  const { ids } = await countResponse.json();
+  const totalCount = Array.isArray(ids) ? ids.length : 0;
+  
+  if (totalCount === 0) {
+    setCreditsError("No properties matched your criteria. Try broadening your filters.");
+    await onSearch({ clearResults: true });
+    setIsSearching(false);
+    return;
+  }
+  
+  if (totalCount > 25) {
+    setCreditsError(`Your search returned ${totalCount} properties. Think about your Buy Box and refine your filters to 25 or fewer results.`);
+    setIsSearching(false);
+    return;
+  }
+  
+      const { data: newCreditBalance, error: rpcError } = await supabase.rpc("decrement_search_credits");
+  
+      if (rpcError) {
+        const errorMessage = typeof rpcError.message === "string" ? rpcError.message : String(rpcError);
+        if (errorMessage.includes("Insufficient credits")) {
+          const availableMatch = errorMessage.match(/Available: (\d+)/);
+          const searchCostMatch = errorMessage.match(/Search costs (\d+)/);
+          const currentCredits = availableMatch ? availableMatch[1] : "some";
+          const cost = searchCostMatch ? searchCostMatch[1] : "100";
+          setCreditsError(`Not enough credits. Search costs ${cost}. Please add more credits.`);
+        } else {
+          setCreditsError("There was a problem with your account. Please log in again.");
+        }
+        setIsSearching(false);
+        return;
+      }
+  
+      if (onCreditsUpdate && typeof newCreditBalance === "number") {
+        onCreditsUpdate(newCreditBalance);
+      }
+  
       await onSearch(searchParameters);
-
     } catch (error) {
       console.error("Unexpected error during search handling:", error);
       setCreditsError("A critical error occurred with the search. Please try again later.");
@@ -622,9 +597,7 @@ const includeEstimatedEquity =
       setIsSearching(false);
     }
   };
-
-
-  return (
+  return(
     <div className="relative flex">
       <div className="w-[260px] shrink-0 bg-white border-r border-gray-200 p-4 flex flex-col space-y-6 overflow-y-auto h-screen z-20">
         <h2 className="text-lg font-medium text-gray-800">Property Search</h2>
@@ -795,8 +768,15 @@ const includeEstimatedEquity =
 
       {showAdvanced && (
         <div ref={panelRef} className="absolute top-0 left-[260px] w-[440px] h-full bg-white border-r border-gray-200 p-6 shadow-xl z-30 overflow-y-auto">
-          <h3 className="text-lg text-gray-800 mb-4 font-semibold">Advanced Filters</h3>
-          <h4 className="text-md font-semibold text-gray-700 mt-6 mb-2">Ownership & Sales History</h4>
+          <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg text-gray-800 font-semibold">Advanced Filters</h3>
+                <button
+                onClick={resetFilters}
+                className="text-sm bg-gray-100 text-gray-700 px-3 py-1.5 rounded hover:bg-gray-200 border border-gray-300"
+            >
+              Reset Filters
+            </button>
+          </div>
           <div className="grid grid-cols-2 gap-4 mb-4">
             <div className="mb-4">
               <label htmlFor="advanced-street-filter" className="block text-sm font-medium text-gray-700 mb-1">

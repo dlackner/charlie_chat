@@ -355,7 +355,7 @@ export function ClosingChat() {
             console.log("🚀 Sending API request:", filters); 
 
             try {
-              const res = await fetch("/api/rentcast", {
+              const res = await fetch("/api/realestateapi", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(filters),
@@ -365,7 +365,7 @@ export function ClosingChat() {
               console.log("🔍 Raw Returned data:", data);
               setListings(data || []);
             } catch (err) {
-              console.error("RentCast API error:", err);
+              console.error("Realestateapi API error:", err);
             }
           }}
           listings={listings}

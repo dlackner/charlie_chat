@@ -4,25 +4,30 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     console.log("📝 Raw body from client ➡️", body);
-    const { zip, 
-      propertyType, 
-      units_min, 
+    if (body.clearResults) {
+      console.log("🧹 Clearing results as requested.");
+      return NextResponse.json([]);
+    }
+    const {
+      zip,
+      propertyType,
+      units_min,
       mls_active,
       units_max,
-      flood_zone, 
-      year_built_min, 
-      year_built_max, 
-      lot_size_min, 
-      lot_size_max, 
-      mortgage_min, 
-      mortgage_max, 
-      assessed_value_min, 
-      assessed_value_max, 
-      value_min, 
-      value_max, 
-      estimated_equity_min, 
-      estimated_equity_max, 
-      stories_min, 
+      flood_zone,
+      year_built_min,
+      year_built_max,
+      lot_size_min,
+      lot_size_max,
+      mortgage_min,
+      mortgage_max,
+      assessed_value_min,
+      assessed_value_max,
+      value_min,
+      value_max,
+      estimated_equity_min,
+      estimated_equity_max,
+      stories_min,
       stories_max,
       in_state_owner,
       out_of_state_owner,
@@ -34,8 +39,9 @@ export async function POST(req: NextRequest) {
       last_sale_price_max,
       assumable,
       street,
-      house
-        } = body;
+      house,
+      ids_only // ✅ include ids_only
+    } = body;
 
     const payload = {
       zip,
@@ -58,7 +64,7 @@ export async function POST(req: NextRequest) {
       estimated_equity_max,
       stories_min,
       stories_max,
-      ids_only: false,
+      ids_only: ids_only ?? false,
       obfuscate: false,
       summary: false,
       size: 4,
@@ -93,6 +99,12 @@ export async function POST(req: NextRequest) {
     if (!res.ok) {
       console.error("❌ API returned error:", data);
       return NextResponse.json({ error: data }, { status: res.status });
+    }
+
+    if (ids_only) {
+      const ids = Array.isArray(data.data) ? data.data : [];
+      console.log("🧠 Returning IDs only:", ids);
+      return NextResponse.json({ ids }); // ✅ wrapped in { ids }
     }
 
     console.log("📍 Sample listing:", data.data?.[0]);
