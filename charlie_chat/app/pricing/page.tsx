@@ -1,15 +1,22 @@
 "use client";
 
+import { useState } from 'react';
+
 export default function PricingPage() {
-  const handleCheckout = async () => {
+  const [isAnnual, setIsAnnual] = useState(true); // State to manage annual/monthly view, default to annual
+
+  const handleCheckout = async (productId: string) => {
     const res = await fetch("/api/stripe/checkout", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({}),
+      body: JSON.stringify({ productId }),
     });
-
     const { url } = await res.json();
-    window.location.href = url;
+    if (url) {
+      window.location.href = url;
+    } else {
+      alert("Something went wrong. Please try again.");
+    }
   };
 
   return (
@@ -18,12 +25,41 @@ export default function PricingPage() {
         Pricing
       </h1>
 
+      {/* Toggle for Monthly/Annual */}
+      <div className="flex justify-center mb-8">
+        <button
+          onClick={() => setIsAnnual(false)}
+          className={`px-6 py-2 rounded-l-full text-sm font-semibold transition duration-200 ${
+            !isAnnual ? 'bg-black text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+          }`}
+        >
+          Monthly
+        </button>
+        <button
+          onClick={() => setIsAnnual(true)}
+          className={`px-6 py-2 rounded-r-full text-sm font-semibold transition duration-200 ${
+            isAnnual ? 'bg-black text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+          }`}
+        >
+          Annually
+        </button>
+      </div>
+
       <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* Charlie Chat */}
         <div className="border border-gray-300 rounded-lg p-6 bg-white shadow hover:shadow-lg hover:-translate-y-1 transform transition duration-200 ease-in-out flex flex-col">
           <h2 className="text-2xl font-semibold mb-2">Charlie Chat</h2>
-          <p className="text-xl font-bold mb-1">$16</p>
-          <p className="text-sm text-gray-500 mb-4">(or $20 billed monthly)</p>
+          {isAnnual ? (
+            <>
+              <p className="text-xl font-bold mb-1">$16</p>
+              <p className="text-sm text-gray-500 mb-4">(Billed Annually)</p>
+            </>
+          ) : (
+            <>
+              <p className="text-xl font-bold mb-1">$20</p>
+              <p className="text-sm text-gray-500 mb-4">(Billed Monthly)</p>
+            </>
+          )}
           <p className="text-sm text-gray-700 mb-4">
             It’s me, Charles Dobens—my multifamily lessons and stories, my multifamily legal and operational know-how—delivered to you through my Charlie Chat AI assistant.
           </p>
@@ -35,7 +71,7 @@ export default function PricingPage() {
           </ul>
           <p className="text-sm italic text-gray-600 mb-3">Try for free! Unlimited searches for 3 days</p>
           <button
-            onClick={handleCheckout}
+            onClick={() => handleCheckout(isAnnual ? "prod_SNCAgPFEuFgHXB" : "prod_SJk5uclY4sjcVf")}
             className="mt-auto w-full bg-black text-white py-2 rounded font-semibold transition duration-200 transform hover:scale-105 hover:bg-orange-600 hover:shadow-xl"
           >
             Get Access
@@ -45,8 +81,17 @@ export default function PricingPage() {
         {/* Charlie Chat Pro */}
         <div className="border border-gray-300 rounded-lg p-6 bg-white shadow hover:shadow-lg hover:-translate-y-1 transform transition duration-200 ease-in-out flex flex-col">
           <h2 className="text-2xl font-semibold mb-2">Charlie Chat Pro</h2>
-          <p className="text-xl font-bold mb-1">$416</p>
-          <p className="text-sm text-gray-500 mb-4">(or $497 billed monthly)</p>
+          {isAnnual ? (
+            <>
+              <p className="text-xl font-bold mb-1">$416</p>
+              <p className="text-sm text-gray-500 mb-4">(Billed Annually)</p>
+            </>
+          ) : (
+            <>
+              <p className="text-xl font-bold mb-1">$497</p>
+              <p className="text-sm text-gray-500 mb-4">(Billed Monthly)</p>
+            </>
+          )}
           <p className="text-sm text-gray-700 mb-4">
             My entire Master Class training at your fingertips. Hundreds of hours of additional training on multifamily investing, plus:
           </p>
@@ -61,7 +106,7 @@ export default function PricingPage() {
             <li>✔️ Includes 50 national property matches every month</li>
           </ul>
           <button
-            onClick={handleCheckout}
+            onClick={() => handleCheckout(isAnnual ? "prod_SNCA1Fm32NHWHV" : "prod_SNCAEB0ei9CC1x")}
             className="mt-auto w-full bg-black text-white py-2 rounded font-semibold transition duration-200 transform hover:scale-105 hover:bg-orange-600 hover:shadow-xl"
           >
             Get Access
@@ -84,8 +129,9 @@ export default function PricingPage() {
             <li>✔️ Step-by-step roadmap for your multifamily investing journey</li>
             <li>✔️ Includes 250 national property matches every month for your first 6 months</li>
           </ul>
+          {/* Changed this button to redirect instead of showing a form */}
           <button
-            onClick={handleCheckout}
+            onClick={() => window.location.href = "https://multifamilyos.com/multifamilyos-cohort-program/"}
             className="mt-auto w-full bg-black text-white py-2 rounded font-semibold transition duration-200 transform hover:scale-105 hover:bg-orange-600 hover:shadow-xl"
           >
             Apply Now
