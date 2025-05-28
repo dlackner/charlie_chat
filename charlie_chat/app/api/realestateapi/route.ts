@@ -4,10 +4,12 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     console.log("📝 Raw body from client ➡️", body);
+
     if (body.clearResults) {
       console.log("🧹 Clearing results as requested.");
       return NextResponse.json([]);
     }
+
     const {
       zip,
       propertyType,
@@ -43,8 +45,15 @@ export async function POST(req: NextRequest) {
       ids_only // ✅ include ids_only
     } = body;
 
+    // ✅ Convert ZIP string to array
+    const zipArray = zip
+      ? zip.split(",").map((z: string) => z.trim()).filter((z: string) => z.length > 0)
+      : [];
+
+    console.log("📬 ZIP array being sent ➡️", zipArray);
+
     const payload = {
-      zip,
+      zip: zipArray.length > 0 ? zipArray : undefined,
       property_type: propertyType,
       units_min,
       units_max,
@@ -67,7 +76,7 @@ export async function POST(req: NextRequest) {
       ids_only: ids_only ?? false,
       obfuscate: false,
       summary: false,
-      size: 4,
+      size: 5,
       in_state_owner,
       out_of_state_owner,
       corporate_owned,

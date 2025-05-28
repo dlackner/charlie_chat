@@ -359,7 +359,7 @@ export const Sidebar = ({
     letterElements.push(createStyledParagraph(`Whether or not you’ve ever considered selling, I understand that owning and managing multifamily assets can be demanding – especially in today’s environment. Rising operating costs, shifting tenant expectations, and market volatility have prompted many property owners to explore their options.`, { spaceAfterPt: 10 }));
     letterElements.push(createStyledParagraph(`I’m not a broker, and this isn’t a listing solicitation. I’m a direct buyer looking to engage in a straightforward, respectful conversation about a potential off-market purchase. My goal is to understand your situation and see if there’s a way to align my interest with your goal – on your timeline.`, { spaceAfterPt: 10 }));
     letterElements.push(createStyledParagraph(`In past acquisitions, we’ve structured deals with flexible terms including delayed closings, continued property management, partial seller financing, and even 1031 exchange participation for owners looking to defer capital gains taxes. Depending on your goals, there may be creative options available that help maximize value while minimizing tax exposure.`, { spaceAfterPt: 10 }));
-    letterElements.push(createStyledParagraph(`If you’d simply like to know what your property might be worth in today’s market, I’d be happy to offer an informal valuation – no pressure, no obligation..`, { spaceAfterPt: 10 }));
+    letterElements.push(createStyledParagraph(`If you’d simply like to know what your property might be worth in today’s market, I’d be happy to offer an informal valuation – no pressure, no obligation.`, { spaceAfterPt: 10 }));
     letterElements.push(createStyledParagraph(`You can reach me directly at ${yourDataPlaceholders.phone} or ${yourDataPlaceholders.email}. Even if now isn’t the right time, I’d welcome the opportunity to stay in touch.`, { spaceAfterPt: 10 }));
     letterElements.push(createStyledParagraph(`Wishing you all the best and appreciation for your time.`, { spaceAfterPt: 10 }));
     letterElements.push(createStyledParagraph("Best regards,", { spaceAfterPt: 2 }));
@@ -567,9 +567,18 @@ export const Sidebar = ({
     setIsSearching(false);
     return;
   }
+  const { data: newCreditBalance, error: rpcError } = await supabase.rpc(
+    "decrement_search_credits",
+    {
+      amount_to_decrement: totalCount,
+    }
+  );
   
-      const { data: newCreditBalance, error: rpcError } = await supabase.rpc("decrement_search_credits");
-  
+  if (rpcError) {
+    console.error("RPC Error:", rpcError);
+  } else {
+    console.log("New credit balance:", newCreditBalance);
+  }  
       if (rpcError) {
         const errorMessage = typeof rpcError.message === "string" ? rpcError.message : String(rpcError);
         if (errorMessage.includes("Insufficient credits")) {
@@ -760,8 +769,8 @@ export const Sidebar = ({
       {selectedListings.length > 0 && (
         <div className="fixed bottom-4 left-4 w-[240px] z-40">
           <div className="p-4 border rounded bg-[#D15834] text-sm shadow text-white">
-            <p className="mb-2 font-medium">Add {selectedListings.length} {selectedListings.length === 1 ? "property" : "properties"} to Charlie Chat for analysis</p>
-            <button onClick={onSendToGPT} className="bg-blue-900 text-white px-4 py-2 rounded hover:bg-blue-950 transition w-full">Compare in Chat</button>
+            <p className="mb-2 font-medium">Add {selectedListings.length} {selectedListings.length === 1 ? "property" : "properties"} to Charlie Chat</p>
+            <button onClick={onSendToGPT} className="bg-blue-900 text-white px-4 py-2 rounded hover:bg-blue-950 transition w-full">Analyze in Chat</button>
           </div>
         </div>
       )}

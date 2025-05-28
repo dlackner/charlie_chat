@@ -555,15 +555,16 @@ export function ClosingChat() {
               Charlie Chat Pro 🔒
             </Dialog.Title>
             <Dialog.Description className="text-sm text-gray-500">
-              File uploads and enhanced analysis are available with Charlie Chat Pro.
+              File uploads and enhanced analytics are coming soon!
             </Dialog.Description>
-                  
+             {/*      
             <button
               onClick={handleCheckout}
               className="bg-black text-white px-4 py-2 rounded mt-4 hover:bg-gray-800 transition"
             >
               Upgrade Now 💳
             </button>
+            */}
           </Dialog.Panel>
         </div>
       </Dialog>
