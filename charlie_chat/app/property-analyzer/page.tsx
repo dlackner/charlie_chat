@@ -28,8 +28,8 @@ import {
 interface ChartDataPoint {
   month: number;
   profit: number;
-  cumulativeInvestment: number; // Kept for potential future use in tooltip
-  cumulativeRevenue: number;  // Kept for potential future use in tooltip
+  cumulativeInvestment: number;
+  cumulativeRevenue: number;
 }
 
 export default function PropertyAnalyzerPage() {
@@ -101,12 +101,11 @@ export default function PropertyAnalyzerPage() {
   // Custom Tooltip Content for better display
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
-      const data = payload[0].payload; // Access the full data point
+      const data = payload[0].payload;
       return (
         <div className="bg-white/90 p-3 border border-gray-200 rounded-lg shadow-lg">
           <p className="text-sm text-gray-700 font-semibold">{`Month: ${label}`}{label % 12 === 0 && label > 0 ? ` (Year ${label/12})` : ''}</p>
           <p className="text-sm text-orange-600">{`Profit: ${formatCurrency(payload[0].value)}`}</p>
-          {/* You can add more info from 'data' if needed, e.g., data.cumulativeRevenue */}
         </div>
       );
     }
@@ -130,11 +129,11 @@ export default function PropertyAnalyzerPage() {
                 tickFormatter={(tick) => {
                     if (tick === 0) return 'Start';
                     if (tick % 12 === 0) return `Yr ${tick/12}`;
-                    return ''; // Show fewer ticks for clarity
+                    return '';
                 }}
                 stroke="#9CA3AF"
                 tick={{ fill: '#6B7280', fontSize: 12 }}
-                interval="preserveStartEnd" // Show start and end, then based on ticks
+                interval="preserveStartEnd"
                 padding={{ left: 10, right: 10 }}
               />
               <YAxis 
@@ -142,9 +141,9 @@ export default function PropertyAnalyzerPage() {
                 tickFormatter={(value) => `${(value/1000).toFixed(0)}k`}
                 stroke="#9CA3AF"
                 tick={{ fill: '#6B7280', fontSize: 12 }}
-                domain={['auto', 'auto']} // Let Recharts determine domain, or set manually if needed
+                domain={['auto', 'auto']}
                 allowDataOverflow={false}
-                width={80} // Increased width for y-axis label and ticks
+                width={80}
               />
               <Tooltip content={<CustomTooltip />} cursor={{ stroke: '#F97316', strokeWidth: 1, strokeDasharray: '3 3' }}/>
               <Legend 
@@ -157,14 +156,14 @@ export default function PropertyAnalyzerPage() {
               {breakEvenMonth !== null && monthlyNetOperatingIncome > 0 && (
                 <ReferenceLine 
                   x={breakEvenMonth} 
-                  stroke="#EF4444" // Red for emphasis
+                  stroke="#EF4444"
                   strokeDasharray="4 4" 
                   label={{ 
                     value: `Break-Even (~${(breakEvenMonth/12).toFixed(1)} yrs)`, 
                     fill: '#EF4444', 
                     position: 'insideTopRight', 
                     fontSize: 12,
-                    dy: -10, // Adjust position
+                    dy: -10,
                     dx: 10
                   }} 
                 />
@@ -172,7 +171,7 @@ export default function PropertyAnalyzerPage() {
               <Line 
                 type="monotone" 
                 dataKey="profit" 
-                stroke="#F97316" // Orange line
+                stroke="#F97316"
                 strokeWidth={2.5} 
                 dot={false} 
                 activeDot={{ r: 6, strokeWidth: 2, fill: '#F97316', stroke: '#FFF' }} 
@@ -184,7 +183,6 @@ export default function PropertyAnalyzerPage() {
 
         {/* --- Summary Metrics --- */}
         <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-6">
-          {/* ... (summary metrics code remains the same) ... */}
           <div className="bg-white p-5 rounded-xl shadow-lg border border-gray-200">
             <h3 className="text-md font-semibold text-orange-600 mb-1">Total Initial Investment</h3>
             <p className="text-2xl font-bold text-gray-900">{formatCurrency(totalInitialInvestment)}</p>
@@ -210,7 +208,6 @@ export default function PropertyAnalyzerPage() {
 
       {/* --- Input Panel --- */}
       <div className="lg:w-1/3 bg-gray-50 p-6 rounded-xl shadow-2xl border border-gray-200 lg:sticky lg:top-8 self-start max-h-[calc(100vh-4rem)] overflow-y-auto">
-        {/* ... (input panel code remains the same) ... */}
         <h2 className="text-2xl font-semibold mb-6 text-orange-600">Assumptions</h2>
 
         {/* Investment Costs */}
