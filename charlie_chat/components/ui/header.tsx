@@ -47,7 +47,7 @@ export default function Header() {
         <Link href="/" className="text-gray-800 hover:bg-gray-100 transition rounded-md px-3 py-1 font-medium">Home</Link>
         <Link href="/templates" className="text-gray-800 hover:bg-gray-100 transition rounded-md px-3 py-1 font-medium">Templates</Link>
         <Link href="/pricing" className="text-gray-800 hover:bg-gray-100 transition rounded-md px-3 py-1 font-medium">Pricing</Link>
-
+        <Link href="/property-analyzer" className="text-gray-800 hover:bg-gray-100 transition rounded-md px-3 py-1 font-medium">Property Analyzer</Link>
         {/* Step 6: JSX uses isLoadingAuth and isLoggedIn from context */}
         {isLoadingAuth ? (
           <div className="w-24 h-9 bg-gray-200 animate-pulse rounded-lg" aria-label="Loading authentication status"></div>
