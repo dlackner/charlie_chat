@@ -257,7 +257,7 @@ export default function TemplatesPage() {
 
   return (
     <div className="container mx-auto p-6 bg-gray-50 min-h-screen">
-      <h1 className="text-3xl font-bold text-gray-800 mb-8 text-center">Generate Letter of Intent (LOI)</h1>
+      <h1 className="text-3xl md:text-4xl font-bold mb-6 text-orange-600 text-center">Generate Letter of Intent (LOI)</h1>
       <form onSubmit={handleFormSubmit} className="space-y-8 bg-white p-8 rounded-lg shadow-lg max-w-4xl mx-auto">
 
         <section>

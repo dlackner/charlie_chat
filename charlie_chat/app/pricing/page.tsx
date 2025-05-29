@@ -21,9 +21,8 @@ export default function PricingPage() {
 
   return (
     <div className="min-h-screen bg-white text-black px-6 py-12">
-      <h1 className="text-3xl sm:text-5xl font-light text-center mb-12 tracking-tight">
-        Pricing
-      </h1>
+      <h1 className="text-3xl sm:text-5xl font-semibold mb-6 text-orange-600 text-center">Pricing</h1>
+
 
       {/* Toggle for Monthly/Annual */}
       <div className="flex justify-center mb-8">
