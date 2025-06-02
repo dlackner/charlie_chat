@@ -4,7 +4,7 @@ import { useState, useCallback, useEffect } from 'react';
 import { Document, Packer, Paragraph, TextRun, AlignmentType, PageBreak } from 'docx';
 import { saveAs } from 'file-saver';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '@/contexts/AuthContext'; 
+import { useAuth } from '@/contexts/AuthContext';
 
 interface LOIFormData {
   yourName: string;
@@ -44,7 +44,6 @@ interface LOIFormData {
       />
     </div>
   );
-  
 export default function TemplatesPage() {
   const [formData, setFormData] = useState<LOIFormData>({
     yourName: '',
@@ -62,7 +61,7 @@ export default function TemplatesPage() {
     ownerState: '',
     ownerZip: '',
   });
-
+  const [longFormLOI, setLongFormLOI] = useState<boolean>(false);
   const { user: currentUser, isLoading: isLoadingAuth, supabase } = useAuth();
   const router = useRouter();
   const isLoggedIn = !!currentUser;
@@ -112,114 +111,333 @@ export default function TemplatesPage() {
       ownerFullName: `${formData.ownerFirst} ${formData.ownerLast}`.trim(),
       ownerCityStateZip: `${formData.ownerCity}, ${formData.ownerState} ${formData.ownerZip}`.trim(),
     };
-
     const tightParagraphConfig = {
         spacing: { after: 40 },
         line: 240 * 1.0,
     };
-    const sections = [
-        new Paragraph({ children: [new TextRun(data.yourName)], ...tightParagraphConfig }),
-        new Paragraph({ children: [new TextRun(data.yourAddress)], ...tightParagraphConfig }),
-        new Paragraph({ children: [new TextRun(data.yourCityZip)], ...tightParagraphConfig }),
-        new Paragraph({ children: [new TextRun(data.yourPhoneFormatted)], ...tightParagraphConfig }),
-        new Paragraph({ children: [new TextRun(data.yourEmail)], ...tightParagraphConfig }),
-        new Paragraph({ text: data.currentDate, spacing: { after: 240 } }),
-        new Paragraph({ spacing: { after: 120 } }),
-        new Paragraph({ children: [new TextRun(data.ownerFullName)], ...tightParagraphConfig }),
-        new Paragraph({ children: [new TextRun(data.ownerStreet)], ...tightParagraphConfig }),
-        new Paragraph({ children: [new TextRun(data.ownerCityStateZip)], ...tightParagraphConfig }),
-        new Paragraph({ spacing: { after: 120 } }),
-        new Paragraph({ children: [new TextRun({ text: `RE: Letter of Intent for ${data.propertyAddress}`, bold: true })], spacing: { after: 40 }, }),
-        new Paragraph({ spacing: { after: 0 } }),
-        new Paragraph({ children: [new TextRun(`Dear ${data.ownerFirst},`)], spacing: { after: 120 }, }),
-        new Paragraph({
+    
+    // Initialize sections array
+    const sections: Paragraph[] = [];
+
+    // Common introductory sections (always included)
+    sections.push(new Paragraph({ children: [new TextRun(data.yourName)], ...tightParagraphConfig }));
+    sections.push(new Paragraph({ children: [new TextRun(data.yourAddress)], ...tightParagraphConfig }));
+    sections.push(new Paragraph({ children: [new TextRun(data.yourCityZip)], ...tightParagraphConfig }));
+    sections.push(new Paragraph({ children: [new TextRun(data.yourPhoneFormatted)], ...tightParagraphConfig }));
+    sections.push(new Paragraph({ children: [new TextRun(data.yourEmail)], ...tightParagraphConfig }));
+    sections.push(new Paragraph({ text: data.currentDate, spacing: { after: 240 } }));
+    sections.push(new Paragraph({ spacing: { after: 120 } }));
+    sections.push(new Paragraph({ children: [new TextRun(data.ownerFullName)], ...tightParagraphConfig }));
+    sections.push(new Paragraph({ children: [new TextRun(data.ownerStreet)], ...tightParagraphConfig }));
+    sections.push(new Paragraph({ children: [new TextRun(data.ownerCityStateZip)], ...tightParagraphConfig }));
+    sections.push(new Paragraph({ spacing: { after: 120 } }));
+    sections.push(new Paragraph({ children: [new TextRun({ text: `RE: Letter of Intent for ${data.propertyAddress}`, bold: true })], spacing: { after: 40 }, }));
+    sections.push(new Paragraph({ spacing: { after: 0 } }));
+    sections.push(new Paragraph({ children: [new TextRun(`Dear ${data.ownerFirst},`)], spacing: { after: 120 }, }));
+    sections.push(new Paragraph({
+        children: [
+            new TextRun(
+                `Please find outlined below the general terms and conditions under which ${data.yourName} (“Purchaser”) would be willing to purchase the above referenced Property. This letter will serve as a non-binding letter of intent between Purchaser or its Assignee, and the Owner of Record (“Seller”).
+Let this letter serve as our expression of intent to purchase the above referenced Property under the following terms and conditions:`
+            ),
+        ],
+        spacing: { after: 200 },
+    }));
+
+    // Conditional inclusion of LOI body content (numbered sections and signatures)
+    if (longFormLOI) {
+        // --- LONG FORM LOI CONTENT ---
+        // This content has been inserted from your provided text.
+        // The extra spaces after bold headings have been removed as requested.
+
+        sections.push(new Paragraph({
             children: [
                 new TextRun(
-                    `Please find outlined below the general terms and conditions under which ${data.yourName} (“Purchaser”) would be willing to purchase the above referenced Property. This letter will serve as a non-binding letter of intent between Purchaser or its Assignee, and the Owner of Record (“Seller”). Let this letter serve as our expression of intent to purchase the above referenced Property under the following terms and conditions:`
+                    `This Letter of Intent is provided to you to acknowledge the\ninterest and intent of ${data.yourName} to acquire the fee simple interest\nof the Property, on the general terms and conditions set forth below. The terms\nlisted below are not intended to be all-inclusive. Moreover, all of the terms\nand conditions, and all covenants, warranties and representations between the\nparties relating to this proposed transaction must be reflected in a definitive\nwritten agreement (“Agreement”) executed by all of the parties.`
                 ),
             ],
-            spacing: { after: 200 },
-        }),
-    ];
-    const loiSectionsContent = [
-        {
-          num: "1",
-          heading: "Purchase Price",
-          content: `${data.purchasePriceFormatted}`
-        },
-        {
-          num: "2",
-          heading: "Earnest Money Deposit",
-          content: `${data.earnestMoneyFormatted}`
-        },
-        {
-          num: "3",
-          heading: "Purchase Agreement",
-          content: 'Both parties will strive to execute a mutually acceptable Purchase Agreement within thirty (30) days after the execution of this Letter of Intent.' // Corrected quote and number
-        },
-        {
-          num: "4",
-          heading: "Earnest Money Deposit",
-          content: `A refundable Earnest Money Deposit in the amount of ${data.earnestMoneyFormatted} will be deposited with the Escrow Agent within five (5) business days.`
-        },
-        {
-          num: "5",
-          heading: "Inspection Period",
-          content: 'Purchaser shall have an Inspection Period of thirty (30) days to inspect the property and conduct any due diligence. If the Purchaser finds the Property unsuitable, this LOI shall be void and the Earnest Money refunded.'
-        },
-        {
-          num: "6",
-          heading: "Closing Date",
-          content: 'The Closing will occur on or before thirty (30) days after the end of the Inspection Period. An additional 30-day extension may be granted upon written request.'
-        },
-        {
-          num: "7",
-          heading: "Closing Costs",
-          content: 'The Seller will pay for basic title insurance, transfer taxes, survey and documentary stamps.'
-        },
-        {
-          num: "8",
-          heading: "Brokerage Fees",
-          content: 'To be paid by Seller as per seller agreement with Seller’s agent.'
-        },
-        {
-          num: "9",
-          heading: "General Terms",
-          content: 'The above represents the general terms and conditions of the proposed transaction. A full agreement will be prepared after mutual acceptance.'
-        },
-        {
-          num: "10",
-          heading: "Execution Instructions",
-          content: 'Should the above proposal be acceptable to you, please execute your signature below and Purchaser will begin preparation of the Purchase Agreement.'
-        }
-      ];
-  
-    loiSectionsContent.forEach(section => {
-        sections.push(new Paragraph({
-            children: [ new TextRun(`${section.num}. `), new TextRun({ text: `${section.heading}: `, bold: true }), new TextRun(section.content), ],
-            spacing: { after: 120 },
+            spacing: { after: 120 }
         }));
-    });
-    sections.push(new Paragraph({ spacing: { after: 120 } }));
-    sections.push(new Paragraph({ children: [new TextRun({ text: "PURCHASER:", bold: true })], spacing: {after: 40} }));
-    sections.push(new Paragraph({ children: [new TextRun("BY:    ______________________________________________________")], spacing: {after: 40} }));
-    sections.push(new Paragraph({ children: [new TextRun(data.yourName)], spacing: {after: 40} }));
-    sections.push(new Paragraph({ children: [new TextRun(data.yourAddress)], spacing: {after: 40} }));
-    sections.push(new Paragraph({ children: [new TextRun(data.yourCityZip)], spacing: {after: 40} }));
-    sections.push(new Paragraph({ spacing: { after: 0 } }));
-    sections.push(new Paragraph({ children: [new TextRun(`ACKNOWLEDGED AND AGREED TO THIS ${data.currentDate}.`)], spacing: {after: 120} }));
-    sections.push(new Paragraph({ spacing: { after: 0 } }));
-    sections.push(new Paragraph({ children: [new TextRun({ text: "SELLER:", bold: true })], spacing: {after: 40} }));
-    sections.push(new Paragraph({ children: [new TextRun("BY:    ____________________________________________________")], spacing: {after: 40} }));
-    sections.push(new Paragraph({ children: [new TextRun(data.ownerFullName)], spacing: {after: 40} }));
-    sections.push(new Paragraph({ children: [new TextRun("Owner")], spacing: {after: 40} }));
+        sections.push(new Paragraph({ text: "", spacing: { after: 120 } })); // Blank line
+        sections.push(new Paragraph({
+            children: [
+                new TextRun({ text: "Seller: ", bold: true }),
+                new TextRun("Owner of Record")
+            ],
+            spacing: { after: 60 }
+        }));
+        sections.push(new Paragraph({ text: "", spacing: { after: 60 } })); // Blank line for alignment
+        sections.push(new Paragraph({
+            children: [
+                new TextRun({ text: "Purchaser: ", bold: true }),
+                new TextRun(`${data.yourName}, and/or assigns`)
+            ],
+            spacing: { after: 60 }
+        }));
+        sections.push(new Paragraph({ text: "", spacing: { after: 60 } })); // Blank line for alignment
+        sections.push(new Paragraph({
+            children: [
+                new TextRun({ text: "Property: ", bold: true }),
+                new TextRun(`${data.propertyAddress}`)
+            ],
+            spacing: { after: 60 }
+        }));
+        sections.push(new Paragraph({ text: "", spacing: { after: 60 } })); // Blank line for alignment
+        sections.push(new Paragraph({
+            children: [
+                new TextRun({ text: "Purchase Price: ", bold: true }),
+                new TextRun(`[PURCHASE PRICE] The Purchase Price shall not include any liabilities or obligations owed by Seller\nto any person or entities on or before the Closing Date, unless expressly\nassumed in writing by Purchaser.`)
+            ],
+            spacing: { after: 120 }
+        }));
+        sections.push(new Paragraph({ text: "", spacing: { after: 120 } })); // Blank line for separation
+        sections.push(new Paragraph({
+            children: [
+                new TextRun({ text: "Earnest Money Deposit: ", bold: true }),
+                new TextRun(`[EARNEST MONEY] To be deposited with Title Company within two (2) business days after the\nEffective Date as defined below. The Earnest Money Deposit is fully refundable\nto Purchaser at any time prior to expiration of the Inspection Period, and any\ntime thereafter only upon Purchaser’s failure to obtain acceptable financing,\nor as a consequence of a default by Seller, or by mutual agreement of the\nparties.`)
+            ],
+            spacing: { after: 120 }
+        }));
+        sections.push(new Paragraph({ text: "", spacing: { after: 120 } })); // Blank line for separation
+        sections.push(new Paragraph({
+            children: [
+                new TextRun({ text: "Closing Date: ", bold: true }),
+                new TextRun(`The Closing Date\nof this transaction shall occur at the Title Company on or before thirty (30) days\nafter the expiration of the Financing Period or as mutually agreed by the\nparties.`)
+            ],
+            spacing: { after: 120 }
+        }));
+        sections.push(new Paragraph({ text: "", spacing: { after: 120 } })); // Blank line for separation
+        sections.push(new Paragraph({
+            children: [
+                new TextRun({ text: "Title Company: ", bold: true }),
+                new TextRun("The Title Company will be chosen by the Purchaser.")
+            ],
+            spacing: { after: 120 }
+        }));
+        sections.push(new Paragraph({ text: "", spacing: { after: 120 } })); // Blank line for separation
+        sections.push(new Paragraph({
+            children: [
+                new TextRun({ text: "Title Insurance: ", bold: true }),
+                new TextRun(`Seller shall\nprovide to Purchaser, at Seller’s expense and Purchaser’s choosing, a standard\nATLA policy of title insurance by Title Company in the amount of the Purchase\nPrice for the Property, insuring that fee simple title to the Property is\nvested in Purchaser free and clear of all liens and subject only to exceptions\napproved by Purchaser during Inspection Period. Additional costs required to\nobtain an extended coverage policy shall be paid by Purchaser, if Purchaser\nelects coverage.`)
+            ],
+            spacing: { after: 120 }
+        }));
+        sections.push(new Paragraph({ text: "", spacing: { after: 120 } })); // Blank line for separation
+        sections.push(new Paragraph({
+            children: [
+                new TextRun({ text: "Survey: ", bold: true }),
+                new TextRun(`Seller agrees to\nprovide Purchaser, at Seller’s expense, with a current ALTA survey of Property\nwithin fifteen (15) days following the Effective Date of the Agreement.`)
+            ],
+            spacing: { after: 120 }
+        }));
+        sections.push(new Paragraph({ text: "", spacing: { after: 120 } })); // Blank line for separation
+        sections.push(new Paragraph({
+            children: [
+                new TextRun({ text: "Inspection Period: ", bold: true }),
+                new TextRun(`Purchaser has\nforty-five (45) days after the Effective Date to complete its due diligence\ninvestigation. Purchaser may cancel the Agreement and escrow at any time during\nthe Inspection Period without cost or penalty by written notice to Seller. In\nthat event, The Earnest Money Deposit, plus accrued interest thereon, if any,\nshall be immediately refunded to Purchaser by the Title Company.`)
+            ],
+            spacing: { after: 120 }
+        }));
+        sections.push(new Paragraph({ text: "", spacing: { after: 120 } })); // Blank line for separation
+        sections.push(new Paragraph({
+            children: [
+                new TextRun({ text: "Due Diligence Information: ", bold: true }),
+                new TextRun(`Seller will deliver to\nPurchaser true, correct and complete copies of any and all pertinent records\n(i.e., survey, leases, environmental studies, inspection reports, capital\nimprovement information, title report, zoning information, operating expenses\nand financial reports, rent rolls, bank accounts and similar information)\nregarding Seller’s ownership and operation of the Property. Such information\nshall include, but not be limited to, the items described on Schedule 1\nattached hereto and made a part hereof. Receipt of Due Diligence Information\nshall be the effective date of the Agreement (“Effective Date”).`)
+            ],
+            spacing: { after: 120 }
+        }));
+        sections.push(new Paragraph({ text: "", spacing: { after: 120 } })); // Blank line for separation
+        sections.push(new Paragraph({
+            children: [
+                new TextRun({ text: "Environmental Review: ", bold: true }),
+                new TextRun(`Purchaser may, in\nits discretion, obtain a current or revised environmental study of the Property\nat Purchaser’s sole cost and expense.`)
+            ],
+            spacing: { after: 120 }
+        }));
+        sections.push(new Paragraph({ text: "", spacing: { after: 120 } })); // Blank line for separation
+        sections.push(new Paragraph({
+            children: [
+                new TextRun({ text: "Right of Entry: ", bold: true }),
+                new TextRun(`Purchaser will\nhave the right to enter the Property with prior reasonable notice, during\nreasonable business hours, for any purpose in connection with its inspection of\nthe Property.`)
+            ],
+            spacing: { after: 120 }
+        }));
+        sections.push(new Paragraph({ text: "", spacing: { after: 120 } })); // Blank line for separation
+        sections.push(new Paragraph({
+            children: [
+                new TextRun({ text: "Closing Costs: ", bold: true }),
+                new TextRun(`Purchaser and\nSeller will be responsible for their respective legal, accounting, staff and\nother typical and customary costs and expenses, as more fully described in the\nAgreement.`)
+            ],
+            spacing: { after: 120 }
+        }));
+        sections.push(new Paragraph({ text: "", spacing: { after: 120 } })); // Blank line for separation
+        sections.push(new Paragraph({
+            children: [
+                new TextRun({ text: "Prorations: ", bold: true }),
+                new TextRun(`Rents, lease\ncommissions, interest, insurance premiums, maintenance expenses, operating\nexpenses, utilities and ad valorem taxes for the year of Closing will be\nprorated effective as of the date of the Closing. Seller shall give credit to\nPurchaser at the Closing in the aggregate amount of any security deposits or\nprepaid rents deposited by tenants with Seller, or otherwise owed to tenants,\nunder leases affecting the Property.`)
+            ],
+            spacing: { after: 120 }
+        }));
+        sections.push(new Paragraph({ text: "", spacing: { after: 120 } })); // Blank line for separation
+        sections.push(new Paragraph({
+            children: [
+                new TextRun({ text: "Financing Period Contingency: ", bold: true }),
+                new TextRun(`Purchaser’s obligation to\npurchase the Property shall be subject to Purchaser receiving financing terms\nand conditions acceptable to Purchaser within seventy-five (75) days\nafter the Effective Date of the Agreement. Purchaser may cancel the Agreement\nand receive full refund of the Earnest money deposit at any time prior to the\nexpiration of the Financing Period.`)
+            ],
+            spacing: { after: 120 }
+        }));
+        sections.push(new Paragraph({ text: "", spacing: { after: 120 } })); // Blank line for separation
+        sections.push(new Paragraph({
+            children: [
+                new TextRun({ text: "Sales Commission: ", bold: true }),
+                new TextRun(`Purchaser has not\nengaged a broker to assist with this transaction. Seller shall be responsible\nfor payment of any buyer’s broker’s commissions owed as a result of the\nproposed transaction.`)
+            ],
+            spacing: { after: 120 }
+        }));
+        sections.push(new Paragraph({ text: "", spacing: { after: 120 } })); // Blank line for separation
+        sections.push(new Paragraph({
+            children: [
+                new TextRun({ text: "Removal from Market: ", bold: true }),
+                new TextRun(`Seller agrees not\nto negotiate with respect to, or enter into any other written agreement or\nletter of intent for the purchase of, the Property during the period from the\nmutual execution of this Letter of Intent through the period during which the\nAgreement is in effect.`)
+            ],
+            spacing: { after: 120 }
+        }));
+        sections.push(new Paragraph({ text: "", spacing: { after: 120 } })); // Blank line for separation
+        sections.push(new Paragraph({
+            children: [
+                new TextRun({ text: "Confidentiality: ", bold: true }),
+                new TextRun(`Purchaser and Seller hereby\ncovenant and agree not to disclose the terms, Purchase Price, or any other\ninformation related to this potential transaction to anyone other than their\nrespective legal counsel, broker (if any), accountants, title companies, lenders,\ngovernmental authorities and internal staff prior to Closing.`)
+            ],
+            spacing: { after: 120 }
+        }));
+        sections.push(new Paragraph({ text: "", spacing: { after: 120 } })); // Blank line for separation
+        sections.push(new Paragraph({
+            children: [
+                new TextRun(`Seller warrants and represents to Purchaser that Seller is the\nsole owner of the Property, including all real estate and improvements thereon,\nand such ownership interest is not subject to any options, contracts,\nassignments, or similar agreements relating to ownership of the Property, and\nno consent or approval of any party is required for Seller to enter into this\nLetter of Intent and to create obligations herein. The foregoing warranty and\nrepresentation shall survive the termination or expiration of this Letter of\nIntent or any Agreement entered into by Seller and Purchaser.`)
+            ],
+            spacing: { after: 120 }
+        }));
+        sections.push(new Paragraph({ text: "", spacing: { after: 120 } })); // Blank line for separation
+        sections.push(new Paragraph({
+            children: [
+                new TextRun(`This Letter of Intent is intended to provide both evidence of a\nnon-binding agreement and guidance in the preparation of a more complete\nwritten agreement between the parties. The parties agree to use commercially\nreasonable efforts to negotiate a more complete agreement, which will supersede\nthis Letter of Intent, containing at least the terms contained herein.`)
+            ],
+            spacing: { after: 120 }
+        }));
+        sections.push(new Paragraph({ text: "", spacing: { after: 120 } })); // Blank line for separation
+        sections.push(new Paragraph({
+            children: [
+                new TextRun(`If you are agreeable to the foregoing terms and conditions, please\nsign and date this letter in the space provided below, and return a signed copy\nto me, by email or facsimile, on or before 5:00PM, PST on the fifth day after\nthe date of this letter. Upon receipt, we will commence preparation of a draft\nof the Agreement.`)
+            ],
+            spacing: { after: 120 }
+        }));
+        sections.push(new Paragraph({ text: "", spacing: { after: 120 } })); // Blank line for separation
+
+        // Signature blocks for Long Form
+        sections.push(new Paragraph({ children: [new TextRun({ text: "PURCHASER:", bold: true })], spacing: {after: 40} }));
+        sections.push(new Paragraph({ children: [new TextRun("BY:    ______________________________________________________")], spacing: {after: 40} }));
+        sections.push(new Paragraph({ children: [new TextRun(data.yourName)], spacing: {after: 40} }));
+        sections.push(new Paragraph({ children: [new TextRun(data.yourAddress)], spacing: {after: 40} }));
+        sections.push(new Paragraph({ children: [new TextRun(data.yourCityZip)], spacing: {after: 40} }));
+        sections.push(new Paragraph({ spacing: { after: 0 } }));
+        sections.push(new Paragraph({ children: [new TextRun(`ACKNOWLEDGED AND AGREED TO THIS ${data.currentDate}.`)], spacing: {after: 120} }));
+        sections.push(new Paragraph({ spacing: { after: 0 } }));
+        sections.push(new Paragraph({ children: [new TextRun({ text: "SELLER:", bold: true })], spacing: {after: 40} }));
+        sections.push(new Paragraph({ children: [new TextRun("BY:    ____________________________________________________")], spacing: {after: 40} }));
+        sections.push(new Paragraph({ children: [new TextRun(data.ownerFullName)], spacing: {after: 40} }));
+        sections.push(new Paragraph({ children: [new TextRun("Owner")], spacing: {after: 40} }));
+
+    } else {
+        // --- SHORT FORM LOI CONTENT ---
+        // This section contains the original "short form" LOI details.
+        // You can edit and modify this section to remove paragraphs or simplify content for the short form.
+
+        const loiSectionsContentShortForm = [
+            {
+              num: "1",
+              heading: "Purchase Price",
+              content: '[PURCHASE PRICE]'
+                          },
+            {
+              num: "2",
+              heading: "Earnest Money Deposit",
+              content: `[EARNEST MONEY]`
+            },
+            {
+              num: "3",
+              heading: "Purchase Agreement",
+              content: 'Both parties will strive to execute a mutually acceptable Purchase Agreement within thirty (30) days after the execution of this Letter of Intent.'
+            },
+            {
+              num: "4",
+              heading: "Earnest Money Deposit",
+              content: `A refundable Earnest Money Deposit in the amount of [EARNEST MONEY] will be deposited with the Escrow Agent within five (5) business days.`
+            },
+            {
+              num: "5",
+              heading: "Inspection Period",
+              content: 'Purchaser shall have an Inspection Period of thirty (30) days to inspect the property and conduct any due diligence. If the Purchaser finds the Property unsuitable, this LOI shall be void and the Earnest Money refunded.'
+            },
+            {
+              num: "6",
+              heading: "Closing Date",
+              content: 'The Closing will occur on or before thirty (30) days after the end of the Inspection Period. An additional 30-day extension may be granted upon written request.'
+            },
+            {
+              num: "7",
+              heading: "Closing Costs",
+              content: 'The Seller will pay for basic title insurance, transfer taxes, survey and documentary stamps.'
+            },
+            {
+              num: "8",
+              heading: "Brokerage Fees",
+              content: 'To be paid by Seller as per seller agreement with Seller’s agent.'
+            },
+            {
+              num: "9",
+              heading: "General Terms",
+              content: 'The above represents the general terms and conditions of the proposed transaction. A full agreement will be prepared after mutual acceptance.'
+            },
+            {
+              num: "10",
+              heading: "Execution Instructions",
+              content: 'Should the above proposal be acceptable to you, please execute your signature below and Purchaser will begin preparation of the Purchase Agreement.'
+            }
+          ];
+
+        loiSectionsContentShortForm.forEach(section => {
+            sections.push(new Paragraph({
+                children: [ new TextRun(`${section.num}. `), new TextRun({ text: `${section.heading}: `, bold: true }), new TextRun(section.content), ],
+                spacing: { after: 120 },
+            }));
+        });
+
+        // Add any additional paragraphs specific to the Short Form LOI here.
+        // sections.push(new Paragraph({ text: "This is where you can add additional short form details, or simplify/remove content.", spacing: { after: 120 } }));
+
+        sections.push(new Paragraph({ spacing: { after: 120 } }));
+        sections.push(new Paragraph({ children: [new TextRun({ text: "PURCHASER:", bold: true })], spacing: {after: 40} }));
+        sections.push(new Paragraph({ children: [new TextRun("BY:    ______________________________________________________")], spacing: {after: 40} }));
+        sections.push(new Paragraph({ children: [new TextRun(data.yourName)], spacing: {after: 40} }));
+        sections.push(new Paragraph({ children: [new TextRun(data.yourAddress)], spacing: {after: 40} }));
+        sections.push(new Paragraph({ children: [new TextRun(data.yourCityZip)], spacing: {after: 40} }));
+        sections.push(new Paragraph({ spacing: { after: 0 } }));
+        sections.push(new Paragraph({ children: [new TextRun(`ACKNOWLEDGED AND AGREED TO THIS ${data.currentDate}.`)], spacing: {after: 120} }));
+        sections.push(new Paragraph({ spacing: { after: 0 } }));
+        sections.push(new Paragraph({ children: [new TextRun({ text: "SELLER:", bold: true })], spacing: {after: 40} }));
+        sections.push(new Paragraph({ children: [new TextRun("BY:    ____________________________________________________")], spacing: {after: 40} }));
+        sections.push(new Paragraph({ children: [new TextRun(data.ownerFullName)], spacing: {after: 40} }));
+        sections.push(new Paragraph({ children: [new TextRun("Owner")], spacing: {after: 40} }));
+    }
+
+    // Schedule 1 is common to both forms (remains outside the conditional)
     sections.push(new Paragraph({ children: [new PageBreak()] }));
     sections.push(new Paragraph({ children: [new TextRun({ text: "SCHEDULE 1", bold: true })], alignment: AlignmentType.CENTER, spacing: { after: 40 }}));
     sections.push(new Paragraph({ children: [new TextRun("(due diligence information)")], alignment: AlignmentType.CENTER, spacing: { after: 120 }}));
     const scheduleItemsContent = [
         "(a) Copies of ad valorem and personal property tax statements covering the Property for the three (3) years prior to the Effective Date (or the period of time Seller has owned the Real Property, whichever is less) and, if and when available, for the current year, together with a copy of the current year Tax Assessment Notice from applicable appraisal district office.",
         "(b) Copies of all licenses and permits with respect to Seller’s ownership and operation of the Property, including, without limitation, building permits, swimming pool permits, boiler permits, mechanical permits and certificates of occupancy, wind mitigation reports, flood plan certifications.",
-        "(c) To the extent that Seller has possession of these items: Copies of as-built engineering and architectural plans. Drawings, specifications, geotechnical subsoil tests or analyses, termite inspection reports, structural reports, foundation reports, and all amendments or changes thereto, and all blueprints, schematics, renderings, architect’s drawings and all other reports, plans or studies held by or for Seller which relate to the Property (collectively, the “Plans”).", // Removed trailing comma inside string if any
+        "(c) To the extent that Seller has possession of these items: Copies of as-built engineering and architectural plans. Drawings, specifications, geotechnical subsoil tests or analyses, termite inspection reports, structural reports, foundation reports, and all amendments or changes thereto, and all blueprints, schematics, renderings, architect’s drawings and all other reports, plans or studies held by or for Seller which relate to the Property (collectively, the “Plans”).",
         "(d) Copies of all Leases (including, without limitation, all modifications, amendments, or supplements thereto) in effect with respect to the Property, as a certified rent roll (”Rent Roll”) prepared as of the first day of the month in which the Contract is executed, which Rent Roll shall reflect, as of the date thereof with respect to each tenant occupying the Property or with respect to prospective tenants who have executed leases but have not yet occupied the Property: (i) the space occupied (or to be occupied); (ii) names of tenants, (iii) monthly rent, including escalations; (iv) the amount of the security deposit (and any other deposits) and any prepaid rent or charges; (v) amount of rent in arrearage; (vi) the date through which rent is paid, (vii)the commencement date and the expiration date of the lease term; (viii) any concessions granted which are now effective or which may in the future become effective; and (ix) tenant responsibility for water, sewage and other utility charges. The Rent Roll shall be accompanied by Seller’s signed certificate that the Rent Roll is complete and correct as of the date shown on said Rent Roll, and that there has been no material adverse change with respect to any item shown on the Rent Roll during the period from the date thereof to the date of such certificate.",
         "(e) Copies of all service contracts, landscaping, pool and/or other maintenance agreements, management contracts, warranties, guaranties, or other agreements relating to the Property, including, without limitation, all laundry leases, other equipment leases and particularly all coin-operated vending or other machines.",
         "(f) A reasonably detailed list for the Seller showing the description and approximate quantity of all of Seller’s Personal Property included as part of this transaction, together with copies of any lease, rental, or other agreements with respect to any such Personal Property.",
@@ -229,18 +447,20 @@ export default function TemplatesPage() {
         "(j) Copies of the most recent MAI or other type of property appraisal on the Property.",
         "(k) Certified copies of the last twelve months of monthly, itemized bank statements regarding operations at the Property."
       ];
-    scheduleItemsContent.forEach(item => { sections.push(new Paragraph({ text: item, spacing: { after: 120 } })); });
+    scheduleItemsContent.forEach(item => { sections.push(new Paragraph({ text: item, spacing: { after: 120 } }));
+    });
     const doc = new Document({ sections: [{ properties: {}, children: sections, }], });
     Packer.toBlob(doc).then(blob => {
       const safeAddress = data.propertyAddress.replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_]/g, '');
-      saveAs(blob, `LOI_${safeAddress || 'document'}.docx`);
+      const loiTypeString = longFormLOI ? "LONG" : "SHORT";
+      const filename = `LOI_${loiTypeString}_${safeAddress || 'document'}.docx`;
+      saveAs(blob, filename);
       console.log('Document created successfully');
     }).catch(err => { console.error('Error creating document: ', err); });
   };
 
   const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
     if (isLoadingAuth) {
       alert("Please wait, checking authentication status...");
       return;
@@ -263,7 +483,8 @@ export default function TemplatesPage() {
         <section>
           <h2 className="text-xl font-semibold text-gray-700 mb-4 border-b pb-2">Your Information</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <FormField label="Your Name" name="yourName" value={formData.yourName} onChange={handleChange} />
+            <FormField
+label="Your Name" name="yourName" value={formData.yourName} onChange={handleChange} />
             <FormField label="Your Phone" name="yourPhone" type="tel" value={formData.yourPhone} onChange={handleChange} />
             <FormField label="Your Address" name="yourAddress" value={formData.yourAddress} onChange={handleChange} />
             <FormField label="Your Email" name="yourEmail" type="email" value={formData.yourEmail} onChange={handleChange} />
@@ -277,7 +498,8 @@ export default function TemplatesPage() {
             <div className="md:col-span-2">
               <FormField label="Property Address" name="propertyAddress" value={formData.propertyAddress} onChange={handleChange} />
             </div>
-            <FormField label="Purchase Price ($)" name="purchasePrice" value={formData.purchasePrice} onChange={handleChange} />
+            <FormField label="Purchase Price ($)" name="purchasePrice"
+value={formData.purchasePrice} onChange={handleChange} />
             <FormField label="Earnest Money ($)" name="earnestMoney" value={formData.earnestMoney} onChange={handleChange} />
           </div>
         </section>
@@ -294,14 +516,38 @@ export default function TemplatesPage() {
           </div>
         </section>
 
+        {/* Improved Toggle for LOI Form Type */}
+        <section>
+          <h2 className="text-xl font-semibold text-gray-700 mb-4 border-b pb-2">LOI Type</h2>
+          <div className="flex items-center space-x-4">
+            <span className="text-gray-700 font-medium select-none">Short Form LOI</span>
+            <label htmlFor="loiToggle" className="relative inline-flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                id="loiToggle"
+                className="sr-only peer" // Hide the default checkbox
+                checked={longFormLOI}
+                onChange={() => setLongFormLOI(!longFormLOI)}
+              />
+              {/* Track */}
+              <div className="w-14 h-8 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-orange-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[6px] after:left-[6px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-orange-500"></div>
+            </label>
+            <span className="text-gray-700 font-medium select-none">Long Form LOI</span>
+          </div>
+        </section>
+
+
         <button
           type="submit"
-          disabled={isLoadingAuth || !isLoggedIn}
+          disabled={isLoadingAuth ||
+!isLoggedIn}
           className={`w-full md:w-auto mt-6 text-white py-3 px-6 rounded-lg font-semibold text-lg transition duration-200 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 focus:ring-offset-gray-50 ${
-            (isLoadingAuth || !isLoggedIn) ? 'bg-gray-400 cursor-not-allowed' : 'bg-orange-500 hover:bg-orange-600 hover:shadow-xl'
+            (isLoadingAuth || !isLoggedIn) ?
+'bg-gray-400 cursor-not-allowed' : 'bg-orange-500 hover:bg-orange-600 hover:shadow-xl'
           }`}
         >
-          {isLoadingAuth ? "Verifying Access..." : (isLoggedIn ? "Generate and Download LOI" : "Sign In to Generate LOI")}
+          {isLoadingAuth ?
+"Verifying Access..." : (isLoggedIn ? "Generate and Download LOI" : "Sign In to Generate LOI")}
         </button>
       </form>
     </div>
