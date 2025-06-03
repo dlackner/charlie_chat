@@ -2,14 +2,22 @@
 
 import { useState } from 'react';
 
-export default function PricingPage() {
-  const [isAnnual, setIsAnnual] = useState(true); // State to manage annual/monthly view, default to annual
+// ✅ Import product IDs from env
+const CHARLIE_CHAT_MONTHLY = process.env.NEXT_PUBLIC_CHARLIE_CHAT_MONTHLY_PRODUCT!;
+const CHARLIE_CHAT_ANNUAL = process.env.NEXT_PUBLIC_CHARLIE_CHAT_ANNUAL_PRODUCT!;
+const CHARLIE_CHAT_PRO_MONTHLY = process.env.NEXT_PUBLIC_CHARLIE_CHAT_PRO_MONTHLY_PRODUCT!;
+const CHARLIE_CHAT_PRO_ANNUAL = process.env.NEXT_PUBLIC_CHARLIE_CHAT_PRO_ANNUAL_PRODUCT!;
+const COHORT_MONTHLY = process.env.NEXT_PUBLIC_COHORT_MONTHLY_PRODUCT!;
+const COHORT_ANNUAL = process.env.NEXT_PUBLIC_COHORT_ANNUAL_PRODUCT!;
 
-  const handleCheckout = async (productId: string) => {
+export default function PricingPage() {
+  const [isAnnual, setIsAnnual] = useState(true);
+
+  const handleCheckout = async (productId: string, plan: "monthly" | "annual") => {
     const res = await fetch("/api/stripe/checkout", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ productId }),
+      body: JSON.stringify({ productId, plan }),
     });
     const { url } = await res.json();
     if (url) {
@@ -22,7 +30,6 @@ export default function PricingPage() {
   return (
     <div className="min-h-screen bg-white text-black px-6 py-12">
       <h1 className="text-3xl sm:text-5xl font-semibold mb-6 text-orange-600 text-center">Pricing</h1>
-
 
       {/* Toggle for Monthly/Annual */}
       <div className="flex justify-center mb-8">
@@ -70,7 +77,7 @@ export default function PricingPage() {
           </ul>
           <p className="text-sm italic text-gray-600 mb-3">Try for free! Unlimited searches for 3 days</p>
           <button
-            onClick={() => handleCheckout(isAnnual ? "prod_SNCAgPFEuFgHXB" : "prod_SJk5uclY4sjcVf")}
+            onClick={() => handleCheckout(CHARLIE_CHAT_MONTHLY, isAnnual ? "annual" : "monthly")}
             className="mt-auto w-full bg-black text-white py-2 rounded font-semibold transition duration-200 transform hover:scale-105 hover:bg-orange-600 hover:shadow-xl"
           >
             Get Access
@@ -102,10 +109,11 @@ export default function PricingPage() {
             <li>✔️ Access to my Master Class Training Program</li>
             <li>✔️ Upload broker documents and offer memorandums</li>
             <li>✔️ Access to best practice templates</li>
-            <li>✔️ Includes 50 national property matches every month</li>
+            <li>✔️ Includes 100 national property matches every month</li>
           </ul>
           <button
-            onClick={() => handleCheckout(isAnnual ? "prod_SNCA1Fm32NHWHV" : "prod_SNCAEB0ei9CC1x")}
+            
+        onClick={() => handleCheckout(CHARLIE_CHAT_PRO_MONTHLY, isAnnual ? "annual" : "monthly")}
             className="mt-auto w-full bg-black text-white py-2 rounded font-semibold transition duration-200 transform hover:scale-105 hover:bg-orange-600 hover:shadow-xl"
           >
             Get Access
@@ -128,13 +136,12 @@ export default function PricingPage() {
             <li>✔️ Step-by-step roadmap for your multifamily investing journey</li>
             <li>✔️ Includes 250 national property matches every month for your first 6 months</li>
           </ul>
-          {/* Changed this button to redirect instead of showing a form */}
-          <button
-            onClick={() => window.location.href = "https://multifamilyos.com/multifamilyos-cohort-program/"}
-            className="mt-auto w-full bg-black text-white py-2 rounded font-semibold transition duration-200 transform hover:scale-105 hover:bg-orange-600 hover:shadow-xl"
-          >
-            Apply Now
-          </button>
+<button
+  onClick={() => window.location.href = "https://multifamilyos.com/multifamilyos-cohort-program/"}
+  className="mt-auto w-full bg-black text-white py-2 rounded font-semibold transition duration-200 transform hover:scale-105 hover:bg-orange-600 hover:shadow-xl"
+>
+  Apply Now
+</button>
         </div>
       </div>
     </div>
