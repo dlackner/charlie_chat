@@ -585,7 +585,7 @@ export const Sidebar = ({
           const availableMatch = errorMessage.match(/Available: (\d+)/);
           const searchCostMatch = errorMessage.match(/Search costs (\d+)/);
           const currentCredits = availableMatch ? availableMatch[1] : "some";
-          const cost = searchCostMatch ? searchCostMatch[1] : "100";
+          const cost = searchCostMatch ? searchCostMatch[1] : "1";
           setCreditsError(`Not enough credits. Search costs ${cost}. Please add more credits.`);
         } else {
           setCreditsError("There was a problem with your account. Please log in again.");
