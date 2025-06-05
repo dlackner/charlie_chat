@@ -674,7 +674,7 @@ export default function PropertyAnalyzerPage() {
           </div>
     
           <div className="bg-white p-5 rounded-xl shadow-lg border border-gray-200">
-            <h3 className="text-md font-semibold text-orange-600 mb-1">Internal Rate of Return (IRR)</h3>
+            <h3 className="text-md font-semibold text-orange-600 mb-1">IRR at End of Holding Period</h3>
 
             <p className="text-2xl font-bold text-gray-900">{formatPercentage(irr)}</p>
           </div>

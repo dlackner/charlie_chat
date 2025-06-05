@@ -531,7 +531,7 @@ export function ClosingChat() {
               }}
               className="w-full bg-black text-white px-4 py-2 rounded hover:bg-gray-800 transition"
             >
-              Unlock Unlimited Access 💳
+              Sign up for 3 days of free access! 💳
             </button>
             
             <button
@@ -571,10 +571,16 @@ export function ClosingChat() {
 
 
       {isLoggedIn && userCredits !== null && (
-        <div 
-          className="fixed bottom-4 right-4 z-50 bg-orange-500 bg-opacity-75 text-white font-bold p-3 rounded-lg shadow-lg"
-          title={`You have ${userCredits} credits remaining.`}
-        >
+        <div
+        className={`fixed bottom-4 right-4 z-50 text-white font-bold p-3 rounded-lg shadow-lg ${
+          userCredits <= 5
+            ? "bg-red-500" // Red when 5 or fewer credits
+            : userCredits <= 20
+            ? "bg-yellow-500" // Yellow when 6 to 20 credits
+            : "bg-orange-500" // Default orange for more than 20 credits
+        } bg-opacity-75`}
+        title={`You have ${userCredits} credits remaining.`}
+      >
           Credits: {userCredits}
         </div>
       )}
