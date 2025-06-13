@@ -1,10 +1,9 @@
 import Stripe from "stripe";
 import { NextRequest } from "next/server";
 
-
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
 
-// 🧭 Map each productId to its priceId(s) and mode
+// ---------- 1. Subscription or membership products ----------
 const productPricing: Record<
   string,
   { monthly?: string; annual?: string; mode: "subscription" | "payment" }
@@ -24,61 +23,103 @@ const productPricing: Record<
     annual: process.env.NEXT_PUBLIC_COHORT_ANNUAL_PRICE!,
     mode: "subscription",
   },
-  [process.env.NEXT_PUBLIC_CHARLIE_CHAT_100_SEARCHES_PRODUCT!]: {
-    monthly: process.env.NEXT_PUBLIC_CHARLIE_CHAT_100_SEARCHES_PRICE!,
-    annual: process.env.NEXT_PUBLIC_CHARLIE_CHAT_100_SEARCHES_PRICE!,
-    mode: "payment",
-  },
+};
+
+// ---------- 2. One-time credit pack products ----------
+const creditPackPriceIds: Record<string, string> = {
+  "charlie_chat_25": process.env.NEXT_PUBLIC_CHARLIE_CHAT_25_PACK_PRICE!,
+  "charlie_chat_50": process.env.NEXT_PUBLIC_CHARLIE_CHAT_50_PACK_PRICE!,
+  "charlie_chat_100": process.env.NEXT_PUBLIC_CHARLIE_CHAT_100_PACK_PRICE!,
+  "charlie_chat_pro_100": process.env.NEXT_PUBLIC_CHARLIE_CHAT_PRO_100_PACK_PRICE!,
+  "cohort_100": process.env.NEXT_PUBLIC_MULTIFAMILYOS_100_PACK_PRICE!,
 };
 
 export async function POST(req: NextRequest) {
   try {
-    const { productId, plan }: { productId: string; plan: "monthly" | "annual" } = await req.json();
+    const body = await req.json();
+    console.log("💬 Checkout payload:", body);
 
-    console.log("📦 Incoming checkout request:", { productId, plan });
-    console.log("🧩 Keys in productPricing:", Object.keys(productPricing));
+    // Case A: Subscription plan (Charlie Chat, Pro, Cohort)
+    if (body.productId && body.plan) {
+      const { productId, plan }: { productId: string; plan: "monthly" | "annual" } = body;
 
-    const product = productPricing[productId];
-    if (!product) {
-      console.error("❌ Invalid product ID:", productId);
-      return new Response(
-        JSON.stringify({ error: "Product not found" }),
-        { status: 404, headers: { "Content-Type": "application/json" } }
-      );
+      const product = productPricing[productId];
+      if (!product) {
+        return new Response(JSON.stringify({ error: "Product not found" }), {
+          status: 404,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+
+      const priceId = product[plan];
+      if (!priceId) {
+        return new Response(JSON.stringify({ error: "Invalid plan" }), {
+          status: 400,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+
+      const session = await stripe.checkout.sessions.create({
+        mode: product.mode,
+        payment_method_types: ["card"],
+        line_items: [{ price: priceId, quantity: 1 }],
+        success_url: `${process.env.NEXT_PUBLIC_BASE_URL}/success?session_id={CHECKOUT_SESSION_ID}&mode=subscription`,
+        cancel_url: `${process.env.NEXT_PUBLIC_BASE_URL}/cancel`,
+        metadata: {
+          productId,
+          plan,
+        },
+      });
+
+      return new Response(JSON.stringify({ url: session.url }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
     }
 
-    const priceId = product[plan];
-    if (!priceId) {
-      console.error("❌ No price ID found for plan:", plan);
-      return new Response(
-        JSON.stringify({ error: "No price found for selected plan" }),
-        { status: 400, headers: { "Content-Type": "application/json" } }
-      );
+    // Case B: Credit pack purchase (from ClosingChat modal)
+    if (body.userClass && body.amount && body.stripeCustomerId) {
+      const key = `${body.userClass}_${body.amount}`;
+      const priceId = creditPackPriceIds[key];
+
+      if (!priceId) {
+        return new Response(JSON.stringify({ error: "Invalid credit pack" }), {
+          status: 400,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+
+      const session = await stripe.checkout.sessions.create({
+        mode: "payment",
+        payment_method_types: ["card"],
+        customer: body.stripeCustomerId, // ✅ Important: links session to a known Stripe customer
+        line_items: [{ price: priceId, quantity: 1 }],
+        success_url: `${process.env.NEXT_PUBLIC_BASE_URL}/success?session_id={CHECKOUT_SESSION_ID}&mode=credit`,
+        cancel_url: `${process.env.NEXT_PUBLIC_BASE_URL}/cancel`,
+        metadata: {
+          userClass: body.userClass,
+          amount: body.amount.toString(),
+        },
+        payment_intent_data: {
+          metadata: {
+            userClass: body.userClass,
+            amount: body.amount.toString(),
+          },
+        },
+      });
+
+      return new Response(JSON.stringify({ url: session.url }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
     }
 
-    console.log("💵 Selected price ID:", priceId);
-    console.log("🧾 Stripe mode:", product.mode);
-
-    const session = await stripe.checkout.sessions.create({
-      payment_method_types: ["card"],
-      mode: product.mode,
-      line_items: [{ price: priceId, quantity: 1 }],
-      success_url: `${process.env.NEXT_PUBLIC_BASE_URL}/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${process.env.NEXT_PUBLIC_BASE_URL}/cancel`,
-      metadata: {
-        userId: "placeholder_user_id",
-        productId,
-        plan,
-      },
-    });
-
-    return new Response(JSON.stringify({ url: session.url }), {
-      status: 200,
+    return new Response(JSON.stringify({ error: "Invalid request payload" }), {
+      status: 400,
       headers: { "Content-Type": "application/json" },
     });
   } catch (error: any) {
     console.error("🔥 Stripe Checkout Error:", error);
-
     return new Response(
       JSON.stringify({
         error: error?.message || "Unexpected error",
