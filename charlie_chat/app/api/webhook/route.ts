@@ -1,132 +1,147 @@
-import Stripe from 'stripe';
-import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { NextRequest, NextResponse } from "next/server";
+import Stripe from "stripe";
+import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2025-04-30.basil',
-});
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
-
-const webhookSecret = process.env.STRIPE_WEBHOOK_SIGNING_SECRET!;
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
 
 export async function POST(req: NextRequest) {
-  const body = await req.text();
-  const sig = req.headers.get('stripe-signature');
-  let event: Stripe.Event;
+  console.log("🛎️ Stripe webhook received");
+  const supabase = createSupabaseAdminClient();
 
-  try {
-    event = stripe.webhooks.constructEvent(body, sig!, webhookSecret);
-  } catch (err: any) {
-    console.error(`❌ Webhook signature verification failed: ${err.message}`);
-    return NextResponse.json({ error: 'Invalid signature' }, { status: 400 });
+  const sig = req.headers.get("stripe-signature");
+  if (!sig) {
+    console.error("❌ Missing Stripe signature");
+    return new NextResponse("Missing signature", { status: 400 });
   }
 
+  let event: Stripe.Event;
+  const body = await req.text();
+
   try {
-    switch (event.type) {
-      case 'checkout.session.completed': {
-        const session = event.data.object as any;
-        const customerId = session.customer as string;
-        const subscriptionId = session.subscription as string;
-        const priceId = session.items?.[0]?.price?.id || null;
+    event = stripe.webhooks.constructEvent(body, sig, process.env.STRIPE_WEBHOOK_SIGNING_SECRET!);
+    console.log("✅ Stripe signature verified");
+  } catch (err: any) {
+    console.error("❌ Invalid signature:", err.message);
+    return new NextResponse("Bad signature", { status: 400 });
+  }
 
-        const { data: profile, error: profileError } = await supabase
-          .from('profiles')
-          .select('user_id')
-          .eq('stripe_customer_id', customerId)
-          .single();
+  if (event.type !== "checkout.session.completed") {
+    console.log("🚫 Ignoring non-checkout event:", event.type);
+    return new NextResponse("Ignored", { status: 200 });
+  }
 
-        if (profileError || !profile) {
-          console.error('🚫 User not found for Stripe customer:', customerId);
-          break;
-        }
+  const raw = event.data.object as Stripe.Checkout.Session;
+  const session = await stripe.checkout.sessions.retrieve(raw.id, {
+    expand: ["line_items.data.price", "line_items"],
+  });
 
-        await supabase.from('subscriptions').insert({
-          user_id: profile.user_id,
-          stripe_subscription_id: subscriptionId,
-          stripe_price_id: priceId,
-          status: session.payment_status || 'unknown',
-          created_at: new Date().toISOString(),
-        });
+  const customerId = session.customer as string;
+  const sessionMode = session.mode;
+  const priceId = session.line_items?.data?.[0]?.price?.id || session.metadata?.priceId;
 
-        break;
-      }
+  if (!customerId || !priceId) {
+    console.error("❌ Missing customer ID or price ID");
+    return new NextResponse("Missing data", { status: 400 });
+  }
 
-      case 'customer.subscription.created':
-      case 'customer.subscription.updated': {
-        const subscription = event.data.object as any;
-        const customerId = subscription.customer as string;
+  const { data: profile, error: profileError } = await supabase
+    .from("profiles")
+    .select("user_id, credits, user_class")
+    .eq("stripe_customer_id", customerId)
+    .maybeSingle();
 
-        const { data: profile, error: profileError } = await supabase
-          .from('profiles')
-          .select('user_id')
-          .eq('stripe_customer_id', customerId)
-          .single();
+  if (profileError) {
+    console.error("❌ Profile lookup error:", profileError);
+    return new NextResponse("Lookup error", { status: 500 });
+  }
 
-        if (profileError || !profile) {
-          console.error('🚫 User not found for customer.subscription event:', customerId);
-          break;
-        }
+  if (!profile) {
+    console.warn("⚠️ No profile found for customer ID:", customerId);
+    return new NextResponse("No profile", { status: 200 });
+  }
 
-        const subData = {
-          stripe_price_id: subscription.items?.data?.[0]?.price?.id || null,
-          status: subscription.status,
-          current_period_start: subscription.current_period_start
-            ? new Date(subscription.current_period_start * 1000).toISOString()
-            : null,
-          current_period_end: subscription.current_period_end
-            ? new Date(subscription.current_period_end * 1000).toISOString()
-            : null,
-          cancel_at_period_end: subscription.cancel_at_period_end,
-          canceled_at: subscription.canceled_at
-            ? new Date(subscription.canceled_at * 1000).toISOString()
-            : null,
-          ended_at: subscription.ended_at
-            ? new Date(subscription.ended_at * 1000).toISOString()
-            : null,
-          updated_at: new Date().toISOString(),
-          metadata: subscription.metadata,
-        };
+  // ─── Handle Subscription ─────────────────────────────────────────────
+  if (sessionMode === "subscription") {
+    console.log("📦 Handling subscription purchase");
 
-        await supabase.from('subscriptions').upsert(
-          {
-            user_id: profile.user_id,
-            stripe_subscription_id: subscription.id,
-            ...subData,
-          },
-          {
-            onConflict: 'stripe_subscription_id',
-          }
-        );
+    const priceMap: Record<string, string> = {
+      [process.env.NEXT_PUBLIC_CHARLIE_CHAT_MONTHLY_PRICE!]: "charlie_chat",
+      [process.env.NEXT_PUBLIC_CHARLIE_CHAT_ANNUAL_PRICE!]: "charlie_chat",
+      [process.env.NEXT_PUBLIC_CHARLIE_CHAT_PRO_MONTHLY_PRICE!]: "charlie_chat_pro",
+      [process.env.NEXT_PUBLIC_CHARLIE_CHAT_PRO_ANNUAL_PRICE!]: "charlie_chat_pro",
+      [process.env.NEXT_PUBLIC_COHORT_MONTHLY_PRICE!]: "cohort",
+      [process.env.NEXT_PUBLIC_COHORT_ANNUAL_PRICE!]: "cohort",
+    };
 
-        break;
-      }
+    const newClass = priceMap[priceId] || "charlie_chat";
 
-      case 'customer.subscription.deleted': {
-        const subscription = event.data.object as any;
+    const { error: insertError } = await supabase
+      .from("subscriptions")
+      .insert([{
+        user_id: profile.user_id,
+        stripe_subscription_id: session.subscription as string,
+        stripe_price_id: priceId,
+        status: session.payment_status,
+      }]);
 
-        await supabase
-          .from('subscriptions')
-          .update({
-            status: 'canceled',
-            canceled_at: new Date().toISOString(),
-          })
-          .eq('stripe_subscription_id', subscription.id);
-
-        break;
-      }
-
-      default:
-        console.log(`⚠️ Unhandled event type: ${event.type}`);
-        break;
+    if (insertError) {
+      console.error("🔥 Subscription insert failed:", insertError);
+      return new NextResponse("Subscription insert failed", { status: 500 });
     }
 
-    return NextResponse.json({ received: true });
-  } catch (error: any) {
-    console.error('🔥 Webhook handler error:', error.message);
-    return NextResponse.json({ error: 'Webhook handler failed' }, { status: 500 });
+    const { error: classUpdateErr } = await supabase
+      .from("profiles")
+      .update({ user_class: newClass })
+      .eq("user_id", profile.user_id);
+
+    if (classUpdateErr) {
+      console.error("🔥 User class update failed:", classUpdateErr);
+      return new NextResponse("User class update failed", { status: 500 });
+    }
+
+    console.log("✅ Subscription + user_class updated for", profile.user_id);
   }
+
+  // ─── Handle One-Time Credit Pack ─────────────────────────────────────
+  if (sessionMode === "payment") {
+    console.log("💳 Handling one-time credit purchase");
+
+    const amount = parseInt(session.metadata?.amount || "0", 10);
+    if (amount <= 0) {
+      console.warn("⚠️ Skipping zero-credit transaction for", profile.user_id);
+      return new NextResponse("No credits to add", { status: 200 });
+    }
+
+    const { error: purchaseInsertError } = await supabase
+      .from("credit_purchases")
+      .insert([{
+        user_id: profile.user_id,
+        credit_amount: amount,
+        stripe_price_id: priceId,
+        stripe_session_id: session.id,
+        status: session.payment_status,
+        metadata: session.metadata ?? {},
+      }]);
+
+    if (purchaseInsertError) {
+      console.error("🔥 Credit purchase insert failed:", purchaseInsertError);
+      return new NextResponse("Purchase failed", { status: 500 });
+    }
+
+    const newBalance = (profile.credits || 0) + amount;
+
+    const { error: creditUpdateErr } = await supabase
+      .from("profiles")
+      .update({ credits: newBalance })
+      .eq("user_id", profile.user_id);
+
+    if (creditUpdateErr) {
+      console.error("🔥 Credit balance update failed:", creditUpdateErr);
+      return new NextResponse("Credits update failed", { status: 500 });
+    }
+
+    console.log(`✅ Added ${amount} credits to user ${profile.user_id}`);
+  }
+
+  return new NextResponse("Webhook handled", { status: 200 });
 }

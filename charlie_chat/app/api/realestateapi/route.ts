@@ -12,6 +12,8 @@ export async function POST(req: NextRequest) {
 
     const {
       zip,
+      city,
+      state,
       propertyType,
       units_min,
       mls_active,
@@ -40,6 +42,11 @@ export async function POST(req: NextRequest) {
       last_sale_price_min,
       last_sale_price_max,
       assumable,
+      auction,
+      reo,
+      tax_lien,
+      pre_foreclosure,
+      private_lender,
       street,
       house,
       ids_only // ✅ include ids_only
@@ -55,6 +62,8 @@ export async function POST(req: NextRequest) {
     const payload = {
       zip: zipArray.length > 0 ? zipArray : undefined,
       property_type: propertyType,
+      city,
+      state,
       units_min,
       units_max,
       mls_active,
@@ -86,6 +95,11 @@ export async function POST(req: NextRequest) {
       last_sale_price_min,
       last_sale_price_max,
       assumable,
+      auction,
+      reo,
+      tax_lien,
+      pre_foreclosure,
+      private_lender,
       street,
       house
     };

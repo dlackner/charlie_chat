@@ -6,6 +6,17 @@ import { saveAs } from 'file-saver';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 
+const notify = (msg: string) => {
+  const box = Object.assign(document.createElement('div'), { innerText: msg });
+  Object.assign(box.style, {
+    position: 'fixed', top: '16px', left: '50%', transform: 'translateX(-50%)',
+    background: '#1C599F', color: '#fff', padding: '18px 32px',
+    borderRadius: '6px', zIndex: 9999, fontFamily: 'sans-serif'
+  });
+  document.body.appendChild(box);
+  setTimeout(() => box.remove(), 3000);          // auto‑vanish after 5 s
+};
+
 interface LOIFormData {
   yourName: string;
   yourAddress: string;
@@ -93,13 +104,40 @@ export default function Home() {
     }
   }, [isLoadingAuth, isLoggedIn, router]);
 
+  const [userClass, setUserClass] = useState<string | null>(null);
+
+useEffect(() => {
+  if (!isLoadingAuth && isLoggedIn && currentUser?.id) {
+    const fetchUserClass = async () => {
+      const { data, error } = await supabase
+        .from('profiles') // adjust this if your table is named differently
+        .select('user_class')
+        .eq('user_id', currentUser.id)
+        .single();
+
+      if (error) {
+        console.error('Error fetching user_class:', error.message);
+        setUserClass(null);
+      } else {
+        setUserClass(data.user_class);
+      }
+    };
+
+    fetchUserClass();
+  }
+}, [isLoadingAuth, isLoggedIn, currentUser, supabase]);
   const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
   }, []);
 
   const generateAndDownloadLOI = async () => {
-
+ if (!currentUser || userClass === 'charlie_chat') {
+    notify(
+      'For access to my proven templates and other features, upgrade to Charlie Chat Pro!'
+    );          // 🔔 shows banner for 3 s, then continues
+    return;
+}
     if (!isLoggedIn) {
         alert("Authentication error. Please ensure you are signed in.");
         return;
@@ -645,8 +683,8 @@ and conditions:`
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col items-center py-10 px-4 sm:px-6 lg:px-8">
       <div className="bg-white p-8 rounded-lg shadow-xl w-full max-w-4xl border border-gray-200">
-        <h1 className="text-3xl md:text-4xl font-extrabold mb-6 text-orange-600 text-center font-sans">Generate Letter of Intent (LOI)</h1>
-        <p className="text-center text-gray-600 mb-8">Fill in the details below to generate your customized Letter of Intent.</p>
+        <h1 className="text-3xl md:text-4xl font-extrabold mb-6 text-orange-600 text-center font-sans">Generate a Letter of Intent</h1>
+        <p className="text-center text-gray-600 mb-8">Fill in the details below to generate your customized Letter of Intent. Select your version below.</p>
 
         <form onSubmit={(e) => { e.preventDefault(); generateAndDownloadLOI(); }} className="space-y-6">
           <section>
