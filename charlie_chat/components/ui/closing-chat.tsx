@@ -653,32 +653,32 @@ className={`inline-block max-w-[85%] sm:max-w-[75%] px-4 py-3 rounded-xl shadow-
   
       {/* Replace the pricing page code with this simple modal */}
       <Dialog open={showModal} onClose={() => setShowModal(false)} className="relative z-50">
-        <div className="fixed inset-0 bg-black/40" aria-hidden="true" />
-        <div className="fixed inset-0 flex items-center justify-center p-4">
-          <Dialog.Panel className="w-full max-w-xs rounded p-6 text-center space-y-4 shadow-xl" style={{ backgroundColor: '#1C599F' }}>
-            <Dialog.Title className="text-lg font-semibold text-white">
-              Sign up now to continue using Charlie Chat
-            </Dialog.Title>
-            <Dialog.Description className="text-sm text-white">
-              Choose from our flexible plans!
-            </Dialog.Description>
-              
-            <button
-              onClick={() => router.push("/signup")}
-              className="w-full bg-white text-blue-900 px-4 py-2 rounded font-semibold transition-all duration-200 ease-in-out transform hover:scale-105 hover:bg-gray-100 hover:shadow-lg active:scale-95"
-            >
-              Sign Up For Free
-            </button>
-              
-            <button
-              onClick={() => router.push("/pricing")}
-              className="w-full border border-blue-300 text-white px-4 py-2 rounded transition-all duration-200 ease-in-out transform hover:scale-105 hover:bg-blue-700 hover:shadow-lg hover:border-blue-200 active:scale-95"
-            >
-              View Plans & Pricing
-            </button>
-          </Dialog.Panel>
-        </div>
-      </Dialog>
+  <div className="fixed inset-0 bg-black/40" aria-hidden="true" />
+  <div className="fixed inset-0 flex items-center justify-center p-4">
+    <Dialog.Panel className="w-full max-w-md rounded bg-white p-6 text-center space-y-4 shadow-xl">
+      <Dialog.Title className="text-lg font-semibold">
+        Sign up now to continue using Charlie Chat
+      </Dialog.Title>
+      <Dialog.Description className="text-sm text-gray-500">
+        Choose from our flexible plans!
+      </Dialog.Description>
+        
+      <button
+        onClick={() => router.push("/signup")}
+        className="w-full bg-black text-white px-4 py-2 rounded hover:bg-gray-800 transition"
+      >
+        Sign Up For Free
+      </button>
+        
+      <button
+        onClick={() => router.push("/pricing")}
+        className="w-full border border-gray-300 text-gray-700 px-4 py-2 rounded hover:bg-gray-100 transition"
+      >
+        View Plans & Pricing
+      </button>
+    </Dialog.Panel>
+  </div>
+</Dialog>
 
       <Dialog open={showProModal} onClose={() => setShowProModal(false)} className="relative z-50">
         <div className="fixed inset-0 bg-black/40" aria-hidden="true" />
