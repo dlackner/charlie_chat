@@ -22,10 +22,9 @@ export default function SignUpPage() {
     if (!otpSent) {
       // Step 1: Send OTP to email for sign-up (pure OTP - no emailRedirectTo)
       const { error: signInError } = await supabase.auth.signInWithOtp({
-  email,
-  options: {
-    shouldCreateUser: true,
-    emailRedirectTo: 'http://localhost:3000/dashboard' // or wherever you want to redirect after login
+        email,
+        options: {
+          shouldCreateUser: true, // This option ensures a new user is created if they don't exist
         },
       });
 
@@ -81,7 +80,7 @@ export default function SignUpPage() {
             // Show OTP input after OTP has been sent
             <div>
               <p className="text-sm text-gray-700 mb-2">
-                A confirmation email has been sent to {email}. Check your junk folder if you don't see it.
+                A login code has been sent to {email}. Enter it below to complete your registration.
               </p>
               <label htmlFor="otp" className="block text-sm font-medium text-gray-600">
                 Login Code

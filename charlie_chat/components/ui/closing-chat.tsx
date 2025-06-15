@@ -37,7 +37,7 @@ type Listing = {
 import { PACKAGES, getPackagesFor } from '@/lib/pricing';
 import { AuthenticationError } from "openai";
 
-type UserClass = 'charlie_chat' | 'charlie_chat_pro' | 'cohort';
+type UserClass = 'trial' |'charlie_chat' | 'charlie_chat_pro' | 'cohort';
 
 const EXAMPLES = [
   "How do I creatively structure seller financing?",
@@ -54,7 +54,8 @@ const [userClass, setUserClass] = useState<UserClass>('charlie_chat'); // Remove
 const {
   user: currentUser,
   isLoading: isLoadingAuth,
-  supabase
+  supabase,
+  session
 } = useAuth() as { user: ExtendedUser; isLoading: boolean; supabase: any };
 
 useEffect(() => {
@@ -112,7 +113,7 @@ const stripeCustomerId = (currentUser as any)?.stripe_customer_id;
 }, [currentUser]);
 
 
-const availablePackages = getPackagesFor(userClass);
+const availablePackages = userClass === 'trial' ? [] : getPackagesFor(userClass);
 
   const [showBuyCreditsTooltip, setShowBuyCreditsTooltip] = useState(false);
   const [showCreditOptionsModal, setShowCreditOptionsModal] = useState(false);
@@ -403,20 +404,58 @@ const fetchUserCreditsAndClass = async (userToFetchFor: User) => {
     }
   };
 
+
 const handleSubscriptionCheckout = async (productId: string, plan: "monthly" | "annual") => {
-console.log("→ Subscription payload:", { productId, plan }); //FOR DEBUGGING
-console.log("🔍 About to call checkout endpoint at:", window.location.origin + "/api/stripe/checkout");
-  const res = await fetch("/api/stripe/checkout", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ productId, plan }),
-  });
-  const data = await res.json();
-  if (data.url) {
-    window.location.href = data.url;
-  } else {
-    console.error("Subscription checkout failed:", data.error);
-    alert("Checkout failed: " + (data.error || "Unknown error"));
+  console.log("🔥 Entered handleSubscriptionCheckout");
+  console.log("→ Subscription payload:", { productId, plan });
+  console.log("🔍 About to call checkout endpoint at:", window.location.origin + "/api/stripe/checkout");
+
+  // DEBUG: Let's see what we actually have
+  console.log("🔍 DEBUG session from useAuth:", session);
+  console.log("🔍 DEBUG currentUser from useAuth:", currentUser);
+  console.log("🔍 DEBUG isLoadingAuth:", isLoadingAuth);
+
+  // Try to get a fresh session directly from supabase
+  const { data: { session: freshSession }, error } = await supabase.auth.getSession();
+  console.log("🔍 DEBUG fresh session from supabase:", freshSession);
+  console.log("🔍 DEBUG fresh session error:", error);
+
+  const sessionToUse = freshSession || session;
+
+  if (!sessionToUse || !sessionToUse.access_token) {
+    console.error("🚫 No valid session or access token");
+    console.error("Session:", sessionToUse);
+    alert("You must be logged in to complete this purchase.");
+    return;
+  }
+
+  console.log("🔑 Using access token:", sessionToUse.access_token.substring(0, 20) + "...");
+
+  try {
+    const res = await fetch("/api/stripe/checkout", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${sessionToUse.access_token}`,
+      },
+      body: JSON.stringify({ productId, plan }),
+    });
+
+    console.log("🔍 Response status:", res.status);
+    console.log("🔍 Response headers:", res.headers);
+    
+    const data = await res.json();
+    console.log("🔍 Response data:", data);
+    
+    if (data.url) {
+      window.location.href = data.url;
+    } else {
+      console.error("Subscription checkout failed:", data.error);
+      alert("Checkout failed: " + (data.error || "Unknown error"));
+    }
+  } catch (error) {
+    console.error("Network error during checkout:", error);
+    alert("Network error occurred. Please try again.");
   }
 };
 
@@ -487,6 +526,8 @@ const handlePackageSelection = async (userClass: string, amount: number) => {
           isLoggedIn={isLoggedIn}
           triggerAuthModal={() => setShowModal(true)}
           onCreditsUpdate={handleCreditsUpdated}
+          userClass={userClass}
+          triggerBuyCreditsModal={() => setShowCreditOptionsModal(true)}
         />
 
         {/* Left: Chat UI */}
@@ -616,54 +657,35 @@ className={`inline-block max-w-[85%] sm:max-w-[75%] px-4 py-3 rounded-xl shadow-
         </div>
       </div>
   
-<Dialog open={showModal} onClose={() => setShowModal(false)} className="relative z-50">
-  <div className="fixed inset-0 bg-black/40" aria-hidden="true" />
-  <div className="fixed inset-0 flex items-center justify-center p-4">
-    <Dialog.Panel className="w-full max-w-xs rounded p-6 text-center space-y-4 shadow-xl" style={{ backgroundColor: '#1C599F' }}>
-      <Dialog.Title className="text-lg font-semibold text-white">
-        Sign up now to continue using Charlie Chat
-      </Dialog.Title>
-      <Dialog.Description className="text-sm text-white">
-        Includes 50 FREE property listings!<br />
-        No credit card required.
-      </Dialog.Description>
+  
+      {/* Replace the pricing page code with this simple modal */}
+      <Dialog open={showModal} onClose={() => setShowModal(false)} className="relative z-50">
+        <div className="fixed inset-0 bg-black/40" aria-hidden="true" />
+        <div className="fixed inset-0 flex items-center justify-center p-4">
+          <Dialog.Panel className="w-full max-w-xs rounded p-6 text-center space-y-4 shadow-xl" style={{ backgroundColor: '#1C599F' }}>
+            <Dialog.Title className="text-lg font-semibold text-white">
+              Sign up now to continue using Charlie Chat
+            </Dialog.Title>
+            <Dialog.Description className="text-sm text-white">
+              Choose from our flexible plans!
+            </Dialog.Description>
 
-      <button
-        onClick={async () => {
-          try {
-            const res = await fetch("/api/stripe/checkout", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                productId: process.env.NEXT_PUBLIC_CHARLIE_CHAT_MONTHLY_PRODUCT,
-                plan: "monthly",
-              }),
-            });
-            const data = await res.json();
-            if (data.url) {
-              window.location.href = data.url;
-            } else {
-              alert("Oops — couldn't start checkout.");
-            }
-          } catch (err) {
-            console.error("Checkout error:", err);
-            alert("Something went wrong launching checkout.");
-          }
-        }}
-      >
-        {/*Sign up for 3 days of free access! No credit card required!*/}
-      </button>
-      <button
-        onClick={() => {
-          router.push("/signup");
-        }}
-        className="w-full border border-blue-300 text-white px-4 py-2 rounded hover:bg-blue-700 transition"
-      >
-        Sign Up
-      </button>
-    </Dialog.Panel>
-  </div>
-</Dialog>*/
+            <button
+              onClick={() => router.push("/signup")}
+              className="w-full bg-white text-blue-900 px-4 py-2 rounded hover:bg-gray-100 transition font-semibold"
+            >
+              Sign Up Free
+            </button>
+            
+            <button
+              onClick={() => router.push("/pricing")}
+              className="w-full border border-blue-300 text-white px-4 py-2 rounded hover:bg-blue-700 transition"
+            >
+              View Plans & Pricing
+            </button>
+          </Dialog.Panel>
+        </div>
+      </Dialog>
 
       <Dialog open={showProModal} onClose={() => setShowProModal(false)} className="relative z-50">
         <div className="fixed inset-0 bg-black/40" aria-hidden="true" />
@@ -675,91 +697,71 @@ className={`inline-block max-w-[85%] sm:max-w-[75%] px-4 py-3 rounded-xl shadow-
             <Dialog.Description className="text-sm text-gray-500">
               File uploads and enhanced analytics are coming soon!
             </Dialog.Description>
-             {/*      
-            <button
-              onClick={handleCheckout}
-              className="bg-black text-white px-4 py-2 rounded mt-4 hover:bg-gray-800 transition"
-            >
-              Upgrade Now 💳
-            </button>
-            */}
           </Dialog.Panel>
         </div>
       </Dialog>
 
-
-{/* Full-screen black overlay whenever the credit modal is open */}
-{showCreditOptionsModal && (
-  <div
-    className="fixed inset-0 bg-black opacity-75 z-40"
-    aria-hidden="true"
-  />
-)}
-<Dialog
-  open={showCreditOptionsModal}
-  onClose={() => setShowCreditOptionsModal(false)}
-  className="fixed inset-0 z-50 flex items-center justify-center"
->
-
-  {/* Panel */}
-  <Dialog.Panel className="relative bg-white rounded-lg shadow-xl max-w-md w-full mx-4 p-6">
-    {/* Title */}
-    <Dialog.Title className="text-2xl font-semibold text-gray-900 mb-2">
-      Purchase More Credits
-    </Dialog.Title>
-
-    {/* Subtitle */}
-    <p className="text-sm text-gray-700 mb-6">
-      You’re running low on properties. Add more now to continue your analysis and find your next investment.
-    </p>
-
-{/* Option Buttons */}
-<div className="space-y-3">
-  {availablePackages.map((pkg, i) => (
-    <button
-      key={i}
-      onClick={() => handlePackageSelection(userClass, pkg.amount)} 
-      className="w-full py-3 rounded-md text-white font-medium cursor-pointer"
-      style={{
-        backgroundColor: ['#1C599F', '#174A7F', '#133A5F'][i] || '#1C599F'
-      }}
-    >
-      Buy {pkg.amount} Credits — ${pkg.price}
-    </button>
-  ))}
-</div>
-
-
-    {/* Cancel */}
-    <div className="mt-6 text-right">
-      <button
-        onClick={() => setShowCreditOptionsModal(false)}
-        className="inline-block px-4 py-2 rounded-md bg-gray-100 text-gray-700 hover:bg-gray-200 cursor-pointer"
+      {/* Credit options modal and rest of your existing modals stay the same... */}
+      {showCreditOptionsModal && (
+        <div
+          className="fixed inset-0 bg-black opacity-75 z-40"
+          aria-hidden="true"
+        />
+      )}
+      <Dialog
+        open={showCreditOptionsModal}
+        onClose={() => setShowCreditOptionsModal(false)}
+        className="fixed inset-0 z-50 flex items-center justify-center"
       >
-        Cancel
-      </button>
-    </div>
-  </Dialog.Panel>
-</Dialog>
+        <Dialog.Panel className="relative bg-white rounded-lg shadow-xl max-w-md w-full mx-4 p-6">
+          <Dialog.Title className="text-2xl font-semibold text-gray-900 mb-2">
+            Purchase More Credits
+          </Dialog.Title>
+          <p className="text-sm text-gray-700 mb-6">
+            You're running low on properties. Add more now to continue your analysis and find your next investment.
+          </p>
+          <div className="space-y-3">
+            {availablePackages.map((pkg, i) => (
+              <button
+                key={i}
+                onClick={() => handlePackageSelection(userClass, pkg.amount)} 
+                className="w-full py-3 rounded-md text-white font-medium cursor-pointer"
+                style={{
+                  backgroundColor: ['#1C599F', '#174A7F', '#133A5F'][i] || '#1C599F'
+                }}
+              >
+                Buy {pkg.amount} Credits — ${pkg.price}
+              </button>
+            ))}
+          </div>
+          <div className="mt-6 text-right">
+            <button
+              onClick={() => setShowCreditOptionsModal(false)}
+              className="inline-block px-4 py-2 rounded-md bg-gray-100 text-gray-700 hover:bg-gray-200 cursor-pointer"
+            >
+              Cancel
+            </button>
+          </div>
+        </Dialog.Panel>
+      </Dialog>
 
-
-{isLoggedIn && userCredits !== null && (
-  <div
-    className={`fixed bottom-4 right-4 z-50 text-white font-bold p-3 rounded-lg shadow-lg min-w-[110px] text-center ${
-      userCredits <= 5
-        ? "bg-red-500"
-        : userCredits <= 20
-        ? "bg-yellow-500"
-        : "bg-orange-500"
-    } bg-opacity-75`}
-    title={`You have ${userCredits} credits remaining.`}
-    onMouseEnter={() => setShowBuyCreditsTooltip(true)}
-    onMouseLeave={() => setShowBuyCreditsTooltip(false)}
-    onClick={() => setShowCreditOptionsModal(true)}
-  >
-    {showBuyCreditsTooltip ? "+ More" : `Credits: ${userCredits}`}
-  </div>
-)}
-</>
-);
+      {isLoggedIn && userCredits !== null && (
+        <div
+          className={`fixed bottom-4 right-4 z-50 text-white font-bold p-3 rounded-lg shadow-lg min-w-[110px] text-center ${
+            userCredits <= 5
+              ? "bg-red-500"
+              : userCredits <= 20
+              ? "bg-yellow-500"
+              : "bg-orange-500"
+          } bg-opacity-75`}
+          title={`You have ${userCredits} credits remaining.`}
+          onMouseEnter={() => setShowBuyCreditsTooltip(true)}
+          onMouseLeave={() => setShowBuyCreditsTooltip(false)}
+          onClick={() => setShowCreditOptionsModal(true)}
+        >
+          {showBuyCreditsTooltip ? "+ More" : `Credits: ${userCredits}`}
+        </div>
+      )}
+    </>
+  );
 }

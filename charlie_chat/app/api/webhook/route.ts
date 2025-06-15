@@ -1,3 +1,4 @@
+
 import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
@@ -43,64 +44,115 @@ export async function POST(req: NextRequest) {
     console.error("❌ Missing customer ID or price ID");
     return new NextResponse("Missing data", { status: 400 });
   }
+let finalProfile;
 
-  const { data: profile, error: profileError } = await supabase
+const { data: profile, error: profileError } = await supabase
+  .from("profiles")
+  .select("user_id, email, credits, user_class")
+  .eq("stripe_customer_id", customerId)
+  .maybeSingle();
+
+if (profileError) {
+  console.error("❌ Profile lookup error:", profileError);
+  return new NextResponse("Lookup error", { status: 500 });
+}
+
+if (profile) {
+  finalProfile = profile;
+} else {
+  // 🔍 No match on customer ID – try by email
+  console.warn("⚠️ No profile found for customer ID, checking by email...");
+  const customerEmail = session.customer_email;
+
+  if (!customerEmail) {
+    return new NextResponse("Missing customer email", { status: 400 });
+  }
+
+  const { data: fallbackProfile, error: fallbackErr } = await supabase
     .from("profiles")
-    .select("user_id, credits, user_class")
-    .eq("stripe_customer_id", customerId)
+    .select("user_id, email, credits, user_class")
+    .eq("email", customerEmail)
     .maybeSingle();
 
-  if (profileError) {
-    console.error("❌ Profile lookup error:", profileError);
+  if (fallbackErr) {
+    console.error("❌ Fallback profile lookup error:", fallbackErr);
     return new NextResponse("Lookup error", { status: 500 });
   }
 
-  if (!profile) {
-    console.warn("⚠️ No profile found for customer ID:", customerId);
+  if (!fallbackProfile) {
+    console.warn("⚠️ No profile found for customer email:", customerEmail);
     return new NextResponse("No profile", { status: 200 });
   }
 
+  // 🧩 Patch the trial profile with new Stripe customer ID
+ 
+  const { error: patchErr } = await supabase
+    .from("profiles")
+    .update({ stripe_customer_id: customerId })
+    .eq("user_id", fallbackProfile.user_id);
+
+  if (patchErr) {
+    console.error("❌ Failed to update profile with Stripe ID:", patchErr);
+    return new NextResponse("Profile update error", { status: 500 });
+  }
+
+  console.log("🔗 Linked trial user to Stripe customer:", fallbackProfile.user_id);
+  finalProfile = fallbackProfile;
+}
+console.log("✅ Matched user_id:", finalProfile.user_id);
+
   // ─── Handle Subscription ─────────────────────────────────────────────
   if (sessionMode === "subscription") {
-    console.log("📦 Handling subscription purchase");
+  const priceMap: Record<string, string> = {
+    [Deno.env.get("NEXT_PUBLIC_CHARLIE_CHAT_MONTHLY_PRICE")!]: "charlie_chat",
+    [Deno.env.get("NEXT_PUBLIC_CHARLIE_CHAT_ANNUAL_PRICE")!]: "charlie_chat",
+    [Deno.env.get("NEXT_PUBLIC_CHARLIE_CHAT_PRO_MONTHLY_PRICE")!]: "charlie_chat_pro",
+    [Deno.env.get("NEXT_PUBLIC_CHARLIE_CHAT_PRO_ANNUAL_PRICE")!]: "charlie_chat_pro",
+    [Deno.env.get("NEXT_PUBLIC_COHORT_MONTHLY_PRICE")!]: "cohort",
+    [Deno.env.get("NEXT_PUBLIC_COHORT_ANNUAL_PRICE")!]: "cohort",
+  };
 
-    const priceMap: Record<string, string> = {
-      [process.env.NEXT_PUBLIC_CHARLIE_CHAT_MONTHLY_PRICE!]: "charlie_chat",
-      [process.env.NEXT_PUBLIC_CHARLIE_CHAT_ANNUAL_PRICE!]: "charlie_chat",
-      [process.env.NEXT_PUBLIC_CHARLIE_CHAT_PRO_MONTHLY_PRICE!]: "charlie_chat_pro",
-      [process.env.NEXT_PUBLIC_CHARLIE_CHAT_PRO_ANNUAL_PRICE!]: "charlie_chat_pro",
-      [process.env.NEXT_PUBLIC_COHORT_MONTHLY_PRICE!]: "cohort",
-      [process.env.NEXT_PUBLIC_COHORT_ANNUAL_PRICE!]: "cohort",
-    };
+  const priceId = session.line_items?.data?.[0]?.price?.id || session.metadata?.priceId;
+  const newClass = priceMap[priceId] || "charlie_chat";
 
-    const newClass = priceMap[priceId] || "charlie_chat";
-
-    const { error: insertError } = await supabase
-      .from("subscriptions")
-      .insert([{
-        user_id: profile.user_id,
+  const { error: insertError } = await supabase
+    .from("subscriptions")
+    .insert([
+      {
+        user_id: finalProfile.user_id,
         stripe_subscription_id: session.subscription as string,
         stripe_price_id: priceId,
         status: session.payment_status,
-      }]);
+      },
+    ]);
 
-    if (insertError) {
-      console.error("🔥 Subscription insert failed:", insertError);
-      return new NextResponse("Subscription insert failed", { status: 500 });
-    }
-
-    const { error: classUpdateErr } = await supabase
-      .from("profiles")
-      .update({ user_class: newClass })
-      .eq("user_id", profile.user_id);
-
-    if (classUpdateErr) {
-      console.error("🔥 User class update failed:", classUpdateErr);
-      return new NextResponse("User class update failed", { status: 500 });
-    }
-
-    console.log("✅ Subscription + user_class updated for", profile.user_id);
+  if (insertError) {
+    console.error("🔥 Subscription insert failed:", insertError);
+    return new NextResponse("Subscription insert failed", { status: 500 });
   }
+
+  const updates: Record<string, any> = {
+    user_class: newClass,
+    stripe_customer_id: customerId,
+  };
+
+  if (session.customer_details?.name) {
+    updates.full_name = session.customer_details.name;
+  }
+
+  const { error: profileUpdateErr } = await supabase
+    .from("profiles")
+    .update(updates)
+    .eq("user_id", finalProfile.user_id);
+
+  if (profileUpdateErr) {
+    console.error("🔥 Profile update failed:", profileUpdateErr);
+    return new NextResponse("Profile update failed", { status: 500 });
+  }
+
+  console.log("✅ Subscription, user_class, and customer_id updated for", finalProfile.user_id);
+}
+
 
   // ─── Handle One-Time Credit Pack ─────────────────────────────────────
   if (sessionMode === "payment") {
@@ -108,14 +160,14 @@ export async function POST(req: NextRequest) {
 
     const amount = parseInt(session.metadata?.amount || "0", 10);
     if (amount <= 0) {
-      console.warn("⚠️ Skipping zero-credit transaction for", profile.user_id);
+      console.warn("⚠️ Skipping zero-credit transaction for", finalProfile.user_id);
       return new NextResponse("No credits to add", { status: 200 });
     }
 
     const { error: purchaseInsertError } = await supabase
       .from("credit_purchases")
       .insert([{
-        user_id: profile.user_id,
+        user_id: finalProfile.user_id,
         credit_amount: amount,
         stripe_price_id: priceId,
         stripe_session_id: session.id,
@@ -128,19 +180,19 @@ export async function POST(req: NextRequest) {
       return new NextResponse("Purchase failed", { status: 500 });
     }
 
-    const newBalance = (profile.credits || 0) + amount;
+    const newBalance = (finalProfile.credits || 0) + amount;
 
     const { error: creditUpdateErr } = await supabase
       .from("profiles")
       .update({ credits: newBalance })
-      .eq("user_id", profile.user_id);
+      .eq("user_id", finalProfile.user_id);
 
     if (creditUpdateErr) {
       console.error("🔥 Credit balance update failed:", creditUpdateErr);
       return new NextResponse("Credits update failed", { status: 500 });
     }
 
-    console.log(`✅ Added ${amount} credits to user ${profile.user_id}`);
+    console.log(`✅ Added ${amount} credits to user ${finalProfile.user_id}`);
   }
 
   return new NextResponse("Webhook handled", { status: 200 });

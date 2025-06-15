@@ -56,6 +56,8 @@ type Props = {
   isLoggedIn: boolean;
   triggerAuthModal: () => void;
   onCreditsUpdate?: (newBalance: number) => void;
+  userClass: 'trial' | 'charlie_chat' | 'charlie_chat_pro' | 'cohort';
+  triggerBuyCreditsModal: () => void
 };
 
 export const Sidebar = ({
@@ -67,12 +69,16 @@ export const Sidebar = ({
   isLoggedIn: userIsLoggedIn,
   triggerAuthModal,
   onCreditsUpdate,
+  userClass,
+  triggerBuyCreditsModal
 }: Props) => {
   const [zipcode, setZipcode] = useState("");
   const [minUnits, setMinUnits] = useState<number | string>(2);
   const [maxUnits, setMaxUnits] = useState<number | string>("");
 
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [showTrialUpgradeMessage, setShowTrialUpgradeMessage] = useState(false);
+
   const [mlsActive, setMlsActive] = useState("");
   const [radius, setRadius] = useState(5);
 
@@ -491,9 +497,9 @@ const [locationError, setLocationError] = useState<string | null>(null);
     setPrivateLender("");
   };
 
-  const handleSearch = async () => {
+const handleSearch = async (filters: Record<string, string | number | boolean>) => {
   if (!userIsLoggedIn) {
-    triggerAuthModal();
+    triggerAuthModal(); // ✅ still prompts sign-up for guests
     return;
   }
 
@@ -624,25 +630,33 @@ const [locationError, setLocationError] = useState<string | null>(null);
         }
       );
 
-      if (rpcError) {
-        console.error("RPC Error:", rpcError);
-      } else {
-        console.log("New credit balance:", newCreditBalance);
-      }  
-      if (rpcError) {
-        const errorMessage = typeof rpcError.message === "string" ? rpcError.message : String(rpcError);
-        if (errorMessage.includes("Insufficient credits")) {
-          const availableMatch = errorMessage.match(/Available: (\d+)/);
-          const searchCostMatch = errorMessage.match(/Search costs (\d+)/);
-          const currentCredits = availableMatch ? availableMatch[1] : "some";
-          const cost = searchCostMatch ? searchCostMatch[1] : "1";
-          setCreditsError(`Not enough credits. Search costs ${cost}. Please add more credits.`);
-        } else {
-          setCreditsError("There was a problem with your account. Please log in again.");
-        }
-        setIsSearching(false);
-        return;
-      }
+if (rpcError) {
+  const errorMessage =
+    typeof rpcError === "object" && rpcError !== null && "message" in rpcError
+      ? String(rpcError.message)
+      : String(rpcError);
+
+  console.log("RPC Error:", errorMessage);
+
+  if (errorMessage.includes("Insufficient credits")) {
+    //setCreditsError("You’re out of credits.");
+
+    if (userClass === "trial") {
+      setShowTrialUpgradeMessage(true);
+    } else {
+      triggerBuyCreditsModal();
+    }
+
+    setIsSearching(false);
+    return;
+  }
+
+  setCreditsError("There was a problem with your account. Please log in again.");
+  setIsSearching(false);
+  return;
+} else {
+  console.log("New credit balance:", newCreditBalance);
+}
   
       if (onCreditsUpdate && typeof newCreditBalance === "number") {
         onCreditsUpdate(newCreditBalance);
@@ -720,19 +734,35 @@ const [locationError, setLocationError] = useState<string | null>(null);
           </button>
         </div>
 
-        <button
-          onClick={handleSearch}
-          id="sidebar-search"
-          disabled={isSearching}
-          className="w-full bg-orange-500 text-white py-2 px-4 rounded-lg font-semibold transition duration-200 ease-in-out transform hover:scale-105 hover:bg-orange-600 focus:outline-none focus:ring-2 focus:ring-orange-400 focus:ring-opacity-75 hover:shadow-lg active:scale-95 disabled:opacity-75 disabled:cursor-not-allowed" // Added disabled styles
-        >
-          {isSearching ? "Processing..." : "Search"}
-        </button>
+<button
+  onClick={() => handleSearch({})}
+  id="sidebar-search"
+  disabled={isSearching}
+  className="w-full bg-orange-500 text-white py-2 px-4 rounded-lg font-semibold transition duration-200 ease-in-out transform hover:scale-105 hover:bg-orange-600 focus:outline-none focus:ring-2 focus:ring-orange-400 focus:ring-opacity-75 hover:shadow-lg active:scale-95 disabled:opacity-75 disabled:cursor-not-allowed"
+>
+  {isSearching ? "Processing..." : "Search"}
+</button>
 
         {creditsError && (
           <p className="text-red-600 text-xs mt-1 text-center">{creditsError}</p>
         )}
-
+{showTrialUpgradeMessage && (
+<div
+  className="px-6 py-4 rounded-md cursor-pointer text-center font-light text-lg mt-4 transition"
+  style={{
+    backgroundColor: "#1C599F",
+    color: "white",
+  }}
+  onClick={() => window.location.href = "/pricing"}
+>
+  Sorry, but you are out of credits.
+  <br />
+  <span style={{ textDecoration: "underline", fontWeight: "medium" }}>
+    Sign up now
+  </span>{" "}
+  to continue your analysis and find your next investment.
+</div>
+)}
         <div className="flex-1 space-y-2 overflow-y-auto relative">
           {Array.isArray(listings) &&
             listings
