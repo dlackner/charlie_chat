@@ -197,8 +197,8 @@ const availablePackages = userClass === 'trial' ? [] : getPackagesFor(userClass)
 
     const summaryPrompt = `Give me a market summary and an insightful underwriting strategy for each property. Ruminate, don't rush. Use infomration on tax liens, assumable, pre foreclosure, and auction flags when formulating your strategy. Mortgage balance and owner equity are also very important. Consider the following details if available:\n\n---\n${rows.join("\n\n---\n")}\n---`;
 
-    //sendMessage(summaryPrompt);
-    sendMessage(summaryPrompt, true);
+    // Send the full prompt to the API but display simplified message to user
+    sendMessage(summaryPrompt, true, "Analyzing your properties...");
     
     setSelectedListings([]);
   };
@@ -282,7 +282,7 @@ const fetchUserCreditsAndClass = async (userToFetchFor: User) => {
     }
   }, [messages]);
 
-  const sendMessage = async (message: string, isPropertyDump = false) => {
+  const sendMessage = async (message: string, isPropertyDump = false, displayMessage?: string) => {
     if (!message.trim()) return;
     
     // The 'count' and 'isPro' are now potentially managed by Supabase user data for logged-in users
@@ -306,7 +306,10 @@ const fetchUserCreditsAndClass = async (userToFetchFor: User) => {
 
     setCount((prev) => prev + 1); // This now reflects either guest count or DB-driven count
 
-    setMessages((prev) => [...prev, { role: "user", content: message, isPropertyDump }, { role: "assistant", content: "" }]);
+    // Use displayMessage if provided (for property analysis), otherwise use the actual message
+    const messageToDisplay = displayMessage || message;
+    
+    setMessages((prev) => [...prev, { role: "user", content: messageToDisplay, isPropertyDump }, { role: "assistant", content: "" }]);
     setInput("");
 
     const res = await fetch("/api/chat", {
@@ -468,7 +471,7 @@ const handlePackageSelection = async (userClass: string, amount: number) => {
 
   if (error || !data?.stripe_customer_id) {
     console.error("Missing or invalid Stripe customer ID:", error?.message);
-    alert("We couldn’t start checkout because your account is missing billing info. Please contact support.");
+    alert("We couldn't start checkout because your account is missing billing info. Please contact support.");
     return;
   }
 
@@ -562,11 +565,7 @@ className={`inline-block max-w-[85%] sm:max-w-[75%] px-4 py-3 rounded-xl shadow-
     : "bg-gray-100 text-gray-800 rounded-bl-none"
 }`}
 >
-  <div
-  className={`leading-relaxed font-sans ${
-    isUser && m.isPropertyDump ? "text-[2px] text-gray-500" : "text-base"
-  }`}
->
+  <div className={`leading-relaxed font-sans text-base ${isUser && m.isPropertyDump ? "italic" : ""}`}>
   <ReactMarkdown
     components={{
       h1: (props) => <h1 className="text-lg font-bold mt-4 mb-2" {...props} />,
@@ -663,17 +662,17 @@ className={`inline-block max-w-[85%] sm:max-w-[75%] px-4 py-3 rounded-xl shadow-
             <Dialog.Description className="text-sm text-white">
               Choose from our flexible plans!
             </Dialog.Description>
-
+              
             <button
               onClick={() => router.push("/signup")}
-              className="w-full bg-white text-blue-900 px-4 py-2 rounded hover:bg-gray-100 transition font-semibold"
+              className="w-full bg-white text-blue-900 px-4 py-2 rounded font-semibold transition-all duration-200 ease-in-out transform hover:scale-105 hover:bg-gray-100 hover:shadow-lg active:scale-95"
             >
               Sign Up For Free
             </button>
-            
+              
             <button
               onClick={() => router.push("/pricing")}
-              className="w-full border border-blue-300 text-white px-4 py-2 rounded hover:bg-blue-700 transition"
+              className="w-full border border-blue-300 text-white px-4 py-2 rounded transition-all duration-200 ease-in-out transform hover:scale-105 hover:bg-blue-700 hover:shadow-lg hover:border-blue-200 active:scale-95"
             >
               View Plans & Pricing
             </button>
