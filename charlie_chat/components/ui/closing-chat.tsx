@@ -702,59 +702,85 @@ className={`inline-block max-w-[85%] sm:max-w-[75%] px-4 py-3 rounded-xl shadow-
         />
       )}
       <Dialog
-        open={showCreditOptionsModal}
-        onClose={() => setShowCreditOptionsModal(false)}
-        className="fixed inset-0 z-50 flex items-center justify-center"
-      >
-        <Dialog.Panel className="relative bg-white rounded-lg shadow-xl max-w-md w-full mx-4 p-6">
-          <Dialog.Title className="text-2xl font-semibold text-gray-900 mb-2">
-            Purchase More Credits
-          </Dialog.Title>
-          <p className="text-sm text-gray-700 mb-6">
-            You're running low on properties. Add more now to continue your analysis and find your next investment.
-          </p>
-          <div className="space-y-3">
-            {availablePackages.map((pkg, i) => (
-              <button
-                key={i}
-                onClick={() => handlePackageSelection(userClass, pkg.amount)} 
-                className="w-full py-3 rounded-md text-white font-medium cursor-pointer"
-                style={{
-                  backgroundColor: ['#1C599F', '#174A7F', '#133A5F'][i] || '#1C599F'
-                }}
-              >
-                Buy {pkg.amount} Credits — ${pkg.price}
-              </button>
-            ))}
-          </div>
-          <div className="mt-6 text-right">
-            <button
-              onClick={() => setShowCreditOptionsModal(false)}
-              className="inline-block px-4 py-2 rounded-md bg-gray-100 text-gray-700 hover:bg-gray-200 cursor-pointer"
-            >
-              Cancel
-            </button>
-          </div>
-        </Dialog.Panel>
-      </Dialog>
-
-      {isLoggedIn && userCredits !== null && (
-        <div
-          className={`fixed bottom-4 right-4 z-50 text-white font-bold p-3 rounded-lg shadow-lg min-w-[110px] text-center ${
-            userCredits <= 5
-              ? "bg-red-500"
-              : userCredits <= 20
-              ? "bg-yellow-500"
-              : "bg-orange-500"
-          } bg-opacity-75`}
-          title={`You have ${userCredits} credits remaining.`}
-          onMouseEnter={() => setShowBuyCreditsTooltip(true)}
-          onMouseLeave={() => setShowBuyCreditsTooltip(false)}
-          onClick={() => setShowCreditOptionsModal(true)}
+  open={showCreditOptionsModal}
+  onClose={() => setShowCreditOptionsModal(false)}
+  className="fixed inset-0 z-50 flex items-center justify-center"
+>
+  <Dialog.Panel className="relative bg-white rounded-lg shadow-xl max-w-md w-full mx-4 p-6">
+    <Dialog.Title className="text-2xl font-semibold text-gray-900 mb-2">
+      Purchase More Credits
+    </Dialog.Title>
+    <p className="text-sm text-gray-700 mb-6">
+      You're running low on properties. Add more now to continue your analysis and find your next investment.
+    </p>
+    <div className="space-y-3">
+      {availablePackages.map((pkg, i) => (
+        <button
+          key={i}
+          onClick={() => handlePackageSelection(userClass, pkg.amount)} 
+          className="w-full py-3 rounded-md text-white font-medium cursor-pointer"
+          style={{
+            backgroundColor: ['#1C599F', '#174A7F', '#133A5F'][i] || '#1C599F'
+          }}
         >
-          {showBuyCreditsTooltip ? "+ More" : `Credits: ${userCredits}`}
+          Buy {pkg.amount} Credits — ${pkg.price}
+        </button>
+      ))}
+    </div>
+    <div className="mt-6 text-right">
+      <button
+        onClick={() => setShowCreditOptionsModal(false)}
+        className="inline-block px-4 py-2 rounded-md bg-gray-100 text-gray-700 hover:bg-gray-200 cursor-pointer"
+      >
+        Cancel
+      </button>
+    </div>
+  </Dialog.Panel>
+</Dialog>
+
+{isLoggedIn && userCredits !== null && (
+  <div 
+    className="fixed bottom-4 right-4 z-50 group cursor-pointer"
+    onClick={() => setShowCreditOptionsModal(true)}
+    onMouseEnter={() => setShowBuyCreditsTooltip(true)}
+    onMouseLeave={() => setShowBuyCreditsTooltip(false)}
+    title={`You have ${userCredits} credits remaining. Click to buy more.`}
+  >
+    {/* Credits Display - hidden on hover */}
+    <div
+      className={`text-white font-bold px-4 py-3 rounded-lg shadow-lg min-w-[110px] text-center transition-all duration-300 ease-in-out group-hover:opacity-0 group-hover:scale-75 ${
+        userCredits <= 5
+          ? "bg-red-500"
+          : userCredits <= 20
+          ? "bg-yellow-500"
+          : "bg-orange-500"
+      } bg-opacity-75`}
+    >
+      Credits: {userCredits}
+    </div>
+    
+    {/* Plus Button - shown on hover */}
+    <div className="absolute inset-0 flex items-center justify-center opacity-0 scale-75 group-hover:opacity-100 group-hover:scale-100 transition-all duration-300 ease-in-out">
+      <div className="bg-orange-500 hover:bg-orange-600 text-white font-bold w-12 h-12 rounded-full shadow-lg flex items-center justify-center">
+        {/* Plus Icon */}
+        <div className="relative">
+          {/* Horizontal line */}
+          <div className="w-6 h-0.5 bg-white rounded-full"></div>
+          {/* Vertical line */}
+          <div className="w-0.5 h-6 bg-white rounded-full absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2"></div>
         </div>
-      )}
-    </>
+      </div>
+    </div>
+    
+    {/* Tooltip */}
+    {showBuyCreditsTooltip && (
+      <div className="absolute bottom-full right-0 mb-2 px-3 py-1 bg-gray-800 text-white text-sm rounded-md whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+        Buy More Credits
+        <div className="absolute top-full right-4 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-800"></div>
+      </div>
+    )}
+  </div>
+)}
+</>
   );
 }
