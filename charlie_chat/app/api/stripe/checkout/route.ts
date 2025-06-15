@@ -45,12 +45,25 @@ const productPricing: Record<
     annual: process.env.NEXT_PUBLIC_COHORT_ANNUAL_PRICE!,
     mode: "subscription",
   },
-  // One-time purchase products
-  [process.env.NEXT_PUBLIC_CHARLIE_CHAT_100_SEARCHES_PRODUCT!]: {
-    monthly: process.env.NEXT_PUBLIC_CHARLIE_CHAT_100_SEARCHES_PRICE!,
-    annual: process.env.NEXT_PUBLIC_CHARLIE_CHAT_100_SEARCHES_PRICE!,
-    mode: "payment",
+};
+
+// Credit pack pricing map - ADD THIS SECTION
+const creditPackPricing: Record<number, string> = {
+  25: process.env.NEXT_PUBLIC_CHARLIE_CHAT_25_PACK_PRICE!,
+  50: process.env.NEXT_PUBLIC_CHARLIE_CHAT_50_PACK_PRICE!,
+  100: process.env.NEXT_PUBLIC_CHARLIE_CHAT_100_PACK_PRICE!,
+};
+
+// Special credit packs with user class upgrades - ADD THIS SECTION
+const specialCreditPacks: Record<string, { credits: number; priceId: string }> = {
+  "charlie_chat_pro": {
+    credits: 100,
+    priceId: process.env.NEXT_PUBLIC_CHARLIE_CHAT_PRO_100_PACK_PRICE!
   },
+  "multifamilyos": {
+    credits: 100,
+    priceId: process.env.NEXT_PUBLIC_MULTIFAMILYOS_100_PACK_PRICE!
+  }
 };
 
 export async function POST(req: NextRequest) {
@@ -83,33 +96,33 @@ export async function POST(req: NextRequest) {
       // Credit pack purchase
       const { userClass, amount, stripeCustomerId } = body;
       
-      // Ensure minimum $0.50 charge (Stripe requirement)
-      const pricePerCredit = 0.5; // cents per credit
-      const totalCents = Math.round(amount * pricePerCredit);
-      
-      if (totalCents < 50) {
-        return new Response(
-          JSON.stringify({ error: "Minimum purchase is $0.50 (100 credits)" }),
-          { status: 400, headers: { "Content-Type": "application/json" } }
-        );
-      }
-      
       console.log("💳 Creating credit pack checkout:", { userId, userClass, amount });
 
-      // Create a one-time payment session for credit pack purchase
+      let priceId: string;
+
+      // Check if this is a special credit pack with user class upgrade
+      if (specialCreditPacks[userClass] && amount === specialCreditPacks[userClass].credits) {
+        priceId = specialCreditPacks[userClass].priceId;
+        console.log("🎯 Using special credit pack price:", priceId);
+      } else {
+        // Use regular credit pack pricing
+        priceId = creditPackPricing[amount];
+        if (!priceId) {
+          return new Response(
+            JSON.stringify({ error: `No price configured for ${amount} credits` }),
+            { status: 400, headers: { "Content-Type": "application/json" } }
+          );
+        }
+        console.log("💰 Using regular credit pack price:", priceId);
+      }
+
+      // Create a one-time payment session using predefined price ID
       const session = await stripe.checkout.sessions.create({
         customer: stripeCustomerId,
         payment_method_types: ["card"],
         mode: "payment",
         line_items: [{
-          price_data: {
-            currency: 'usd',
-            product_data: {
-              name: `${amount} Search Credits`,
-              description: `Add ${amount} search credits to your account`,
-            },
-            unit_amount: totalCents,
-          },
+          price: priceId,  // Using predefined price ID instead of price_data
           quantity: 1,
         }],
         success_url: `${process.env.NEXT_PUBLIC_BASE_URL}/success?session_id={CHECKOUT_SESSION_ID}`,
