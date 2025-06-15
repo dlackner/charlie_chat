@@ -1,10 +1,10 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 
-export default function AuthCallback() {
+function AuthCallbackContent() {
   const supabase = createSupabaseBrowserClient();
   const router = useRouter();
   const search = useSearchParams();
@@ -32,7 +32,7 @@ export default function AuthCallback() {
           const { data: { session } } = await supabase.auth.getSession();
           if (session) {
             console.log('Session active, redirecting...');
-            router.replace('/dashboard'); // 👈 or wherever you want to land them
+            router.replace('/');
             return;
           }
           await new Promise(res => setTimeout(res, 200));
@@ -53,5 +53,21 @@ export default function AuthCallback() {
     <div className="min-h-screen flex items-center justify-center bg-gray-100">
       <p className="text-sm text-gray-700">Setting up your account…</p>
     </div>
+  );
+}
+
+function AuthCallbackLoading() {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gray-100">
+      <p className="text-sm text-gray-700">Loading authentication...</p>
+    </div>
+  );
+}
+
+export default function AuthCallback() {
+  return (
+    <Suspense fallback={<AuthCallbackLoading />}>
+      <AuthCallbackContent />
+    </Suspense>
   );
 }

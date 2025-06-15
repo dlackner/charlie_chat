@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 
-export default function SuccessPage() {
+function SuccessContent() {
   const searchParams = useSearchParams();
   const mode = searchParams.get("mode");
   const isCreditPack = mode === "credit";
@@ -50,7 +50,7 @@ export default function SuccessPage() {
             ? credits === null
               ? "Adding your new credits..."
               : `You now have ${credits} credits in your account.`
-            : "Unlimited access to Charlie Chat is now unlocked!"}
+            : "Let’s go find your next great investment opportunity!"}
         </p>
         <a
           href="/"
@@ -60,5 +60,24 @@ export default function SuccessPage() {
         </a>
       </div>
     </div>
+  );
+}
+
+function SuccessLoading() {
+  return (
+    <div className="flex items-center justify-center min-h-screen bg-white text-center">
+      <div>
+        <h1 className="text-3xl font-semibold mb-2">Processing...</h1>
+        <p className="text-gray-600 mb-4">Please wait while we load your success page.</p>
+      </div>
+    </div>
+  );
+}
+
+export default function SuccessPage() {
+  return (
+    <Suspense fallback={<SuccessLoading />}>
+      <SuccessContent />
+    </Suspense>
   );
 }

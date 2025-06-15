@@ -55,7 +55,6 @@ const {
   user: currentUser,
   isLoading: isLoadingAuth,
   supabase,
-  session
 } = useAuth() as { user: ExtendedUser; isLoading: boolean; supabase: any };
 
 useEffect(() => {
@@ -411,7 +410,6 @@ const handleSubscriptionCheckout = async (productId: string, plan: "monthly" | "
   console.log("🔍 About to call checkout endpoint at:", window.location.origin + "/api/stripe/checkout");
 
   // DEBUG: Let's see what we actually have
-  console.log("🔍 DEBUG session from useAuth:", session);
   console.log("🔍 DEBUG currentUser from useAuth:", currentUser);
   console.log("🔍 DEBUG isLoadingAuth:", isLoadingAuth);
 
@@ -420,23 +418,19 @@ const handleSubscriptionCheckout = async (productId: string, plan: "monthly" | "
   console.log("🔍 DEBUG fresh session from supabase:", freshSession);
   console.log("🔍 DEBUG fresh session error:", error);
 
-  const sessionToUse = freshSession || session;
-
-  if (!sessionToUse || !sessionToUse.access_token) {
+  if (!freshSession || !freshSession.access_token) {
     console.error("🚫 No valid session or access token");
-    console.error("Session:", sessionToUse);
+    console.error("Session:", freshSession);
     alert("You must be logged in to complete this purchase.");
     return;
   }
 
-  console.log("🔑 Using access token:", sessionToUse.access_token.substring(0, 20) + "...");
-
-  try {
+   try {
     const res = await fetch("/api/stripe/checkout", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${sessionToUse.access_token}`,
+        Authorization: `Bearer ${freshSession.access_token}`,
       },
       body: JSON.stringify({ productId, plan }),
     });
@@ -674,7 +668,7 @@ className={`inline-block max-w-[85%] sm:max-w-[75%] px-4 py-3 rounded-xl shadow-
               onClick={() => router.push("/signup")}
               className="w-full bg-white text-blue-900 px-4 py-2 rounded hover:bg-gray-100 transition font-semibold"
             >
-              Sign Up Free
+              Sign Up For Free
             </button>
             
             <button

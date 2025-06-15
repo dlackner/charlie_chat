@@ -132,7 +132,7 @@ useEffect(() => {
   }, []);
 
   const generateAndDownloadLOI = async () => {
- if (!currentUser || userClass === 'charlie_chat') {
+  if (!currentUser || userClass === 'charlie_chat' || userClass === 'trial') {
     notify(
       'For access to my proven templates and other features, upgrade to Charlie Chat Pro!'
     );          // 🔔 shows banner for 3 s, then continues

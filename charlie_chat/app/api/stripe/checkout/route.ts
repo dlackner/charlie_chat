@@ -4,7 +4,6 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
 
-// 🧭 Map each productId to its priceId(s) and mode - INCLUDING BOTH MONTHLY AND ANNUAL PRODUCTS
 const productPricing: Record<
   string,
   { monthly?: string; annual?: string; mode: "subscription" | "payment" }
@@ -15,7 +14,7 @@ const productPricing: Record<
     annual: process.env.NEXT_PUBLIC_CHARLIE_CHAT_ANNUAL_PRICE!,
     mode: "subscription",
   },
-  // Charlie Chat Annual Product (ADDED)
+  // Charlie Chat Annual Product
   [process.env.NEXT_PUBLIC_CHARLIE_CHAT_ANNUAL_PRODUCT!]: {
     monthly: process.env.NEXT_PUBLIC_CHARLIE_CHAT_MONTHLY_PRICE!,
     annual: process.env.NEXT_PUBLIC_CHARLIE_CHAT_ANNUAL_PRICE!,
@@ -27,7 +26,7 @@ const productPricing: Record<
     annual: process.env.NEXT_PUBLIC_CHARLIE_CHAT_PRO_ANNUAL_PRICE!,
     mode: "subscription",
   },
-  // Charlie Chat Pro Annual Product (ADDED)
+  // Charlie Chat Pro Annual Product
   [process.env.NEXT_PUBLIC_CHARLIE_CHAT_PRO_ANNUAL_PRODUCT!]: {
     monthly: process.env.NEXT_PUBLIC_CHARLIE_CHAT_PRO_MONTHLY_PRICE!,
     annual: process.env.NEXT_PUBLIC_CHARLIE_CHAT_PRO_ANNUAL_PRICE!,
@@ -39,7 +38,7 @@ const productPricing: Record<
     annual: process.env.NEXT_PUBLIC_COHORT_ANNUAL_PRICE!,
     mode: "subscription",
   },
-  // Cohort Annual Product (ADDED)
+  // Cohort Annual Product
   [process.env.NEXT_PUBLIC_COHORT_ANNUAL_PRODUCT!]: {
     monthly: process.env.NEXT_PUBLIC_COHORT_MONTHLY_PRICE!,
     annual: process.env.NEXT_PUBLIC_COHORT_ANNUAL_PRICE!,
@@ -47,14 +46,14 @@ const productPricing: Record<
   },
 };
 
-// Credit pack pricing map - ADD THIS SECTION
+// Credit pack pricing map
 const creditPackPricing: Record<number, string> = {
   25: process.env.NEXT_PUBLIC_CHARLIE_CHAT_25_PACK_PRICE!,
   50: process.env.NEXT_PUBLIC_CHARLIE_CHAT_50_PACK_PRICE!,
   100: process.env.NEXT_PUBLIC_CHARLIE_CHAT_100_PACK_PRICE!,
 };
 
-// Special credit packs with user class upgrades - ADD THIS SECTION
+// Special credit packs with user class upgrades
 const specialCreditPacks: Record<string, { credits: number; priceId: string }> = {
   "charlie_chat_pro": {
     credits: 100,

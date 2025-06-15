@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 
@@ -10,7 +10,7 @@ type ExtendedUser = User & {
   stripe_customer_id?: string;
 };
 
-export default function CreditPackCheckoutPage() {
+function CreditPackCheckoutContent() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
@@ -110,5 +110,28 @@ export default function CreditPackCheckoutPage() {
         </p>
       </div>
     </div>
+  );
+}
+
+function CreditPackLoading() {
+  return (
+    <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100">
+      <div className="text-center">
+        <h1 className="text-xl font-semibold text-gray-800">
+          Loading credit pack checkout...
+        </h1>
+        <p className="text-gray-500 mt-2">
+          Please wait...
+        </p>
+      </div>
+    </div>
+  );
+}
+
+export default function CreditPackCheckoutPage() {
+  return (
+    <Suspense fallback={<CreditPackLoading />}>
+      <CreditPackCheckoutContent />
+    </Suspense>
   );
 }
