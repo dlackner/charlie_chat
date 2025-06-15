@@ -9,6 +9,7 @@ import type { User } from "@supabase/supabase-js";
 type ExtendedUser = User & {
   stripe_customer_id?: string;
 };
+
 export default function CreditPackCheckoutPage() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -27,23 +28,24 @@ export default function CreditPackCheckoutPage() {
         return;
       }
 
-const user = session.user;
-const userId = user.id;
+      const user = session.user;
+      const userId = user.id;
+      const accessToken = session.access_token; // Get the access token
 
-const { data: profile, error: profileError } = await supabase
-  .from("profiles")
-  .select("stripe_customer_id")
-  .eq("user_id", userId)
-  .single();
+      const { data: profile, error: profileError } = await supabase
+        .from("profiles")
+        .select("stripe_customer_id")
+        .eq("user_id", userId)
+        .single();
 
-if (profileError || !profile?.stripe_customer_id) {
-  console.error("Could not fetch stripe_customer_id:", profileError);
-  setError("Your account is missing Stripe info. Please contact support.");
-  setLoading(false);
-  return;
-}
+      if (profileError || !profile?.stripe_customer_id) {
+        console.error("Could not fetch stripe_customer_id:", profileError);
+        setError("Your account is missing Stripe info. Please contact support.");
+        setLoading(false);
+        return;
+      }
 
-const stripeCustomerId = profile.stripe_customer_id;
+      const stripeCustomerId = profile.stripe_customer_id;
       const amount = searchParams.get("amount");
       const userClass = searchParams.get("userClass") || "charlie_chat";
 
@@ -55,12 +57,15 @@ const stripeCustomerId = profile.stripe_customer_id;
 
       const response = await fetch("/api/stripe/checkout", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${accessToken}` // Include the auth token
+        },
         body: JSON.stringify({
-  userClass,
-  amount: parseInt(amount, 10),
-  userId,
-  stripeCustomerId,
+          userClass,
+          amount: parseInt(amount, 10),
+          userId,
+          stripeCustomerId,
         }),
       });
 
