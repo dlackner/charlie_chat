@@ -85,7 +85,7 @@ export async function POST(req: NextRequest) {
       ids_only: ids_only ?? false,
       obfuscate: false,
       summary: false,
-      size: 20,
+      size: 10,
       in_state_owner,
       out_of_state_owner,
       corporate_owned,
