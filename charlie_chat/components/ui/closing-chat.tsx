@@ -685,7 +685,7 @@ className={`inline-block max-w-[85%] sm:max-w-[75%] px-4 py-3 rounded-xl shadow-
         <div className="fixed inset-0 flex items-center justify-center p-4">
           <Dialog.Panel className="w-full max-w-md rounded bg-white p-6 text-center space-y-4 shadow-xl">
             <Dialog.Title className="text-lg font-semibold">
-              Charlie Chat Pro 🔒
+              Charlie Chat Pro
             </Dialog.Title>
             <Dialog.Description className="text-sm text-gray-500">
               File uploads and enhanced analytics are coming soon!
@@ -714,18 +714,12 @@ className={`inline-block max-w-[85%] sm:max-w-[75%] px-4 py-3 rounded-xl shadow-
           Sorry, but you are out of credits.
         </Dialog.Title>
         <p className="text-sm text-gray-700 mb-6">
-          Sign up now to continue your analysis and find your next investment.
+          Upgrade now to continue your analysis and find your next investment.
         </p>
         <div className="space-y-3">
           <button
-            onClick={() => router.push("/signup")}
-            className="w-full py-3 rounded-md bg-black text-white font-medium hover:bg-gray-800 transition"
-          >
-            Sign Up Now
-          </button>
-          <button
             onClick={() => router.push("/pricing")}
-            className="w-full py-3 rounded-md border border-gray-300 text-gray-700 font-medium hover:bg-gray-100 transition"
+            className="w-full py-3 rounded-md bg-black text-white font-medium hover:bg-gray-800 transition"
           >
             View Pricing Plans
           </button>
