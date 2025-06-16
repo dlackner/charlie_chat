@@ -747,12 +747,8 @@ if (rpcError) {
           <p className="text-red-600 text-xs mt-1 text-center">{creditsError}</p>
         )}
 {showTrialUpgradeMessage && (
-<div
-  className="px-6 py-4 rounded-md cursor-pointer text-center font-light text-lg mt-4 transition"
-  style={{
-    backgroundColor: "#1C599F",
-    color: "white",
-  }}
+  <div
+  className="px-6 py-4 rounded-md cursor-pointer text-center font-light text-lg mt-4 transition bg-black text-white hover:bg-gray-800"
   onClick={() => window.location.href = "/pricing"}
 >
   Sorry, but you are out of credits.

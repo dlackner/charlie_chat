@@ -707,34 +707,56 @@ className={`inline-block max-w-[85%] sm:max-w-[75%] px-4 py-3 rounded-xl shadow-
   className="fixed inset-0 z-50 flex items-center justify-center"
 >
   <Dialog.Panel className="relative bg-white rounded-lg shadow-xl max-w-md w-full mx-4 p-6">
-    <Dialog.Title className="text-2xl font-semibold text-gray-900 mb-2">
-      Purchase More Credits
-    </Dialog.Title>
-    <p className="text-sm text-gray-700 mb-6">
-      You're running low on properties. Add more now to continue your analysis and find your next investment.
-    </p>
-    <div className="space-y-3">
-      {availablePackages.map((pkg, i) => (
-        <button
-          key={i}
-          onClick={() => handlePackageSelection(userClass, pkg.amount)} 
-          className="w-full py-3 rounded-md text-white font-medium cursor-pointer"
-          style={{
-            backgroundColor: ['#1C599F', '#174A7F', '#133A5F'][i] || '#1C599F'
-          }}
-        >
-          Buy {pkg.amount} Credits — ${pkg.price}
-        </button>
-      ))}
-    </div>
-    <div className="mt-6 text-right">
-      <button
-        onClick={() => setShowCreditOptionsModal(false)}
-        className="inline-block px-4 py-2 rounded-md bg-gray-100 text-gray-700 hover:bg-gray-200 cursor-pointer"
-      >
-        Cancel
-      </button>
-    </div>
+    {userClass === 'trial' && (userCredits === 0 || userCredits === null) ? (
+      // Trial user with no credits - show upgrade message (matching sidebar style)
+      <>
+        <Dialog.Title className="text-2xl font-semibold text-gray-900 mb-2">
+          Sorry, but you are out of credits.
+        </Dialog.Title>
+        <p className="text-sm text-gray-700 mb-6">
+          Sign up now to continue your analysis and find your next investment.
+        </p>
+        <div className="space-y-3">
+          <button
+            onClick={() => router.push("/signup")}
+            className="w-full py-3 rounded-md bg-black text-white font-medium hover:bg-gray-800 transition"
+          >
+            Sign Up Now
+          </button>
+          <button
+            onClick={() => router.push("/pricing")}
+            className="w-full py-3 rounded-md border border-gray-300 text-gray-700 font-medium hover:bg-gray-100 transition"
+          >
+            View Pricing Plans
+          </button>
+        </div>
+      </>
+    ) : (
+      // Regular users (non-trial or trial with credits) - show purchase options
+      <>
+      <Dialog.Title className="text-2xl font-semibold text-gray-900 mb-2">
+        Purchase More Credits
+      </Dialog.Title>
+      <p className="text-sm text-gray-700 mb-6">
+        You're running low on properties. Add more now to continue your analysis and find your next investment.
+      </p>
+      <div className="space-y-3">
+        {availablePackages.map((pkg, i) => (
+          <button
+            key={i}
+            onClick={() => handlePackageSelection(userClass, pkg.amount)} 
+            className="w-full py-3 rounded-md text-white font-medium cursor-pointer transition-all duration-200 ease-in-out transform hover:scale-105 hover:shadow-lg active:scale-95"
+            style={{
+              backgroundColor: ['#1C599F', '#174A7F', '#133A5F'][i] || '#1C599F'
+            }}
+          >
+            Buy {pkg.amount} Credits — ${pkg.price}
+          </button>
+        ))}
+      </div>
+    </>
+    )}
+    
   </Dialog.Panel>
 </Dialog>
 

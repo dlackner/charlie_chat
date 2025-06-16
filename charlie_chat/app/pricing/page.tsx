@@ -125,12 +125,12 @@ export default function PricingPage() {
           <h2 className="text-2xl font-semibold mb-2">Charlie Chat Pro</h2>
           {isAnnual ? (
             <>
-              <p className="text-xl font-bold mb-1">$416</p>
+              <p className="text-xl font-bold mb-1">$250</p>
               <p className="text-sm text-gray-500 mb-4">(Billed Annually)</p>
             </>
           ) : (
             <>
-              <p className="text-xl font-bold mb-1">$497</p>
+              <p className="text-xl font-bold mb-1">$297</p>
               <p className="text-sm text-gray-500 mb-4">(Billed Monthly)</p>
             </>
           )}
