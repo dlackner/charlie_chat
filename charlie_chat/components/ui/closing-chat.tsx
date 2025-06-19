@@ -9,6 +9,11 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import type { User } from '@supabase/supabase-js'
 
+//const DEFAULT_USER_CLASS: UserClass = 'charlie_chat'; 
+//const [userClass, setUserClass] = useState<UserClass>('charlie_chat'); // WE SET THIS DOWN BELOW
+type ExtendedUser = User & {
+  stripe_customer_id?: string;
+};
 type Listing = {
   id: string;
   address: {
@@ -28,6 +33,12 @@ type Listing = {
   [key: string]: any;
 };
 
+// DEFINE USER CLASSES AND PROPERTY PACKAGES.  NOT CONNECTED TO THE NEW LIB\PRICING.TS FILE YET
+import { PACKAGES, getPackagesFor } from '@/lib/pricing';
+import { AuthenticationError } from "openai";
+
+type UserClass = 'trial' |'charlie_chat' | 'charlie_chat_pro' | 'cohort';
+
 const EXAMPLES = [
   "How do I creatively structure seller financing?",
   "Is it possible to convert a hotel into a multifamily apartment?",
@@ -37,19 +48,78 @@ const EXAMPLES = [
 
 
 export function ClosingChat() {
+//const [userClass, setUserClass] = useState<UserClass>(DEFAULT_USER_CLASS);
+const [userClass, setUserClass] = useState<UserClass>('charlie_chat'); // Remove the line above when we go to production
 
-  const { 
-    user: currentUser,    // User object from context
-    isLoading: isLoadingAuth, // Global loading state for auth
-    supabase              // Shared Supabase client instance
-  } = useAuth();
+const {
+  user: currentUser,
+  isLoading: isLoadingAuth,
+  supabase,
+} = useAuth() as { user: ExtendedUser; isLoading: boolean; supabase: any };
 
+useEffect(() => {
+  const fetchStripeCustomerId = async () => {
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("stripe_customer_id,user_class") //ADDED user_class to fetch so we can determine which packages and services
+      .eq("user_id", currentUser.id)
+      .single();
+
+    if (error) {
+      console.error("Error fetching stripe_customer_id:", error.message);
+    } else if (data?.stripe_customer_id) {
+      //console.log("✅ Fetched stripe_customer_id:", data.stripe_customer_id);
+      // Use the value directly wherever you need it, don't set it on currentUser
+    }
+  };
+
+  if (currentUser?.id) {
+    fetchStripeCustomerId();
+  }
+}, [currentUser?.id, supabase]);
+
+const stripeCustomerId = (currentUser as any)?.stripe_customer_id;
   const router = useRouter();
   const [userCredits, setUserCredits] = useState<number | null>(null);
+  useEffect(() => {
+  const urlParams = new URLSearchParams(window.location.search);
+  const sessionId = urlParams.get("session_id");
+
+  if (sessionId && currentUser) {
+    //console.log("✅ Stripe checkout returned with session_id:", sessionId);
+
+    // Clean up URL so session_id disappears
+    const newUrl = window.location.pathname;
+    window.history.replaceState({}, document.title, newUrl);
+
+    const refreshCredits = async () => {
+      const { data: profile, error } = await supabase
+        .from("profiles")
+        .select("credits")
+        .eq("user_id", currentUser.id)
+        .single();
+
+      if (error) {
+        console.error("❌ Error refreshing credits after checkout:", error);
+      } else {
+        //console.log("✅ Credits refreshed after checkout:", profile.credits);
+        setUserCredits(profile.credits);
+      }
+    };
+
+    refreshCredits();
+  }
+}, [currentUser]);
+
+
+const availablePackages = userClass === 'trial' ? [] : getPackagesFor(userClass);
+
+  const [showBuyCreditsTooltip, setShowBuyCreditsTooltip] = useState(false);
+  const [showCreditOptionsModal, setShowCreditOptionsModal] = useState(false);
 
   const isLoggedIn = !!currentUser;
 
-  const [messages, setMessages] = useState<{ role: string; content: string }[]>([]);
+  const [messages, setMessages] = useState<{ role: string; content: string, isPropertyDump?: boolean }[]>([]);
   const [input, setInput] = useState("");
   const [threadId, setThreadId] = useState<string | null>(null);
   const [showProModal, setShowProModal] = useState(false);
@@ -58,11 +128,10 @@ export function ClosingChat() {
   const [count, setCount] = useState(0);
   const [listings, setListings] = useState<Listing[]>([]);
   const [selectedListings, setSelectedListings] = useState<Listing[]>([]);
-
   const handleCreditsUpdated = (newBalance: number) => {
-    console.log("[ClosingChat] handleCreditsUpdated CALLED with newBalance:", newBalance);
+    //console.log("[ClosingChat] handleCreditsUpdated CALLED with newBalance:", newBalance);
     setUserCredits(prevCredits => {
-      console.log("[ClosingChat] Previous credits state:", prevCredits, "New credits to set:", newBalance);
+      //console.log("[ClosingChat] Previous credits state:", prevCredits, "New credits to set:", newBalance);
       return newBalance;
     });
   };
@@ -83,7 +152,6 @@ export function ClosingChat() {
       "forSale", "inStateAbsenteeOwner", "lastSaleAmount", "lastSaleArmsLength", "lastSaleDate",
       "lenderName", "listingAmount", "lotSquareFeet", "maturityDateFirst", "mlsActive",
       "mlsLastSaleDate", "openMortgageBalance", "outOfStateAbsenteeOwner", "owner1FirstName",
-      "owner1LastName", "propertyId", "stories", "unitsCount", "yearBuilt", "yearsOwned"
     ];
 
     const rows = selectedListings.map((listing: Listing, index: number) => {
@@ -127,9 +195,11 @@ export function ClosingChat() {
       return `**${index + 1}. ${mainDisplayAddress}**\n${propertyDetails.trim()}`;
     });
 
-    const summaryPrompt = `Give me a market summary and an underwriting strategy for each property. For each property, consider the following details if available:\n\n---\n${rows.join("\n\n---\n")}\n---`;
+    const summaryPrompt = `Act as a senior multifamily investment advisor preparing a strategic underwriting memo for experienced real estate investors. You are reviewing an output from an AI-powered analyzer that provides limited property-level data, with some fields occasionally missing. For each property, produce two clearly labeled sections. The first is a Market Summary. It should Use the ZIP code, city, or region (if available) to summarize local market conditions relevant to multifamily investors. If the fields pre-foreclosure, auction, or tax lien flags are present, explain how these might affect buyer leverage, timing, and risk. Highlight anything unusual about the owner type, mortgage status, or assumability that might shape acquisition strategy.You may reference general market trends if they are reliably accessible online, but avoid making up data if it’s not findable. The second section is Underwriting Strategy. Base your analysis on mortgage balance, owner equity, and financing flags (e.g., assumable loans).Recommend a strategy (e.g., distressed negotiation, creative financing, seller carry, etc.) grounded in available data. Use numerical thresholds (like “equity above 30%” or “loan-to-value under 70%”) only when the data supports it. If appropriate, suggest next steps (e.g., verify rent roll, check lien documentation, evaluate exit cap).Include a short Verdict (e.g., Pursue, Monitor, Pass) with a rationale. The tone should be thoughtful and confident, as if preparing this memo for a GP/LP acquisition team. Important: Not all data will be available. Where assumptions are needed, state them clearly and cautiously.\n\n---\n${rows.join("\n\n---\n")}\n---`;
 
-    sendMessage(summaryPrompt);
+    // Send the full prompt to the API but display simplified message to user
+    sendMessage(summaryPrompt, true, "Analyzing your properties...");
+    
     setSelectedListings([]);
   };
 
@@ -138,53 +208,56 @@ export function ClosingChat() {
   useEffect(() => {
     let isMounted = true;
 
-    const fetchUserCredits = async (userToFetchFor: User) => {
-      if (!supabase) {
-        console.error("[ClosingChat CreditsEffect] Supabase client not available.");
-        if (isMounted) setUserCredits(null);
-        return;
-      }
-      console.log(`[ClosingChat CreditsEffect] Attempting to fetch profile/credits for user ${userToFetchFor.id}`);
-      try {
-        // Using the shared Supabase client from context
-        const { data: profile, error: profileError } = await supabase
-          .from('profiles')
-          .select('credits')
-          .eq('user_id', userToFetchFor.id)
-          .single();
+const fetchUserCreditsAndClass = async (userToFetchFor: User) => {
+  if (!supabase) {
+    console.error("[ClosingChat] Supabase client not available.");
+    if (isMounted) setUserCredits(null);
+    return;
+  }
 
-        if (!isMounted) return;
+  try {
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('credits, user_class')
+      .eq('user_id', userToFetchFor.id)
+      .single();
 
-        if (profileError) {
-          console.error(`[ClosingChat CreditsEffect] Error fetching profile for ${userToFetchFor.id}:`, profileError.message);
-          setUserCredits(null); // Or set to 0 if that's your preferred error state for credits
-        } else if (profile) {
-          console.log(`[ClosingChat CreditsEffect] Profile fetched for ${userToFetchFor.id}, credits: ${profile.credits}`);
-          setUserCredits(profile.credits);
-        } else {
-          console.warn(`[ClosingChat CreditsEffect] No profile found for user ${userToFetchFor.id}. Setting credits to 0.`);
-          setUserCredits(0); // Default if no profile
-        }
-      } catch (e: any) {
-        if (!isMounted) return;
-        console.error(`[ClosingChat CreditsEffect] Exception during profile fetch for ${userToFetchFor.id}:`, e.message, e);
-        setUserCredits(null);
+    if (!isMounted) return;
+
+    if (profileError) {
+      console.error(`[ClosingChat] Error fetching profile for ${userToFetchFor.id}:`, profileError.message);
+      setUserCredits(null);
+    } else if (profile) {
+      setUserCredits(profile.credits);
+      if (profile.user_class) {
+        setUserClass(profile.user_class as UserClass);
+      } else {
+        console.warn("No user_class found, leaving default in place.");
       }
-    };
+    } else {
+      setUserCredits(0);
+    }
+  } catch (e: any) {
+    if (!isMounted) return;
+    console.error(`[ClosingChat] Exception during profile fetch:`, e.message);
+    setUserCredits(null);
+  }
+};
+
 
     if (currentUser && isMounted) {
       // currentUser is from useAuth(). If it exists, fetch their credits.
-      fetchUserCredits(currentUser);
+      fetchUserCreditsAndClass(currentUser);
     } else if (!currentUser && isMounted) {
       // No user (logged out, or initial state before user is loaded by AuthContext)
       // Clear local credits if the user logs out or if there's no user from context.
-      console.log("[ClosingChat CreditsEffect] No current user from context, clearing local credits.");
+      //console.log("[ClosingChat CreditsEffect] No current user from context, clearing local credits.");
       setUserCredits(null);
     }
 
     return () => {
       isMounted = false;
-      console.log("[ClosingChat CreditsEffect] Cleanup.");
+      //console.log("[ClosingChat CreditsEffect] Cleanup.");
     };
   }, [currentUser, supabase]);
 
@@ -192,7 +265,7 @@ export function ClosingChat() {
   useEffect(() => {
     // Only set from localStorage if NOT logged in or if these are supplementary
     if (!isLoggedIn) {
-      const storedPro = localStorage.getItem("charlie_chat_pro") === "true";
+      const storedPro = localStorage.getItem("charlie_chat") === "true";
       const storedCount = Number(localStorage.getItem("questionCount") || 0);
       setIsPro(storedPro); // This might be overridden if logged in and fetching from DB
       setCount(isNaN(storedCount) ? 0 : storedCount);
@@ -209,7 +282,7 @@ export function ClosingChat() {
     }
   }, [messages]);
 
-  const sendMessage = async (message: string) => {
+  const sendMessage = async (message: string, isPropertyDump = false, displayMessage?: string) => {
     if (!message.trim()) return;
     
     // The 'count' and 'isPro' are now potentially managed by Supabase user data for logged-in users
@@ -233,7 +306,10 @@ export function ClosingChat() {
 
     setCount((prev) => prev + 1); // This now reflects either guest count or DB-driven count
 
-    setMessages((prev) => [...prev, { role: "user", content: message }, { role: "assistant", content: "" }]);
+    // Use displayMessage if provided (for property analysis), otherwise use the actual message
+    const messageToDisplay = displayMessage || message;
+    
+    setMessages((prev) => [...prev, { role: "user", content: messageToDisplay, isPropertyDump }, { role: "assistant", content: "" }]);
     setInput("");
 
     const res = await fetch("/api/chat", {
@@ -330,13 +406,35 @@ export function ClosingChat() {
     }
   };
 
-  const handleCheckout = async () => {
-    const res = await fetch("/api/stripe/checkout", { method: "POST" });
-    const data = await res.json();
-    window.location.href = data.url;
-  };
+const handlePackageSelection = async (userClass: string, amount: number) => {
+  if (!currentUser?.id) {
+    alert("Missing user ID. Please sign in again.");
+    return;
+  }
 
-  
+  // Fetch stripe_customer_id from Supabase
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("stripe_customer_id")
+    .eq("user_id", currentUser.id)
+    .single();
+
+  if (error || !data?.stripe_customer_id) {
+    console.error("Missing or invalid Stripe customer ID:", error?.message);
+    alert("We couldn't start checkout because your account is missing billing info. Please contact support.");
+    return;
+  }
+
+  const params = new URLSearchParams({
+    amount: amount.toString(),
+    userClass,
+    userId: currentUser.id,
+    stripeCustomerId: data.stripe_customer_id,
+  });
+
+  router.push(`/checkout/credit-pack?${params.toString()}`);
+};
+
   if (isLoadingAuth) {
     return (
         <div className="flex h-screen w-full items-center justify-center">
@@ -352,7 +450,7 @@ export function ClosingChat() {
          {/* Sidebar */}
          <Sidebar
           onSearch={async (filters: Record<string, string | number | boolean>) => {
-            console.log("🚀 Sending API request:", filters); 
+           //console.log("🚀 Sending API request:", filters); 
 
             try {
               const res = await fetch("/api/realestateapi", {
@@ -362,7 +460,7 @@ export function ClosingChat() {
               });
             
               const data = await res.json();
-              console.log("🔍 Raw Returned data:", data);
+              //console.log("🔍 Raw Returned data:", data);
               setListings(data || []);
             } catch (err) {
               console.error("Realestateapi API error:", err);
@@ -375,6 +473,8 @@ export function ClosingChat() {
           isLoggedIn={isLoggedIn}
           triggerAuthModal={() => setShowModal(true)}
           onCreditsUpdate={handleCreditsUpdated}
+          userClass={userClass}
+          triggerBuyCreditsModal={() => setShowCreditOptionsModal(true)}
         />
 
         {/* Left: Chat UI */}
@@ -392,16 +492,16 @@ export function ClosingChat() {
           </p>
   
           {/* Message list */}
-          <div className="w-full max-w-4xl flex-1 overflow-y-auto px-6 py-6 space-y-4">
+           <div className="w-full max-w-4xl flex-1 overflow-y-auto px-6 py-6 space-y-4">
             {messages.map((m, i) => {
-            const isUser = m.role === "user";
+           const isUser = m.role === "user";
             const cleanContent = m.content
-              .replace(/\s?【\d+:\d+†[^】]+】\s?/g, "")
-              .replace(/\s?\[\d+:\d+\^source\]\s?/g, "")
-              .replace(/\s?\[\^?\d+\]\s?/g, "")
-              .replace(/ +(?=\.|,|!|\?)/g, "")
-              .replace(/\n/g, '\n\n') 
-              .trim();
+            .replace(/\s?【\d+:\d+†[^】]+】\s?/g, "")
+            .replace(/\s?\[\d+:\d+\^source\]\s?/g, "")
+            .replace(/\s?\[\^?\d+\]\s?/g, "")
+            .replace(/ +(?=\.|,|!|\?)/g, "")
+            .replace(/\n/g, '\n\n')
+            .trim();
             
             return (
               <div
@@ -409,32 +509,29 @@ export function ClosingChat() {
                 className={`flex ${isUser ? "justify-end" : "justify-start"}`}
               >
                 <div
-                  className={`inline-block max-w-[85%] sm:max-w-[75%] px-4 py-3 rounded-xl shadow-sm ${ 
-                    isUser
-                      ? "bg-sky-100 text-sky-900 rounded-br-none" 
-                      : "bg-gray-100 text-gray-800 rounded-bl-none" 
-                  }`}
-                >
-                  <div className="text-base leading-relaxed font-sans"> 
-                    <ReactMarkdown
-                      components={{
-                        p: ({ node, ...props }) => (
-                          <p className="mb-2 last:mb-0 whitespace-pre-line" {...props} />
-                        ),
-                        strong: ({ node, ...props }) => (
-                          <strong className="font-semibold" {...props} />
-                        ),
-                        ul: ({ node, ...props }) => (
-                          <ul className="list-disc pl-5 my-2" {...props} />
-                        ),
-                        li: ({ node, ...props }) => (
-                          <li className="mb-1" {...props} />
-                        ),
-                      }}
-                    >
-                      {cleanContent}
-                    </ReactMarkdown>
-                  </div>
+className={`inline-block max-w-[85%] sm:max-w-[75%] px-4 py-3 rounded-xl shadow-sm ${
+  isUser
+    ? "bg-sky-100 text-sky-900 rounded-br-none"
+    : "bg-gray-100 text-gray-800 rounded-bl-none"
+}`}
+>
+  <div className={`leading-relaxed font-sans text-base ${isUser && m.isPropertyDump ? "italic" : ""}`}>
+  <ReactMarkdown
+    components={{
+      h1: (props) => <h1 className="text-lg font-bold mt-4 mb-2" {...props} />,
+      h2: (props) => <h2 className="text-base font-semibold mt-3 mb-2" {...props} />,
+      h3: (props) => <h3 className="text-sm font-semibold mt-2 mb-1" {...props} />,
+      p: (props) => <p className="mb-2 last:mb-0 whitespace-pre-line" {...props} />,
+      strong: (props) => <strong className="font-semibold" {...props} />,
+      ul: (props) => <ul className="list-disc pl-5 my-2" {...props} />,
+      li: (props) => <li className="mb-1" {...props} />,
+    }}
+  >
+    {cleanContent}
+  </ReactMarkdown>
+</div>
+
+                  
                 </div>
               </div>
             );
@@ -503,87 +600,153 @@ export function ClosingChat() {
         </div>
       </div>
   
+  
+      {/* Replace the pricing page code with this simple modal */}
       <Dialog open={showModal} onClose={() => setShowModal(false)} className="relative z-50">
-        <div className="fixed inset-0 bg-black/40" aria-hidden="true" />
-        <div className="fixed inset-0 flex items-center justify-center p-4">
-          <Dialog.Panel className="w-full max-w-md rounded bg-white p-6 text-center space-y-4 shadow-xl">
-            <Dialog.Title className="text-lg font-semibold">
-              You've hit your limit or need to sign in
-            </Dialog.Title>
-            <Dialog.Description className="text-sm text-gray-500">
-              Sign in to continue chatting or upgrade for unlimited access.
-            </Dialog.Description>
-
-            <button
-              onClick={async () => {
-                try {
-                  const res = await fetch("/api/stripe/checkout", { method: "POST" });
-                  const data = await res.json();
-                  if (data.url) {
-                    window.location.href = data.url;
-                  } else {
-                    alert("Oops — couldn't start checkout.");
-                  }
-                } catch (err) {
-                  console.error("Checkout error:", err);
-                  alert("Something went wrong launching checkout.");
-                }
-              }}
-              className="w-full bg-black text-white px-4 py-2 rounded hover:bg-gray-800 transition"
-            >
-              Sign up for 3 days of free access! 💳
-            </button>
-            
-            <button
-              onClick={() => {
-                router.push("/login");
-              }}
-              className="w-full border border-gray-300 text-gray-700 px-4 py-2 rounded hover:bg-gray-100 transition"
-            >
-              Sign In to Your Account
-            </button>
-          </Dialog.Panel>
-        </div>
-      </Dialog>
-
+  <div className="fixed inset-0 bg-black/40" aria-hidden="true" />
+  <div className="fixed inset-0 flex items-center justify-center p-4">
+    <Dialog.Panel className="w-full max-w-md rounded bg-white p-6 text-center space-y-4 shadow-xl">
+      <Dialog.Title className="text-lg font-semibold">
+        Sign up now to continue using Charlie Chat
+      </Dialog.Title>
+      <Dialog.Description className="text-sm text-gray-500">
+        Choose from our flexible plans!
+      </Dialog.Description>
+        
+      <button
+        onClick={() => router.push("/signup")}
+        className="w-full bg-black text-white px-4 py-2 rounded hover:bg-gray-800 transition"
+      >
+        Sign Up For Free
+      </button>
+        
+      <button
+        onClick={() => router.push("/pricing")}
+        className="w-full border border-gray-300 text-gray-700 px-4 py-2 rounded hover:bg-gray-100 transition"
+      >
+        View Plans & Pricing
+      </button>
+    </Dialog.Panel>
+  </div>
+</Dialog>
 
       <Dialog open={showProModal} onClose={() => setShowProModal(false)} className="relative z-50">
         <div className="fixed inset-0 bg-black/40" aria-hidden="true" />
         <div className="fixed inset-0 flex items-center justify-center p-4">
           <Dialog.Panel className="w-full max-w-md rounded bg-white p-6 text-center space-y-4 shadow-xl">
             <Dialog.Title className="text-lg font-semibold">
-              Charlie Chat Pro 🔒
+              Charlie Chat Pro
             </Dialog.Title>
             <Dialog.Description className="text-sm text-gray-500">
               File uploads and enhanced analytics are coming soon!
             </Dialog.Description>
-             {/*      
-            <button
-              onClick={handleCheckout}
-              className="bg-black text-white px-4 py-2 rounded mt-4 hover:bg-gray-800 transition"
-            >
-              Upgrade Now 💳
-            </button>
-            */}
           </Dialog.Panel>
         </div>
       </Dialog>
 
-
-      {isLoggedIn && userCredits !== null && (
+      {/* Credit options modal and rest of your existing modals stay the same... */}
+      {showCreditOptionsModal && (
         <div
-        className={`fixed bottom-4 right-4 z-50 text-white font-bold p-3 rounded-lg shadow-lg ${
-          userCredits <= 5
-            ? "bg-red-500" // Red when 5 or fewer credits
-            : userCredits <= 20
-            ? "bg-yellow-500" // Yellow when 6 to 20 credits
-            : "bg-orange-500" // Default orange for more than 20 credits
-        } bg-opacity-75`}
-        title={`You have ${userCredits} credits remaining.`}
-      >
-          Credits: {userCredits}
-        </div>
+          className="fixed inset-0 bg-black opacity-75 z-40"
+          aria-hidden="true"
+        />
       )}
+      <Dialog
+  open={showCreditOptionsModal}
+  onClose={() => setShowCreditOptionsModal(false)}
+  className="fixed inset-0 z-50 flex items-center justify-center"
+>
+  <Dialog.Panel className="relative bg-white rounded-lg shadow-xl max-w-md w-full mx-4 p-6">
+    {userClass === 'trial' && (userCredits === 0 || userCredits === null) ? (
+      // Trial user with no credits - show upgrade message (matching sidebar style)
+      <>
+        <Dialog.Title className="text-2xl font-semibold text-gray-900 mb-2">
+          Sorry, but you are out of credits.
+        </Dialog.Title>
+        <p className="text-sm text-gray-700 mb-6">
+          Upgrade now to continue your analysis and find your next investment.
+        </p>
+        <div className="space-y-3">
+          <button
+            onClick={() => router.push("/pricing")}
+            className="w-full py-3 rounded-md bg-black text-white font-medium hover:bg-gray-800 transition"
+          >
+            View Pricing Plans
+          </button>
+        </div>
+      </>
+    ) : (
+      // Regular users (non-trial or trial with credits) - show purchase options
+      <>
+      <Dialog.Title className="text-2xl font-semibold text-gray-900 mb-2">
+        Purchase More Credits
+      </Dialog.Title>
+      <p className="text-sm text-gray-700 mb-6">
+        You're running low on properties. Add more now to continue your analysis and find your next investment.
+      </p>
+      <div className="space-y-3">
+        {availablePackages.map((pkg, i) => (
+          <button
+            key={i}
+            onClick={() => handlePackageSelection(userClass, pkg.amount)} 
+            className="w-full py-3 rounded-md text-white font-medium cursor-pointer transition-all duration-200 ease-in-out transform hover:scale-105 hover:shadow-lg active:scale-95"
+            style={{
+              backgroundColor: ['#1C599F', '#174A7F', '#133A5F'][i] || '#1C599F'
+            }}
+          >
+            Buy {pkg.amount} Credits — ${pkg.price}
+          </button>
+        ))}
+      </div>
     </>
+    )}
+    
+  </Dialog.Panel>
+</Dialog>
+
+{isLoggedIn && userCredits !== null && (
+  <div 
+    className="fixed bottom-4 right-4 z-50 group cursor-pointer"
+    onClick={() => setShowCreditOptionsModal(true)}
+    onMouseEnter={() => setShowBuyCreditsTooltip(true)}
+    onMouseLeave={() => setShowBuyCreditsTooltip(false)}
+    title={`You have ${userCredits} credits remaining. Click to buy more.`}
+  >
+    {/* Credits Display - hidden on hover */}
+    <div
+      className={`text-white font-bold px-4 py-3 rounded-lg shadow-lg min-w-[110px] text-center transition-all duration-300 ease-in-out group-hover:opacity-0 group-hover:scale-75 ${
+        userCredits <= 5
+          ? "bg-red-500"
+          : userCredits <= 20
+          ? "bg-yellow-500"
+          : "bg-orange-500"
+      } bg-opacity-75`}
+    >
+      Credits: {userCredits}
+    </div>
+    
+    {/* Plus Button - shown on hover */}
+    <div className="absolute inset-0 flex items-center justify-center opacity-0 scale-75 group-hover:opacity-100 group-hover:scale-100 transition-all duration-300 ease-in-out">
+      <div className="bg-orange-500 hover:bg-orange-600 text-white font-bold w-12 h-12 rounded-full shadow-lg flex items-center justify-center">
+        {/* Plus Icon */}
+        <div className="relative">
+          {/* Horizontal line */}
+          <div className="w-6 h-0.5 bg-white rounded-full"></div>
+          {/* Vertical line */}
+          <div className="w-0.5 h-6 bg-white rounded-full absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2"></div>
+        </div>
+      </div>
+    </div>
+    
+    {/* Tooltip */}
+    {showBuyCreditsTooltip && (
+      <div className="absolute bottom-full right-0 mb-2 px-3 py-1 bg-gray-800 text-white text-sm rounded-md whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+        Buy More Credits
+        <div className="absolute top-full right-4 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-800"></div>
+      </div>
+    )}
+  </div>
+)}
+</>
   );
 }

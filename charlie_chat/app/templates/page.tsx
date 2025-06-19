@@ -6,6 +6,17 @@ import { saveAs } from 'file-saver';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 
+const notify = (msg: string) => {
+  const box = Object.assign(document.createElement('div'), { innerText: msg });
+  Object.assign(box.style, {
+    position: 'fixed', top: '16px', left: '50%', transform: 'translateX(-50%)',
+    background: '#1C599F', color: '#fff', padding: '18px 32px',
+    borderRadius: '6px', zIndex: 9999, fontFamily: 'sans-serif'
+  });
+  document.body.appendChild(box);
+  setTimeout(() => box.remove(), 3000);          // auto‑vanish after 5 s
+};
+
 interface LOIFormData {
   yourName: string;
   yourAddress: string;
@@ -80,7 +91,7 @@ export default function Home() {
     ownerZip: '',
   });
 
-  const [loiType, setLoiType] = useState<'short' | 'long' | 'master'>('short'); // Modified to handle three types
+  const [loiType, setLoiType] = useState<'short' | 'long' | 'master' | 'assumption'| 'financing'>('short'); // Modified to handle five types
 
   const { user: currentUser, isLoading: isLoadingAuth, supabase } = useAuth();
   const router = useRouter();
@@ -93,13 +104,40 @@ export default function Home() {
     }
   }, [isLoadingAuth, isLoggedIn, router]);
 
+  const [userClass, setUserClass] = useState<string | null>(null);
+
+useEffect(() => {
+  if (!isLoadingAuth && isLoggedIn && currentUser?.id) {
+    const fetchUserClass = async () => {
+      const { data, error } = await supabase
+        .from('profiles') // adjust this if your table is named differently
+        .select('user_class')
+        .eq('user_id', currentUser.id)
+        .single();
+
+      if (error) {
+        console.error('Error fetching user_class:', error.message);
+        setUserClass(null);
+      } else {
+        setUserClass(data.user_class);
+      }
+    };
+
+    fetchUserClass();
+  }
+}, [isLoadingAuth, isLoggedIn, currentUser, supabase]);
   const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
   }, []);
 
   const generateAndDownloadLOI = async () => {
-
+  if (!currentUser || userClass === 'charlie_chat' || userClass === 'trial') {
+    notify(
+      'For access to my proven templates and other features, upgrade to Charlie Chat Pro!'
+    );          // 🔔 shows banner for 3 s, then continues
+    return;
+}
     if (!isLoggedIn) {
         alert("Authentication error. Please ensure you are signed in.");
         return;
@@ -142,207 +180,177 @@ export default function Home() {
         sections.push(new Paragraph({ children: [new TextRun(`Dear ${data.ownerFirst},`)], spacing: { after: 120 }, }));
         sections.push(new Paragraph({
             children: [
-                new TextRun(
-                    `Please find outlined below the general terms and conditions under which ${data.yourName} (“Purchaser”) would be willing to purchase the above referenced Property. This letter will serve as a non-binding letter of intent between Purchaser or its Assignee, and the Owner of Record (“Seller”).
-Let this letter serve as our expression of intent to purchase the above referenced Property under the following terms
-and conditions:`
-                ),
-            ],
-            spacing: { after: 200 },
+new TextRun(
+                `Please find outlined below the general terms and conditions under which ${data.yourName} ("Purchaser") would be willing to purchase the above referenced Property. This letter will serve as a non-binding letter of intent between Purchaser or its Assignee, and the Owner of Record ("Seller").`
+            ),
+        ],
+        spacing: { after: 200 },
+    }));
+    sections.push(new Paragraph({
+        children: [
+            new TextRun(
+                `Let this letter serve as our expression of intent to purchase the above referenced Property under the following terms and conditions:`
+            ),
+        ],
+        spacing: { after: 120 },
         }));
         // --- LONG FORM LOI CONTENT ---
+               sections.push(new Paragraph({ text: "", spacing: { after: 60 } }));
         sections.push(new Paragraph({
             children: [
-                new TextRun(
-                    `This Letter of Intent is provided to you to acknowledge the\ninterest and intent of ${data.yourName} to acquire the fee simple interest\nof the Property, on the general terms and conditions set forth below. The terms\nlisted below are not intended to be all-inclusive. Moreover, all of the terms\nand conditions, and all
-covenants, warranties and representations between the\nparties relating to this proposed transaction must be reflected in a definitive\nwritten agreement (“Agreement”) executed by all of the parties.`
-                ),
+                new TextRun({ text: "1. PURCHASE PRICE: ", bold: true }),
+                new TextRun(`The Purchase Price of the Property shall be: ${data.purchasePriceFormatted}.`)
             ],
             spacing: { after: 120 }
         }));
-        sections.push(new Paragraph({ text: "", spacing: { after: 120 } }));
-        sections.push(new Paragraph({
+                sections.push(new Paragraph({
             children: [
-                new TextRun({ text: "Seller: ", bold: true }),
-                new TextRun("Owner of Record")
-            ],
-            spacing: { after: 60 }
-        }));
-        sections.push(new Paragraph({ text: "", spacing: { after: 60 } }));
-        sections.push(new Paragraph({
-            children: [
-                new TextRun({ text: "Purchaser: ", bold: true }),
-                new TextRun(`${data.yourName}, and/or assigns`)
-            ],
-            spacing: { after: 60 }
-        }));
-        sections.push(new Paragraph({ text: "", spacing: { after: 60 } }));
-        sections.push(new Paragraph({
-            children: [
-                new TextRun({ text: "Property: ", bold: true }),
-                new TextRun(`${data.propertyAddress}`)
-            ],
-            spacing: { after: 60 }
-        }));
-        sections.push(new Paragraph({ text: "", spacing: { after: 60 } }));
-        sections.push(new Paragraph({
-            children: [
-                new TextRun({ text: "Purchase Price: ", bold: true }),
-                new TextRun(`[PURCHASE PRICE] The Purchase Price shall not include any liabilities or obligations owed by Seller\nto any person or entities on or before the Closing Date, unless expressly\nassumed in writing by Purchaser.`)
+                new TextRun({ text: "2. PURCHASE AGREEMENT: ", bold: true }),
+                new TextRun(`Both parties will strive to execute a mutually acceptable purchase and sale agreement ("Agreement") within ten (10) days after the execution of this Letter.`)
             ],
             spacing: { after: 120 }
         }));
-        sections.push(new Paragraph({ text: "", spacing: { after: 120 } }));
-        sections.push(new Paragraph({
+              sections.push(new Paragraph({
             children: [
-                new TextRun({ text: "Earnest Money Deposit: ", bold: true }),
-                new TextRun(`[EARNEST MONEY] To be deposited with Title Company within two (2) business days after the\nEffective Date as defined below. The Earnest Money Deposit is fully refundable\nto Purchaser at any time prior to
-expiration of the Inspection Period, and any\ntime thereafter only upon Purchaser’s failure to obtain acceptable financing,\nor as a consequence of a default by Seller, or by mutual agreement of the\nparties.`)
+                new TextRun({ text: "3. EARNEST MONEY DEPOSIT: ", bold: true }),
+                new TextRun(`A refundable Earnest Money Deposit ("Deposit") subject to additional terms and conditions further defined in the Agreement of ${data.earnestMoneyFormatted} will be deposited within three (3) business days after the effective date as defined below.`)
             ],
             spacing: { after: 120 }
         }));
-        sections.push(new Paragraph({ text: "", spacing: { after: 120 } }));
+        
         sections.push(new Paragraph({
             children: [
-                new TextRun({ text: "Closing Date: ", bold: true }),
-                new TextRun(`The Closing Date\nof this transaction shall occur at the Title Company on or before thirty (30) days\nafter the expiration of the Financing Period or as mutually agreed by the\nparties.`)
+                new TextRun({ text: "4. TITLE INSURANCE: ", bold: true }),
+                new TextRun(`The title company will be chosen by the Purchaser. Seller shall provide to Purchaser, at Seller's expense and Purchaser's choosing, a standard ALTA policy of title insurance by Title Company in the amount of the Purchase Price for the Property, insuring that fee simple title to the Property is vested in Purchaser free and clear of all liens and subject only to exceptions approved by Purchaser during Inspection Period. Additional costs required to obtain an extended coverage policy shall be paid by Purchaser, if Purchaser elects coverage.`)
             ],
             spacing: { after: 120 }
         }));
-        sections.push(new Paragraph({ text: "", spacing: { after: 120 } }));
-        sections.push(new Paragraph({
+                sections.push(new Paragraph({
             children: [
-                new TextRun({ text: "Title Company: ", bold: true }),
-                new TextRun("The Title Company will be chosen by the Purchaser.")
+                new TextRun({ text: "5. SURVEY: ", bold: true }),
+                new TextRun("Seller agrees to provide Purchaser, at Seller’s expense, with a current ALTA survey of Property within fifteen (15) days following the execution of the Agreement.")
             ],
             spacing:
             { after: 120 }
         }));
-        sections.push(new Paragraph({ text: "", spacing: { after: 120 } }));
-        sections.push(new Paragraph({
+            sections.push(new Paragraph({
             children: [
-                new TextRun({ text: "Title Insurance: ", bold: true }),
-                new TextRun(`Seller shall\nprovide to Purchaser, at Seller’s expense and Purchaser’s choosing, a standard\nATLA policy of title insurance by Title Company in the amount of the Purchase\nPrice for the Property, insuring that fee simple title
-to the Property is\nvested in Purchaser free and clear of all liens and subject only to exceptions\napproved by Purchaser during Inspection Period. Additional costs required to\nobtain an extended coverage policy shall be paid by Purchaser, if Purchaser\nelects coverage.`)
+                new TextRun({ text: "6. INSPECTION PERIOD: ", bold: true }),
+                new TextRun(`The effective date (“Effective Date”) of the Agreement shall be the date on which Purchaser has received from the Seller all of the documents listed in Schedule 1 of this Letter. Purchaser shall have an inspection period of [NUMBER OF DAYS TO INSPECT] ([XX]) days (“Inspection Period”) starting from the Effective Date to inspect the Property and conduct any due diligence deemed necessary by Purchaser. If, for any reason, during this Inspection Period, Purchaser shall find the Property unsuitable, the Purchaser, by written notice to Seller, shall have the right to declare this Letter and any Agreement based hereon null and void and receive a full refund of any Deposit.`)
             ],
             spacing: { after: 120 }
         }));
-        sections.push(new Paragraph({ text: "", spacing: { after: 120 } }));
-        sections.push(new Paragraph({
+                sections.push(new Paragraph({
             children: [
-                new TextRun({ text: "Survey: ", bold: true }),
-                new TextRun(`Seller agrees to\nprovide Purchaser, at Seller’s expense, with a current ALTA survey of Property\nwithin fifteen (15) days following the Effective Date of the Agreement.`)
+                new TextRun({ text: "7. RIGHT OF ENTRY: ", bold: true }),
+                new TextRun(`Purchaser will have the right to enter the Property with prior reasonable notice, during reasonable business hours, for any purpose in connection with its inspection of the Property at any time that the Agreement is in effect.`)
             ],
             spacing: { after: 120 }
         }));
-        sections.push(new Paragraph({ text: "", spacing: { after: 120 } }));
-        sections.push(new Paragraph({
+                sections.push(new Paragraph({
             children: [
-                new TextRun({ text: "Inspection Period: ", bold: true }),
-                new TextRun(`Purchaser has\nforty-five (45) days after the Effective Date to complete its due diligence\ninvestigation. Purchaser may cancel the Agreement and escrow at any time during\nthe Inspection Period without cost or penalty by written notice
-to Seller. In\nthat event, The Earnest Money Deposit, plus accrued interest thereon, if any,\nshall be immediately refunded to Purchaser by the Title Company.`)
+                new TextRun({ text: "8. DUE DILIGENCE INFORMATION: ", bold: true }),
+                new TextRun(`Seller will deliver to Purchaser true, correct and complete copies of any and all pertinent records (i.e., survey, leases, environmental studies, inspection reports, capital improvement information, title report, zoning information, operating expenses and financial reports, rent rolls, bank accounts and similar information) regarding Seller’s ownership and operation of the Property. Such information shall include, but not be limited to, the items described on Schedule 1 attached hereto and made a part hereof.`)
             ],
             spacing: { after: 120 }
         }));
-        sections.push(new Paragraph({ text: "", spacing: { after: 120 } }));
-        sections.push(new Paragraph({
+    
+            sections.push(new Paragraph({
             children: [
-                new TextRun({ text: "Due Diligence Information: ", bold: true }),
-                new TextRun(`Seller will deliver to\nPurchaser true, correct and complete copies of any and all pertinent records\n(i.e., survey, leases, environmental studies, inspection reports, capital\nimprovement information, title report, zoning information, operating expenses\nand financial reports, rent
-rolls, bank accounts and similar information)\nregarding Seller’s ownership and operation of the Property. Such information\nshall include, but not be limited to, the items described on Schedule 1\nattached hereto and made a part hereof. Receipt of Due Diligence Information\nshall be the effective date of the Agreement (“Effective Date”).`)
-            ],
-            spacing: { after: 120 }
-        }));
-        sections.push(new Paragraph({ text: "", spacing: { after: 120 } }));
-        sections.push(new Paragraph({
-            children: [
-                new TextRun({ text: "Environmental Review: ", bold: true }),
+                new TextRun({ text: "9. ENVIRONMENTAL REVIEW: ", bold: true }),
                 new TextRun(`Purchaser may, in\nits discretion, obtain a current or revised environmental study of the Property\nat Purchaser’s sole cost and expense.`)
             ],
             spacing: { after: 120 }
         }));
-        sections.push(new Paragraph({ text: "", spacing: { after: 120 } }));
-        sections.push(new Paragraph({
+            sections.push(new Paragraph({
             children: [
-                new TextRun({ text: "Right of Entry: ", bold: true }),
-                new TextRun(`Purchaser will\nhave the right to enter the Property with prior reasonable notice, during\nreasonable business hours, for any purpose in connection with its inspection of\nthe Property.`)
+                new TextRun({ text: "10. FINANCING PERIOD: ", bold: true }),
+                new TextRun(`Purchaser’s obligation to purchase shall be subject to Purchaser receiving financing terms and conditions acceptable to Purchaser within [NUMBER OF DAYS FOR FINANCING] (XX) days (“Financing Period”) after the Effective Date of the Agreement. Purchaser may cancel the Agreement and receive full refund of the Deposit at any time prior to the expiration of the Financing Period.`)
             ],
             spacing: { after: 120 }
         }));
-        sections.push(new Paragraph({ text: "", spacing: { after: 120 } }));
-        sections.push(new Paragraph({
+            sections.push(new Paragraph({
             children: [
-                new TextRun({ text: "Closing Costs: ", bold: true }),
-                new TextRun(`Purchaser and\nSeller will be responsible for their respective legal, accounting, staff and\nother typical and customary costs and expenses, as more fully described in the\nAgreement.`)
+                new TextRun({ text: "11. PRORATIONS: ", bold: true }),
+                new TextRun(`Rents, lease commissions, interest, insurance premiums, maintenance expenses, operating expenses, utilities and ad valorem taxes for the year of Closing will be prorated effective as of the date of the Closing. Seller shall give credit to Purchaser at the Closing in the aggregate amount of any security deposits or prepaid rents deposited by tenants with Seller, or otherwise owed to tenants, under leases affecting the Property.`)
             ],
             spacing: { after: 120 }
         }));
-        sections.push(new Paragraph({ text: "", spacing: { after: 120 } }));
-        sections.push(new Paragraph({
+            sections.push(new Paragraph({
             children: [
-                new TextRun({ text: "Prorations: ", bold: true }),
-                new TextRun(`Rents, lease\ncommissions, interest, insurance premiums, maintenance expenses, operating\nexpenses, utilities and ad valorem taxes for the year of Closing will be\nprorated effective as of the date of the Closing. Seller shall give credit to\nPurchaser at
-the Closing in the aggregate amount of any security deposits or\nprepaid rents deposited by tenants with Seller, or otherwise owed to tenants,\nunder leases affecting the Property.`)
+                new TextRun({ text: "12. CLOSING DATE: ", bold: true }),
+                new TextRun(`The closing will occur on or before [CLOSING DAYS AFTER FINAINCING PERIOD] ([XX]) days (“Closing Date”) after the end of the Financing Period. Should financing constraints dictate additional time, an additional 30-day extension shall be available upon written request from Purchaser. Such written request shall be made prior to the target closing date.`)
             ],
             spacing: { after: 120 }
         }));
-        sections.push(new Paragraph({ text: "", spacing: { after: 120 } }));
-        sections.push(new Paragraph({
+            sections.push(new Paragraph({
             children: [
-                new TextRun({ text: "Financing Period Contingency: ", bold: true }),
-                new TextRun(`Purchaser’s obligation to\npurchase the Property shall be subject to Purchaser receiving financing terms\nand conditions acceptable to Purchaser within seventy-five (75) days\nafter the Effective Date of the Agreement. Purchaser may cancel the Agreement\nand
-receive full refund of the Earnest money deposit at any time prior to the\nexpiration of the Financing Period.`)
+                new TextRun({ text: "13. CLOSING COSTS: ", bold: true }),
+                new TextRun(`The Seller will pay for basic title insurance, transfer taxes, survey and documentary stamps.  Purchaser and Seller will be responsible for their respective legal, accounting, staff and other typical and customary costs and expenses, as more fully described in the Agreement.`)
             ],
             spacing: { after: 120 }
         }));
-        sections.push(new Paragraph({ text: "", spacing: { after: 120 } }));
+        
         sections.push(new Paragraph({
             children: [
-                new TextRun({ text: "Sales Commission: ", bold: true }),
-                new TextRun(`Purchaser has not\nengaged a broker to assist with this transaction. Seller shall be responsible\nfor payment of any buyer’s broker’s commissions owed as a result of the\nproposed transaction.`)
+                new TextRun({ text: "14. BROKERAGE FEES: ", bold: true }),
+                new TextRun(`Brokerage fees and commissions are to be paid by Seller as per agreement with Seller’s agent.`)
             ],
             spacing: { after: 120 }
         }));
-        sections.push(new Paragraph({ text: "", spacing: { after: 120 } }));
+        
         sections.push(new Paragraph({
             children: [
-                new TextRun({ text: "Removal from Market: ", bold: true }),
-                new TextRun(`Seller agrees not\nto negotiate with respect to, or enter into any other written agreement or\nletter of intent for the purchase of, the Property during the period from the\nmutual execution of this Letter
-of Intent through the period during which the\nAgreement is in effect.`)
+                new TextRun({ text: "15. REMOVAL FROM MARKET: ", bold: true }),
+                new TextRun(`Seller agrees not to negotiate with respect to, or enter into, any other written agreement or letter of intent for the purchase of, the Property during the period from the mutual execution of this Letter of Intent through the period during which the Agreement is in effect.`)
             ],
             spacing: { after: 120 }
         }));
-        sections.push(new Paragraph({ text: "", spacing: { after: 120 } }));
+        
         sections.push(new Paragraph({
             children: [
-                new TextRun({ text: "Confidentiality: ", bold: true }),
-                new TextRun(`Purchaser and Seller hereby\ncovenant and agree not to disclose the terms, Purchase Price, or any other\ninformation related to this potential transaction to anyone other than their\nrespective legal counsel, broker (if any), accountants, title companies,
-lenders,\ngovernmental authorities and internal staff prior to Closing.`)
+                new TextRun({ text: "16. CONFIDENTIALITY: ", bold: true }),
+                new TextRun(`Purchaser and Seller hereby covenant and agree not to disclose the terms, Purchase Price, or any other information related to this potential transaction to anyone other than their respective legal counsel, broker (if any), accountants, title companies, lenders, governmental authorities and internal staff prior to Closing.`)
             ],
             spacing: { after: 120 }
         }));
-        sections.push(new Paragraph({ text: "", spacing: { after: 120 } }));
+        
         sections.push(new Paragraph({
             children: [
-                new TextRun(`Seller warrants and represents to Purchaser that Seller is the\nsole owner of the Property, including all real estate and improvements thereon,\nand such ownership interest is not subject to any options, contracts,\nassignments, or similar agreements relating to ownership of the Property, and\nno consent or approval of any party is required for Seller to enter into this\nLetter of Intent
-and to create obligations herein. The foregoing warranty and\nrepresentation shall survive the termination or expiration of this Letter of\nIntent or any Agreement entered into by Seller and Purchaser.`)
+              new TextRun({ text: "17. SELLER WARRANTIES: ", bold: true }),  
+              new TextRun(`Seller warrants and represents to Purchaser that Seller is the sole owner of the Property, including all real estate and improvements thereon, and such ownership interest is not subject to any options, contracts, assignments, or similar agreements relating to ownership of the Property, and no consent or approval of any party is required for Seller to enter into this Letter and to create obligations herein. The foregoing warranty and representation shall survive the termination or expiration of this Letter or any Agreement entered into by Seller and Purchaser.`)
             ],
             spacing: { after: 120 }
         }));
-        sections.push(new Paragraph({ text: "", spacing: { after: 120 } }));
+        
         sections.push(new Paragraph({
             children: [
-                new TextRun(`This Letter of Intent is intended to provide both evidence of a\nnon-binding agreement and guidance in the preparation of a more complete\nwritten agreement between the parties. The parties agree to use commercially\nreasonable efforts to negotiate a more complete agreement, which will supersede\nthis Letter of Intent, containing at least the terms contained herein.`)
+                new TextRun(`This Letter is intended to provide both evidence of a non-binding agreement and guidance in the preparation of a more complete written agreement between the parties. The parties agree to use commercially reasonable efforts to negotiate a more complete agreement, which will supersede this Letter, containing at least the terms contained herein.`)
             ],
             spacing: { after: 120 }
         }));
-        sections.push(new Paragraph({ text: "", spacing: { after: 120 } }));
+        
         sections.push(new Paragraph({
             children: [
-                new TextRun(`If you are agreeable to the foregoing terms and conditions, please\nsign and date this letter in the space provided below, and return a signed copy\nto me, by email or facsimile, on or before 5:00PM, PST on the fifth day after\nthe date of this letter. Upon receipt, we will commence preparation of a draft\nof the Agreement.`)
+                new TextRun(`If you are agreeable to the foregoing terms and conditions, please sign and date this letter in the space provided below, and return a signed copy to me, by email or facsimile, on or before 5:00PM, EST on the fifth day after the date of this letter. Upon receipt, we will commence preparation of a draft of the Agreement.`)
             ],
             spacing: { after: 120 }
         }));
+        sections.push(new Paragraph({
+            children: [
+                new TextRun(`The above represents the general terms and conditions of the proposed transaction.  The exact terms and conditions will be contained in the Agreement.`)
+            ],
+            spacing: { after: 120 }
+        }));
+sections.push(new Paragraph({
+            children: [
+                new TextRun(`Should the above proposal be acceptable to you, please execute your signature below and the Purchaser will begin preparation of the Agreement.  Thank you for your consideration and we look forward to the opportunity to work with you on this transaction.`)
+            ],
+            spacing: { after: 120 }
+        }));
+
+
+
         sections.push(new Paragraph({ text: "", spacing: { after: 120 } }));
 
         // Signature blocks for Long Form
@@ -358,6 +366,451 @@ and to create obligations herein. The foregoing warranty and\nrepresentation sha
         sections.push(new Paragraph({ children: [new TextRun("BY:    ____________________________________________________")], spacing: {after: 40} }));
         sections.push(new Paragraph({ children: [new TextRun(data.ownerFullName)], spacing: {after: 40} }));
         sections.push(new Paragraph({ children: [new TextRun("Owner")], spacing: {after: 40} }));
+  
+       } else if (loiType === 'financing') { // financing LOI
+        sections.push(new Paragraph({ children: [new TextRun({ text: `RE: Letter of Intent for ${data.propertyAddress}`, bold: true })], spacing: { after: 40 }, }));
+        sections.push(new Paragraph({ spacing: { after: 0 } }));
+        sections.push(new Paragraph({ children: [new TextRun(`Dear ${data.ownerFirst},`)], spacing: { after: 120 }, }));
+        sections.push(new Paragraph({
+            children: [
+new TextRun(
+                `Please find outlined below the general terms and conditions under which ${data.yourName} ("Purchaser") would be willing to purchase the above referenced Property. This letter will serve as a non-binding letter of intent between Purchaser or its Assignee, and the Owner of Record ("Seller").`
+            ),
+        ],
+        spacing: { after: 200 },
+    }));
+    sections.push(new Paragraph({
+        children: [
+            new TextRun(
+                `Let this letter serve as our expression of intent to purchase the above referenced Property under the following terms and conditions:`
+            ),
+        ],
+        spacing: { after: 120 },
+        }));
+        // --- FINANCING FORM LOI CONTENT ---
+               sections.push(new Paragraph({ text: "", spacing: { after: 60 } }));
+        sections.push(new Paragraph({
+            children: [
+                new TextRun({ text: "1. PURCHASE PRICE: ", bold: true }),
+                new TextRun(`The Purchase Price of the Property shall be: ${data.purchasePriceFormatted}.`)
+            ],
+            spacing: { after: 120 }
+        }));
+        sections.push(new Paragraph({
+    children: [
+        new TextRun({ text: "2. SELLER FINANCING: ", bold: true }),
+        new TextRun(`The Seller agrees to provide financing to the Purchaser in a form that is satisfactory to the first position lender to the Property and to the Purchaser. The terms of the financing shall be:`)
+    ],
+    spacing: { after: 120 }
+}));
+
+sections.push(new Paragraph({
+    children: [
+        new TextRun(`a.\tAmount:\t\t[AMOUNT OF SELLER FINANCING]`)
+    ],
+    spacing: { after: 60 }
+}));
+
+sections.push(new Paragraph({
+    children: [
+        new TextRun(`b.\tInterest Rate:\t[INTEREST RATE]`)
+    ],
+    spacing: { after: 60 }
+}));
+
+sections.push(new Paragraph({
+    children: [
+        new TextRun(`c.\tTerm:\t\t[TERM OF FINANCING]`)
+    ],
+    spacing: { after: 60 }
+}));
+
+sections.push(new Paragraph({
+    children: [
+        new TextRun(`d.\tInterest Only:\t____ Y  ____ N`)
+    ],
+    spacing: { after: 60 }
+}));
+
+sections.push(new Paragraph({
+    children: [
+        new TextRun(`e.\tAmortization:\t[PERIOD OF AMORTIZATION]`)
+    ],
+    spacing: { after: 120 }
+}));   
+                      
+        sections.push(new Paragraph({
+            children: [
+                new TextRun({ text: "3. PURCHASE AGREEMENT: ", bold: true }),
+                new TextRun(`Both parties will strive to execute a mutually acceptable purchase and sale agreement ("Agreement") within ten (10) days after the execution of this Letter.`)
+            ],
+            spacing: { after: 120 }
+        }));
+              sections.push(new Paragraph({
+            children: [
+                new TextRun({ text: "4. EARNEST MONEY DEPOSIT: ", bold: true }),
+                new TextRun(`A refundable Earnest Money Deposit ("Deposit") subject to additional terms and conditions further defined in the Agreement of ${data.earnestMoneyFormatted} will be deposited within three (3) business days after the effective date as defined below.`)
+            ],
+            spacing: { after: 120 }
+        }));
+        
+        sections.push(new Paragraph({
+            children: [
+                new TextRun({ text: "5. TITLE INSURANCE: ", bold: true }),
+                new TextRun(`The title company will be chosen by the Purchaser. Seller shall provide to Purchaser, at Seller's expense and Purchaser's choosing, a standard ALTA policy of title insurance by Title Company in the amount of the Purchase Price for the Property, insuring that fee simple title to the Property is vested in Purchaser free and clear of all liens and subject only to exceptions approved by Purchaser during Inspection Period. Additional costs required to obtain an extended coverage policy shall be paid by Purchaser, if Purchaser elects coverage.`)
+            ],
+            spacing: { after: 120 }
+        }));
+                sections.push(new Paragraph({
+            children: [
+                new TextRun({ text: "6. SURVEY: ", bold: true }),
+                new TextRun("Seller agrees to provide Purchaser, at Seller’s expense, with a current ALTA survey of Property within fifteen (15) days following the execution of the Agreement.")
+            ],
+            spacing:
+            { after: 120 }
+        }));
+            sections.push(new Paragraph({
+            children: [
+                new TextRun({ text: "7. INSPECTION PERIOD: ", bold: true }),
+                new TextRun(`The effective date (“Effective Date”) of the Agreement shall be the date on which Purchaser has received from the Seller all of the documents listed in Schedule 1 of this Letter. Purchaser shall have an inspection period of [NUMBER OF DAYS TO INSPECT] ([XX]) days (“Inspection Period”) starting from the Effective Date to inspect the Property and conduct any due diligence deemed necessary by Purchaser. If, for any reason, during this Inspection Period, Purchaser shall find the Property unsuitable, the Purchaser, by written notice to Seller, shall have the right to declare this Letter and any Agreement based hereon null and void and receive a full refund of any Deposit.`)
+            ],
+            spacing: { after: 120 }
+        }));
+                sections.push(new Paragraph({
+            children: [
+                new TextRun({ text: "8. RIGHT OF ENTRY: ", bold: true }),
+                new TextRun(`Purchaser will have the right to enter the Property with prior reasonable notice, during reasonable business hours, for any purpose in connection with its inspection of the Property at any time that the Agreement is in effect.`)
+            ],
+            spacing: { after: 120 }
+        }));
+                sections.push(new Paragraph({
+            children: [
+                new TextRun({ text: "9. DUE DILIGENCE INFORMATION: ", bold: true }),
+                new TextRun(`Seller will deliver to Purchaser true, correct and complete copies of any and all pertinent records (i.e., survey, leases, environmental studies, inspection reports, capital improvement information, title report, zoning information, operating expenses and financial reports, rent rolls, bank accounts and similar information) regarding Seller’s ownership and operation of the Property. Such information shall include, but not be limited to, the items described on Schedule 1 attached hereto and made a part hereof.`)
+            ],
+            spacing: { after: 120 }
+        }));
+    
+            sections.push(new Paragraph({
+            children: [
+                new TextRun({ text: "10. ENVIRONMENTAL REVIEW: ", bold: true }),
+                new TextRun(`Purchaser may, in\nits discretion, obtain a current or revised environmental study of the Property\nat Purchaser’s sole cost and expense.`)
+            ],
+            spacing: { after: 120 }
+        }));
+            sections.push(new Paragraph({
+            children: [
+                new TextRun({ text: "11. FINANCING PERIOD: ", bold: true }),
+                new TextRun(`Purchaser’s obligation to purchase shall be subject to Purchaser receiving financing terms and conditions acceptable to Purchaser within [NUMBER OF DAYS FOR FINANCING] (XX) days (“Financing Period”) after the Effective Date of the Agreement. Purchaser may cancel the Agreement and receive full refund of the Deposit at any time prior to the expiration of the Financing Period.`)
+            ],
+            spacing: { after: 120 }
+        }));
+            sections.push(new Paragraph({
+            children: [
+                new TextRun({ text: "12. PRORATIONS: ", bold: true }),
+                new TextRun(`Rents, lease commissions, interest, insurance premiums, maintenance expenses, operating expenses, utilities and ad valorem taxes for the year of Closing will be prorated effective as of the date of the Closing. Seller shall give credit to Purchaser at the Closing in the aggregate amount of any security deposits or prepaid rents deposited by tenants with Seller, or otherwise owed to tenants, under leases affecting the Property.`)
+            ],
+            spacing: { after: 120 }
+        }));
+            sections.push(new Paragraph({
+            children: [
+                new TextRun({ text: "13. CLOSING DATE: ", bold: true }),
+                new TextRun(`The closing will occur on or before [CLOSING DAYS AFTER FINAINCING PERIOD] ([XX]) days (“Closing Date”) after the end of the Financing Period. Should financing constraints dictate additional time, an additional 30-day extension shall be available upon written request from Purchaser. Such written request shall be made prior to the target closing date.`)
+            ],
+            spacing: { after: 120 }
+        }));
+            sections.push(new Paragraph({
+            children: [
+                new TextRun({ text: "14. CLOSING COSTS: ", bold: true }),
+                new TextRun(`The Seller will pay for basic title insurance, transfer taxes, survey and documentary stamps.  Purchaser and Seller will be responsible for their respective legal, accounting, staff and other typical and customary costs and expenses, as more fully described in the Agreement.`)
+            ],
+            spacing: { after: 120 }
+        }));
+        
+        sections.push(new Paragraph({
+            children: [
+                new TextRun({ text: "15. BROKERAGE FEES: ", bold: true }),
+                new TextRun(`Brokerage fees and commissions are to be paid by Seller as per agreement with Seller’s agent.`)
+            ],
+            spacing: { after: 120 }
+        }));
+        
+        sections.push(new Paragraph({
+            children: [
+                new TextRun({ text: "16. REMOVAL FROM MARKET: ", bold: true }),
+                new TextRun(`Seller agrees not to negotiate with respect to, or enter into, any other written agreement or letter of intent for the purchase of, the Property during the period from the mutual execution of this Letter of Intent through the period during which the Agreement is in effect.`)
+            ],
+            spacing: { after: 120 }
+        }));
+        
+        sections.push(new Paragraph({
+            children: [
+                new TextRun({ text: "17. CONFIDENTIALITY: ", bold: true }),
+                new TextRun(`Purchaser and Seller hereby covenant and agree not to disclose the terms, Purchase Price, or any other information related to this potential transaction to anyone other than their respective legal counsel, broker (if any), accountants, title companies, lenders, governmental authorities and internal staff prior to Closing.`)
+            ],
+            spacing: { after: 120 }
+        }));
+        
+        sections.push(new Paragraph({
+            children: [
+              new TextRun({ text: "18. SELLER WARRANTIES: ", bold: true }),  
+              new TextRun(`Seller warrants and represents to Purchaser that Seller is the sole owner of the Property, including all real estate and improvements thereon, and such ownership interest is not subject to any options, contracts, assignments, or similar agreements relating to ownership of the Property, and no consent or approval of any party is required for Seller to enter into this Letter and to create obligations herein. The foregoing warranty and representation shall survive the termination or expiration of this Letter or any Agreement entered into by Seller and Purchaser.`)
+            ],
+            spacing: { after: 120 }
+        }));
+        
+        sections.push(new Paragraph({
+            children: [
+                new TextRun(`This Letter is intended to provide both evidence of a non-binding agreement and guidance in the preparation of a more complete written agreement between the parties. The parties agree to use commercially reasonable efforts to negotiate a more complete agreement, which will supersede this Letter, containing at least the terms contained herein.`)
+            ],
+            spacing: { after: 120 }
+        }));
+        
+        sections.push(new Paragraph({
+            children: [
+                new TextRun(`If you are agreeable to the foregoing terms and conditions, please sign and date this letter in the space provided below, and return a signed copy to me, by email or facsimile, on or before 5:00PM, EST on the fifth day after the date of this letter. Upon receipt, we will commence preparation of a draft of the Agreement.`)
+            ],
+            spacing: { after: 120 }
+        }));
+        sections.push(new Paragraph({
+            children: [
+                new TextRun(`The above represents the general terms and conditions of the proposed transaction.  The exact terms and conditions will be contained in the Agreement.`)
+            ],
+            spacing: { after: 120 }
+        }));
+sections.push(new Paragraph({
+            children: [
+                new TextRun(`Should the above proposal be acceptable to you, please execute your signature below and the Purchaser will begin preparation of the Agreement.  Thank you for your consideration and we look forward to the opportunity to work with you on this transaction.`)
+            ],
+            spacing: { after: 120 }
+        }));
+
+
+
+        sections.push(new Paragraph({ text: "", spacing: { after: 120 } }));
+
+        // Signature blocks for Financing Form
+        sections.push(new Paragraph({ children: [new TextRun({ text: "PURCHASER:", bold: true })], spacing: {after: 40} }));
+        sections.push(new Paragraph({ children: [new TextRun("BY:    ______________________________________________________")], spacing: {after: 40} }));
+        sections.push(new Paragraph({ children: [new TextRun(data.yourName)], spacing: {after: 40} }));
+        sections.push(new Paragraph({ children: [new TextRun(data.yourAddress)], spacing: {after: 40} }));
+        sections.push(new Paragraph({ children: [new TextRun(data.yourCityZip)], spacing: {after: 40} }));
+        sections.push(new Paragraph({ spacing: { after: 0 } }));
+        sections.push(new Paragraph({ children: [new TextRun(`ACKNOWLEDGED AND AGREED TO THIS ${data.currentDate}.`)], spacing: {after: 120} }));
+        sections.push(new Paragraph({ spacing: { after: 0 } }));
+        sections.push(new Paragraph({ children: [new TextRun({ text: "SELLER:", bold: true })], spacing: {after: 40} }));
+        sections.push(new Paragraph({ children: [new TextRun("BY:    ____________________________________________________")], spacing: {after: 40} }));
+        sections.push(new Paragraph({ children: [new TextRun(data.ownerFullName)], spacing: {after: 40} }));
+        sections.push(new Paragraph({ children: [new TextRun("Owner")], spacing: {after: 40} }));
+        
+        } else if (loiType === 'assumption') { // NEW ASSUMPTION LOI SECTION
+    sections.push(new Paragraph({ children: [new TextRun({ text: `RE: Letter of Intent for ${data.propertyAddress}`, bold: true })], spacing: { after: 40 }, }));
+    sections.push(new Paragraph({ spacing: { after: 0 } }));
+    sections.push(new Paragraph({ children: [new TextRun(`Dear ${data.ownerFirst},`)], spacing: { after: 120 }, }));
+    sections.push(new Paragraph({
+        children: [
+            new TextRun(
+                `Please find outlined below the general terms and conditions under which ${data.yourName} ("Purchaser") would be willing to purchase the above referenced Property. This letter will serve as a non-binding letter of intent between Purchaser or its Assignee, and the Owner of Record ("Seller").`
+            ),
+        ],
+        spacing: { after: 200 },
+    }));
+    sections.push(new Paragraph({
+        children: [
+            new TextRun(
+                `Let this letter serve as our expression of intent to purchase the above referenced Property under the following terms and conditions:`
+            ),
+        ],
+        spacing: { after: 120 },
+    }));
+    
+    // --- ASSUMPTION LOI CONTENT (Initially identical to long form) ---
+    sections.push(new Paragraph({ text: "", spacing: { after: 60 } }));
+    sections.push(new Paragraph({
+        children: [
+            new TextRun({ text: "1. PURCHASE PRICE: ", bold: true }),
+            new TextRun(`The Purchase Price of the Property shall be: ${data.purchasePriceFormatted}.`)
+        ],
+        spacing: { after: 120 }
+    }));
+    sections.push(new Paragraph({
+        children: [
+            new TextRun({ text: "2. PURCHASE AGREEMENT: ", bold: true }),
+            new TextRun(`Both parties will strive to execute a mutually acceptable purchase and sale agreement ("Agreement") within ten (10) days after the execution of this Letter.`)
+        ],
+        spacing: { after: 120 }
+    }));
+    sections.push(new Paragraph({
+        children: [
+            new TextRun({ text: "3. EARNEST MONEY DEPOSIT: ", bold: true }),
+            new TextRun(`A refundable Earnest Money Deposit ("Deposit") subject to additional terms and conditions further defined in the Agreement of ${data.earnestMoneyFormatted} will be deposited within three (3) business days after the effective date as defined below.`)
+        ],
+        spacing: { after: 120 }
+    }));
+    
+    sections.push(new Paragraph({
+        children: [
+            new TextRun({ text: "4. TITLE INSURANCE: ", bold: true }),
+            new TextRun(`The title company will be chosen by the Purchaser. Seller shall provide to Purchaser, at Seller's expense and Purchaser's choosing, a standard ALTA policy of title insurance by Title Company in the amount of the Purchase Price for the Property, insuring that fee simple title to the Property is vested in Purchaser free and clear of all liens and subject only to exceptions approved by Purchaser during Inspection Period. Additional costs required to obtain an extended coverage policy shall be paid by Purchaser, if Purchaser elects coverage.`)
+        ],
+        spacing: { after: 120 }
+    }));
+    sections.push(new Paragraph({
+        children: [
+            new TextRun({ text: "5. SURVEY: ", bold: true }),
+            new TextRun("Seller agrees to provide Purchaser, at Seller's expense, with a current ALTA survey of Property within fifteen (15) days following the execution of the Agreement.")
+        ],
+        spacing: { after: 120 }
+    }));
+    sections.push(new Paragraph({
+        children: [
+            new TextRun({ text: "6. INSPECTION PERIOD: ", bold: true }),
+            new TextRun(`The effective date ("Effective Date") of the Agreement shall be the date on which Purchaser has received from the Seller all of the documents listed in Schedule 1 of this Letter. Purchaser shall have an inspection period of [NUMBER OF DAYS TO INSPECT] ([XX]) days ("Inspection Period") starting from the Effective Date to inspect the Property and conduct any due diligence deemed necessary by Purchaser. If, for any reason, during this Inspection Period, Purchaser shall find the Property unsuitable, the Purchaser, by written notice to Seller, shall have the right to declare this Letter and any Agreement based hereon null and void and receive a full refund of any Deposit.`)
+        ],
+        spacing: { after: 120 }
+    }));
+    sections.push(new Paragraph({
+        children: [
+            new TextRun({ text: "7. RIGHT OF ENTRY: ", bold: true }),
+            new TextRun(`Purchaser will have the right to enter the Property with prior reasonable notice, during reasonable business hours, for any purpose in connection with its inspection of the Property at any time that the Agreement is in effect.`)
+        ],
+        spacing: { after: 120 }
+    }));
+    sections.push(new Paragraph({
+        children: [
+            new TextRun({ text: "8. DUE DILIGENCE INFORMATION: ", bold: true }),
+            new TextRun(`Seller will deliver to Purchaser true, correct and complete copies of any and all pertinent records (i.e., survey, leases, environmental studies, inspection reports, capital improvement information, title report, zoning information, operating expenses and financial reports, rent rolls, bank accounts and similar information) regarding Seller's ownership and operation of the Property. Such information shall include, but not be limited to, the items described on Schedule 1 attached hereto and made a part hereof.`)
+        ],
+        spacing: { after: 120 }
+    }));
+
+    sections.push(new Paragraph({
+        children: [
+            new TextRun({ text: "9. ENVIRONMENTAL REVIEW: ", bold: true }),
+            new TextRun(`Purchaser may, in its discretion, obtain a current or revised environmental study of the Property at Purchaser's sole cost and expense.`)
+        ],
+        spacing: { after: 120 }
+    }));
+    sections.push(new Paragraph({
+        children: [
+            new TextRun({ text: "10. FINANCING PERIOD: ", bold: true }),
+            new TextRun(`Purchaser's obligation to purchase shall be subject to Purchaser receiving financing terms and conditions acceptable to Purchaser within [NUMBER OF DAYS FOR FINANCING] (XX) days ("Financing Period") after the Effective Date of the Agreement. Purchaser may cancel the Agreement and receive full refund of the Deposit at any time prior to the expiration of the Financing Period.`)
+        ],
+        spacing: { after: 120 }
+    }));
+    sections.push(new Paragraph({
+        children: [
+            new TextRun({ text: "11. ASSUMPTION OF EXISTING LOAN: ", bold: true }),
+            new TextRun(`In the event written approval of the lender to the loan assumption is not obtained in writing on or before fifteen (15) days after the end of the Inspection Period, or if the lender notifies Seller or Purchaser of its disapproval of the loan assumption, and so long as Purchaser has supplied all requested information to the lender and used best efforts to obtain lender approval, Purchaser may terminate the Agreement by written notice to Seller and the Deposit shall be returned to Purchaser, and neither party shall thereafter have any obligations one to the other except for obligations which expressly survive termination of the Agreement.  If lender approves the loan assumption, but imposes economic requirements as an additional financial obligation of Purchaser, then Purchaser shall advise Seller of such requirement and Seller and Purchaser shall attempt in good faith to allocate the responsibility for such obligation between them, failing which, Purchaser may terminate the Agreement at any time by written notice to Seller as set forth above.  If lender approves the loan assumption, but imposes no additional economic requirements, then Purchaser has no termination right, this condition shall be deemed satisfied and the Deposit shall be released to Seller immediately after the expiration of the Financing Period or on the date lender approval is obtained, whichever is earlier and subject to any additional obligations of the parties as described in the Agreement.`)
+        ],
+        spacing: { after: 120 }
+    }));
+    sections.push(new Paragraph({
+        children: [
+            new TextRun({ text: "12. CAPITAL RESERVE ACCOUNT: ", bold: true }),
+            new TextRun(`Seller agrees to transfer all funds currently being held by the lender in the capital reserve account (“Account”) of the Property to the Purchaser or in the alternative, bring the value of the Account to zero dollars before the Closing Date.`)
+        ],
+        spacing: { after: 120 }
+    }));     
+    
+    sections.push(new Paragraph({
+        children: [
+            new TextRun({ text: "13. PRORATIONS: ", bold: true }),
+            new TextRun(`Rents, lease commissions, interest, insurance premiums, maintenance expenses, operating expenses, utilities and ad valorem taxes for the year of Closing will be prorated effective as of the date of the Closing. Seller shall give credit to Purchaser at the Closing in the aggregate amount of any security deposits or prepaid rents deposited by tenants with Seller, or otherwise owed to tenants, under leases affecting the Property.`)
+        ],
+        spacing: { after: 120 }
+    }));   
+    sections.push(new Paragraph({
+        children: [
+            new TextRun({ text: "14. CLOSING DATE: ", bold: true }),
+            new TextRun(`The closing will occur on or before [CLOSING DAYS AFTER FINAINCING PERIOD] ([XX]) days ("Closing Date") after the end of the Financing Period. Should financing constraints dictate additional time, an additional 30-day extension shall be available upon written request from Purchaser. Such written request shall be made prior to the target closing date.`)
+        ],
+        spacing: { after: 120 }
+    }));
+    sections.push(new Paragraph({
+        children: [
+            new TextRun({ text: "15. CLOSING COSTS: ", bold: true }),
+            new TextRun(`The Seller will pay for basic title insurance, transfer taxes, survey and documentary stamps. Purchaser and Seller will be responsible for their respective legal, accounting, staff and other typical and customary costs and expenses, as more fully described in the Agreement.`)
+        ],
+        spacing: { after: 120 }
+    }));
+    
+    sections.push(new Paragraph({
+        children: [
+            new TextRun({ text: "16. BROKERAGE FEES: ", bold: true }),
+            new TextRun(`Brokerage fees and commissions are to be paid by Seller as per agreement with Seller's agent.`)
+        ],
+        spacing: { after: 120 }
+    }));
+    
+    sections.push(new Paragraph({
+        children: [
+            new TextRun({ text: "17. REMOVAL FROM MARKET: ", bold: true }),
+            new TextRun(`Seller agrees not to negotiate with respect to, or enter into, any other written agreement or letter of intent for the purchase of, the Property during the period from the mutual execution of this Letter of Intent through the period during which the Agreement is in effect.`)
+        ],
+        spacing: { after: 120 }
+    }));
+    
+    sections.push(new Paragraph({
+        children: [
+            new TextRun({ text: "18. CONFIDENTIALITY: ", bold: true }),
+            new TextRun(`Purchaser and Seller hereby covenant and agree not to disclose the terms, Purchase Price, or any other information related to this potential transaction to anyone other than their respective legal counsel, broker (if any), accountants, title companies, lenders, governmental authorities and internal staff prior to Closing.`)
+        ],
+        spacing: { after: 120 }
+    }));
+    
+    sections.push(new Paragraph({
+        children: [
+          new TextRun({ text: "19. SELLER WARRANTIES: ", bold: true }),  
+          new TextRun(`Seller warrants and represents to Purchaser that Seller is the sole owner of the Property, including all real estate and improvements thereon, and such ownership interest is not subject to any options, contracts, assignments, or similar agreements relating to ownership of the Property, and no consent or approval of any party is required for Seller to enter into this Letter and to create obligations herein. The foregoing warranty and representation shall survive the termination or expiration of this Letter or any Agreement entered into by Seller and Purchaser.`)
+        ],
+        spacing: { after: 120 }
+    }));
+    
+    sections.push(new Paragraph({
+        children: [
+            new TextRun(`This Letter is intended to provide both evidence of a non-binding agreement and guidance in the preparation of a more complete written agreement between the parties. The parties agree to use commercially reasonable efforts to negotiate a more complete agreement, which will supersede this Letter, containing at least the terms contained herein.`)
+        ],
+        spacing: { after: 120 }
+    }));
+    
+    sections.push(new Paragraph({
+        children: [
+            new TextRun(`If you are agreeable to the foregoing terms and conditions, please sign and date this letter in the space provided below, and return a signed copy to me, by email or facsimile, on or before 5:00PM, EST on the fifth day after the date of this letter. Upon receipt, we will commence preparation of a draft of the Agreement.`)
+        ],
+        spacing: { after: 120 }
+    }));
+    sections.push(new Paragraph({
+        children: [
+            new TextRun(`The above represents the general terms and conditions of the proposed transaction. The exact terms and conditions will be contained in the Agreement.`)
+        ],
+        spacing: { after: 120 }
+    }));
+    sections.push(new Paragraph({
+        children: [
+            new TextRun(`Should the above proposal be acceptable to you, please execute your signature below and the Purchaser will begin preparation of the Agreement. Thank you for your consideration and we look forward to the opportunity to work with you on this transaction.`)
+        ],
+        spacing: { after: 120 }
+    }));
+
+    sections.push(new Paragraph({ text: "", spacing: { after: 120 } }));
+
+    // Signature blocks for Assumption LOI
+    sections.push(new Paragraph({ children: [new TextRun({ text: "PURCHASER:", bold: true })], spacing: {after: 40} }));
+    sections.push(new Paragraph({ children: [new TextRun("BY:    ______________________________________________________")], spacing: {after: 40} }));
+    sections.push(new Paragraph({ children: [new TextRun(data.yourName)], spacing: {after: 40} }));
+    sections.push(new Paragraph({ children: [new TextRun(data.yourAddress)], spacing: {after: 40} }));
+    sections.push(new Paragraph({ children: [new TextRun(data.yourCityZip)], spacing: {after: 40} }));
+    sections.push(new Paragraph({ spacing: { after: 0 } }));
+    sections.push(new Paragraph({ children: [new TextRun(`ACKNOWLEDGED AND AGREED TO THIS ${data.currentDate}.`)], spacing: {after: 120} }));
+    sections.push(new Paragraph({ spacing: { after: 0 } }));
+    sections.push(new Paragraph({ children: [new TextRun({ text: "SELLER:", bold: true })], spacing: {after: 40} }));
+    sections.push(new Paragraph({ children: [new TextRun("BY:    ____________________________________________________")], spacing: {after: 40} }));
+    sections.push(new Paragraph({ children: [new TextRun(data.ownerFullName)], spacing: {after: 40} }));
+    sections.push(new Paragraph({ children: [new TextRun("Owner")], spacing: {after: 40} }));
+    
+    
+    
     } else if (loiType === 'master') { // New condition for Master Lease LOI
         sections.push(new Paragraph({ children: [new TextRun({ text: `RE: Letter of Intent for the Master Lease of “Property Name” and Option to Purchase\n${data.propertyAddress}(“Property”)`, bold: true })], spacing: { after: 40 } }));
         sections.push(new Paragraph({ spacing: { after: 0 } }));
@@ -515,64 +968,74 @@ and to create obligations herein. The foregoing warranty and\nrepresentation sha
 
     }
     else { // Original Short Form LOI content
-        sections.push(new Paragraph({ children: [new TextRun({ text: `RE: Letter of Intent for ${data.propertyAddress}`, bold: true })], spacing: { after: 40 }, }));
-        sections.push(new Paragraph({ spacing: { after: 0 } }));
-        sections.push(new Paragraph({ children: [new TextRun(`Dear ${data.ownerFirst},`)], spacing: { after: 120 }, }));
-        sections.push(new Paragraph({
-            children: [
-                new TextRun(
-                    `Please find outlined below the general terms and conditions under which ${data.yourName} (“Purchaser”) would be willing to purchase the above referenced Property. This letter will serve as a non-binding letter of intent between Purchaser or its Assignee, and the Owner of Record (“Seller”).
-Let this letter serve as our expression of intent to purchase the above referenced Property under the following terms
-and conditions:`
-                ),
-            ],
-            spacing: { after: 200 },
-        }));
-        const loiSectionsContentShortForm = [
+    sections.push(new Paragraph({ children: [new TextRun({ text: `RE: Letter of Intent for ${data.propertyAddress}`, bold: true })], spacing: { after: 40 }, }));
+    sections.push(new Paragraph({ spacing: { after: 0 } }));
+    sections.push(new Paragraph({ children: [new TextRun(`Dear ${data.ownerFirst},`)], spacing: { after: 120 }, }));
+    sections.push(new Paragraph({
+        children: [
+            new TextRun(
+                `Please find outlined below the general terms and conditions under which ${data.yourName} ("Purchaser") would be willing to purchase the above referenced Property. This letter will serve as a non-binding letter of intent between Purchaser or its Assignee, and the Owner of Record ("Seller").`
+            ),
+        ],
+        spacing: { after: 200 },
+    }));
+    sections.push(new Paragraph({
+        children: [
+            new TextRun(
+                `Let this letter serve as our expression of intent to purchase the above referenced Property under the following terms and conditions:`
+            ),
+        ],
+        spacing: { after: 200 },
+    }));
+    const loiSectionsContentShortForm = [
             {
               num: "1",
-              heading: "Purchase Price",
-                content: `The Purchase Price of the Property shall be paid by the following terms and conditions:\n
-\tPurchase Price: ${data.purchasePriceFormatted}\n\n\tEarnest Money Deposit: ${data.earnestMoneyFormatted}` // Using formatted values
+              heading: "PURCHASE PRICE",
+                content: `The Purchase Price of the Property shall be: ${data.purchasePriceFormatted}.`
             },
             {
               num: "2",
-              heading: "Purchase Agreement",
-              content: 'Both parties will strive to execute a mutually acceptable Purchase Agreement within fifteen (30) days after the execution of this Letter of Intent. The date of completion of the signed Purchase Agreement shall be the “Execution Date.”'
+              heading: "PURCHASE AGREEMENT",
+              content: 'Both parties will strive to execute a mutually acceptable Purchase Agreement within ten (10) days after the execution of this Letter of Intent. The date of completion of the signed Purchase Agreement shall be the “Execution Date.”'
             },
             {
               num: "3",
-              heading: "Earnest Money Deposit",
-              content: `A refundable Earnest Money Deposit in the amount of ${data.earnestMoneyFormatted} will be deposited with the Escrow Agent within five (5) business days.`
+              heading: "EARNEST MONEY DEPOSIT",
+              content: `A refundable Earnest Money Deposit ("Deposit") subject to additional terms and conditions further defined in the Agreement of ${data.earnestMoneyFormatted} will be deposited within three (3) business days after the effective date as defined below.`
             },
             {
               num: "4",
-              heading: "Inspection Period",
-              content: 'The Effective Date shall be the date on which Purchaser has received all of the documents listed in Schedule 1. Purchaser shall have an Inspection Period of thirty (30) days starting from the Effective Date to inspect the property and conduct any due diligence deemed necessary by Purchaser. If, for any reason, during this Inspection Period, Purchaser shall find the Property unsuitable, the Purchaser, by written notice to Seller, shall have the right to declare this Letter and any Purchase Agreement based hereon null and void and receive a full refund of any Earnest Money that has been deposited.'
+              heading: "INSPECTION PERIOD",
+              content: 'The effective date ("Effective Date") of the agreement shall be the date on which Purchaser has received from the Seller all of the documents listed in Schedule 1 of this Letter. Purchaser shall have an inspection period of [NUMBER OF DAYS TO INSPECT] (XX) days ("Inspection Period") starting from the Effective Date to inspect the Property and conduct any due diligence deemed necessary by Purchaser. If, for any reason, during this Inspection Period, Purchaser shall find the Property unsuitable, the Purchaser, by written notice to Seller, shall have the right to declare this Letter and any Agreement based hereon null and void and receive a full refund of any Deposit.'
             },
             {
               num: "5",
-              heading: "Closing Date",
-              content: 'The Closing will occur on or before thirty (30) days after the end of the Inspection Period. Should financing or other constraints dictate additional time, an additional 30-day extension shall be available upon written request from Purchaser. Such written request shall be made prior to the target closing date.'
-            },
+              heading: "FINANCING PERIOD",
+              content: `Purchaser's obligation to purchase shall be subject to Purchaser receiving financing terms and conditions acceptable to Purchaser within [NUMBER OF DAYS FOR FINANCING] (XX) days ("Financing Period") after the Effective Date of the Agreement.  Purchaser may cancel the Agreement and receive a full refund of the Deposit at any time prior to the expiration of the Financing Period.`
+            },            
             {
               num: "6",
-              heading: "Closing Costs",
-              content: 'The Seller will pay for basic title insurance, transfer taxes, survey and documentary stamps.'
+              heading: "CLOSING DATE",
+              content: 'The Closing will occur on or before [CLOSING DAYS AFTER FINANCING PERIOD] (XX) days ("Closing Date") after the end of the Financing Period. Should financing constraints dictate additional time, an additional 30-day extension shall be available upon written request from Purchaser. Such written request shall be made prior to the target closing date.'
             },
             {
               num: "7",
-              heading: "Brokerage Fees",
-              content: 'To be paid by Seller as per seller agreement with Seller’s agent.'
+              heading: "CLOSING COSTS",
+              content: 'The Seller will pay for basic title insurance, transfer taxes, survey and documentary stamps.'
             },
             {
               num: "8",
-              heading: "General Terms",
-              content: 'The above represents the general terms and conditions of the proposed transaction. The exact terms and conditions will be contained in a mutually acceptable Purchase Agreement.'
+              heading: "BROKERAGE FEES",
+              content: 'To be paid by Seller as per seller agreement with Seller’s agent.'
             },
             {
               num: "9",
-              heading: "Execution Instructions",
+              heading: "GENERAL TERMS",
+              content: 'The above represents the general terms and conditions of the proposed transaction. The exact terms and conditions will be contained in a mutually acceptable Purchase Agreement.'
+            },
+            {
+              num: "10",
+              heading: "EXECUTION INSTRUCTIONS",
               content: 'Should the above proposal be acceptable to you, please execute your signature below and Purchaser will begin preparation of the Purchase Agreement. Thank you for your consideration and we look forward to the opportunity to work with you on this transaction.'
             }
           ];
@@ -620,17 +1083,21 @@ and conditions:`
     Packer.toBlob(doc).then(blob => {
       const safeAddress = data.propertyAddress.replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_]/g, '');
       // Modify filename generation to include LOI type
-      let loiTypeString = '';
-      if (loiType === 'long') {
-          loiTypeString = 'LONG';
-      } else if (loiType === 'master') {
-          loiTypeString = 'MASTER_LEASE';
-      } else {
-          loiTypeString = 'SHORT';
-      }
+let loiTypeString = '';
+if (loiType === 'long') {
+    loiTypeString = 'LONG';
+} else if (loiType === 'master') {
+    loiTypeString = 'MASTER_LEASE';
+} else if (loiType === 'assumption') {
+    loiTypeString = 'ASSUMPTION';
+} else if (loiType === 'financing') {
+    loiTypeString = 'FINANCING';
+} else {
+    loiTypeString = 'SHORT';
+}
       const filename = `LOI_${loiTypeString}_${safeAddress || 'document'}.docx`;
       saveAs(blob, filename);
-      console.log('Document created successfully');
+      //console.log('Document created successfully');
     }).catch(err => { console.error('Error creating document: ', err); });
   };
 
@@ -645,8 +1112,8 @@ and conditions:`
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col items-center py-10 px-4 sm:px-6 lg:px-8">
       <div className="bg-white p-8 rounded-lg shadow-xl w-full max-w-4xl border border-gray-200">
-        <h1 className="text-3xl md:text-4xl font-extrabold mb-6 text-orange-600 text-center font-sans">Generate Letter of Intent (LOI)</h1>
-        <p className="text-center text-gray-600 mb-8">Fill in the details below to generate your customized Letter of Intent.</p>
+        <h1 className="text-3xl md:text-4xl font-extrabold mb-6 text-orange-600 text-center font-sans">Generate a Letter of Intent</h1>
+        <p className="text-center text-gray-600 mb-8">Fill in the details below to generate your customized Letter of Intent. Select your version below.</p>
 
         <form onSubmit={(e) => { e.preventDefault(); generateAndDownloadLOI(); }} className="space-y-6">
           <section>
@@ -722,6 +1189,29 @@ and conditions:`
                 />
                 <span className="ml-2 text-gray-700 font-medium">Master Lease LOI</span>
               </label>
+              <label className="inline-flex items-center">
+    <input
+      type="radio"
+      className="form-radio h-5 w-5 text-orange-600"
+      name="loiType"
+      value="assumption"
+      checked={loiType === 'assumption'}
+      onChange={() => setLoiType('assumption')}
+    />
+    <span className="ml-2 text-gray-700 font-medium">Assumption LOI</span>
+  </label>
+<label className="inline-flex items-center">
+    <input
+      type="radio"
+      className="form-radio h-5 w-5 text-orange-600"
+      name="loiType"
+      value="financing"
+      checked={loiType === 'financing'}
+      onChange={() => setLoiType('financing')}
+    />
+    <span className="ml-2 text-gray-700 font-medium">Financing LOI</span>
+  </label>
+
             </div>
           </section>
 

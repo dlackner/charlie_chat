@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from 'react';
+import { useAuth } from "@/contexts/AuthContext"; // Add this import
+import { useRouter } from "next/navigation"; // Add this import
 
 // ✅ Import product IDs from env
 const CHARLIE_CHAT_MONTHLY = process.env.NEXT_PUBLIC_CHARLIE_CHAT_MONTHLY_PRODUCT!;
@@ -12,17 +14,51 @@ const COHORT_ANNUAL = process.env.NEXT_PUBLIC_COHORT_ANNUAL_PRODUCT!;
 
 export default function PricingPage() {
   const [isAnnual, setIsAnnual] = useState(true);
+  
+  // ✅ Add auth context and router
+  const { user: currentUser, supabase, session } = useAuth();
+  const router = useRouter();
 
+  // ✅ Fixed handleCheckout function with proper auth
   const handleCheckout = async (productId: string, plan: "monthly" | "annual") => {
-    const res = await fetch("/api/stripe/checkout", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ productId, plan }),
-    });
-    const { url } = await res.json();
-    if (url) {
-      window.location.href = url;
-    } else {
+    // Check if user is logged in
+    if (!currentUser) {
+      // Redirect to signup if not logged in
+      router.push("/signup");
+      return;
+    }
+
+    // Get fresh session with access token
+    const { data: { session: freshSession }, error } = await supabase.auth.getSession();
+    const sessionToUse = freshSession || session;
+
+    if (!sessionToUse || !sessionToUse.access_token) {
+      console.error("🚫 No valid session or access token");
+      alert("You must be logged in to complete this purchase.");
+      router.push("/signup");
+      return;
+    }
+
+    try {
+      const res = await fetch("/api/stripe/checkout", {
+        method: "POST",
+        headers: { 
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${sessionToUse.access_token}`, // ✅ Added missing auth header
+        },
+        body: JSON.stringify({ productId, plan }),
+      });
+      
+      const data = await res.json();
+      
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        console.error("Checkout failed:", data.error);
+        alert("Checkout failed: " + (data.error || "Unknown error"));
+      }
+    } catch (error) {
+      console.error("Network error during checkout:", error);
       alert("Something went wrong. Please try again.");
     }
   };
@@ -67,7 +103,7 @@ export default function PricingPage() {
             </>
           )}
           <p className="text-sm text-gray-700 mb-4">
-            It’s me, Charles Dobens—my multifamily lessons and stories, my multifamily legal and operational know-how—delivered to you through my Charlie Chat AI assistant.
+            It's me, Charles Dobens—my multifamily lessons and stories, my multifamily legal and operational know-how—delivered to you through my Charlie Chat AI assistant.
           </p>
           <ul className="text-sm space-y-1 text-gray-800 mb-4 flex flex-col">
             <li>✔️ Unlimited Charlie Chats searches</li>
@@ -77,7 +113,7 @@ export default function PricingPage() {
           </ul>
           <p className="text-sm italic text-gray-600 mb-3">Try for free! Unlimited searches for 3 days</p>
           <button
-            onClick={() => handleCheckout(CHARLIE_CHAT_MONTHLY, isAnnual ? "annual" : "monthly")}
+            onClick={() => handleCheckout(isAnnual ? CHARLIE_CHAT_ANNUAL : CHARLIE_CHAT_MONTHLY, isAnnual ? "annual" : "monthly")}
             className="mt-auto w-full bg-black text-white py-2 rounded font-semibold transition duration-200 transform hover:scale-105 hover:bg-orange-600 hover:shadow-xl"
           >
             Get Access
@@ -89,12 +125,12 @@ export default function PricingPage() {
           <h2 className="text-2xl font-semibold mb-2">Charlie Chat Pro</h2>
           {isAnnual ? (
             <>
-              <p className="text-xl font-bold mb-1">$416</p>
+              <p className="text-xl font-bold mb-1">$250</p>
               <p className="text-sm text-gray-500 mb-4">(Billed Annually)</p>
             </>
           ) : (
             <>
-              <p className="text-xl font-bold mb-1">$497</p>
+              <p className="text-xl font-bold mb-1">$297</p>
               <p className="text-sm text-gray-500 mb-4">(Billed Monthly)</p>
             </>
           )}
@@ -107,13 +143,12 @@ export default function PricingPage() {
               <span className="text-lg font-semibold text-orange-500">Everything in Charlie Chat</span>
             </li>
             <li>✔️ Access to my Master Class Training Program</li>
-            <li>✔️ Upload broker documents and offer memorandums</li>
+            <li>✔️ COMING SOON! Upload broker documents and offer memorandums</li>
             <li>✔️ Access to best practice templates</li>
             <li>✔️ Includes 100 national property matches every month</li>
           </ul>
           <button
-            
-        onClick={() => handleCheckout(CHARLIE_CHAT_PRO_MONTHLY, isAnnual ? "annual" : "monthly")}
+            onClick={() => handleCheckout(isAnnual ? CHARLIE_CHAT_PRO_ANNUAL : CHARLIE_CHAT_PRO_MONTHLY, isAnnual ? "annual" : "monthly")}
             className="mt-auto w-full bg-black text-white py-2 rounded font-semibold transition duration-200 transform hover:scale-105 hover:bg-orange-600 hover:shadow-xl"
           >
             Get Access
@@ -136,12 +171,12 @@ export default function PricingPage() {
             <li>✔️ Step-by-step roadmap for your multifamily investing journey</li>
             <li>✔️ Includes 250 national property matches every month for your first 6 months</li>
           </ul>
-<button
-  onClick={() => window.location.href = "https://multifamilyos.com/multifamilyos-cohort-program/"}
-  className="mt-auto w-full bg-black text-white py-2 rounded font-semibold transition duration-200 transform hover:scale-105 hover:bg-orange-600 hover:shadow-xl"
->
-  Apply Now
-</button>
+          <button
+            onClick={() => window.location.href = "https://multifamilyos.com/multifamilyos-cohort-program/"}
+            className="mt-auto w-full bg-black text-white py-2 rounded font-semibold transition duration-200 transform hover:scale-105 hover:bg-orange-600 hover:shadow-xl"
+          >
+            Apply Now
+          </button>
         </div>
       </div>
     </div>

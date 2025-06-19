@@ -20,7 +20,7 @@ export async function POST(req: Request) {
       try {
           await openai.beta.threads.retrieve(threadId);
           threadExists = true;
-          console.log("Existing thread confirmed:", threadId);
+          //console.log("Existing thread confirmed:", threadId);
       } catch (error: any) {
           if (error.status === 404) {
               console.warn("Received threadId that was not found, will create a new one:", threadId);
@@ -35,10 +35,10 @@ export async function POST(req: Request) {
     }
   
     if (!threadId || !threadExists) { // Create new thread if no ID, or it didn't start with "thread_", or it didn't exist
-        console.log("Creating a new thread...");
+        //console.log("Creating a new thread...");
         const newThread = await openai.beta.threads.create({});
         threadId = newThread.id;
-        console.log("New thread created:", threadId);
+        //console.log("New thread created:", threadId);
     }
 
     const runs = await openai.beta.threads.runs.list(threadId!, { limit: 1 });
@@ -47,10 +47,10 @@ export async function POST(req: Request) {
     
         // Only attempt to cancel if the run is in a state that *can* be cancelled
         if (['queued', 'in_progress'].includes(latestRun.status)) { // <--- MODIFIED CONDITION HERE
-            console.log(`Previous run ${latestRun.id} is active (${latestRun.status}). Attempting to cancel it.`);
+            //console.log(`Previous run ${latestRun.id} is active (${latestRun.status}). Attempting to cancel it.`);
             try {
                 await openai.beta.threads.runs.cancel(threadId!, latestRun.id);
-                console.log(`Cancellation request sent for run ${latestRun.id}. It will move to 'cancelling' then 'cancelled'.`);
+                //console.log(`Cancellation request sent for run ${latestRun.id}. It will move to 'cancelling' then 'cancelled'.`);
                 // After sending cancel, it will go to 'cancelling'. We still need to poll until it's truly terminal.
             } catch (cancelError: any) {
                 console.error(`Error sending cancellation request for run ${latestRun.id}:`, cancelError);
@@ -60,13 +60,13 @@ export async function POST(req: Request) {
                 latestRun = await openai.beta.threads.runs.retrieve(threadId!, latestRun.id); // Refresh status
             }
         } else if (['cancelling'].includes(latestRun.status)) {
-            console.log(`Previous run ${latestRun.id} is already in 'cancelling' state. Will poll for completion.`);
+            //console.log(`Previous run ${latestRun.id} is already in 'cancelling' state. Will poll for completion.`);
         }
       
       
         // Poll if the run is still in any non-terminal "active" state (including 'cancelling')
         if (['queued', 'in_progress', 'requires_action', 'cancelling'].includes(latestRun.status)) {
-            console.log(`Polling for run ${latestRun.id} (current status: ${latestRun.status}) to reach a terminal state...`);
+            //console.log(`Polling for run ${latestRun.id} (current status: ${latestRun.status}) to reach a terminal state...`);
             let attempts = 0;
             const maxAttempts = 15; // Poll for a maximum of ~15 seconds (1s interval)
             let runIsStillActive = true;
@@ -81,7 +81,7 @@ export async function POST(req: Request) {
                     break;
                 }
 
-                console.log(`Run ${latestRun.id} status: ${latestRun.status} (Attempt ${attempts + 1})`);
+                //console.log(`Run ${latestRun.id} status: ${latestRun.status} (Attempt ${attempts + 1})`);
                 if (!['queued', 'in_progress', 'requires_action', 'cancelling'].includes(latestRun.status)) {
                     runIsStillActive = false; // It has reached a terminal state
                 }
@@ -106,7 +106,7 @@ export async function POST(req: Request) {
                 },
               });
             }
-            console.log(`Run ${latestRun.id} is now in a terminal state: ${latestRun.status}`);
+            //console.log(`Run ${latestRun.id} is now in a terminal state: ${latestRun.status}`);
         }
     }
 

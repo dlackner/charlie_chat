@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import jsPDF from "jspdf";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, Info } from "lucide-react";
 import { Range, getTrackBackground } from "react-range";
 import { Document, Packer, Paragraph, TextRun, ISpacingProperties, LineRuleType } from 'docx';
 import { saveAs } from 'file-saver';
@@ -56,8 +56,6 @@ type Props = {
   isLoggedIn: boolean;
   triggerAuthModal: () => void;
   onCreditsUpdate?: (newBalance: number) => void;
-  userClass: 'trial' | 'charlie_chat' | 'charlie_chat_pro' | 'cohort';
-  triggerBuyCreditsModal: () => void
 };
 
 export const Sidebar = ({
@@ -69,91 +67,65 @@ export const Sidebar = ({
   isLoggedIn: userIsLoggedIn,
   triggerAuthModal,
   onCreditsUpdate,
-  userClass,
-  triggerBuyCreditsModal
 }: Props) => {
   const [zipcode, setZipcode] = useState("");
   const [minUnits, setMinUnits] = useState<number | string>(2);
   const [maxUnits, setMaxUnits] = useState<number | string>("");
 
   const [showAdvanced, setShowAdvanced] = useState(false);
-  const [showTrialUpgradeMessage, setShowTrialUpgradeMessage] = useState(false);
-
   const [mlsActive, setMlsActive] = useState("");
   const [radius, setRadius] = useState(5);
 
   const [street, setStreet] = useState("");
   const [house, setNumber] = useState("");
   const [city, setCity] = useState("");
-  const [stateCode, setStateCode] = useState("");
-  useEffect(() => {
-  const hasCity = city.trim() !== "";
-  const hasState = stateCode.trim() !== "";
-  const hasZip = zipcode.trim() !== "";
+  const [state, setState] = useState("");
+  const [county, setCounty] = useState("");
 
-  // Rule 1: City requires state
-  if (hasCity && !hasState) {
-    setLocationError("Tip: State is required when a City is provided.");
-    return;
-  }
-
-  // Rule 2: If both city and state are not filled, then ZIP is required
-  if (!hasCity && !hasState && !hasZip) {
-    setLocationError("Tip: Zipcode is required when City and State are not provided.");
-    return;
-  }
-
-  setLocationError(null);
-}, [city, stateCode, zipcode]);
-
-
-  const [preForeclosure, setPreForeclosure] = useState("");
+  const [foreclosure, setForeclosure] = useState(false);
+  const [preForeclosure, setPreForeclosure] = useState(false);
   const [floodZone, setFloodZone] = useState("");
   const [assumable, setAssumable] = useState("");
   const [lastSaleArmsLength, setLastSaleArmsLength] = useState("");
-
-  // New states for the requested boolean filters
-  const [auction, setAuction] = useState("");
-  const [reo, setReo] = useState("");
-  const [taxLien, setTaxLien] = useState("");
-  const [privateLender, setPrivateLender] = useState("");
-
   const DEFAULT_LAST_SALE_PRICE_RANGE: [number, number] = [0, 10000000];
   const [lastSaleDateRange, setlastSaleDateRange] = useState<[number, number]>([0, 2025]);
-  const [lastSalePriceRange, setLastSalePriceRange] = useState<[number, number]>(DEFAULT_LAST_SALE_PRICE_RANGE);
+  const [lastSalePriceRange, setLastSalePriceRange] = useState<[number, number]>([0, 10000000]);
   const DEFAULT_YEAR_RANGE: [number, number] = [1800, 2025];
   const [yearBuiltRange, setYearBuiltRange] = useState<[number, number]>(DEFAULT_YEAR_RANGE);
   const DEFAULT_LOT_SIZE_RANGE: [number, number] = [0, 100000];
-  const [lotSizeRange, setLotSizeRange] = useState<[number, number]>(DEFAULT_LOT_SIZE_RANGE);
+  const [lotSizeRange, setLotSizeRange] = useState<[number, number]>([0, 100000]);
   const DEFAULT_STORIES_RANGE: [number, number] = [0, 20];
-  const [storiesRange, setStoriesRange] = useState<[number, number]>(DEFAULT_STORIES_RANGE);
+  const [storiesRange, setStoriesRange] = useState<[number, number]>([0, 20]);
   const DEFAULT_MORTGAGE_BALANCE_RANGE: [number, number] = [0, 10000000];
-  const [mortgageBalanceRange, setMortgageBalanceRange] = useState<[number, number]>(DEFAULT_MORTGAGE_BALANCE_RANGE);
+  const [mortgageBalanceRange, setMortgageBalanceRange] = useState<[number, number]>([0, 10000000]);
   const DEFAULT_ASSESSED_VALUE_RANGE: [number, number] = [0, 10000000];
-  const [assessedValueRange, setAssessedValueRange] = useState<[number, number]>(DEFAULT_ASSESSED_VALUE_RANGE);
+  const [assessedValueRange, setAssessedValueRange] = useState<[number, number]>([0, 10000000]);
   const DEFAULT_ESTIMATED_VALUE_RANGE: [number, number] = [0, 10000000];
-  const [estimatedValueRange, setEstimatedValueRange] = useState<[number, number]>(DEFAULT_ESTIMATED_VALUE_RANGE);
+  const [estimatedValueRange, setEstimatedValueRange] = useState<[number, number]>([0, 10000000]);
   const DEFAULT_ESTIMATED_EQUITY_RANGE: [number, number] = [0, 10000000];
-  const [estimatedEquityRange, setEstimatedEquityRange] = useState<[number, number]>(DEFAULT_ESTIMATED_EQUITY_RANGE);
+  const [estimatedEquityRange, setEstimatedEquityRange] = useState<[number, number]>([0, 10000000]);
   const DEFAULT_YEARS_OWNED_RANGE: [number, number] = [0, 50];
-  const [yearsOwnedRange, setYearsOwnedRange] = useState<[number, number]>(DEFAULT_YEARS_OWNED_RANGE);
+  const [yearsOwnedRange, setYearsOwnedRange] = useState<[number, number]>([0, 50]);
   const [ownerLocation, setOwnerLocation] = useState<"any" | "instate" | "outofstate">("any");
 
   //const [inStateOwner, setInStateOwner] = useState("");
   //const [outOfStateOwner, setOutOfStateOwner] = useState("");
   const [corporateOwned, setCorporateOwned] = useState("");
+
   const [activeListingIndex, setActiveListingIndex] = useState<number | null>(null);
   const activeListing = activeListingIndex !== null ? listings[activeListingIndex] : null;
+
   const panelRef = useRef<HTMLDivElement>(null);
   const advancedFiltersToggleRef = useRef<HTMLButtonElement>(null);
-const [locationError, setLocationError] = useState<string | null>(null);
 
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   );
+
   const [isSearching, setIsSearching] = useState(false);
   const [creditsError, setCreditsError] = useState<string | null>(null);
+
 
   const renderRange = (
     label: string,
@@ -416,10 +388,10 @@ const [locationError, setLocationError] = useState<string | null>(null);
     doc.setFont("helvetica", "bold");
     doc.setFontSize(18);
     const address = listing.address?.address || "No Address";
-    const googleMapsUrl = `https://www.google.com/maps/search/?api=1&query=$${encodeURIComponent(address)}`;
+    const googleMapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`;
     const centerX = doc.internal.pageSize.getWidth() / 2;
     doc.setFont("helvetica", "bold");
-    doc.setFontSize(18);
+    doc.setFontSize(18); 
     doc.text(address, centerX, startY, { align: "center" });
     const textWidth = doc.getTextWidth(address);
     const linkX = centerX + textWidth / 2 + 5;
@@ -447,7 +419,6 @@ const [locationError, setLocationError] = useState<string | null>(null);
     addSection("SALES & TRANSACTION HISTORY", [["Last Sale Date:", listing.lastSaleDate ?? "N/A"], ["Last Sale Amount:", formatCurrency(listing.lastSaleAmount)], ["Arms-Length Sale:", listing.lastSaleArmsLength ? "Yes" : "No"], ["MLS Active:", listing.mlsActive ? "Yes" : "No"],], rightX, startY);
     addSection("FLOOD ZONE INFORMATION", [["Flood Zone:", listing.floodZone ? "Yes" : "No"], ["Flood Zone Description:", listing.floodZoneDescription ?? "N/A"],], rightX, startY + 35);
     addSection("OWNERSHIP DETAILS", [["Owner Name:", `${listing.owner1FirstName ?? ""} ${listing.owner1LastName ?? ""}`], ["Owner Address:", listing.ownerAddress ?? "N/A"], ["In-State Absentee Owner:", listing.inStateAbsenteeOwner ? "Yes" : "No"], ["Out-of-State Absentee Owner:", listing.outOfStateAbsenteeOwner ? "Yes" : "No"],], rightX, startY + 60);
-    addSection("OTHER INFORMATION", [["Assumable:", listing.assumable ? "Yes" : "No"], ["REO:", listing.reo ? "Yes" : "No"], ["Auction:", listing.auction ? "Yes" : "No"], ["Tax Lien:", listing.taxLien ? "Yes" : "No"],["Pre Foreclosure:", listing.preForeclosure ? "Yes" : "No"], ["Private Lender:", listing.privateLender ? "Yes" : "No"],], rightX, startY + 95);
     const safeAddress = (listing.address?.address || "property").replace(/[^a-zA-Z0-9]/g, "_");
     doc.save(`Property_Profile_${safeAddress}.pdf`);
   };
@@ -473,59 +444,40 @@ const [locationError, setLocationError] = useState<string | null>(null);
     setStreet("");
     setNumber("");
     setCity("");
-    setStateCode("");
-    setPreForeclosure("");
+    setState("");
+    setCounty("");
+    setForeclosure(false);
+    setPreForeclosure(false);
     setFloodZone("");
     setAssumable("");
     setLastSaleArmsLength("");
     setlastSaleDateRange([0, 2025]);
-    setLastSalePriceRange(DEFAULT_LAST_SALE_PRICE_RANGE);
-    setYearBuiltRange(DEFAULT_YEAR_RANGE);
-    setLotSizeRange(DEFAULT_LOT_SIZE_RANGE);
-    setStoriesRange(DEFAULT_STORIES_RANGE);
-    setMortgageBalanceRange(DEFAULT_MORTGAGE_BALANCE_RANGE);
-    setAssessedValueRange(DEFAULT_ASSESSED_VALUE_RANGE);
-    setEstimatedValueRange(DEFAULT_ESTIMATED_VALUE_RANGE);
-    setEstimatedEquityRange(DEFAULT_ESTIMATED_EQUITY_RANGE);
-    setYearsOwnedRange(DEFAULT_YEARS_OWNED_RANGE);
+    setLastSalePriceRange([0, 10000000]);
+    setYearBuiltRange([1800, 2025]);
+    setLotSizeRange([0, 100000]);
+    setStoriesRange([0, 20]);
+    setMortgageBalanceRange([0, 10000000]);
+    setAssessedValueRange([0, 10000000]);
+    setEstimatedValueRange([0, 10000000]);
+    setEstimatedEquityRange([0, 10000000]);
+    setYearsOwnedRange([0, 50]);
     setOwnerLocation("any");
     setCorporateOwned("");
-    // Reset new filters
-    setAuction("");
-    setReo("");
-    setTaxLien("");
-    setPrivateLender("");
   };
 
-const handleSearch = async (filters: Record<string, string | number | boolean>) => {
-  if (!userIsLoggedIn) {
-    triggerAuthModal(); // ✅ still prompts sign-up for guests
-    return;
-  }
+  const handleSearch = async () => {
+    if (!userIsLoggedIn) {
+      triggerAuthModal();
+      return;
+    }
 
-  // ✨ Location Validation
-  const hasCity = city.trim() !== "";
-  const hasState = stateCode.trim() !== "";
-  const hasZip = zipcode.trim() !== "";
+    setIsSearching(true);
+    setCreditsError(null);
 
-  if (hasCity && !hasState) {
-    setLocationError("State is required when City is provided.");
-    return;
-  }
-
-  if (!(hasCity && hasState) && !hasZip) {
-    setLocationError("ZIP Code is required when City and State are not both provided.");
-    return;
-  }
-
-  setLocationError(null); // ✅ Clear any prior errors
-
-  // 🔍 Continue with search
-  setIsSearching(true);
-  setCreditsError(null);
     try {
       // Build searchParameters FIRST before anything else
       let searchParameters;
+  
       if (
         zipcode && typeof zipcode === 'string' && zipcode.trim() !== '' &&
         house && typeof house === 'string' && house.trim() !== '' &&
@@ -552,13 +504,12 @@ const handleSearch = async (filters: Record<string, string | number | boolean>) 
         const [assessedMin, assessedMax] = assessedValueRange;
         const [estimatedMin, estimatedMax] = estimatedValueRange;
         const [equityMin, equityMax] = estimatedEquityRange;
+  
         const includeIfChanged = (min: number, max: number, defaultRange: [number, number], keys: [string, string]) =>
           min !== defaultRange[0] || max !== defaultRange[1] ? { [keys[0]]: min, [keys[1]]: max } : {};
-
+  
         searchParameters = {
           zip: zipcode || undefined,
-          city: city || undefined,
-          state: stateCode || undefined,
           units_min: minUnits || undefined,
           units_max: maxUnits || undefined,
           propertyType: "MFR",
@@ -582,81 +533,66 @@ const handleSearch = async (filters: Record<string, string | number | boolean>) 
           assumable: assumable || undefined,
           street: street || undefined,
           house: house || undefined,
-          // Add new filters to search parameters
-          auction: auction || undefined,
-          reo: reo || undefined,
-          tax_lien: taxLien || undefined,
-          pre_foreclosure: preForeclosure || undefined, // Use the new string-based filter here
-          private_lender: privateLender || undefined,
           ids_only: false,
           obfuscate: false,
           summary: false,
         };
       }
 
-      const countResponse = await fetch("/api/realestateapi", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...searchParameters, ids_only: true }),
-      });
-
-      if (!countResponse.ok) {
-        const errorText = await countResponse.text();
-        console.error("Count API failed:", countResponse.status, errorText);
-        setCreditsError("There was a problem with your search. Please try again or adjust your filters.");
-        setIsSearching(false);
-        return;
-      }
-      const { ids } = await countResponse.json();
-      const totalCount = Array.isArray(ids) ? ids.length : 0;
-
-      if (totalCount === 0) {
-        setCreditsError("No properties matched your criteria. Try broadening your filters.");
-        await onSearch({ clearResults: true });
-        setIsSearching(false);
-        return;
-      }
-      
-      if (totalCount > 25) {
-        setCreditsError(`Your search returned ${totalCount} properties. Think about your Buy Box and refine your filters to 25 or fewer results.`);
-        setIsSearching(false);
-        return;
-      }
-
-      const { data: newCreditBalance, error: rpcError } = await supabase.rpc(
-        "decrement_search_credits",
-        {
-          amount_to_decrement: totalCount,
-        }
-      );
-
-if (rpcError) {
-  const errorMessage =
-    typeof rpcError === "object" && rpcError !== null && "message" in rpcError
-      ? String(rpcError.message)
-      : String(rpcError);
-
-  //console.log("RPC Error:", errorMessage);
-
-  if (errorMessage.includes("Insufficient credits")) {
-    //setCreditsError("You’re out of credits.");
-
-    if (userClass === "trial") {
-      setShowTrialUpgradeMessage(true);
-    } else {
-      triggerBuyCreditsModal();
-    }
-
+  const countResponse = await fetch("/api/realestateapi", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ ...searchParameters, ids_only: true }),
+  });
+  
+  if (!countResponse.ok) {
+    const errorText = await countResponse.text();
+    console.error("Count API failed:", countResponse.status, errorText);
+    setCreditsError("There was a problem with your search. Please try again or adjust your filters.");
     setIsSearching(false);
     return;
   }
-
-  setCreditsError("There was a problem with your account. Please log in again.");
-  setIsSearching(false);
-  return;
-} else {
-  //console.log("New credit balance:", newCreditBalance);
-}
+  const { ids } = await countResponse.json();
+  const totalCount = Array.isArray(ids) ? ids.length : 0;
+  
+  if (totalCount === 0) {
+    setCreditsError("No properties matched your criteria. Try broadening your filters.");
+    await onSearch({ clearResults: true });
+    setIsSearching(false);
+    return;
+  }
+  
+  if (totalCount > 25) {
+    setCreditsError(`Your search returned ${totalCount} properties. Think about your Buy Box and refine your filters to 25 or fewer results.`);
+    setIsSearching(false);
+    return;
+  }
+  const { data: newCreditBalance, error: rpcError } = await supabase.rpc(
+    "decrement_search_credits",
+    {
+      amount_to_decrement: totalCount,
+    }
+  );
+  
+  if (rpcError) {
+    console.error("RPC Error:", rpcError);
+  } else {
+    //console.log("New credit balance:", newCreditBalance);
+  }  
+      if (rpcError) {
+        const errorMessage = typeof rpcError.message === "string" ? rpcError.message : String(rpcError);
+        if (errorMessage.includes("Insufficient credits")) {
+          const availableMatch = errorMessage.match(/Available: (\d+)/);
+          const searchCostMatch = errorMessage.match(/Search costs (\d+)/);
+          const currentCredits = availableMatch ? availableMatch[1] : "some";
+          const cost = searchCostMatch ? searchCostMatch[1] : "100";
+          setCreditsError(`Not enough credits. Search costs ${cost}. Please add more credits.`);
+        } else {
+          setCreditsError("There was a problem with your account. Please log in again.");
+        }
+        setIsSearching(false);
+        return;
+      }
   
       if (onCreditsUpdate && typeof newCreditBalance === "number") {
         onCreditsUpdate(newCreditBalance);
@@ -670,25 +606,26 @@ if (rpcError) {
       setIsSearching(false);
     }
   };
-
   return(
     <div className="relative flex">
-      <div className="w-[260px] shrink-0 bg-white border-r border-gray-200 p-4 flex flex-col space-y-6 overflow-y-auto h-screen z-20">
-        <h2 className="text-lg font-medium text-gray-800">Property Search</h2>
-
-        <div className="space-y-4">
-          <div className="space-y-2">
-            <label className="block text-sm font-medium text-gray-600">Zipcode</label>
-            <input
-              type="text"
-              className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
-              value={zipcode}
-              onChange={(e) => setZipcode(e.target.value)}
-            />
-          </div>
-          {locationError && (
-  <p className="text-gray-400 text-xs mt-1">{locationError}</p>
-)}
+<div className="w-[260px] shrink-0 bg-white border-r border-gray-200 p-4 flex flex-col space-y-6 overflow-y-auto h-screen z-20">
+  {/* This new div will hold the heading and the info button */}
+  <div className="flex items-center justify-between">
+    <h2 className="text-lg font-medium text-gray-800">Property Search</h2>
+    {/* Info Button */}
+    <button
+      type="button"
+      className="text-gray-400 hover:text-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500"
+      onClick={() => {
+        // Add your desired action here, e.g., show a modal, a tooltip, or navigate
+        alert("You clicked the Info button! Add your custom logic here.");
+      }}
+      title="More Information" // Tooltip on hover
+    >
+      <Info className="h-5 w-5" aria-hidden="true" />
+    </button>
+  </div>
+  <div className="space-y-4">
           <div className="space-y-1">
             <label className="block text-sm font-medium text-gray-600 mb-1">Number of Units*</label>
             <div className="flex items-center space-x-2">
@@ -734,31 +671,19 @@ if (rpcError) {
           </button>
         </div>
 
-<button
-  onClick={() => handleSearch({})}
-  id="sidebar-search"
-  disabled={isSearching}
-  className="w-full bg-orange-500 text-white py-2 px-4 rounded-lg font-semibold transition duration-200 ease-in-out transform hover:scale-105 hover:bg-orange-600 focus:outline-none focus:ring-2 focus:ring-orange-400 focus:ring-opacity-75 hover:shadow-lg active:scale-95 disabled:opacity-75 disabled:cursor-not-allowed"
->
-  {isSearching ? "Processing..." : "Search"}
-</button>
+        <button
+          onClick={handleSearch}
+          id="sidebar-search"
+          disabled={isSearching}
+          className="w-full bg-orange-500 text-white py-2 px-4 rounded-lg font-semibold transition duration-200 ease-in-out transform hover:scale-105 hover:bg-orange-600 focus:outline-none focus:ring-2 focus:ring-orange-400 focus:ring-opacity-75 hover:shadow-lg active:scale-95 disabled:opacity-75 disabled:cursor-not-allowed" // Added disabled styles
+        >
+          {isSearching ? "Processing..." : "Search"}
+        </button>
 
         {creditsError && (
           <p className="text-red-600 text-xs mt-1 text-center">{creditsError}</p>
         )}
-{showTrialUpgradeMessage && (
-  <div
-  className="px-6 py-4 rounded-md cursor-pointer text-center font-light text-lg mt-4 transition bg-black text-white hover:bg-gray-800"
-  onClick={() => window.location.href = "/pricing"}
->
-  Sorry, but you are out of credits.
-  <br />
-  <span style={{ textDecoration: "underline", fontWeight: "medium" }}>
-    Upgrade now
-  </span>{" "}
-  to continue your analysis and find your next investment.
-</div>
-)}
+
         <div className="flex-1 space-y-2 overflow-y-auto relative">
           {Array.isArray(listings) &&
             listings
@@ -775,7 +700,7 @@ if (rpcError) {
                     `}
                   >
                     <div className="flex items-start justify-between">
-                      <div onClick={() => setActiveListingIndex(i)} className="flex-1 cursor-pointer" title="Click on address to view property profile & marketing letter. Then check the box & let Charlie analyze it for you!" >
+                      <div onClick={() => setActiveListingIndex(i)} className="flex-1 cursor-pointer">
                         <p className="font-medium text-gray-800">
                           {listing.address?.street || "No street info"}
                         </p>
@@ -805,7 +730,7 @@ if (rpcError) {
               className="bg-white px-14 py-6 rounded-lg shadow-xl max-w-3xl w-full relative"
               onClick={(e) => e.stopPropagation()}
             >
-              <button onClick={() => setActiveListingIndex(null)} className="absolute top-2 right-3 text-gray-500 hover:text-black text-xl">×</button>
+              <button onClick={() => setActiveListingIndex(null)} className="absolute top-2 right-3 text-gray-500 hover:text-black text-xl">&times;</button>
               <button onClick={goToPrev} disabled={activeListingIndex === 0} className="absolute left-2 top-1/2 -translate-y-1/2 bg-gray-100 p-2 rounded-full hover:bg-gray-200"><ChevronLeft className="w-5 h-5 text-gray-700" /></button>
               <button onClick={goToNext} disabled={activeListingIndex === listings.length - 1} className="absolute right-2 top-1/2 -translate-y-1/2 bg-gray-100 p-2 rounded-full hover:bg-gray-200"><ChevronRight className="w-5 h-5 text-gray-700" /></button>
               <h2 className="text-2xl font-semibold mb-4 text-gray-800">{activeListing.address?.address || "No Address"}</h2>
@@ -822,21 +747,21 @@ if (rpcError) {
                 <p><strong>Last Sale Amount:</strong>{" "}{activeListing.lastSaleAmount ? `$${Number(activeListing.lastSaleAmount).toLocaleString()}` : "N/A"}</p>
               </div>
               <div className="mt-6 flex gap-4">
-                <button
-                  onClick={() => downloadLetter(activeListing)}
-                  className="bg-black text-white px-4 py-2 rounded hover:bg-gray-900
-                                       transform transition-all duration-150 ease-in-out
-                                       hover:scale-105 active:scale-90
-                                       focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500"
+                <button 
+                  onClick={() => downloadLetter(activeListing)} 
+                  className="bg-black text-white px-4 py-2 rounded hover:bg-gray-900 
+                             transform transition-all duration-150 ease-in-out 
+                             hover:scale-105 active:scale-90 
+                             focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500"
                 >
                   Download Letter 📩
-                </button>
-                <button
-                  onClick={() => downloadProfile(activeListing)}
-                  className="bg-black text-white px-4 py-2 rounded hover:bg-gray-900
-                                       transform transition-all duration-150 ease-in-out
-                                       hover:scale-105 active:scale-90
-                                       focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500"
+                </button>               
+                <button 
+                  onClick={() => downloadProfile(activeListing)} 
+                  className="bg-black text-white px-4 py-2 rounded hover:bg-gray-900 
+                             transform transition-all duration-150 ease-in-out 
+                             hover:scale-105 active:scale-90 
+                             focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500"
                 >
                   Download Profile 📄
                 </button>
@@ -858,7 +783,7 @@ if (rpcError) {
       {showAdvanced && (
         <div ref={panelRef} className="absolute top-0 left-[260px] w-[440px] h-full bg-white border-r border-gray-200 p-6 shadow-xl z-30 overflow-y-auto">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg text-gray-800 font-semibold">Advanced Filters</h3>
+                <h3 className="text-lg text-gray-800 font-semibold">Advanced Filters</h3>
                 <button
                 onClick={resetFilters}
                 className="text-sm bg-gray-100 text-gray-700 px-3 py-1.5 rounded hover:bg-gray-200 border border-gray-300"
@@ -867,94 +792,65 @@ if (rpcError) {
             </button>
           </div>
           <div className="grid grid-cols-2 gap-4 mb-4">
-  <div className="mb-4">
-    <label htmlFor="advanced-street-number" className="block text-sm font-medium text-gray-700 mb-1">
-      Street Number
-    </label>
-    <input
-      type="text"
-      id="advanced-street-number"
-      className="w-full border border-gray-300 rounded px-3 py-2 text-sm shadow-sm focus:ring-orange-500 focus:border-orange-500"
-      placeholder=""
-      value={house}
-      onChange={e => setNumber(e.target.value)}
-    />
+            <div className="mb-4">
+              <label htmlFor="advanced-street-filter" className="block text-sm font-medium text-gray-700 mb-1">
+                Street Number
+              </label>
+              <input
+                type="text"
+                id="advanced-street-filter"
+                name="advanced-street-filter"
+                className="w-full border border-gray-300 rounded px-3 py-2 text-sm shadow-sm focus:ring-orange-500 focus:border-orange-500"
+                placeholder="E.g., 123"
+                value={house}
+                onChange={(e) => setNumber(e.target.value)}
+              />
+            </div>
+            <div className="mb-4">
+              <label htmlFor="advanced-street-filter" className="block text-sm font-medium text-gray-700 mb-1">
+                Street Name
+              </label>
+              <input
+                type="text"
+                id="advanced-street-filter"
+                name="advanced-street-filter"
+                className="w-full border border-gray-300 rounded px-3 py-2 text-sm shadow-sm focus:ring-orange-500 focus:border-orange-500"
+                placeholder="E.g., Main St"
+                value={street}
+                onChange={(e) => setStreet(e.target.value)}
+              />
+            </div>
+            <div>
+  <label className="block text-sm font-medium text-gray-700 mb-1">Owner Location</label>
+  <div className="flex rounded-md">
+    <button
+      type="button"
+      onClick={() => setOwnerLocation("any")}
+      className={`relative inline-flex items-center px-4 py-2 rounded-l-md border border-gray-300 text-sm font-medium ${
+        ownerLocation === "any" ? 'bg-orange-500 text-white z-10 ring-1 ring-orange-500 border-orange-500' : 'bg-white text-gray-700 hover:bg-gray-50'
+      }`}
+    >
+      Any
+    </button>
+    <button
+      type="button"
+      onClick={() => setOwnerLocation("instate")}
+      className={`relative inline-flex items-center px-8 py-2 -ml-px border border-gray-300 text-sm font-medium ${
+        ownerLocation === "instate" ? 'bg-orange-500 text-white z-10 ring-1 ring-orange-500 border-orange-500' : 'bg-white text-gray-700 hover:bg-gray-50'
+      }`}
+    >
+       In&nbsp;State
+    </button>
+    <button
+      type="button"
+      onClick={() => setOwnerLocation("outofstate")}
+      className={`relative inline-flex items-center px-8 py-2 -ml-px rounded-r-md border border-gray-300 text-sm font-medium ${
+        ownerLocation === "outofstate" ? 'bg-orange-500 text-white z-10 ring-1 ring-orange-500 border-orange-500' : 'bg-white text-gray-700 hover:bg-gray-50'
+      }`}
+    >
+      Out&nbsp;of&nbsp;State
+    </button>
   </div>
-
-  <div className="mb-4">
-    <label htmlFor="advanced-street-name" className="block text-sm font-medium text-gray-700 mb-1">
-      Street Name
-    </label>
-    <input
-      type="text"
-      id="advanced-street-name"
-      className="w-full border border-gray-300 rounded px-3 py-2 text-sm shadow-sm focus:ring-orange-500 focus:border-orange-500"
-      placeholder=""
-      value={street}
-      onChange={e => setStreet(e.target.value)}
-    />
-  </div>
-
-  <div className="mb-4">
-    <label htmlFor="advanced-city" className="block text-sm font-medium text-gray-700 mb-1">
-      City
-    </label>
-    <input
-      type="text"
-      id="advanced-city"
-      className="w-45 border border-gray-300 rounded px-3 py-2 text-sm shadow-sm focus:ring-orange-500 focus:border-orange-500"
-      placeholder=""
-      value={city}
-      onChange={e => setCity(e.target.value)}
-    />
-  </div>
-
-  <div className="mb-4">
-    <label htmlFor="advanced-state" className="block text-sm font-medium text-gray-700 mb-1">
-      State
-    </label>
-    <input
-      type="text"
-      id="advanced-state"
-      maxLength={2}
-      className="w-16 border border-gray-300 rounded px-3 py-2 text-sm shadow-sm text-center uppercase focus:ring-orange-500 focus:border-orange-500"
-      placeholder=""
-      value={stateCode}
-      onChange={e => setStateCode(e.target.value.toUpperCase())}
-    />
-  </div>
-
-  <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Owner Location</label>
-              <div className="flex rounded-md">
-                <button
-                  type="button"
-                  onClick={() => setOwnerLocation("any")}
-                  className={`relative inline-flex items-center px-4 py-2 rounded-l-md border border-gray-300 text-sm font-medium ${
-                    ownerLocation === "any" ? 'bg-orange-500 text-white z-10 ring-1 ring-orange-500 border-orange-500' : 'bg-white text-gray-700 hover:bg-gray-50'
-                  }`}
-                >
-                  Any
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setOwnerLocation("instate")}
-                  className={`relative inline-flex items-center px-8 py-2 -ml-px border border-gray-300 text-sm font-medium ${
-                    ownerLocation === "instate" ? 'bg-orange-500 text-white z-10 ring-1 ring-orange-500 border-orange-500' : 'bg-white text-gray-700 hover:bg-gray-50'
-                  }`}
-                >
-                   In State
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setOwnerLocation("outofstate")}
-                  className={`relative inline-flex items-center px-8 py-2 -ml-px rounded-r-md border border-gray-300 text-sm font-medium ${
-                    ownerLocation === "outofstate" ? 'bg-orange-500 text-white z-10 ring-1 ring-orange-500 border-orange-500' : 'bg-white text-gray-700 hover:bg-gray-50'
-                  }`}
-                >
-                  Out of State
-                </button>
-              </div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Corporate Owned</label>
               <div className="flex rounded-md">
                 <button type="button" onClick={() => setCorporateOwned("")} className={`relative inline-flex items-center px-4 py-2 rounded-l-md border border-gray-300 text-sm font-medium ${corporateOwned === "" ? 'bg-orange-500 text-white z-10 ring-1 ring-orange-500 border-orange-500' : 'bg-white text-gray-700 hover:bg-gray-50'} focus:z-10 focus:outline-none focus:ring-1 focus:ring-orange-500 focus:border-orange-500`}>Any</button>
@@ -1009,47 +905,6 @@ if (rpcError) {
                 <button type="button" onClick={() => setAssumable("")} className={`relative inline-flex items-center px-4 py-2 rounded-l-md border border-gray-300 text-sm font-medium ${assumable === "" ? 'bg-orange-500 text-white z-10 ring-1 ring-orange-500 border-orange-500' : 'bg-white text-gray-700 hover:bg-gray-50'} focus:z-10 focus:outline-none focus:ring-1 focus:ring-orange-500 focus:border-orange-500`}>Any</button>
                 <button type="button" onClick={() => setAssumable("true")} className={`relative inline-flex items-center px-4 py-2 -ml-px border border-gray-300 text-sm font-medium ${assumable === "true" ? 'bg-orange-500 text-white z-10 ring-1 ring-orange-500 border-orange-500' : 'bg-white text-gray-700 hover:bg-gray-50'} focus:z-10 focus:outline-none focus:ring-1 focus:ring-orange-500 focus:border-orange-500`}>Yes</button>
                 <button type="button" onClick={() => setAssumable("false")} className={`relative inline-flex items-center px-4 py-2 -ml-px rounded-r-md border border-gray-300 text-sm font-medium ${assumable === "false" ? 'bg-orange-500 text-white z-10 ring-1 ring-orange-500 border-orange-500' : 'bg-white text-gray-700 hover:bg-gray-50'} focus:z-10 focus:outline-none focus:ring-1 focus:ring-orange-500 focus:border-orange-500`}>No</button>
-              </div>
-            </div>
-            {/* New boolean filters */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Auction</label>
-              <div className="flex rounded-md">
-                <button type="button" onClick={() => setAuction("")} className={`relative inline-flex items-center px-4 py-2 rounded-l-md border border-gray-300 text-sm font-medium ${auction === "" ? 'bg-orange-500 text-white z-10 ring-1 ring-orange-500 border-orange-500' : 'bg-white text-gray-700 hover:bg-gray-50'} focus:z-10 focus:outline-none focus:ring-1 focus:ring-orange-500 focus:border-orange-500`}>Any</button>
-                <button type="button" onClick={() => setAuction("true")} className={`relative inline-flex items-center px-4 py-2 -ml-px border border-gray-300 text-sm font-medium ${auction === "true" ? 'bg-orange-500 text-white z-10 ring-1 ring-orange-500 border-orange-500' : 'bg-white text-gray-700 hover:bg-gray-50'} focus:z-10 focus:outline-none focus:ring-1 focus:ring-orange-500 focus:border-orange-500`}>Yes</button>
-                <button type="button" onClick={() => setAuction("false")} className={`relative inline-flex items-center px-4 py-2 -ml-px rounded-r-md border border-gray-300 text-sm font-medium ${auction === "false" ? 'bg-orange-500 text-white z-10 ring-1 ring-orange-500 border-orange-500' : 'bg-white text-gray-700 hover:bg-gray-50'} focus:z-10 focus:outline-none focus:ring-1 focus:ring-orange-500 focus:border-orange-500`}>No</button>
-              </div>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">REO</label>
-              <div className="flex rounded-md">
-                <button type="button" onClick={() => setReo("")} className={`relative inline-flex items-center px-4 py-2 rounded-l-md border border-gray-300 text-sm font-medium ${reo === "" ? 'bg-orange-500 text-white z-10 ring-1 ring-orange-500 border-orange-500' : 'bg-white text-gray-700 hover:bg-gray-50'} focus:z-10 focus:outline-none focus:ring-1 focus:ring-orange-500 focus:border-orange-500`}>Any</button>
-                <button type="button" onClick={() => setReo("true")} className={`relative inline-flex items-center px-4 py-2 -ml-px border border-gray-300 text-sm font-medium ${reo === "true" ? 'bg-orange-500 text-white z-10 ring-1 ring-orange-500 border-orange-500' : 'bg-white text-gray-700 hover:bg-gray-50'} focus:z-10 focus:outline-none focus:ring-1 focus:ring-orange-500 focus:border-orange-500`}>Yes</button>
-                <button type="button" onClick={() => setReo("false")} className={`relative inline-flex items-center px-4 py-2 -ml-px rounded-r-md border border-gray-300 text-sm font-medium ${reo === "false" ? 'bg-orange-500 text-white z-10 ring-1 ring-orange-500 border-orange-500' : 'bg-white text-gray-700 hover:bg-gray-50'} focus:z-10 focus:outline-none focus:ring-1 focus:ring-orange-500 focus:border-orange-500`}>No</button>
-              </div>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Tax Lien</label>
-              <div className="flex rounded-md">
-                <button type="button" onClick={() => setTaxLien("")} className={`relative inline-flex items-center px-4 py-2 rounded-l-md border border-gray-300 text-sm font-medium ${taxLien === "" ? 'bg-orange-500 text-white z-10 ring-1 ring-orange-500 border-orange-500' : 'bg-white text-gray-700 hover:bg-gray-50'} focus:z-10 focus:outline-none focus:ring-1 focus:ring-orange-500 focus:border-orange-500`}>Any</button>
-                <button type="button" onClick={() => setTaxLien("true")} className={`relative inline-flex items-center px-4 py-2 -ml-px border border-gray-300 text-sm font-medium ${taxLien === "true" ? 'bg-orange-500 text-white z-10 ring-1 ring-orange-500 border-orange-500' : 'bg-white text-gray-700 hover:bg-gray-50'} focus:z-10 focus:outline-none focus:ring-1 focus:ring-orange-500 focus:border-orange-500`}>Yes</button>
-                <button type="button" onClick={() => setTaxLien("false")} className={`relative inline-flex items-center px-4 py-2 -ml-px rounded-r-md border border-gray-300 text-sm font-medium ${taxLien === "false" ? 'bg-orange-500 text-white z-10 ring-1 ring-orange-500 border-orange-500' : 'bg-white text-gray-700 hover:bg-gray-50'} focus:z-10 focus:outline-none focus:ring-1 focus:ring-orange-500 focus:border-orange-500`}>No</button>
-              </div>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Pre-Foreclosure</label>
-              <div className="flex rounded-md">
-                <button type="button" onClick={() => setPreForeclosure("")} className={`relative inline-flex items-center px-4 py-2 rounded-l-md border border-gray-300 text-sm font-medium ${preForeclosure === "" ? 'bg-orange-500 text-white z-10 ring-1 ring-orange-500 border-orange-500' : 'bg-white text-gray-700 hover:bg-gray-50'} focus:z-10 focus:outline-none focus:ring-1 focus:ring-orange-500 focus:border-orange-500`}>Any</button>
-                <button type="button" onClick={() => setPreForeclosure("true")} className={`relative inline-flex items-center px-4 py-2 -ml-px border border-gray-300 text-sm font-medium ${preForeclosure === "true" ? 'bg-orange-500 text-white z-10 ring-1 ring-orange-500 border-orange-500' : 'bg-white text-gray-700 hover:bg-gray-50'} focus:z-10 focus:outline-none focus:ring-1 focus:ring-orange-500 focus:border-orange-500`}>Yes</button>
-                <button type="button" onClick={() => setPreForeclosure("false")} className={`relative inline-flex items-center px-4 py-2 -ml-px rounded-r-md border border-gray-300 text-sm font-medium ${preForeclosure === "false" ? 'bg-orange-500 text-white z-10 ring-1 ring-orange-500 border-orange-500' : 'bg-white text-gray-700 hover:bg-gray-50'} focus:z-10 focus:outline-none focus:ring-1 focus:ring-orange-500 focus:border-orange-500`}>No</button>
-              </div>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Private Lender</label>
-              <div className="flex rounded-md">
-                <button type="button" onClick={() => setPrivateLender("")} className={`relative inline-flex items-center px-4 py-2 rounded-l-md border border-gray-300 text-sm font-medium ${privateLender === "" ? 'bg-orange-500 text-white z-10 ring-1 ring-orange-500 border-orange-500' : 'bg-white text-gray-700 hover:bg-gray-50'} focus:z-10 focus:outline-none focus:ring-1 focus:ring-orange-500 focus:border-orange-500`}>Any</button>
-                <button type="button" onClick={() => setPrivateLender("true")} className={`relative inline-flex items-center px-4 py-2 -ml-px border border-gray-300 text-sm font-medium ${privateLender === "true" ? 'bg-orange-500 text-white z-10 ring-1 ring-orange-500 border-orange-500' : 'bg-white text-gray-700 hover:bg-gray-50'} focus:z-10 focus:outline-none focus:ring-1 focus:ring-orange-500 focus:border-orange-500`}>Yes</button>
-                <button type="button" onClick={() => setPrivateLender("false")} className={`relative inline-flex items-center px-4 py-2 -ml-px rounded-r-md border border-gray-300 text-sm font-medium ${privateLender === "false" ? 'bg-orange-500 text-white z-10 ring-1 ring-orange-500 border-orange-500' : 'bg-white text-gray-700 hover:bg-gray-50'} focus:z-10 focus:outline-none focus:ring-1 focus:ring-orange-500 focus:border-orange-500`}>No</button>
               </div>
             </div>
           </div>
