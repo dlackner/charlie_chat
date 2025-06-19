@@ -406,56 +406,6 @@ const fetchUserCreditsAndClass = async (userToFetchFor: User) => {
     }
   };
 
-
-const handleSubscriptionCheckout = async (productId: string, plan: "monthly" | "annual") => {
-  //console.log("🔥 Entered handleSubscriptionCheckout");
-  //console.log("→ Subscription payload:", { productId, plan });
-  //console.log("🔍 About to call checkout endpoint at:", window.location.origin + "/api/stripe/checkout");
-
-  // DEBUG: Let's see what we actually have
-  //console.log("🔍 DEBUG currentUser from useAuth:", currentUser);
-  //console.log("🔍 DEBUG isLoadingAuth:", isLoadingAuth);
-
-  // Try to get a fresh session directly from supabase
-  //const { data: { session: freshSession }, error } = await supabase.auth.getSession();
-  //console.log("🔍 DEBUG fresh session from supabase:", freshSession);
-  //console.log("🔍 DEBUG fresh session error:", error);
-
-  if (!freshSession || !freshSession.access_token) {
-    //console.error("🚫 No valid session or access token");
-    //console.error("Session:", freshSession);
-    alert("You must be logged in to complete this purchase.");
-    return;
-  }
-
-   try {
-    const res = await fetch("/api/stripe/checkout", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${freshSession.access_token}`,
-      },
-      body: JSON.stringify({ productId, plan }),
-    });
-
-    //console.log("🔍 Response status:", res.status);
-    //console.log("🔍 Response headers:", res.headers);
-    
-    const data = await res.json();
-    //console.log("🔍 Response data:", data);
-    
-    if (data.url) {
-      window.location.href = data.url;
-    } else {
-      console.error("Subscription checkout failed:", data.error);
-      alert("Checkout failed: " + (data.error || "Unknown error"));
-    }
-  } catch (error) {
-    console.error("Network error during checkout:", error);
-    alert("Network error occurred. Please try again.");
-  }
-};
-
 const handlePackageSelection = async (userClass: string, amount: number) => {
   if (!currentUser?.id) {
     alert("Missing user ID. Please sign in again.");

@@ -20,11 +20,6 @@ import { cn } from "@/lib/utils";
 
 import { Button } from "@/components/ui/button";
 import { MarkdownText } from "@/components/assistant-ui/markdown-text";
-import {
-  ComposerAttachments,
-  ComposerAddAttachment,
-  UserMessageAttachments,
-} from "@/components/assistant-ui/attachment";
 
 export const Thread: FC = () => {
   return (
@@ -117,8 +112,6 @@ const ThreadWelcomeSuggestions: FC = () => {
 const Composer: FC = () => {
   return (
     <ComposerPrimitive.Root className="focus-within:border-ring/20 flex w-full flex-wrap items-end rounded-lg border bg-inherit px-2.5 shadow-sm transition-colors ease-in">
-      <ComposerAttachments />
-      <ComposerAddAttachment />
       <ComposerPrimitive.Input
         rows={1}
         autoFocus
@@ -173,7 +166,6 @@ const UserMessage: FC = () => {
       <UserActionBar />
 
       <div className="bg-muted text-foreground max-w-[calc(var(--thread-max-width)*0.8)] break-words rounded-3xl px-5 py-2.5 col-start-2 row-start-2">
-        <UserMessageAttachments />
         <MessagePrimitive.Content />
       </div>
 
