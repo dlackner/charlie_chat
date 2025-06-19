@@ -577,7 +577,7 @@ export const Sidebar = ({
   if (rpcError) {
     console.error("RPC Error:", rpcError);
   } else {
-    console.log("New credit balance:", newCreditBalance);
+    //console.log("New credit balance:", newCreditBalance);
   }  
       if (rpcError) {
         const errorMessage = typeof rpcError.message === "string" ? rpcError.message : String(rpcError);

@@ -21,7 +21,7 @@ export const PACKAGES: Record<UserClass, PropertyPackage[]> = {
     { amount: 100, price: publicNum('NEXT_PUBLIC_APP_CHARLIE_CHAT_PRO_100_PACK_PRICE',29) },
   ],
   cohort: [
-    { amount: 100, price: publicNum('NEXT_PUBLIC_APP_MULTIFAMILYOS_100_PACK_PRICE',229) },
+    { amount: 250, price: publicNum('NEXT_PUBLIC_APP_MULTIFAMILYOS_COHORT_250_PACK_PRICE',29) },
   ],
 };
 

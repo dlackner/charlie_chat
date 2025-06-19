@@ -68,7 +68,7 @@ useEffect(() => {
     if (error) {
       console.error("Error fetching stripe_customer_id:", error.message);
     } else if (data?.stripe_customer_id) {
-      console.log("✅ Fetched stripe_customer_id:", data.stripe_customer_id);
+      //console.log("✅ Fetched stripe_customer_id:", data.stripe_customer_id);
       // Use the value directly wherever you need it, don't set it on currentUser
     }
   };
@@ -86,7 +86,7 @@ const stripeCustomerId = (currentUser as any)?.stripe_customer_id;
   const sessionId = urlParams.get("session_id");
 
   if (sessionId && currentUser) {
-    console.log("✅ Stripe checkout returned with session_id:", sessionId);
+    //console.log("✅ Stripe checkout returned with session_id:", sessionId);
 
     // Clean up URL so session_id disappears
     const newUrl = window.location.pathname;
@@ -102,7 +102,7 @@ const stripeCustomerId = (currentUser as any)?.stripe_customer_id;
       if (error) {
         console.error("❌ Error refreshing credits after checkout:", error);
       } else {
-        console.log("✅ Credits refreshed after checkout:", profile.credits);
+        //console.log("✅ Credits refreshed after checkout:", profile.credits);
         setUserCredits(profile.credits);
       }
     };
@@ -129,9 +129,9 @@ const availablePackages = userClass === 'trial' ? [] : getPackagesFor(userClass)
   const [listings, setListings] = useState<Listing[]>([]);
   const [selectedListings, setSelectedListings] = useState<Listing[]>([]);
   const handleCreditsUpdated = (newBalance: number) => {
-    console.log("[ClosingChat] handleCreditsUpdated CALLED with newBalance:", newBalance);
+    //console.log("[ClosingChat] handleCreditsUpdated CALLED with newBalance:", newBalance);
     setUserCredits(prevCredits => {
-      console.log("[ClosingChat] Previous credits state:", prevCredits, "New credits to set:", newBalance);
+      //console.log("[ClosingChat] Previous credits state:", prevCredits, "New credits to set:", newBalance);
       return newBalance;
     });
   };
@@ -195,7 +195,7 @@ const availablePackages = userClass === 'trial' ? [] : getPackagesFor(userClass)
       return `**${index + 1}. ${mainDisplayAddress}**\n${propertyDetails.trim()}`;
     });
 
-    const summaryPrompt = `Give me a market summary and an insightful underwriting strategy for each property. Ruminate, don't rush. Use infomration on tax liens, assumable, pre foreclosure, and auction flags when formulating your strategy. Mortgage balance and owner equity are also very important. Consider the following details if available:\n\n---\n${rows.join("\n\n---\n")}\n---`;
+    const summaryPrompt = `Act as a senior multifamily investment advisor preparing a strategic underwriting memo for experienced real estate investors. You are reviewing an output from an AI-powered analyzer that provides limited property-level data, with some fields occasionally missing. For each property, produce two clearly labeled sections. The first is a Market Summary. It should Use the ZIP code, city, or region (if available) to summarize local market conditions relevant to multifamily investors. If the fields pre-foreclosure, auction, or tax lien flags are present, explain how these might affect buyer leverage, timing, and risk. Highlight anything unusual about the owner type, mortgage status, or assumability that might shape acquisition strategy.You may reference general market trends if they are reliably accessible online, but avoid making up data if it’s not findable. The second section is Underwriting Strategy. Base your analysis on mortgage balance, owner equity, and financing flags (e.g., assumable loans).Recommend a strategy (e.g., distressed negotiation, creative financing, seller carry, etc.) grounded in available data. Use numerical thresholds (like “equity above 30%” or “loan-to-value under 70%”) only when the data supports it. If appropriate, suggest next steps (e.g., verify rent roll, check lien documentation, evaluate exit cap).Include a short Verdict (e.g., Pursue, Monitor, Pass) with a rationale. The tone should be thoughtful and confident, as if preparing this memo for a GP/LP acquisition team. Important: Not all data will be available. Where assumptions are needed, state them clearly and cautiously.\n\n---\n${rows.join("\n\n---\n")}\n---`;
 
     // Send the full prompt to the API but display simplified message to user
     sendMessage(summaryPrompt, true, "Analyzing your properties...");
@@ -251,13 +251,13 @@ const fetchUserCreditsAndClass = async (userToFetchFor: User) => {
     } else if (!currentUser && isMounted) {
       // No user (logged out, or initial state before user is loaded by AuthContext)
       // Clear local credits if the user logs out or if there's no user from context.
-      console.log("[ClosingChat CreditsEffect] No current user from context, clearing local credits.");
+      //console.log("[ClosingChat CreditsEffect] No current user from context, clearing local credits.");
       setUserCredits(null);
     }
 
     return () => {
       isMounted = false;
-      console.log("[ClosingChat CreditsEffect] Cleanup.");
+      //console.log("[ClosingChat CreditsEffect] Cleanup.");
     };
   }, [currentUser, supabase]);
 
@@ -408,22 +408,22 @@ const fetchUserCreditsAndClass = async (userToFetchFor: User) => {
 
 
 const handleSubscriptionCheckout = async (productId: string, plan: "monthly" | "annual") => {
-  console.log("🔥 Entered handleSubscriptionCheckout");
-  console.log("→ Subscription payload:", { productId, plan });
-  console.log("🔍 About to call checkout endpoint at:", window.location.origin + "/api/stripe/checkout");
+  //console.log("🔥 Entered handleSubscriptionCheckout");
+  //console.log("→ Subscription payload:", { productId, plan });
+  //console.log("🔍 About to call checkout endpoint at:", window.location.origin + "/api/stripe/checkout");
 
   // DEBUG: Let's see what we actually have
-  console.log("🔍 DEBUG currentUser from useAuth:", currentUser);
-  console.log("🔍 DEBUG isLoadingAuth:", isLoadingAuth);
+  //console.log("🔍 DEBUG currentUser from useAuth:", currentUser);
+  //console.log("🔍 DEBUG isLoadingAuth:", isLoadingAuth);
 
   // Try to get a fresh session directly from supabase
-  const { data: { session: freshSession }, error } = await supabase.auth.getSession();
-  console.log("🔍 DEBUG fresh session from supabase:", freshSession);
-  console.log("🔍 DEBUG fresh session error:", error);
+  //const { data: { session: freshSession }, error } = await supabase.auth.getSession();
+  //console.log("🔍 DEBUG fresh session from supabase:", freshSession);
+  //console.log("🔍 DEBUG fresh session error:", error);
 
   if (!freshSession || !freshSession.access_token) {
-    console.error("🚫 No valid session or access token");
-    console.error("Session:", freshSession);
+    //console.error("🚫 No valid session or access token");
+    //console.error("Session:", freshSession);
     alert("You must be logged in to complete this purchase.");
     return;
   }
@@ -438,11 +438,11 @@ const handleSubscriptionCheckout = async (productId: string, plan: "monthly" | "
       body: JSON.stringify({ productId, plan }),
     });
 
-    console.log("🔍 Response status:", res.status);
-    console.log("🔍 Response headers:", res.headers);
+    //console.log("🔍 Response status:", res.status);
+    //console.log("🔍 Response headers:", res.headers);
     
     const data = await res.json();
-    console.log("🔍 Response data:", data);
+    //console.log("🔍 Response data:", data);
     
     if (data.url) {
       window.location.href = data.url;
@@ -500,7 +500,7 @@ const handlePackageSelection = async (userClass: string, amount: number) => {
          {/* Sidebar */}
          <Sidebar
           onSearch={async (filters: Record<string, string | number | boolean>) => {
-            console.log("🚀 Sending API request:", filters); 
+           //console.log("🚀 Sending API request:", filters); 
 
             try {
               const res = await fetch("/api/realestateapi", {
@@ -510,7 +510,7 @@ const handlePackageSelection = async (userClass: string, amount: number) => {
               });
             
               const data = await res.json();
-              console.log("🔍 Raw Returned data:", data);
+              //console.log("🔍 Raw Returned data:", data);
               setListings(data || []);
             } catch (err) {
               console.error("Realestateapi API error:", err);

@@ -214,7 +214,7 @@ async function handleSubscription(session: any, profile: any, supabase: any, str
   };
 
   const assignedUserClass = priceToClassMap[priceId || ''] || "charlie_chat";
-  console.log(`📋 Assigning user_class: ${assignedUserClass}`);
+  //console.log(`📋 Assigning user_class: ${assignedUserClass}`);
 
   // Get full subscription details from Stripe if subscription exists
   if (session.subscription) {
@@ -301,8 +301,8 @@ async function handleCreditPurchase(session: any, profile: any, supabase: any, s
       credits: 100,
       userClass: 'charlie_chat_pro'
     },
-    [Deno.env.get('NEXT_PUBLIC_MULTIFAMILYOS_100_PACK_PRICE') ?? '']: {
-      credits: 100,
+    [Deno.env.get('NEXT_PUBLIC_MULTIFAMILYOS_COHORT_250_PACK_PRICE') ?? '']: {
+      credits: 250,
       userClass: 'multifamilyos'
     }
   };

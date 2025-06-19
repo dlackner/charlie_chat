@@ -60,8 +60,8 @@ const specialCreditPacks: Record<string, { credits: number; priceId: string }> =
     priceId: process.env.NEXT_PUBLIC_CHARLIE_CHAT_PRO_100_PACK_PRICE!
   },
   "multifamilyos": {
-    credits: 100,
-    priceId: process.env.NEXT_PUBLIC_MULTIFAMILYOS_100_PACK_PRICE!
+    credits: 250,
+    priceId: process.env.NEXT_PUBLIC_MULTIFAMILYOS_COHORT_250_PACK_PRICE!
   }
 };
 
@@ -95,14 +95,14 @@ export async function POST(req: NextRequest) {
       // Credit pack purchase
       const { userClass, amount, stripeCustomerId } = body;
       
-      console.log("💳 Creating credit pack checkout:", { userId, userClass, amount });
+      //console.log("💳 Creating credit pack checkout:", { userId, userClass, amount });
 
       let priceId: string;
 
       // Check if this is a special credit pack with user class upgrade
       if (specialCreditPacks[userClass] && amount === specialCreditPacks[userClass].credits) {
         priceId = specialCreditPacks[userClass].priceId;
-        console.log("🎯 Using special credit pack price:", priceId);
+        //console.log("🎯 Using special credit pack price:", priceId);
       } else {
         // Use regular credit pack pricing
         priceId = creditPackPricing[amount];
@@ -112,7 +112,7 @@ export async function POST(req: NextRequest) {
             { status: 400, headers: { "Content-Type": "application/json" } }
           );
         }
-        console.log("💰 Using regular credit pack price:", priceId);
+        //console.log("💰 Using regular credit pack price:", priceId);
       }
 
       // Create a one-time payment session using predefined price ID
@@ -125,7 +125,7 @@ export async function POST(req: NextRequest) {
           quantity: 1,
         }],
         success_url: `${process.env.NEXT_PUBLIC_BASE_URL}/success?session_id={CHECKOUT_SESSION_ID}`,
-        cancel_url: `${process.env.NEXT_PUBLIC_BASE_URL}/cancel`,
+        cancel_url: `${process.env.NEXT_PUBLIC_BASE_URL}`, //removed /cancel
         metadata: {
           userId,
           userClass,
@@ -141,10 +141,10 @@ export async function POST(req: NextRequest) {
       // Subscription purchase
       const { productId, plan }: { productId: string; plan: "monthly" | "annual" } = body;
 
-      console.log("📦 Incoming subscription checkout request:", { productId, plan });
-      console.log("🧩 Keys in productPricing:", Object.keys(productPricing));
-      console.log("🔍 Available products:", Object.keys(productPricing));
-      console.log("🔍 Looking for product:", productId);
+      //console.log("📦 Incoming subscription checkout request:", { productId, plan });
+      //console.log("🧩 Keys in productPricing:", Object.keys(productPricing));
+      //console.log("🔍 Available products:", Object.keys(productPricing));
+      //console.log("🔍 Looking for product:", productId);
 
       const product = productPricing[productId];
       if (!product) {
@@ -164,16 +164,16 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      console.log("💵 Selected price ID:", priceId);
-      console.log("🧾 Stripe mode:", product.mode);
-      console.log("🔍 METADATA DEBUG:", { userId, productId, plan });
+      //console.log("💵 Selected price ID:", priceId);
+      //console.log("🧾 Stripe mode:", product.mode);
+      //console.log("🔍 METADATA DEBUG:", { userId, productId, plan });
 
       const session = await stripe.checkout.sessions.create({
         payment_method_types: ["card"],
         mode: product.mode,
         line_items: [{ price: priceId, quantity: 1 }],
         success_url: `${process.env.NEXT_PUBLIC_BASE_URL}/success?session_id={CHECKOUT_SESSION_ID}`,
-        cancel_url: `${process.env.NEXT_PUBLIC_BASE_URL}/cancel`,
+        cancel_url: `${process.env.NEXT_PUBLIC_BASE_URL}`, // removed /cancel
         metadata: {
           userId,
           productId,

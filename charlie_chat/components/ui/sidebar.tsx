@@ -636,7 +636,7 @@ if (rpcError) {
       ? String(rpcError.message)
       : String(rpcError);
 
-  console.log("RPC Error:", errorMessage);
+  //console.log("RPC Error:", errorMessage);
 
   if (errorMessage.includes("Insufficient credits")) {
     //setCreditsError("You’re out of credits.");
@@ -655,7 +655,7 @@ if (rpcError) {
   setIsSearching(false);
   return;
 } else {
-  console.log("New credit balance:", newCreditBalance);
+  //console.log("New credit balance:", newCreditBalance);
 }
   
       if (onCreditsUpdate && typeof newCreditBalance === "number") {
@@ -754,7 +754,7 @@ if (rpcError) {
   Sorry, but you are out of credits.
   <br />
   <span style={{ textDecoration: "underline", fontWeight: "medium" }}>
-    Sign up now
+    Upgrade now
   </span>{" "}
   to continue your analysis and find your next investment.
 </div>

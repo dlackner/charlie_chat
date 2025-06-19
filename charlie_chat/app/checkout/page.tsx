@@ -28,7 +28,7 @@ function CheckoutContent() {
         setLoading(false);
         return;
       }
-      console.log("Supabase User ID:", userId); // Log to confirm it's a UUID
+      //console.log("Supabase User ID:", userId); // Log to confirm it's a UUID
 
       const plan = searchParams.get('plan') || sessionStorage.getItem('selectedPlan');
       if (!plan) {

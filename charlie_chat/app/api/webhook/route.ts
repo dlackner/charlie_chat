@@ -5,7 +5,7 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
 
 export async function POST(req: NextRequest) {
-  console.log("🛎️ Stripe webhook received");
+  //console.log("🛎️ Stripe webhook received");
   const supabase = createSupabaseAdminClient();
 
   const sig = req.headers.get("stripe-signature");
@@ -19,14 +19,14 @@ export async function POST(req: NextRequest) {
 
   try {
     event = stripe.webhooks.constructEvent(body, sig, process.env.STRIPE_WEBHOOK_SIGNING_SECRET!);
-    console.log("✅ Stripe signature verified");
+    //console.log("✅ Stripe signature verified");
   } catch (err: any) {
     console.error("❌ Invalid signature:", err.message);
     return new NextResponse("Bad signature", { status: 400 });
   }
 
   if (event.type !== "checkout.session.completed") {
-    console.log("🚫 Ignoring non-checkout event:", event.type);
+    //console.log("🚫 Ignoring non-checkout event:", event.type);
     return new NextResponse("Ignored", { status: 200 });
   }
 
@@ -62,7 +62,7 @@ export async function POST(req: NextRequest) {
 
   // ─── Handle Subscription ─────────────────────────────────────────────
   if (sessionMode === "subscription") {
-    console.log("📦 Handling subscription purchase");
+    //console.log("📦 Handling subscription purchase");
 
     const priceMap: Record<string, string> = {
       [process.env.NEXT_PUBLIC_CHARLIE_CHAT_MONTHLY_PRICE!]: "charlie_chat",
@@ -99,12 +99,12 @@ export async function POST(req: NextRequest) {
       return new NextResponse("User class update failed", { status: 500 });
     }
 
-    console.log("✅ Subscription + user_class updated for", profile.user_id);
+    //console.log("✅ Subscription + user_class updated for", profile.user_id);
   }
 
   // ─── Handle One-Time Credit Pack ─────────────────────────────────────
   if (sessionMode === "payment") {
-    console.log("💳 Handling one-time credit purchase");
+    //console.log("💳 Handling one-time credit purchase");
 
     const amount = parseInt(session.metadata?.amount || "0", 10);
     if (amount <= 0) {
@@ -140,7 +140,7 @@ export async function POST(req: NextRequest) {
       return new NextResponse("Credits update failed", { status: 500 });
     }
 
-    console.log(`✅ Added ${amount} credits to user ${profile.user_id}`);
+    //console.log(`✅ Added ${amount} credits to user ${profile.user_id}`);
   }
 
   return new NextResponse("Webhook handled", { status: 200 });

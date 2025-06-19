@@ -15,7 +15,7 @@ function AuthCallbackContent() {
         // 1. Handle PKCE/magic link callback via ?code=
         const code = search.get('code');
         if (code) {
-          console.log('Exchanging code for session...');
+          //console.log('Exchanging code for session...');
           await supabase.auth.exchangeCodeForSession(code);
         }
 
@@ -23,7 +23,7 @@ function AuthCallbackContent() {
         const access_token = search.get('access_token');
         const refresh_token = search.get('refresh_token');
         if (access_token && refresh_token) {
-          console.log('Setting session manually...');
+          //console.log('Setting session manually...');
           await supabase.auth.setSession({ access_token, refresh_token });
         }
 
@@ -31,7 +31,7 @@ function AuthCallbackContent() {
         for (let i = 0; i < 10; i++) {
           const { data: { session } } = await supabase.auth.getSession();
           if (session) {
-            console.log('Session active, redirecting...');
+            //console.log('Session active, redirecting...');
             router.replace('/');
             return;
           }
