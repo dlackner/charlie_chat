@@ -221,7 +221,7 @@ new TextRun(
         sections.push(new Paragraph({
             children: [
                 new TextRun({ text: "4. TITLE INSURANCE: ", bold: true }),
-                new TextRun(`The title company will be chosen by the Purchaser. Seller shall provide to Purchaser, at Seller's expense and Purchaser's choosing, a standard ALTA policy of title insurance by Title Company in the amount of the Purchase Price for the Property, insuring that fee simple title to the Property is vested in Purchaser free and clear of all liens and subject only to exceptions approved by Purchaser during Inspection Period. Additional costs required to obtain an extended coverage policy shall be paid by Purchaser, if Purchaser elects coverage.`)
+                new TextRun(`The title company will be chosen by the Purchaser. Seller shall provide to Purchaser, at Seller's expense and Purchaser's choosing, a standard ALTA policy of title insurance by Title Company in the amount of the Purchase Price for the Property, insuring fee simple title to the Property is vested in Purchaser free and clear of all liens and subject only to exceptions approved by Purchaser during Inspection Period. Additional costs required to obtain an extended coverage policy shall be paid by Purchaser, if Purchaser elects coverage.`)
             ],
             spacing: { after: 120 }
         }));
@@ -457,7 +457,7 @@ sections.push(new Paragraph({
         sections.push(new Paragraph({
             children: [
                 new TextRun({ text: "5. TITLE INSURANCE: ", bold: true }),
-                new TextRun(`The title company will be chosen by the Purchaser. Seller shall provide to Purchaser, at Seller's expense and Purchaser's choosing, a standard ALTA policy of title insurance by Title Company in the amount of the Purchase Price for the Property, insuring that fee simple title to the Property is vested in Purchaser free and clear of all liens and subject only to exceptions approved by Purchaser during Inspection Period. Additional costs required to obtain an extended coverage policy shall be paid by Purchaser, if Purchaser elects coverage.`)
+                new TextRun(`The title company will be chosen by the Purchaser. Seller shall provide to Purchaser, at Seller's expense and Purchaser's choosing, a standard ALTA policy of title insurance by Title Company in the amount of the Purchase Price for the Property, insuring fee simple title to the Property is vested in Purchaser free and clear of all liens and subject only to exceptions approved by Purchaser during Inspection Period. Additional costs required to obtain an extended coverage policy shall be paid by Purchaser, if Purchaser elects coverage.`)
             ],
             spacing: { after: 120 }
         }));
@@ -651,7 +651,7 @@ sections.push(new Paragraph({
     sections.push(new Paragraph({
         children: [
             new TextRun({ text: "4. TITLE INSURANCE: ", bold: true }),
-            new TextRun(`The title company will be chosen by the Purchaser. Seller shall provide to Purchaser, at Seller's expense and Purchaser's choosing, a standard ALTA policy of title insurance by Title Company in the amount of the Purchase Price for the Property, insuring that fee simple title to the Property is vested in Purchaser free and clear of all liens and subject only to exceptions approved by Purchaser during Inspection Period. Additional costs required to obtain an extended coverage policy shall be paid by Purchaser, if Purchaser elects coverage.`)
+            new TextRun(`The title company will be chosen by the Purchaser. Seller shall provide to Purchaser, at Seller's expense and Purchaser's choosing, a standard ALTA policy of title insurance by Title Company in the amount of the Purchase Price for the Property, insuring fee simple title to the Property is vested in Purchaser free and clear of all liens and subject only to exceptions approved by Purchaser during Inspection Period. Additional costs required to obtain an extended coverage policy shall be paid by Purchaser, if Purchaser elects coverage.`)
         ],
         spacing: { after: 120 }
     }));
