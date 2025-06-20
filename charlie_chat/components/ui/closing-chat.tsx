@@ -145,63 +145,153 @@ const availablePackages = userClass === 'trial' ? [] : getPackagesFor(userClass)
     }
   };
 
-  const onSendToGPT = () => {
-    const fieldsToSend = [
-      "absenteeOwner", "address", "adjustableRate", "assessedValue", "assumable",
-      "corporateOwned", "estimatedEquity", "estimatedValue", "floodZone", "floodZoneDescription",
-      "forSale", "inStateAbsenteeOwner", "lastSaleAmount", "lastSaleArmsLength", "lastSaleDate",
-      "lenderName", "listingAmount", "lotSquareFeet", "maturityDateFirst", "mlsActive",
-      "mlsLastSaleDate", "openMortgageBalance", "outOfStateAbsenteeOwner", "owner1FirstName",
-    ];
-
-    const rows = selectedListings.map((listing: Listing, index: number) => {
-      const mainDisplayAddress = listing.address?.address || "Unknown Address";
-      let propertyDetails = "";
-
-      for (const field of fieldsToSend) {
-        if (listing.hasOwnProperty(field)) {
-          let value = listing[field as keyof Listing];
-
-          if (value === null || value === undefined) {
-            continue;
-          }
-
-          if (field === "address" && typeof value === 'object' && value !== null) {
-            const addrObj = value as Listing['address'];
-            let formattedAddress = addrObj.address || "";
-            if (addrObj.city) formattedAddress += `, ${addrObj.city}`;
-            if (addrObj.state) formattedAddress += `, ${addrObj.state}`;
-            if (addrObj.zip) formattedAddress += ` ${addrObj.zip}`;
-            value = formattedAddress.trim() || "N/A";
-          } else if (typeof value === 'boolean') {
-            value = value ? "Yes" : "No";
-          } else if (typeof value === 'object' && value !== null) {
-            value = JSON.stringify(value);
-          } else if (value === "") { // Skip empty strings
-            continue;
-          }
-
-
-          const fieldLabel = field.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
-
-          propertyDetails += `${fieldLabel}: ${value}\n`;
-        }
-      }
-
-      if (propertyDetails.trim() === "") {
-        propertyDetails = "No additional specified details available for this property.\n";
-      }
-
-      return `**${index + 1}. ${mainDisplayAddress}**\n${propertyDetails.trim()}`;
-    });
-
-    const summaryPrompt = `Act as a senior multifamily investment advisor preparing a strategic underwriting memo for experienced real estate investors. You are reviewing an output from an AI-powered analyzer that provides limited property-level data, with some fields occasionally missing. For each property, produce two clearly labeled sections. The first is a Market Summary. It should Use the ZIP code, city, or region (if available) to summarize local market conditions relevant to multifamily investors. If the fields pre-foreclosure, auction, or tax lien flags are present, explain how these might affect buyer leverage, timing, and risk. Highlight anything unusual about the owner type, mortgage status, or assumability that might shape acquisition strategy.You may reference general market trends if they are reliably accessible online, but avoid making up data if it’s not findable. The second section is Underwriting Strategy. Base your analysis on mortgage balance, owner equity, and financing flags (e.g., assumable loans).Recommend a strategy (e.g., distressed negotiation, creative financing, seller carry, etc.) grounded in available data. Use numerical thresholds (like “equity above 30%” or “loan-to-value under 70%”) only when the data supports it. If appropriate, suggest next steps (e.g., verify rent roll, check lien documentation, evaluate exit cap).Include a short Verdict (e.g., Pursue, Monitor, Pass) with a rationale. The tone should be thoughtful and confident, as if preparing this memo for a GP/LP acquisition team. Important: Not all data will be available. Where assumptions are needed, state them clearly and cautiously.\n\n---\n${rows.join("\n\n---\n")}\n---`;
-
-    // Send the full prompt to the API but display simplified message to user
-    sendMessage(summaryPrompt, true, "Analyzing your properties...");
-    
-    setSelectedListings([]);
+const onSendToGPT = () => {
+  // Field mappings for better clarity
+  const fieldMappings: { [key: string]: string } = {
+    'reo': 'Bank Owned (REO)',
+    'lastSaleArmsLength': 'Arms Length Sale',
+    'absenteeOwner': 'Absentee Owner',
+    'inStateAbsenteeOwner': 'In-State Absentee Owner',
+    'outOfStateAbsenteeOwner': 'Out-of-State Absentee Owner',
+    'mlsActive': 'Currently Listed on MLS',
+    'mlsLastSaleDate': 'MLS Last Sale Date',
+    'adjustableRate': 'Adjustable Rate Mortgage',
+    'maturityDateFirst': 'First Mortgage Maturity Date',
+    'maturingDate': 'Mortgage Maturity Date',
+    'openMortgageBalance': 'Outstanding Mortgage Balance',
+    'preForeclosure': 'Pre-Foreclosure Status',
+    'taxLien': 'Tax Lien Status',
+    'privateLender': 'Private Lender Financing',
+    'unitsCount': 'Number of Units',
+    'yearBuilt': 'Year Built',
+    'yearsOwned': 'Years Owned by Current Owner',
+    'squareFeet': 'Building Square Footage',
+    'lotSquareFeet': 'Lot Size (sq ft)',
+    'assessedValue': 'Tax Assessed Value',
+    'estimatedValue': 'Estimated Market Value',
+    'estimatedEquity': 'Estimated Owner Equity',
+    'lastSaleAmount': 'Last Sale Price',
+    'lastSaleDate': 'Last Sale Date',
+    'rentEstimate': 'Estimated Monthly Rent',
+    'floodZone': 'In Flood Zone',
+    'floodZoneDescription': 'Flood Zone Details',
+    'corporateOwned': 'Corporate Owned',
+    'ownerOccupied': 'Owner Occupied',
+    'owner1FirstName': 'Owner First Name',
+    'owner1LastName': 'Owner Last Name',
+    'ownerAddress': 'Owner Mailing Address',
+    'mailAddress': 'Owner Mailing Address Details'
   };
+
+  const rows = selectedListings.map((listing: Listing, index: number) => {
+    const mainDisplayAddress = listing.address?.address || "Unknown Address";
+    
+    // Send ALL available data instead of filtering specific fields
+    const propertyDetails = Object.entries(listing)
+      .filter(([key, value]) => {
+        // Skip null, undefined, empty strings, and the main address (since we show it separately)
+        return value !== null && 
+               value !== undefined && 
+               value !== "" && 
+               key !== 'address'; // We handle address separately
+      })
+      .map(([key, value]) => {
+        // Use field mapping if available, otherwise format the key nicely
+        const fieldLabel = fieldMappings[key] || key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
+        
+        // Handle different value types
+        if (typeof value === 'boolean') {
+          value = value ? "Yes" : "No";
+        } else if (typeof value === 'object' && value !== null) {
+          if (key === "mailAddress") {
+            // Special handling for mail address object
+            const mailAddr = value as any;
+            let formattedMailAddress = "";
+            if (mailAddr.street || mailAddr.address) {
+              formattedMailAddress += (mailAddr.street || mailAddr.address);
+            }
+            if (mailAddr.city) {
+              formattedMailAddress += formattedMailAddress ? `, ${mailAddr.city}` : mailAddr.city;
+            }
+            if (mailAddr.state) {
+              formattedMailAddress += formattedMailAddress ? `, ${mailAddr.state}` : mailAddr.state;
+            }
+            if (mailAddr.zip) {
+              formattedMailAddress += formattedMailAddress ? ` ${mailAddr.zip}` : mailAddr.zip;
+            }
+            value = formattedMailAddress.trim() || "N/A";
+          } else {
+            // For other objects, stringify them
+            value = JSON.stringify(value);
+          }
+        } else if (typeof value === 'number') {
+          // Format currency fields
+          if (key.toLowerCase().includes('value') || 
+              key.toLowerCase().includes('price') || 
+              key.toLowerCase().includes('amount') || 
+              key.toLowerCase().includes('equity') ||
+              key.toLowerCase().includes('balance') ||
+              key.toLowerCase().includes('rent')) {
+            value = value.toLocaleString('en-US', {
+              style: 'currency',
+              currency: 'USD',
+              minimumFractionDigits: 0,
+              maximumFractionDigits: 0,
+            });
+          } else if (key.toLowerCase().includes('squar') || key.toLowerCase().includes('feet')) {
+            // Format square footage
+            value = `${value.toLocaleString()} sq ft`;
+          } else {
+            // For other numbers, just add commas
+            value = value.toLocaleString();
+          }
+        }
+        
+        return `${fieldLabel}: ${value}`;
+      })
+      .join('\n');
+
+    // Handle the main address separately to include full address details
+    let addressInfo = "";
+    if (listing.address) {
+      const addr = listing.address;
+      let fullAddress = addr.address || "";
+      if (addr.city) fullAddress += `, ${addr.city}`;
+      if (addr.state) fullAddress += `, ${addr.state}`;
+      if (addr.zip) fullAddress += ` ${addr.zip}`;
+      addressInfo = `Full Address: ${fullAddress.trim()}\n`;
+    }
+
+    const finalPropertyDetails = addressInfo + propertyDetails;
+
+    if (finalPropertyDetails.trim() === "") {
+      return `**${index + 1}. ${mainDisplayAddress}**\nNo additional property details available.\n`;
+    }
+
+    return `**${index + 1}. ${mainDisplayAddress}**\n${finalPropertyDetails.trim()}`;
+  });
+
+  const summaryPrompt = `Act as a senior multifamily investment advisor preparing a strategic underwriting memo for experienced real estate investors. You are reviewing an output from an AI-powered analyzer that provides comprehensive property-level data.
+
+Data Notes: 'REO' = bank-owned property, 'Arms Length Sale' = transaction between unrelated parties, '*Absentee Owner' fields indicate owner doesn't live at the property, 'Pre-Foreclosure' = property in foreclosure process.
+
+For each property, produce two clearly labeled sections:
+
+**Market Summary:** Use the ZIP code, city, or region (if available) to summarize local market conditions relevant to multifamily investors. If fields like pre-foreclosure, auction, or tax lien flags are present, explain how these might affect buyer leverage, timing, and risk. Highlight anything unusual about the owner type, mortgage status, or assumability that might shape acquisition strategy. You may reference general market trends if they are reliably accessible online, but avoid making up data if it's not findable.
+
+**Underwriting Strategy:** Base your analysis on mortgage balance, owner equity, and financing flags (e.g., assumable loans). Recommend a strategy (e.g., distressed negotiation, creative financing, seller carry, etc.) grounded in available data. Use numerical thresholds (like "equity above 30%" or "loan-to-value under 70%") only when the data supports it. If appropriate, suggest next steps (e.g., verify rent roll, check lien documentation, evaluate exit cap). Include a short Verdict (e.g., Pursue, Monitor, Pass) with a rationale.
+
+The tone should be thoughtful and confident, as if preparing this memo for a GP/LP acquisition team. Important: Not all data will be available. Where assumptions are needed, state them clearly and cautiously.
+
+---
+${rows.join("\n\n---\n")}
+---`;
+
+  // Send the full prompt to the API but display simplified message to user
+  sendMessage(summaryPrompt, true, "Analyzing your properties...");
+  
+  setSelectedListings([]);
+};
 
   const bottomRef = useRef<HTMLDivElement | null>(null);
 

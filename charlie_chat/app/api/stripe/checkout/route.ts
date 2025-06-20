@@ -59,7 +59,7 @@ const specialCreditPacks: Record<string, { credits: number; priceId: string }> =
     credits: 100,
     priceId: process.env.NEXT_PUBLIC_CHARLIE_CHAT_PRO_100_PACK_PRICE!
   },
-  "multifamilyos": {
+  "cohort": {
     credits: 250,
     priceId: process.env.NEXT_PUBLIC_MULTIFAMILYOS_COHORT_250_PACK_PRICE!
   }

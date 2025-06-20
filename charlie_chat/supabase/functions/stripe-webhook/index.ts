@@ -303,7 +303,7 @@ async function handleCreditPurchase(session: any, profile: any, supabase: any, s
     },
     [Deno.env.get('NEXT_PUBLIC_MULTIFAMILYOS_COHORT_250_PACK_PRICE') ?? '']: {
       credits: 250,
-      userClass: 'multifamilyos'
+      userClass: 'cohort'
     }
   };
 
