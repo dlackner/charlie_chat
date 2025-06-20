@@ -242,7 +242,7 @@ const [locationError, setLocationError] = useState<string | null>(null);
     );
   };
 
-  const useClickOutside = (
+  /*const useClickOutside = (
     panelToCloseRef: React.RefObject<HTMLElement | null>,
     ignoreClickRefs: Array<React.RefObject<HTMLElement | null>>,
     onOutsideClickCallback: () => void
@@ -264,13 +264,13 @@ const [locationError, setLocationError] = useState<string | null>(null);
         document.removeEventListener("mousedown", handleClick);
       };
     }, [panelToCloseRef, ignoreClickRefs, onOutsideClickCallback]);
-  };
+  };*/
 
-  useClickOutside(
+ /* useClickOutside(
     panelRef,
     [advancedFiltersToggleRef],
     () => setShowAdvanced(false)
-  );
+  );*/
 
   const downloadLetter = async (listing: Listing) => {
     const yourDataPlaceholders = {
