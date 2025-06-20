@@ -76,6 +76,31 @@ export const Sidebar = ({
   const [minUnits, setMinUnits] = useState<number | string>(2);
   const [maxUnits, setMaxUnits] = useState<number | string>("");
 
+  // New state and logic for Select All
+const currentSearchListings = listings.slice(0, 50);
+const allCurrentSelected = currentSearchListings.every(listing => 
+  selectedListings.some(selected => selected.id === listing.id)
+);
+const someCurrentSelected = selectedListings.length > 0;
+
+const handleSelectAll = () => {
+  if (allCurrentSelected) {
+    // Deselect all current listings
+    currentSearchListings.forEach(listing => {
+      if (selectedListings.some(selected => selected.id === listing.id)) {
+        toggleListingSelect(listing);
+      }
+    });
+  } else {
+    // Select all current listings that aren't already selected
+    currentSearchListings.forEach(listing => {
+      if (!selectedListings.some(selected => selected.id === listing.id)) {
+        toggleListingSelect(listing);
+      }
+    });
+  }
+};
+
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [showTrialUpgradeMessage, setShowTrialUpgradeMessage] = useState(false);
 
@@ -146,6 +171,7 @@ export const Sidebar = ({
   const activeListing = activeListingIndex !== null ? listings[activeListingIndex] : null;
   const panelRef = useRef<HTMLDivElement>(null);
   const advancedFiltersToggleRef = useRef<HTMLButtonElement>(null);
+  const sidebarRef = useRef<HTMLDivElement>(null);
 const [locationError, setLocationError] = useState<string | null>(null);
 
   const supabase = createBrowserClient(
@@ -241,36 +267,35 @@ const [locationError, setLocationError] = useState<string | null>(null);
       </div>
     );
   };
-
-  /*const useClickOutside = (
-    panelToCloseRef: React.RefObject<HTMLElement | null>,
-    ignoreClickRefs: Array<React.RefObject<HTMLElement | null>>,
-    onOutsideClickCallback: () => void
-  ) => {
-    useEffect(() => {
-      const handleClick = (event: MouseEvent) => {
-        const target = event.target as Node;
-        for (const ignoreRef of ignoreClickRefs) {
-          if (ignoreRef.current && ignoreRef.current.contains(target)) {
-            return;
-          }
+const useClickOutside = (
+  panelToCloseRef: React.RefObject<HTMLElement | null>,
+  ignoreClickRefs: Array<React.RefObject<HTMLElement | null>>,
+  onOutsideClickCallback: () => void
+) => {
+  useEffect(() => {
+    const handleClick = (event: MouseEvent) => {
+      const target = event.target as Node;
+      for (const ignoreRef of ignoreClickRefs) {
+        if (ignoreRef.current && ignoreRef.current.contains(target)) {
+          return;
         }
-        if (panelToCloseRef.current && !panelToCloseRef.current.contains(target)) {
-          onOutsideClickCallback();
-        }
-      };
-      document.addEventListener("mousedown", handleClick);
-      return () => {
-        document.removeEventListener("mousedown", handleClick);
-      };
-    }, [panelToCloseRef, ignoreClickRefs, onOutsideClickCallback]);
-  };*/
+      }
+      if (panelToCloseRef.current && !panelToCloseRef.current.contains(target)) {
+        onOutsideClickCallback();
+      }
+    };
+    document.addEventListener("mousedown", handleClick);
+    return () => {
+      document.removeEventListener("mousedown", handleClick);
+    };
+  }, [panelToCloseRef, ignoreClickRefs, onOutsideClickCallback]);
+};
 
- /* useClickOutside(
-    panelRef,
-    [advancedFiltersToggleRef],
-    () => setShowAdvanced(false)
-  );*/
+useClickOutside(
+  panelRef,
+  [advancedFiltersToggleRef, sidebarRef],
+  () => setShowAdvanced(false)
+);
 
   const downloadLetter = async (listing: Listing) => {
     const yourDataPlaceholders = {
@@ -669,11 +694,12 @@ if (rpcError) {
     } finally {
       setIsSearching(false);
     }
+    setShowAdvanced(false);
   };
 
   return(
     <div className="relative flex">
-      <div className="w-[260px] shrink-0 bg-white border-r border-gray-200 p-4 flex flex-col space-y-6 overflow-y-auto h-screen z-20">
+      <div ref={sidebarRef} className="w-[260px] shrink-0 bg-white border-r border-gray-200 p-4 flex flex-col space-y-6 overflow-y-auto h-screen z-20">
         <h2 className="text-lg font-medium text-gray-800">Property Search</h2>
 
         <div className="space-y-4">
@@ -760,6 +786,23 @@ if (rpcError) {
 </div>
 )}
         <div className="flex-1 space-y-2 overflow-y-auto relative">
+
+          {listings.length > 0 && (
+  <div className="flex items-center space-x-2 mb-2 px-1">
+    <input
+      type="checkbox"
+      checked={allCurrentSelected}
+      ref={ref => {
+        if (ref) ref.indeterminate = someCurrentSelected && !allCurrentSelected;
+      }}
+      onChange={handleSelectAll}
+      className="h-4 w-4 accent-blue-600"
+    />
+    <label className="text-sm text-gray-600">
+      Select All ({currentSearchListings.length})
+    </label>
+  </div>
+)}
           {Array.isArray(listings) &&
             listings
               .sort((a, b) => (b.rentEstimate ?? 0) - (a.rentEstimate ?? 0))
