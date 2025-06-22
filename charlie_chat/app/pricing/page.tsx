@@ -94,12 +94,12 @@ export default function PricingPage() {
           {isAnnual ? (
             <>
               <p className="text-xl font-bold mb-1">$16</p>
-              <p className="text-sm text-gray-500 mb-4">(Billed Annually)</p>
+              <p className="text-sm text-gray-500 mb-4">(Per month, billed annually)</p>
             </>
           ) : (
             <>
               <p className="text-xl font-bold mb-1">$20</p>
-              <p className="text-sm text-gray-500 mb-4">(Billed Monthly)</p>
+              <p className="text-sm text-gray-500 mb-4">(Billed monthly)</p>
             </>
           )}
           <p className="text-sm text-gray-700 mb-4">
@@ -126,12 +126,12 @@ export default function PricingPage() {
           {isAnnual ? (
             <>
               <p className="text-xl font-bold mb-1">$250</p>
-              <p className="text-sm text-gray-500 mb-4">(Billed Annually)</p>
+              <p className="text-sm text-gray-500 mb-4">(Per month, billed annually)</p>
             </>
           ) : (
             <>
               <p className="text-xl font-bold mb-1">$297</p>
-              <p className="text-sm text-gray-500 mb-4">(Billed Monthly)</p>
+              <p className="text-sm text-gray-500 mb-4">(Billed monthly)</p>
             </>
           )}
           <p className="text-sm text-gray-700 mb-4">
