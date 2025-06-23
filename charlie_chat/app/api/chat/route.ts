@@ -1,5 +1,6 @@
 import { AssistantResponse } from "ai";
-import OpenAI from "openai";
+import OpenAI, { toFile } from "openai";
+
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
@@ -7,6 +8,7 @@ export const maxDuration = 30;
 
 export async function POST(req: Request) {
   try {
+          
     const input = await req.json();
 
     if (!input.message || !input.message.trim()) {
@@ -110,16 +112,18 @@ export async function POST(req: Request) {
         }
     }
 
+ // Simple text message handling (PDF text is now included in the message)
+const messageContent = input.message;
 
-
+console.log("Message content being sent:", JSON.stringify(messageContent, null, 2));
     const createdMessage = await openai.beta.threads.messages.create(threadId, {
       role: "user",
-      content: input.message,
-    });
+      content: messageContent,
+                });
 
-    const runStream = await openai.beta.threads.runs.stream(threadId, {
-      assistant_id: process.env.ASSISTANT_ID!,
-    });
+const runStream = await openai.beta.threads.runs.stream(threadId, {
+  assistant_id: process.env.ASSISTANT_ID!,
+});
 
     const encoder = new TextEncoder();
     const stream = new ReadableStream({
@@ -151,7 +155,7 @@ export async function POST(req: Request) {
       },
     });
   } catch (err) {
-    //console.error("🔥 Assistant error:", err);
+    console.error("🔥 Assistant error:", err);
     return new Response("Internal Server Error", { status: 500 });
   }
 }

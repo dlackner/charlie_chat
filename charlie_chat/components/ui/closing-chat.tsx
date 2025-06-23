@@ -7,7 +7,19 @@ import { Sidebar } from "@/components/ui/sidebar";
 import { Plus, SendHorizonal } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
+import { PDFAttachmentAdapter } from '@/lib/PDFAttachmentAdapter';
 import type { User } from '@supabase/supabase-js'
+
+//Attacment code
+
+import { useChatRuntime } from "@assistant-ui/react-ai-sdk";
+import { 
+  CompositeAttachmentAdapter, 
+  SimpleImageAttachmentAdapter, 
+  SimpleTextAttachmentAdapter,
+  AssistantRuntimeProvider
+} from "@assistant-ui/react";
+
 
 //const DEFAULT_USER_CLASS: UserClass = 'charlie_chat'; 
 //const [userClass, setUserClass] = useState<UserClass>('charlie_chat'); // WE SET THIS DOWN BELOW
@@ -128,6 +140,22 @@ const availablePackages = userClass === 'trial' ? [] : getPackagesFor(userClass)
   const [count, setCount] = useState(0);
   const [listings, setListings] = useState<Listing[]>([]);
   const [selectedListings, setSelectedListings] = useState<Listing[]>([]);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [isProcessingFile, setIsProcessingFile] = useState(false);
+  const [persistedPdfContent, setPersistedPdfContent] = useState<string | null>(null);
+  const [persistedPdfInfo, setPersistedPdfInfo] = useState<{name: string, size: number} | null>(null);
+
+
+// Add this here:
+const runtime = useChatRuntime({
+  api: "/api/chat",
+  adapters: {
+    attachments: new CompositeAttachmentAdapter([
+      new PDFAttachmentAdapter(), // PDF files only
+    ]),
+  },
+});
+
   const handleCreditsUpdated = (newBalance: number) => {
     //console.log("[ClosingChat] handleCreditsUpdated CALLED with newBalance:", newBalance);
     setUserCredits(prevCredits => {
@@ -136,6 +164,12 @@ const availablePackages = userClass === 'trial' ? [] : getPackagesFor(userClass)
     });
   };
   
+  const clearPersistedPdf = () => {
+  setPersistedPdfContent(null);
+  setPersistedPdfInfo(null);
+  console.log("🗑️ Cleared persisted PDF content");
+};
+
   const toggleListingSelect = (listing: any) => {
     const exists = selectedListings.some((l) => l.id === listing.id);
     if (exists) {
@@ -146,6 +180,23 @@ const availablePackages = userClass === 'trial' ? [] : getPackagesFor(userClass)
   };
 
 const onSendToGPT = () => {
+    if (selectedListings.length > 0) {
+    const firstProperty = selectedListings[0];
+    console.log("📋 ALL PROPERTY KEYS:", Object.keys(firstProperty));
+    
+    const fieldsToSend = Object.entries(firstProperty)
+      .filter(([key, value]) => {
+        return value !== null && 
+               value !== undefined && 
+               value !== "" && 
+               key !== 'address';
+      })
+      .map(([key, value]) => `${key}: ${typeof value}`);
+    
+    console.log("📤 FIELDS BEING SENT:", fieldsToSend);
+    console.log("📊 FIELD COUNT:", fieldsToSend.length);
+    console.log("📊 TOTAL PROPERTIES:", selectedListings.length);
+  }
   // Field mappings for better clarity
   const fieldMappings: { [key: string]: string } = {
     'reo': 'Bank Owned (REO)',
@@ -372,77 +423,113 @@ const fetchUserCreditsAndClass = async (userToFetchFor: User) => {
     }
   }, [messages]);
 
-  const sendMessage = async (message: string, isPropertyDump = false, displayMessage?: string) => {
-    if (!message.trim()) return;
+const sendMessage = async (message: string, isPropertyDump = false, displayMessage?: string) => {
+  if (!message.trim()) return;
+  
+  // [Previous validation code stays the same...]
+  let currentMessageCount = count;
+  if (!isLoggedIn) {
+      let guestCount = Number(localStorage.getItem("questionCount") || 0);
+      if (isNaN(guestCount)) guestCount = 0;
+      currentMessageCount = guestCount;
+  }
+
+  if (!isLoggedIn && !isPro && currentMessageCount >= 3) {
+    setShowModal(true);
+    return;
+  }
+
+  if (!isLoggedIn) {
+      localStorage.setItem("questionCount", String(currentMessageCount + 1));
+  }
+
+  setCount((prev) => prev + 1);
+  const messageToDisplay = displayMessage || message;
+  let finalMessage = message;
+  
+if (selectedFile) {
+  // Process new PDF file
+  console.log("🔍 Processing NEW PDF attachment:", selectedFile.name);
+  setIsProcessingFile(true);
+  
+  try {
+    const { PDFAttachmentAdapter } = await import('@/lib/PDFAttachmentAdapter');
+    const pdfAdapter = new PDFAttachmentAdapter();
+    const pendingAttachment = await pdfAdapter.add({ file: selectedFile });
+    console.log("✅ Created pending attachment:", pendingAttachment.id);
     
-    // The 'count' and 'isPro' are now potentially managed by Supabase user data for logged-in users
-    // For guests, it still uses localStorage or default values
-    let currentMessageCount = count;
-    if (!isLoggedIn) {
-        let guestCount = Number(localStorage.getItem("questionCount") || 0);
-        if (isNaN(guestCount)) guestCount = 0;
-        currentMessageCount = guestCount;
-    }
-
-    if (!isLoggedIn && !isPro && currentMessageCount >= 3) {
-      setShowModal(true);
-      return;
-    }
-
-    if (!isLoggedIn) {
-        localStorage.setItem("questionCount", String(currentMessageCount + 1));
-    }
-    // If logged in, token decrementing should happen server-side or via a call to update Supabase DB
-
-    setCount((prev) => prev + 1); // This now reflects either guest count or DB-driven count
-
-    // Use displayMessage if provided (for property analysis), otherwise use the actual message
-    const messageToDisplay = displayMessage || message;
+    const completeAttachment = await pdfAdapter.send(pendingAttachment);
+    console.log("✅ PDF processing complete");
     
-    setMessages((prev) => [...prev, { role: "user", content: messageToDisplay, isPropertyDump }, { role: "assistant", content: "" }]);
-    setInput("");
+    if (completeAttachment.status.type === "complete" && completeAttachment.content) {
+      const extractedText = completeAttachment.content
+        .filter(item => item.type === "text")
+        .map(item => item.text)
+        .join("\n");
+      
+      // STORE the PDF content for future messages
+      setPersistedPdfContent(extractedText);
+      setPersistedPdfInfo({
+        name: selectedFile.name,
+        size: selectedFile.size
+      });
+      
+      finalMessage = `${message}\n\n${extractedText}`;
+      console.log("📄 Combined message length:", finalMessage.length);
+      console.log("📄 PDF content preview:", extractedText.substring(0, 200) + "...");
+      console.log("💾 PDF content stored for future messages");
+    }
+    
+  } catch (error) {
+    console.error("❌ Error processing PDF:", error);
+    finalMessage = `${message}\n\n[Error processing PDF: ${selectedFile.name}]\nError: ${error.message}`;
+  } finally {
+    setIsProcessingFile(false);
+  }
+  
+  // Clear the file input but keep the content persisted
+  setSelectedFile(null);
+  const fileInput = document.getElementById('file-upload') as HTMLInputElement;
+  if (fileInput) {
+    fileInput.value = '';
+  }
 
+} else if (persistedPdfContent && persistedPdfInfo) {
+  // Use previously processed PDF content
+  console.log("📄 Using PERSISTED PDF content from:", persistedPdfInfo.name);
+  console.log("📄 PERSISTED CONTENT:", persistedPdfContent);
+  finalMessage = `${message}\n\nReference to previously uploaded document:\n${persistedPdfContent}`;
+  console.log("📄 Combined message with persisted content length:", finalMessage.length);
+}
+  // [Rest of the function stays the same...]
+  setMessages((prev) => [...prev, { role: "user", content: messageToDisplay, isPropertyDump }, { role: "assistant", content: "" }]);
+  setInput("");
+
+  let requestBody: any = { message: finalMessage, threadId };
+
+  try {
+    console.log("About to send request:");
+    console.log("🔍 Message length:", requestBody.message.length);
+    console.log("🔍 Message preview:", requestBody.message.substring(0, 500) + "...");
+    
     const res = await fetch("/api/chat", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ message, threadId }),
+      body: JSON.stringify(requestBody),
     });
 
-    const resClone = res.clone();
-    let resJson: any = {};
-
-    try {
-      const contentType = resClone.headers.get("Content-Type") || "";
-      if (contentType.includes("application/json")) {
-        resJson = await resClone.json();
-
-        if (resJson.autoSwitched && resJson.threadId) {
-          console.warn("⚠️ Backend forked to new thread due to stuck run:", resJson.threadId);
-          setThreadId(resJson.threadId);
-          localStorage.setItem("threadId", resJson.threadId);
-
-          const titles = JSON.parse(localStorage.getItem("chatTitles") || "{}");
-          titles[resJson.threadId] = message.slice(0, 50);
-          localStorage.setItem("chatTitles", JSON.stringify(titles));
-        }
-      }
-    } catch (e) {
-    }
-    
-    if (messages.length === 0 && message.trim().length > 0) {
-      const newThreadId = res.headers.get("x-thread-id");
-    
-      if (newThreadId && newThreadId.startsWith("thread_")) {
-        const titles = JSON.parse(localStorage.getItem("chatTitles") || "{}");
-        titles[newThreadId] = message.slice(0, 50); 
-        localStorage.setItem("chatTitles", JSON.stringify(titles));
-        setThreadId(newThreadId);
-        localStorage.setItem("threadId", newThreadId);
+    if (selectedFile) {
+      setSelectedFile(null);
+      const fileInput = document.getElementById('file-upload') as HTMLInputElement;
+      if (fileInput) {
+        fileInput.value = '';
       }
     }
+
+    // [Rest of streaming response handling stays the same...]
     const reader = res.body?.getReader();
     const decoder = new TextDecoder("utf-8");
-    
+       
     if (reader) {
       let fullText = ""; 
     
@@ -459,22 +546,24 @@ const fetchUserCreditsAndClass = async (userToFetchFor: User) => {
     
           try {
             const parsed = JSON.parse(json);
-            const contentBlocks = parsed?.data?.delta?.content;
-    
-            if (Array.isArray(contentBlocks)) {
-              for (const block of contentBlocks) {
-                if (block.type === "text" && block.text?.value) {
-                  const delta = block.text.value;
-    
-                  fullText += delta;
-                  setMessages((prev) => {
-                    const newMessages = [...prev];
-                    if (newMessages.length > 0 && newMessages[newMessages.length - 1].role === 'assistant') {
-                        newMessages[newMessages.length - 1].content = fullText;
-                        return newMessages;
-                    }
-                    return [...newMessages, { role: "assistant", content: fullText }];
-                  });
+            
+            if (parsed.event === "thread.message.delta") {
+              const contentBlocks = parsed.data?.delta?.content;
+              
+              if (Array.isArray(contentBlocks)) {
+                for (const block of contentBlocks) {
+                  if (block.type === "text" && block.text?.value) {
+                    const delta = block.text.value;
+                    fullText += delta;
+                    setMessages((prev) => {
+                      const newMessages = [...prev];
+                      if (newMessages.length > 0 && newMessages[newMessages.length - 1].role === 'assistant') {
+                          newMessages[newMessages.length - 1].content = fullText;
+                          return newMessages;
+                      }
+                      return [...newMessages, { role: "assistant", content: fullText }];
+                    });
+                  }
                 }
               }
             }
@@ -483,18 +572,13 @@ const fetchUserCreditsAndClass = async (userToFetchFor: User) => {
           }
         }
       }
-      if (!threadId && res.headers) {
-        const newThreadId = res.headers.get("x-thread-id");
-        if (newThreadId && newThreadId.startsWith("thread_")) {
-          const titles = JSON.parse(localStorage.getItem("chatTitles") || "{}");
-          titles[newThreadId] = message.slice(0, 50);
-          localStorage.setItem("chatTitles", JSON.stringify(titles));
-          setThreadId(newThreadId);
-          localStorage.setItem("threadId", newThreadId);
-        }
-      }
     }
-  };
+  } catch (error) {
+    console.error("Error sending message:", error);
+    setIsProcessingFile(false);
+    alert("Failed to send message. Please try again.");
+  }
+};
 
 const handlePackageSelection = async (userClass: string, amount: number) => {
   if (!currentUser?.id) {
@@ -533,7 +617,8 @@ const handlePackageSelection = async (userClass: string, amount: number) => {
     );
   }
 
-  return (
+return (
+  <AssistantRuntimeProvider runtime={runtime}>
     <>
       {/* Main layout container */}
       <div className="flex h-screen overflow-hidden bg-white text-black">
@@ -628,69 +713,140 @@ className={`inline-block max-w-[85%] sm:max-w-[75%] px-4 py-3 rounded-xl shadow-
           })}
           <div ref={bottomRef} />
 
-          <div className="w-full max-w-5xl border-t p-4 bg-white sticky bottom-0 z-10">
-           <div className="flex items-center border border-gray-300 rounded-lg shadow-sm p-2 focus-within:ring-2 focus-within:ring-black">
-              <button
-                id="upload-docs"
-                type="button"
-                onClick={() => {
-                    if (!isLoggedIn) {
-                        setShowModal(true);
-                    } else if (!isPro) {
-                        setShowProModal(true);
-                    } else {
-                        // TODO: Implement file upload logic for Pro users
-                        alert("File upload for Pro users coming soon!");
+<div className="w-full max-w-5xl border-t p-4 bg-white sticky bottom-0 z-10">
+            
+<div className="flex flex-col space-y-2">
+  {/* Show persisted PDF indicator */}
+  {persistedPdfInfo && !selectedFile && (
+    <div className="flex items-center gap-2 p-2 bg-green-100 rounded-lg border border-green-300">
+      <span className="text-sm text-green-800">
+        📄 Using: {persistedPdfInfo.name} ({(persistedPdfInfo.size / 1024).toFixed(0)} KB)
+      </span>
+      <button
+        onClick={clearPersistedPdf}
+        className="text-green-600 hover:text-green-800 text-sm font-medium"
+        title="Clear this document to upload a new one"
+      >
+        Clear
+      </button>
+    </div>
+  )}
+
+  {/* Show current selected file */}
+  {selectedFile && (
+    <div className="flex items-center gap-2 p-2 bg-gray-100 rounded-lg">
+      <span className="text-sm text-gray-700">📎 {selectedFile.name}</span>
+      {isProcessingFile && <span className="text-xs text-blue-600">Processing...</span>}
+      <button
+        onClick={() => {
+          setSelectedFile(null);
+          const fileInput = document.getElementById('file-upload') as HTMLInputElement;
+          if (fileInput) {
+            fileInput.value = '';
+            fileInput.type = 'text';
+            fileInput.type = 'file';
+          }
+        }}
+        className="text-red-500 hover:text-red-700 text-sm"
+        disabled={isProcessingFile}
+      >
+        ✕
+      </button>
+    </div>
+  )}
+
+              <div className="flex items-center border border-gray-300 rounded-lg shadow-sm p-2 focus-within:ring-2 focus-within:ring-black">
+<input
+  type="file"
+  accept=".pdf"  // PDF only
+  className="hidden"
+  id="file-upload"
+  disabled={isProcessingFile}
+  onChange={(e) => {
+    console.log("File input changed:", e.target.files);
+    console.log("Current selectedFile state:", selectedFile?.name);
+    
+    const file = e.target.files?.[0];
+    if (file) {
+      console.log("New file selected:", file.name, "Size:", file.size);
+      
+      // Validate file size (10MB limit to match your adapter config)
+      if (file.size > 10 * 1024 * 1024) {
+        alert("File size must be less than 10MB");
+        e.target.value = ''; // Clear the input
+        return;
+      }
+      
+      // Validate file type
+const validTypes = ['application/pdf'];
+const isValidType = validTypes.some(type => file.type.startsWith(type));
+if (!isValidType) {
+  alert("Please select a PDF file. Only PDF documents are currently supported for analysis.");
+  e.target.value = ''; // Clear the input
+  return;
+      }
+      
+      console.log("File selected:", file.name, "Size:", file.size, "Type:", file.type);
+      setSelectedFile(file);
+    } else {
+      console.log("No file selected");
+      setSelectedFile(null);
+    }
+  }}
+/>
+<label
+  htmlFor="file-upload"
+  className={`p-2 rounded transition cursor-pointer ${
+    isProcessingFile 
+      ? 'opacity-50 cursor-not-allowed' 
+      : 'hover:bg-gray-100'
+  }`}
+  title="Upload file"
+>
+  <Plus className="w-5 h-5 text-gray-600" />
+</label>
+                <input
+                  id="chat-input"
+                  className="flex-1 px-3 py-2 text-base sm:text-lg focus:outline-none placeholder-gray-500"
+                  placeholder="Ask me anything..."
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey) { 
+                      e.preventDefault(); 
+                      sendMessage(input);
                     }
-                }}
-                className="p-2 hover:bg-gray-100 rounded transition"
-                title={isPro ? "Upload documents (Pro)" : "Upgrade to Pro to upload"}
-              >
-                <Plus className="w-5 h-5 text-gray-600" />
-              </button>
-              <input
-                id="chat-input"
-                className="flex-1 px-3 py-2 text-base sm:text-lg focus:outline-none placeholder-gray-500"
-                placeholder="Ask me anything..."
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && !e.shiftKey) { 
-                    e.preventDefault(); 
-                    sendMessage(input);
-                  }
-                }}
-              />
-              <button
-                type="button"
-                onClick={() => sendMessage(input)}
-                disabled={!input.trim()} 
-                className="p-2 hover:bg-gray-100 rounded transition disabled:opacity-50"
-                title="Send"
-              >
-                <SendHorizonal className="w-5 h-5 text-gray-600" />
-              </button>
-            </div>
-        </div>
-  
-          {messages.length === 0 && (
-              <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-3xl w-full mx-auto">
-              {EXAMPLES.map((ex, i) => (
+                  }}
+                />
                 <button
-                  key={i}
-                  onClick={() => sendMessage(ex)}
-                  className="text-left text-sm px-4 py-3 bg-gray-100 hover:bg-gray-200 rounded-lg shadow-sm"
+                  type="button"
+                  onClick={() => sendMessage(input)}
+                  disabled={!input.trim()} 
+                  className="p-2 hover:bg-gray-100 rounded transition disabled:opacity-50"
+                  title="Send"
                 >
-                  {ex}
+                  <SendHorizonal className="w-5 h-5 text-gray-600" />
                 </button>
-              ))}
+              </div>
             </div>
-          )}
+   
+            {messages.length === 0 && (
+                <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-3xl w-full mx-auto">
+                {EXAMPLES.map((ex, i) => (
+                  <button
+                    key={i}
+                    onClick={() => sendMessage(ex)}
+                    className="text-left text-sm px-4 py-3 bg-gray-100 hover:bg-gray-200 rounded-lg shadow-sm"
+                  >
+                    {ex}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </div>
-  
-  
+    
       {/* Replace the pricing page code with this simple modal */}
       <Dialog open={showModal} onClose={() => setShowModal(false)} className="relative z-50">
   <div className="fixed inset-0 bg-black/40" aria-hidden="true" />
@@ -837,6 +993,8 @@ className={`inline-block max-w-[85%] sm:max-w-[75%] px-4 py-3 rounded-xl shadow-
     )}
   </div>
 )}
+</div>  {/* This closes the main layout container */}
 </>
-  );
+</AssistantRuntimeProvider>
+);
 }
