@@ -25,6 +25,7 @@ type Listing = {
     street?: string;
     zip?: string;
   };
+  lastSaleArmsLength?; boolean;
   mlsActive?: boolean;
   lastSaleAmount?: number;
   lotSquareFeet?: number;
@@ -47,6 +48,9 @@ type Listing = {
   investorBuyer?: boolean;
   lastSaleDate?: string;
   lenderName?: string;
+  listingPrice?: number;
+  mortgageBalance?: number;
+  mortgageMaturingDate?: string;
   yearBuilt?: number;
   ownerOccupied?: boolean;
   preForeclosure?: boolean;
