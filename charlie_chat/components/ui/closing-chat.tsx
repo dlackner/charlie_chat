@@ -128,6 +128,10 @@ const availablePackages = userClass === 'trial' ? [] : getPackagesFor(userClass)
   const [count, setCount] = useState(0);
   const [listings, setListings] = useState<Listing[]>([]);
   const [selectedListings, setSelectedListings] = useState<Listing[]>([]);
+  const [currentBatch, setCurrentBatch] = useState(0);
+  const [batchSize] = useState(2);
+  const [isWaitingForContinuation, setIsWaitingForContinuation] = useState(false);
+  const [totalPropertiesToAnalyze, setTotalPropertiesToAnalyze] = useState(0);
   const handleCreditsUpdated = (newBalance: number) => {
     //console.log("[ClosingChat] handleCreditsUpdated CALLED with newBalance:", newBalance);
     setUserCredits(prevCredits => {
@@ -145,7 +149,26 @@ const availablePackages = userClass === 'trial' ? [] : getPackagesFor(userClass)
     }
   };
 
-const onSendToGPT = () => {
+const onSendToGPT = (batchIndex = 0, autoProcess = false) => {
+  // Batch processing logic
+if (batchIndex === 0) {
+  // Starting fresh analysis - store total count
+  setTotalPropertiesToAnalyze(selectedListings.length);
+  setCurrentBatch(0);
+  setIsWaitingForContinuation(false);
+}
+
+// Calculate which properties to analyze in this batch
+const startIndex = batchIndex * batchSize;
+const endIndex = Math.min(startIndex + batchSize, selectedListings.length);
+const propertiesForThisBatch = selectedListings.slice(startIndex, endIndex);
+
+console.log(`📊 Processing batch ${batchIndex + 1}, properties ${startIndex + 1}-${endIndex} of ${selectedListings.length}`);
+
+// If no properties in this batch, we're done
+if (propertiesForThisBatch.length === 0) {
+  return;
+}
   // Field mappings for better clarity
   const fieldMappings: { [key: string]: string } = {
     'reo': 'Bank Owned (REO)',
@@ -183,7 +206,8 @@ const onSendToGPT = () => {
     'mailAddress': 'Owner Mailing Address Details'
   };
 
-  const rows = selectedListings.map((listing: Listing, index: number) => {
+  const rows = propertiesForThisBatch.map((listing: Listing, index: number) => {
+  const globalIndex = startIndex + index + 1; // Show correct property numbers
     const mainDisplayAddress = listing.address?.address || "Unknown Address";
     
     // Send ALL available data instead of filtering specific fields
@@ -268,29 +292,92 @@ const onSendToGPT = () => {
       return `**${index + 1}. ${mainDisplayAddress}**\nNo additional property details available.\n`;
     }
 
-    return `**${index + 1}. ${mainDisplayAddress}**\n${finalPropertyDetails.trim()}`;
+    return `**${globalIndex}. ${mainDisplayAddress}**\n${finalPropertyDetails.trim()}`;
   });
 
-  const summaryPrompt = `Act as a senior multifamily investment advisor preparing a strategic underwriting memo for experienced real estate investors. You are reviewing an output from an AI-powered analyzer that provides comprehensive property-level data.
+const summaryPrompt = `You are a senior multifamily acquisition analyst preparing detailed investment memos. You must analyze each property using SPECIFIC DATA PROVIDED - do not make generic statements.
 
-Data Notes: 'REO' = bank-owned property, 'Arms Length Sale' = transaction between unrelated parties, '*Absentee Owner' fields indicate owner doesn't live at the property, 'Pre-Foreclosure' = property in foreclosure process.
+**MANDATORY ANALYSIS REQUIREMENTS:**
 
-For each property, produce two clearly labeled sections:
+For EACH property, you must:
 
-**Market Summary:** Use the ZIP code, city, or region (if available) to summarize local market conditions relevant to multifamily investors. If fields like pre-foreclosure, auction, or tax lien flags are present, explain how these might affect buyer leverage, timing, and risk. Highlight anything unusual about the owner type, mortgage status, or assumability that might shape acquisition strategy. You may reference general market trends if they are reliably accessible online, but avoid making up data if it's not findable.
+1. **FINANCIAL METRICS** (calculate using exact numbers):
+   - LTV Ratio: (openMortgageBalance ÷ estimatedValue) × 100
+   - Current Equity Position: estimatedValue - openMortgageBalance 
+   - Appreciation Since Purchase: ((estimatedValue - lastSaleAmount) ÷ lastSaleAmount) × 100
+   - Price Per Unit: estimatedValue ÷ unitsCount
+   - Price Per Square Foot: estimatedValue ÷ squareFeet (if available)
+   - Tax Assessment Ratio: assessedValue ÷ estimatedValue (indicates tax efficiency)
 
-**Underwriting Strategy:** Base your analysis on mortgage balance, owner equity, and financing flags (e.g., assumable loans). Recommend a strategy (e.g., distressed negotiation, creative financing, seller carry, etc.) grounded in available data. Use numerical thresholds (like "equity above 30%" or "loan-to-value under 70%") only when the data supports it. If appropriate, suggest next steps (e.g., verify rent roll, check lien documentation, evaluate exit cap). Include a short Verdict (e.g., Pursue, Monitor, Pass) with a rationale.
+2. **OWNER PROFILE & MOTIVATION** (use specific data):
+   - Owner Type: corporateOwned vs individual, ownerOccupied vs absenteeOwner
+   - Years Owned: yearsOwned (acquisition timing analysis)
+   - Portfolio Context: totalPropertiesOwned, totalPortfolioValue, totalPortfolioEquity
+   - Distress Signals: preForeclosure, auction, taxLien, reo status
+   - Geographic Owner Type: inStateAbsenteeOwner vs outOfStateAbsenteeOwner
 
-The tone should be thoughtful and confident, as if preparing this memo for a GP/LP acquisition team. Important: Not all data will be available. Where assumptions are needed, state them clearly and cautiously.
+3. **PROPERTY FUNDAMENTALS**:
+   - Building Details: yearBuilt (age = current year - yearBuilt), unitsCount, squareFeet, stories
+   - Lot Analysis: lotSquareFeet, land value ratio (assessedLandValue ÷ assessedValue)
+   - Risk Factors: floodZone status and floodZoneDescription
+   - Market Activity: forSale, mlsActive, investorBuyer activity
+
+4. **DEAL STRUCTURE OPPORTUNITIES**:
+   - Assumable Loan: assumable status and implications
+   - Existing Financing: openMortgageBalance, lenderName
+   - Distressed Opportunities: preForeclosure + auction + foreclosure flags
+   - Owner Leverage: Compare individual property equity vs total portfolio position
+
+**OUTPUT FORMAT FOR EACH PROPERTY:**
+
+**Property: [Address] - [unitsCount] Units, Built [yearBuilt]**
+
+**Financial Analysis:**
+- LTV: [calculated]% | Equity: $[amount] | Price/Unit: $[amount]
+- Appreciation: [calculated]% over [yearsOwned] years ([annual]% annually)
+- Tax Assessment: [ratio]% of market value (tax [advantage/disadvantage])
+
+**Owner Situation:**
+- [Owner name], [yearsOwned] years owned, [portfolio context]
+- Motivation Signals: [specific distress flags or equity position]
+- Owner Type: [specific classification and geographic status]
+
+**Deal Strategy:**
+- [Specific approach based on LTV, distress signals, owner motivation]
+- [Financing opportunities - assumable loans, seller carry potential]
+- [Negotiation leverage based on owner's portfolio position]
+
+**Verdict:** [Pursue/Monitor/Pass] - [Specific data-driven rationale with numbers]
+
+---
+
+**CRITICAL:** You must calculate and show actual numbers. Reference specific dollar amounts, percentages, and ratios from the data. Do not make generic statements about "market conditions."
+
+**BATCH ${batchIndex + 1} ANALYSIS** - Properties ${startIndex + 1}-${endIndex} of ${totalPropertiesToAnalyze}
 
 ---
 ${rows.join("\n\n---\n")}
 ---`;
 
   // Send the full prompt to the API but display simplified message to user
-  sendMessage(summaryPrompt, true, "Analyzing your properties...");
+  sendMessage(summaryPrompt, true, `Analyzing properties ${startIndex + 1}-${endIndex} of ${totalPropertiesToAnalyze}...`);
   
+  // Update batch tracking
+setCurrentBatch(batchIndex + 1);
+
+// Check if there are more properties to analyze
+const hasMoreProperties = endIndex < selectedListings.length;
+
+if (hasMoreProperties && !autoProcess) {
+  // Wait for user to decide whether to continue
+  setIsWaitingForContinuation(true);
+} else if (!hasMoreProperties) {
+  // All done - clear selections
   setSelectedListings([]);
+  setIsWaitingForContinuation(false);
+  setCurrentBatch(0);
+  setTotalPropertiesToAnalyze(0);
+}
 };
 
   const bottomRef = useRef<HTMLDivElement | null>(null);
@@ -628,6 +715,63 @@ className={`inline-block max-w-[85%] sm:max-w-[75%] px-4 py-3 rounded-xl shadow-
           })}
           <div ref={bottomRef} />
 
+{/* UPDATED CONTINUATION UI - Removed "Analyze All Remaining" option */}
+          {isWaitingForContinuation && (
+            <div className="w-full max-w-4xl px-6 py-4">
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <div className="flex items-center mb-3">
+                  <span className="text-lg">✅</span>
+                  <h3 className="ml-2 text-lg font-semibold text-blue-900">
+                    Batch {currentBatch} in process
+                  </h3>
+                </div>
+                
+                <p className="text-blue-800 mb-4">
+                  Analyzing properties {((currentBatch - 1) * batchSize) + 1}-{Math.min(currentBatch * batchSize, totalPropertiesToAnalyze)} of {totalPropertiesToAnalyze}
+                </p>
+
+                <div className="mb-4">
+                  <p className="text-sm text-blue-700 font-medium mb-2">
+                    📋 Remaining properties ({totalPropertiesToAnalyze - (currentBatch * batchSize)}):
+                  </p>
+                  <div className="text-sm text-blue-600">
+                    {selectedListings.slice(currentBatch * batchSize, currentBatch * batchSize + 3).map((listing, i) => (
+                      <div key={i}>• {listing.address?.address || 'Unknown Address'}</div>
+                    ))}
+                    {totalPropertiesToAnalyze - (currentBatch * batchSize) > 3 && (
+                      <div>• ... and {totalPropertiesToAnalyze - (currentBatch * batchSize) - 3} more</div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => {
+                      setIsWaitingForContinuation(false);
+                      onSendToGPT(currentBatch, false);
+                    }}
+                    className="bg-blue-900 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition font-medium"
+                    style={{ cursor: 'pointer' }}
+                  >
+                    Analyze Next {Math.min(batchSize, totalPropertiesToAnalyze - (currentBatch * batchSize))} Properties
+                  </button>
+                  
+                  <button
+                    onClick={() => {
+                      setIsWaitingForContinuation(false);
+                      setSelectedListings([]);
+                      setCurrentBatch(0);
+                      setTotalPropertiesToAnalyze(0);
+                    }}
+                    className="bg-orange-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition font-medium"
+                  >
+                    Stop Here
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
           <div className="w-full max-w-5xl border-t p-4 bg-white sticky bottom-0 z-10">
            <div className="flex items-center border border-gray-300 rounded-lg shadow-sm p-2 focus-within:ring-2 focus-within:ring-black">
               <button
@@ -746,26 +890,29 @@ className={`inline-block max-w-[85%] sm:max-w-[75%] px-4 py-3 rounded-xl shadow-
   onClose={() => setShowCreditOptionsModal(false)}
   className="fixed inset-0 z-50 flex items-center justify-center"
 >
-  <Dialog.Panel className="relative bg-white rounded-lg shadow-xl max-w-md w-full mx-4 p-6">
-    {userClass === 'trial' && (userCredits === 0 || userCredits === null) ? (
-      // Trial user with no credits - show upgrade message (matching sidebar style)
-      <>
-        <Dialog.Title className="text-2xl font-semibold text-gray-900 mb-2">
-          Sorry, but you are out of credits.
-        </Dialog.Title>
-        <p className="text-sm text-gray-700 mb-6">
-          Upgrade now to continue your analysis and find your next investment.
-        </p>
-        <div className="space-y-3">
-          <button
-            onClick={() => router.push("/pricing")}
-            className="w-full py-3 rounded-md bg-black text-white font-medium hover:bg-gray-800 transition"
-          >
-            View Pricing Plans
-          </button>
-        </div>
-      </>
-    ) : (
+<Dialog.Panel className="relative bg-white rounded-lg shadow-xl max-w-md w-full mx-4 p-6">
+  {userClass === 'trial' ? (
+    // ALL trial users see sign up message
+    <>
+      <Dialog.Title className="text-xl font-semibold text-gray-900 mb-2 text-center">
+        {userCredits === 0 || userCredits === null ? 
+          "Sorry, but you are out of credits." : 
+          `You have ${userCredits} credits remaining.`
+        }
+      </Dialog.Title>
+      <p className="text-base font-semibold text-gray-900 mb-6 text-center">
+        Sign up now to continue your analysis and find your next investment.
+      </p>
+      <div className="space-y-3">
+        <button
+          onClick={() => router.push("/pricing")}
+          className="w-full py-3 rounded-md bg-black text-white font-medium hover:bg-gray-800 transition"
+        >
+          View Pricing Plans
+        </button>
+      </div>
+    </>
+  ) : (
       // Regular users (non-trial or trial with credits) - show purchase options
       <>
       <Dialog.Title className="text-2xl font-semibold text-gray-900 mb-2">

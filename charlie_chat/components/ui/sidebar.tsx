@@ -25,27 +25,43 @@ type Listing = {
     street?: string;
     zip?: string;
   };
-  bedrooms?: number;
-  bathrooms?: number;
+  mlsActive?: boolean;
   lastSaleAmount?: number;
   lotSquareFeet?: number;
   yearsOwned?: number;
   outOfStateAbsenteeOwner?: number;
+  property_type?: string;
   squareFeet?: number;
   rentEstimate?: number;
+  assessedLandValue?: number;
   assessedValue?: number;
+  assumable?: boolean;
+  auction?: boolean;
+  corporate_owned?: boolean;
+  estimatedEquity?: number;
   estimatedValue?: number;
+  floodZone?: boolean;
+  foreclosure?: boolean;
+  forSale?: boolean;
+  inStateAbsenteeOwner?: boolean;
+  investorBuyer?: boolean;
   lastSaleDate?: string;
+  lenderName?: string;
   yearBuilt?: number;
-  pool?: boolean;
   ownerOccupied?: boolean;
+  preForeclosure?: boolean;
+  reo?: boolean;
+  taxLien?: boolean;
+  totalPortfolioEquity?: number;  
+  totalPortfolioMortgageBalance?: number; 
+  totalPropertiesOwned?: number;
+  yearsOwned?: number;
   floodZoneDescription?: string;
   unitsCount?: number;
   owner1FirstName?: string;
   owner1LastName?: string;
   stories?: number;
-  [key: string]: any;
-};
+ };
 
 type Props = {
   onSearch: (filters: Record<string, any>) => Promise<void>;
@@ -893,7 +909,13 @@ if (rpcError) {
         <div className="fixed bottom-4 left-4 w-[240px] z-40">
           <div className="p-4 border rounded bg-[#D15834] text-sm shadow text-white">
             <p className="mb-2 font-medium">Add {selectedListings.length} {selectedListings.length === 1 ? "property" : "properties"} to Charlie Chat</p>
-            <button onClick={onSendToGPT} className="bg-blue-900 text-white px-4 py-2 rounded hover:bg-blue-950 transition w-full">Analyze in Chat</button>
+            <button 
+    
+  onClick={() => onSendToGPT()} 
+  className="bg-blue-900 text-white px-4 py-2 rounded hover:bg-blue-950 transition w-full"
+>
+  Begin Analysis
+</button>
           </div>
         </div>
       )}
