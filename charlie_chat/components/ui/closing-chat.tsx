@@ -1,7 +1,7 @@
 "use client";
 
 import { Dialog } from "@headlessui/react";
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import ReactMarkdown from "react-markdown";
 import { Sidebar } from "@/components/ui/sidebar";
 import { Plus, SendHorizonal } from "lucide-react";
@@ -132,6 +132,8 @@ const availablePackages = userClass === 'trial' ? [] : getPackagesFor(userClass)
   const [batchSize] = useState(2);
   const [isWaitingForContinuation, setIsWaitingForContinuation] = useState(false);
   const [totalPropertiesToAnalyze, setTotalPropertiesToAnalyze] = useState(0);
+  const hasMessages = messages.length > 0;
+  const [isStreaming, setIsStreaming] = useState(false);
   const handleCreditsUpdated = (newBalance: number) => {
     //console.log("[ClosingChat] handleCreditsUpdated CALLED with newBalance:", newBalance);
     setUserCredits(prevCredits => {
@@ -420,11 +422,25 @@ const fetchUserCreditsAndClass = async (userToFetchFor: User) => {
     }
   }, [isLoggedIn]); // Re-run if login status changes
 
-  useEffect(() => {
-    if (bottomRef.current) {
-      bottomRef.current.scrollIntoView({ behavior: "smooth" });
-    }
-  }, [messages]);
+const scrollToBottom = useCallback(() => {
+  if (bottomRef.current) {
+    bottomRef.current.scrollIntoView({ behavior: "smooth" });
+  }
+}, []);
+
+const throttledScroll = useCallback(() => {
+  if (!isStreaming) {
+    scrollToBottom();
+  }
+}, [isStreaming, scrollToBottom]);
+
+useEffect(() => {
+  const timeoutId = setTimeout(() => {
+    throttledScroll();
+  }, 100);
+
+  return () => clearTimeout(timeoutId);
+}, [messages, throttledScroll]);
 
   const sendMessage = async (message: string, isPropertyDump = false, displayMessage?: string) => {
     if (!message.trim()) return;
@@ -621,66 +637,86 @@ const handlePackageSelection = async (userClass: string, amount: number) => {
           triggerBuyCreditsModal={() => setShowCreditOptionsModal(true)}
         />
 
-        {/* Left: Chat UI */}
-        <div className="flex-1 flex flex-col items-center justify-start overflow-hidden">
-          <img
-            src="/charlie.png"
-            alt="Charlie Headshot"
-            className="w-24 h-24 rounded-full mx-auto mb-4 shadow-md border"
-          />
-          <h1 className="text-3xl sm:text-5xl font-light text-center mb-2 tracking-tight">
-            Charlie Chat
-          </h1>
-          <p className="text-center text-gray-500 mb-6 text-sm sm:text-base">
-            Conversational AI for Multifamily Investors
-          </p>
-  
-          {/* Message list */}
-          <div className="w-full max-w-4xl flex-1 overflow-y-auto px-6 py-6 pb-32 space-y-4">
-            {messages.map((m, i) => {
-           const isUser = m.role === "user";
-            const cleanContent = m.content
-            .replace(/\s?【\d+:\d+†[^】]+】\s?/g, "")
-            .replace(/\s?\[\d+:\d+\^source\]\s?/g, "")
-            .replace(/\s?\[\^?\d+\]\s?/g, "")
-            .replace(/ +(?=\.|,|!|\?)/g, "")
-            .replace(/\n/g, '\n\n')
-            .trim();
-            
-            return (
-              <div
-                key={i}
-                className={`flex ${isUser ? "justify-end" : "justify-start"}`}
-              >
-                <div
-className={`inline-block max-w-[85%] sm:max-w-[75%] px-4 py-3 rounded-xl shadow-sm ${
-  isUser
-    ? "bg-sky-100 text-sky-900 rounded-br-none"
-    : "bg-gray-100 text-gray-800 rounded-bl-none"
-}`}
->
-  <div className={`leading-relaxed font-sans text-base ${isUser && m.isPropertyDump ? "italic" : ""}`}>
-  <ReactMarkdown
-    components={{
-      h1: (props) => <h1 className="text-lg font-bold mt-4 mb-2" {...props} />,
-      h2: (props) => <h2 className="text-base font-semibold mt-3 mb-2" {...props} />,
-      h3: (props) => <h3 className="text-sm font-semibold mt-2 mb-1" {...props} />,
-      p: (props) => <p className="mb-2 last:mb-0 whitespace-pre-line" {...props} />,
-      strong: (props) => <strong className="font-semibold" {...props} />,
-      ul: (props) => <ul className="list-disc pl-5 my-2" {...props} />,
-      li: (props) => <li className="mb-1" {...props} />,
-    }}
-  >
-    {cleanContent}
-  </ReactMarkdown>
-</div>
+       {/* Left: Chat UI */}
+<div className="flex-1 flex flex-col items-center justify-start overflow-hidden">
+  {/* Header section - conditionally sized */}
+  <div className={`transition-all duration-500 ease-in-out ${
+    hasMessages 
+      ? "py-2" // Minimal padding when chat is active
+      : "py-8"  // Full padding when no messages
+  }`}>
+    <img
+      src="/charlie.png"
+      alt="Charlie Headshot"
+      className={`rounded-full mx-auto shadow-md border transition-all duration-500 ease-in-out ${
+        hasMessages 
+          ? "w-12 h-12 mb-2" // Smaller when chat is active
+          : "w-24 h-24 mb-4" // Full size when no messages
+      }`}
+    />
+    <h1 className={`font-light text-center tracking-tight transition-all duration-500 ease-in-out ${
+      hasMessages 
+        ? "text-xl mb-1" // Smaller when chat is active
+        : "text-3xl sm:text-5xl mb-2" // Full size when no messages
+    }`}>
+      Charlie Chat
+    </h1>
+    {!hasMessages && ( // Only show subtitle when no messages
+      <p className="text-center text-gray-500 mb-6 text-sm sm:text-base">
+        Conversational AI for Multifamily Investors
+      </p>
+    )}
+  </div>
 
-                  
-                </div>
-              </div>
-            );
-          })}
-          <div ref={bottomRef} />
+  {/* Message list */}
+  <div className={`w-full max-w-4xl flex-1 overflow-y-auto px-6 space-y-4 transition-all duration-500 ease-in-out ${
+    hasMessages 
+      ? "py-2 pb-32" // Minimal top padding when chat is active
+      : "py-6 pb-32" // Full padding when no messages
+  }`}>
+    {/* Rest of your messages mapping code stays exactly the same */}
+    {messages.map((m, i) => {
+      const isUser = m.role === "user";
+      const cleanContent = m.content
+        .replace(/\s?【\d+:\d+†[^】]+】\s?/g, "")
+        .replace(/\s?\[\d+:\d+\^source\]\s?/g, "")
+        .replace(/\s?\[\^?\d+\]\s?/g, "")
+        .replace(/ +(?=\.|,|!|\?)/g, "")
+        .replace(/\n/g, '\n\n')
+        .trim();
+      
+      return (
+        <div
+          key={i}
+          className={`flex ${isUser ? "justify-end" : "justify-start"}`}
+        >
+          <div
+            className={`inline-block max-w-[85%] sm:max-w-[75%] px-4 py-3 rounded-xl shadow-sm ${
+              isUser
+                ? "bg-sky-100 text-sky-900 rounded-br-none"
+                : "bg-gray-100 text-gray-800 rounded-bl-none"
+            }`}
+          >
+            <div className={`leading-relaxed font-sans text-base ${isUser && m.isPropertyDump ? "italic" : ""}`}>
+              <ReactMarkdown
+                components={{
+                  h1: (props) => <h1 className="text-lg font-bold mt-4 mb-2" {...props} />,
+                  h2: (props) => <h2 className="text-base font-semibold mt-3 mb-2" {...props} />,
+                  h3: (props) => <h3 className="text-sm font-semibold mt-2 mb-1" {...props} />,
+                  p: (props) => <p className="mb-2 last:mb-0 whitespace-pre-line" {...props} />,
+                  strong: (props) => <strong className="font-semibold" {...props} />,
+                  ul: (props) => <ul className="list-disc pl-5 my-2" {...props} />,
+                  li: (props) => <li className="mb-1" {...props} />,
+                }}
+              >
+                {cleanContent}
+              </ReactMarkdown>
+            </div>
+          </div>
+        </div>
+      );
+    })}
+    <div ref={bottomRef} />
 
 {/* UPDATED CONTINUATION UI - Removed "Analyze All Remaining" option */}
           {isWaitingForContinuation && (
