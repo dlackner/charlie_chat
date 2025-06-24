@@ -44,6 +44,7 @@ type Listing = {
   floodZone?: boolean;
   foreclosure?: boolean;
   forSale?: boolean;
+  privateLender?: boolean;
   inStateAbsenteeOwner?: boolean;
   investorBuyer?: boolean;
   lastSaleDate?: string;
@@ -485,10 +486,10 @@ useClickOutside(
     };
     addSection("PROPERTY OVERVIEW", [["Property ID:", listing.id], ["Units:", listing.unitsCount ?? "N/A"], ["Stories:", listing.stories ?? "N/A"], ["Year Built:", listing.yearBuilt ?? "N/A"], ["Lot Size:", `${listing.lotSquareFeet?.toLocaleString()} sq ft`], ["Years Owned:", listing.yearsOwned ?? "N/A"],], leftX, startY);
     addSection("VALUATION & EQUITY", [["Assessed Value:", formatCurrency(listing.assessedValue)], ["Estimated Market Value:", formatCurrency(listing.estimatedValue)], ["Estimated Equity:", formatCurrency(listing.estimatedValue)], ["Listing Price:", "Not listed"],], leftX, startY + 46);
-    addSection("MORTGAGE & FINANCING", [["Mortgage Balance:", formatCurrency(listing.openMortgageBalance)], ["Lender:", listing.lenderName ?? "N/A"], ["Mortgage Maturity Date:", listing.maturingDate ?? "N/A"],], leftX, startY + 81);
+    addSection("MORTGAGE & FINANCING", [["Mortgage Balance:", formatCurrency(listing.mortgageBalance)], ["Lender:", listing.lenderName ?? "N/A"], ["Mortgage Maturity Date:", listing.mortgageMaturingDate ?? "N/A"],], leftX, startY + 81);
     addSection("SALES & TRANSACTION HISTORY", [["Last Sale Date:", listing.lastSaleDate ?? "N/A"], ["Last Sale Amount:", formatCurrency(listing.lastSaleAmount)], ["Arms-Length Sale:", listing.lastSaleArmsLength ? "Yes" : "No"], ["MLS Active:", listing.mlsActive ? "Yes" : "No"],], rightX, startY);
     addSection("FLOOD ZONE INFORMATION", [["Flood Zone:", listing.floodZone ? "Yes" : "No"], ["Flood Zone Description:", listing.floodZoneDescription ?? "N/A"],], rightX, startY + 35);
-    addSection("OWNERSHIP DETAILS", [["Owner Name:", `${listing.owner1FirstName ?? ""} ${listing.owner1LastName ?? ""}`], ["Owner Address:", listing.ownerAddress ?? "N/A"], ["In-State Absentee Owner:", listing.inStateAbsenteeOwner ? "Yes" : "No"], ["Out-of-State Absentee Owner:", listing.outOfStateAbsenteeOwner ? "Yes" : "No"],], rightX, startY + 60);
+    addSection("OWNERSHIP DETAILS", [["Owner Name:", `${listing.owner1FirstName ?? ""} ${listing.owner1LastName ?? ""}`], ["Owner Address:", listing.mailAddress ?? "N/A"], ["In-State Absentee Owner:", listing.inStateAbsenteeOwner ? "Yes" : "No"], ["Out-of-State Absentee Owner:", listing.outOfStateAbsenteeOwner ? "Yes" : "No"],], rightX, startY + 60);
     addSection("OTHER INFORMATION", [["Assumable:", listing.assumable ? "Yes" : "No"], ["REO:", listing.reo ? "Yes" : "No"], ["Auction:", listing.auction ? "Yes" : "No"], ["Tax Lien:", listing.taxLien ? "Yes" : "No"],["Pre Foreclosure:", listing.preForeclosure ? "Yes" : "No"], ["Private Lender:", listing.privateLender ? "Yes" : "No"],], rightX, startY + 95);
     const safeAddress = (listing.address?.address || "property").replace(/[^a-zA-Z0-9]/g, "_");
     doc.save(`Property_Profile_${safeAddress}.pdf`);
