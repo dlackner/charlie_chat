@@ -25,7 +25,7 @@ type Listing = {
     street?: string;
     zip?: string;
   };
-  lastSaleArmsLength?; boolean;
+  lastSaleArmsLength?: boolean;
   mlsActive?: boolean;
   lastSaleAmount?: number;
   lotSquareFeet?: number;
@@ -59,7 +59,6 @@ type Listing = {
   totalPortfolioEquity?: number;  
   totalPortfolioMortgageBalance?: number; 
   totalPropertiesOwned?: number;
-  yearsOwned?: number;
   floodZoneDescription?: string;
   unitsCount?: number;
   owner1FirstName?: string;
@@ -366,13 +365,11 @@ useClickOutside(
               finalOwnerMailCityStateZip = addressParts.slice(1).join(',').trim();
           }
       }
-    } else if (listing.ownerAddress) {
-      const addressParts = listing.ownerAddress.split(',');
-      finalOwnerMailStreet = addressParts[0]?.trim() || "";
-      if (addressParts.length > 1) {
-        finalOwnerMailCityStateZip = addressParts.slice(1).join(',').trim();
-      }
-    }
+   } else if (listing.mailAddress) {
+  const { street, address, city, state, zip } = listing.mailAddress;
+  finalOwnerMailStreet = street || address || "";
+  finalOwnerMailCityStateZip = [city, state, zip].filter(Boolean).join(', ');
+}
     if (!finalOwnerMailStreet && !finalOwnerMailCityStateZip && !displayOwnerFullName) {
         finalOwnerMailStreet = "[Owner Address Line 1]";
         finalOwnerMailCityStateZip = "[Owner Address Line 2]";

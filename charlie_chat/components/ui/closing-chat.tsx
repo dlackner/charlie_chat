@@ -669,7 +669,7 @@ const handlePackageSelection = async (userClass: string, amount: number) => {
           </p>
   
           {/* Message list */}
-           <div className="w-full max-w-4xl flex-1 overflow-y-auto px-6 py-6 space-y-4">
+          <div className="w-full max-w-4xl flex-1 overflow-y-auto px-6 py-6 pb-32 space-y-4">
             {messages.map((m, i) => {
            const isUser = m.role === "user";
             const cleanContent = m.content
