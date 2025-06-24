@@ -295,72 +295,39 @@ if (propertiesForThisBatch.length === 0) {
     return `**${globalIndex}. ${mainDisplayAddress}**\n${finalPropertyDetails.trim()}`;
   });
 
-const summaryPrompt = `You are a senior multifamily acquisition analyst preparing detailed investment memos. You must analyze each property using SPECIFIC DATA PROVIDED - do not make generic statements.
+  const summaryPrompt = `Senior multifamily analyst: Analyze each property using ONLY provided data. Calculate exact numbers, no generic statements.
 
-**MANDATORY ANALYSIS REQUIREMENTS:**
-
-For EACH property, you must:
-
-1. **FINANCIAL METRICS** (calculate using exact numbers):
-   - LTV Ratio: (openMortgageBalance ÷ estimatedValue) × 100
-   - Current Equity Position: estimatedValue - openMortgageBalance 
-   - Appreciation Since Purchase: ((estimatedValue - lastSaleAmount) ÷ lastSaleAmount) × 100
-   - Price Per Unit: estimatedValue ÷ unitsCount
-   - Price Per Square Foot: estimatedValue ÷ squareFeet (if available)
-   - Tax Assessment Ratio: assessedValue ÷ estimatedValue (indicates tax efficiency)
-
-2. **OWNER PROFILE & MOTIVATION** (use specific data):
-   - Owner Type: corporateOwned vs individual, ownerOccupied vs absenteeOwner
-   - Years Owned: yearsOwned (acquisition timing analysis)
-   - Portfolio Context: totalPropertiesOwned, totalPortfolioValue, totalPortfolioEquity
-   - Distress Signals: preForeclosure, auction, taxLien, reo status
-   - Geographic Owner Type: inStateAbsenteeOwner vs outOfStateAbsenteeOwner
-
-3. **PROPERTY FUNDAMENTALS**:
-   - Building Details: yearBuilt (age = current year - yearBuilt), unitsCount, squareFeet, stories
-   - Lot Analysis: lotSquareFeet, land value ratio (assessedLandValue ÷ assessedValue)
-   - Risk Factors: floodZone status and floodZoneDescription
-   - Market Activity: forSale, mlsActive, investorBuyer activity
-
-4. **DEAL STRUCTURE OPPORTUNITIES**:
-   - Assumable Loan: assumable status and implications
-   - Existing Financing: openMortgageBalance, lenderName
-   - Distressed Opportunities: preForeclosure + auction + foreclosure flags
-   - Owner Leverage: Compare individual property equity vs total portfolio position
-
-**OUTPUT FORMAT FOR EACH PROPERTY:**
-
-**Property: [Address] - [unitsCount] Units, Built [yearBuilt]**
-
-**Financial Analysis:**
-- LTV: [calculated]% | Equity: $[amount] | Price/Unit: $[amount]
-- Appreciation: [calculated]% over [yearsOwned] years ([annual]% annually)
-- Tax Assessment: [ratio]% of market value (tax [advantage/disadvantage])
-
-**Owner Situation:**
-- [Owner name], [yearsOwned] years owned, [portfolio context]
-- Motivation Signals: [specific distress flags or equity position]
-- Owner Type: [specific classification and geographic status]
-
-**Deal Strategy:**
-- [Specific approach based on LTV, distress signals, owner motivation]
-- [Financing opportunities - assumable loans, seller carry potential]
-- [Negotiation leverage based on owner's portfolio position]
-
-**Verdict:** [Pursue/Monitor/Pass] - [Specific data-driven rationale with numbers]
-
----
-
-**CRITICAL:** You must calculate and show actual numbers. Reference specific dollar amounts, percentages, and ratios from the data. Do not make generic statements about "market conditions."
-
-**BATCH ${batchIndex + 1} ANALYSIS** - Properties ${startIndex + 1}-${endIndex} of ${totalPropertiesToAnalyze}
-
----
-${rows.join("\n\n---\n")}
----`;
+  For EACH property:
+  
+  **CALCULATIONS REQUIRED:**
+  - LTV: (openMortgageBalance ÷ estimatedValue) × 100
+  - Equity: estimatedValue - openMortgageBalance 
+  - Appreciation: ((estimatedValue - lastSaleAmount) ÷ lastSaleAmount) × 100
+  - Price/Unit: estimatedValue ÷ unitsCount
+  - Tax Ratio: assessedValue ÷ estimatedValue
+  
+  **ANALYZE:**
+  1. Owner: corporateOwned, yearsOwned, totalPropertiesOwned, distress signals
+  2. Property: age, units, sq ft, flood risk, financing details
+  3. Strategy: Based on LTV, equity, owner motivation, distress flags
+  
+  **OUTPUT:**
+  **Property: [Address] - [units] Units, Built [year]**
+  - LTV: X% | Equity: $X | Price/Unit: $X | Appreciation: X%
+  - Owner: [name], [years] owned, [portfolio size], [motivation signals]
+  - Strategy: [specific approach based on data]
+  - **Verdict: Pursue/Monitor/Pass** - [data-driven rationale]
+  
+  Use actual numbers only. Reference specific amounts/percentages from data.
+  
+  **BATCH ${batchIndex + 1} ANALYSIS** - Properties ${startIndex + 1}-${endIndex} of ${totalPropertiesToAnalyze}
+  
+  ---
+  ${rows.join("\n\n---\n")}
+  ---`;
 
   // Send the full prompt to the API but display simplified message to user
-  sendMessage(summaryPrompt, true, `Analyzing properties ${startIndex + 1}-${endIndex} of ${totalPropertiesToAnalyze}...`);
+  sendMessage(summaryPrompt, true, `Analyzing properties`);
   
   // Update batch tracking
 setCurrentBatch(batchIndex + 1);
