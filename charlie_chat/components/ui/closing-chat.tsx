@@ -17,20 +17,60 @@ type ExtendedUser = User & {
 type Listing = {
   id: string;
   address: {
+    street?: string;
     address: string;
     city?: string;
     state?: string;
     zip?: string;
   };
-  bedrooms?: number;
+  mailAddress?: {
+    address?: string;
+    city?: string;
+    county?: string;
+    state?: string;
+    street?: string;
+    zip?: string;
+  };
+  lastSaleArmsLength?: boolean;
+  mlsActive?: boolean;
+  lastSaleAmount?: number;
+  lotSquareFeet?: number;
+  yearsOwned?: number;
+  outOfStateAbsenteeOwner?: number;
+  property_type?: string;
   squareFeet?: number;
   rentEstimate?: number;
+  assessedLandValue?: number;
   assessedValue?: number;
+  assumable?: boolean;
+  auction?: boolean;
+  corporate_owned?: boolean;
+  estimatedEquity?: number;
   estimatedValue?: number;
-  lastSalePrice?: number;
+  floodZone?: boolean;
+  foreclosure?: boolean;
+  forSale?: boolean;
+  privateLender?: boolean;
+  inStateAbsenteeOwner?: boolean;
+  investorBuyer?: boolean;
+  lastSaleDate?: string;
+  lenderName?: string;
+  listingPrice?: number;
+  mortgageBalance?: number;
+  mortgageMaturingDate?: string;
   yearBuilt?: number;
-  pool?: boolean;
-  [key: string]: any;
+  ownerOccupied?: boolean;
+  preForeclosure?: boolean;
+  reo?: boolean;
+  taxLien?: boolean;
+  totalPortfolioEquity?: number;  
+  totalPortfolioMortgageBalance?: number; 
+  totalPropertiesOwned?: number;
+  floodZoneDescription?: string;
+  unitsCount?: number;
+  owner1FirstName?: string;
+  owner1LastName?: string;
+  stories?: number;
 };
 
 // DEFINE USER CLASSES AND PROPERTY PACKAGES.  NOT CONNECTED TO THE NEW LIB\PRICING.TS FILE YET
@@ -41,7 +81,7 @@ type UserClass = 'trial' |'charlie_chat' | 'charlie_chat_pro' | 'cohort';
 
 const EXAMPLES = [
   "How do I creatively structure seller financing?",
-  "Is it possible to convert a hotel into a multifamily apartment?",
+  "What are the key metrics when evaluating a multifamily property?",
   "What assumptions should I model for a 5-year hold of a property?",
   "How do I get started in multifamily investing? ",
 ];
