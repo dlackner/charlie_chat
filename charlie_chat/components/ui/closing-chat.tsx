@@ -711,8 +711,8 @@ const handlePackageSelection = async (userClass: string, amount: number) => {
   {/* Message list */}
   <div className={`w-full max-w-4xl flex-1 overflow-y-auto px-6 space-y-4 transition-all duration-500 ease-in-out ${
     hasMessages 
-      ? "py-2 pb-32" // Minimal top padding when chat is active
-      : "py-6 pb-32" // Full padding when no messages
+      ? "py-2 pb-12" // Minimal top padding when chat is active
+      : "py-6 pb-12" // Full padding when no messages
   }`}>
     {/* Rest of your messages mapping code stays exactly the same */}
     {messages.map((m, i) => {
