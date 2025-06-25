@@ -194,7 +194,7 @@ export default function PropertyAnalyzerPage() {
   const [interestRate, setInterestRate] = useState<number>(7.0); // Percentage
   const [loanTermYears, setLoanTermYears] = useState<number>(24); // Years
   const [closingCostsPercentage, setClosingCostsPercentage] = useState<number>(3); // Percentage of Purchase Price
-  const [annualAppreciationRate, setAnnualAppreciationRate] = useState<number>(2); // NEW: Annual appreciation rate
+  const [dispositionCapRate, setDispositionCapRate] = useState<number>(6); // Target cap rate at sale
 
   // --- Input States: RENTS ---
   const [numUnits, setNumUnits] = useState<number>(47);
@@ -292,6 +292,11 @@ export default function PropertyAnalyzerPage() {
   const netOperatingIncome = useMemo(() => {
     return effectiveGrossIncome - totalOperatingExpenses;
   }, [effectiveGrossIncome, totalOperatingExpenses]);
+
+  const expenseRatio = useMemo(() => {
+  if (effectiveGrossIncome === 0) return 0;
+  return (totalOperatingExpenses / effectiveGrossIncome) * 100; // Percentage
+}, [totalOperatingExpenses, effectiveGrossIncome]);
 
   // Capital Reserve (Year 1)
   const annualCapitalReserveTotal = useMemo(() => {
@@ -421,8 +426,8 @@ export default function PropertyAnalyzerPage() {
     setChartData(data);
     setBreakEvenYear(currentBreakEvenYear);
 
-    // FIXED: Add property appreciation
-    const finalSalesPrice = purchasePrice * Math.pow(1 + annualAppreciationRate / 100, holdingPeriodYears);
+    // Calculate sale price based on disposition cap rate
+    const finalSalesPrice = currentNetOperatingIncome / (dispositionCapRate / 100);
     const finalLoanBalanceAtHorizon = calculateRemainingLoanBalance(holdingPeriodYears);
     
     // FIXED: Calculate net sale proceeds correctly
@@ -464,19 +469,19 @@ export default function PropertyAnalyzerPage() {
     };
     setOverallGrade(calculateOverallGrade(gradeMetrics));
 
-  }, [
-    numUnits, avgMonthlyRentPerUnit, vacancyRate, annualRentalGrowthRate, otherIncomeAnnual, incomeReductionsAnnual,
-    propertyTaxes, insurance, propertyManagementFeePercentage, maintenanceRepairsAnnual, utilitiesAnnual,
-    contractServicesAnnual, payrollAnnual, marketingAnnual, gAndAAnnual,
-    otherExpensesAnnual, expenseGrowthRate,
-    capitalReservePerUnitAnnual, holdingPeriodYears,
-    purchasePrice, downPaymentPercentage, interestRate, loanTermYears, closingCostsPercentage,
-    annualAppreciationRate, // Added new dependency
-    grossPotentialRent, effectiveGrossIncome, propertyManagementFeeAmount, totalOperatingExpenses, netOperatingIncome,
-    downPaymentAmount, loanAmount, totalInitialInvestment, monthlyInterestRate, numberOfPayments, monthlyMortgagePayment, annualDebtService,
-    cashFlowBeforeTax, annualCapitalReserveTotal,
-    capRate, cashOnCashReturn, debtServiceCoverageRatio,
-  ]);
+}, [
+  numUnits, avgMonthlyRentPerUnit, vacancyRate, annualRentalGrowthRate, otherIncomeAnnual, incomeReductionsAnnual,
+  propertyTaxes, insurance, propertyManagementFeePercentage, maintenanceRepairsAnnual, utilitiesAnnual,
+  contractServicesAnnual, payrollAnnual, marketingAnnual, gAndAAnnual,
+  otherExpensesAnnual, expenseGrowthRate,
+  capitalReservePerUnitAnnual, holdingPeriodYears,
+  purchasePrice, downPaymentPercentage, interestRate, loanTermYears, closingCostsPercentage,
+  dispositionCapRate, // Target cap rate at sale
+  grossPotentialRent, effectiveGrossIncome, propertyManagementFeeAmount, totalOperatingExpenses, netOperatingIncome,
+  downPaymentAmount, loanAmount, totalInitialInvestment, monthlyInterestRate, numberOfPayments, monthlyMortgagePayment, annualDebtService,
+  cashFlowBeforeTax, annualCapitalReserveTotal,
+  capRate, cashOnCashReturn, debtServiceCoverageRatio,
+]);
 
   // Helper function to format currency
   const formatCurrency = (value: number) => {
@@ -607,7 +612,7 @@ export default function PropertyAnalyzerPage() {
           </ResponsiveContainer>
         </div>
 
-        <div className="mt-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+<div className="mt-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {/* Row 1 Metrics */}
           <div className="bg-white p-5 rounded-xl shadow-lg border border-gray-200">
             <h3 className="text-md font-semibold text-orange-600 mb-1">Gross Operating Income</h3>
@@ -620,11 +625,11 @@ export default function PropertyAnalyzerPage() {
           </div>
 
           <div className="bg-white p-5 rounded-xl shadow-lg border border-gray-200">
-            <h3 className="text-md font-semibold text-orange-600 mb-1">Cash Flow (Before Tax)</h3>
-            <p className="text-2xl font-bold text-gray-900">{formatCurrency(cashFlowBeforeTax)}</p>
+            <h3 className="text-md font-semibold text-orange-600 mb-1">Expense Ratio</h3>
+            <p className="text-2xl font-bold text-gray-900">{formatPercentage(expenseRatio)}</p>
           </div>
 
-          {/* New Row 2 Metrics: Cap Rate, DSCR, IRR */}
+          {/* Row 2 Metrics: Cap Rate, DSCR, IRR */}
           <div className="bg-white p-5 rounded-xl shadow-lg border border-gray-200">
             <h3 className="text-md font-semibold text-orange-600 mb-1">Cap Rate</h3>
             <p className="text-2xl font-bold text-gray-900">{formatPercentage(capRate)}</p>
@@ -640,25 +645,15 @@ export default function PropertyAnalyzerPage() {
             <p className="text-2xl font-bold text-gray-900">{formatPercentage(irr)}</p>
           </div>
 
-          {/* Remaining Metrics */}
+          {/* Row 3 Metrics */}
+          <div className="bg-white p-5 rounded-xl shadow-lg border border-gray-200">
+            <h3 className="text-md font-semibold text-orange-600 mb-1">Cash Flow (Before Tax)</h3>
+            <p className="text-2xl font-bold text-gray-900">{formatCurrency(cashFlowBeforeTax)}</p>
+          </div>
+
           <div className="bg-white p-5 rounded-xl shadow-lg border border-gray-200">
             <h3 className="text-md font-semibold text-orange-600 mb-1">Cash Flow (After Capital Reserve)</h3>
             <p className="text-2xl font-bold text-gray-900">{formatCurrency(cashFlowAfterCapitalReserve)}</p>
-          </div>
-
-          <div className="bg-white p-5 rounded-xl shadow-lg border border-gray-200">
-            <h3 className="text-md font-semibold text-orange-600 mb-1">Cash-on-Cash Return</h3>
-            <p className="text-2xl font-bold text-gray-900">{formatPercentage(cashOnCashReturn)}</p>
-          </div>
-
-          <div className="bg-white p-5 rounded-xl shadow-lg border border-gray-200">
-            <h3 className="text-md font-semibold text-orange-600 mb-1">Loan Balance (Year 1)</h3>
-            <p className="text-2xl font-bold text-gray-900">{formatCurrency(year1LoanBalance)}</p>
-          </div>
-          
-          <div className="bg-white p-5 rounded-xl shadow-lg border border-gray-200">
-            <h3 className="text-md font-semibold text-orange-600 mb-1">Annual Debt Service</h3>
-            <p className="text-2xl font-bold text-gray-900">{formatCurrency(annualDebtService)}</p>
           </div>
 
           <div className="bg-white p-5 rounded-xl shadow-lg border border-gray-200">
@@ -666,11 +661,28 @@ export default function PropertyAnalyzerPage() {
             <p className="text-2xl font-bold text-gray-900">{formatPercentage(roiAtHorizon)}</p>
           </div>
 
+          {/* Row 4 Metrics */}
+          <div className="bg-white p-5 rounded-xl shadow-lg border border-gray-200">
+            <h3 className="text-md font-semibold text-orange-600 mb-1">Annual Debt Service</h3>
+            <p className="text-2xl font-bold text-gray-900">{formatCurrency(annualDebtService)}</p>
+          </div>
+
+          <div className="bg-white p-5 rounded-xl shadow-lg border border-gray-200">
+            <h3 className="text-md font-semibold text-orange-600 mb-1">Loan Balance (Year 1)</h3>
+            <p className="text-2xl font-bold text-gray-900">{formatCurrency(year1LoanBalance)}</p>
+          </div>
+
           <div className="bg-white p-5 rounded-xl shadow-lg border border-gray-200">
             <h3 className="text-md font-semibold text-orange-600 mb-1">Break-Even Point</h3>
             <p className="text-2xl font-bold text-gray-900">
               {breakEvenYear !== null ? `${breakEvenYear} years` : 'N/A (No positive cash flow within horizon)'}
             </p>
+          </div>
+
+          {/* Row 5 Metrics */}
+          <div className="bg-white p-5 rounded-xl shadow-lg border border-gray-200">
+            <h3 className="text-md font-semibold text-orange-600 mb-1">Cash-on-Cash Return</h3>
+            <p className="text-2xl font-bold text-gray-900">{formatPercentage(cashOnCashReturn)}</p>
           </div>
 
           <div className="bg-white p-5 rounded-xl shadow-lg border border-gray-200">
@@ -702,7 +714,7 @@ export default function PropertyAnalyzerPage() {
           <input
             type="number"
             id="downPaymentPercentage"
-            value={downPaymentPercentage ?? 0}
+            value={downPaymentPercentage || ''}
             onChange={(e) => setDownPaymentPercentage(Math.max(0, Math.min(100, parseFloat(e.target.value) || 0)))}
             className="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-shadow duration-150 ease-in-out shadow-sm"
             step="0.1"
@@ -716,7 +728,7 @@ export default function PropertyAnalyzerPage() {
           <input
             type="number"
             id="interestRate"
-            value={interestRate ?? 0}
+            value={interestRate || ''}
             onChange={(e) => setInterestRate(Math.max(0, parseFloat(e.target.value) || 0))}
             className="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-shadow duration-150 ease-in-out shadow-sm"
             step="0.1"
@@ -741,7 +753,7 @@ export default function PropertyAnalyzerPage() {
           <input
             type="number"
             id="closingCostsPercentage"
-            value={closingCostsPercentage ?? 0}
+            value={closingCostsPercentage || ''}
             onChange={(e) => setClosingCostsPercentage(Math.max(0, parseFloat(e.target.value) || 0))}
             className="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-shadow duration-150 ease-in-out shadow-sm"
             step="0.1"
@@ -749,19 +761,19 @@ export default function PropertyAnalyzerPage() {
           />
         </div>
 
-        {/* NEW: Annual Appreciation Rate */}
-        <div className="mb-5">
-          <label htmlFor="annualAppreciationRate" className="block text-sm font-medium text-gray-700 mb-1">Annual Appreciation Rate (%)</label>
-          <input
-            type="number"
-            id="annualAppreciationRate"
-            value={annualAppreciationRate ?? 0}
-            onChange={(e) => setAnnualAppreciationRate(Math.max(0, parseFloat(e.target.value) || 0))}
-            className="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-shadow duration-150 ease-in-out shadow-sm"
-            step="0.1"
-            min="0"
-          />
-        </div>
+{/* Disposition Cap Rate */}
+<div className="mb-5">
+  <label htmlFor="dispositionCapRate" className="block text-sm font-medium text-gray-700 mb-1">Disposition Cap Rate (%)</label>
+  <input
+    type="number"
+    id="dispositionCapRate"
+    value={dispositionCapRate || ''}
+    onChange={(e) => setDispositionCapRate(Math.max(0, parseFloat(e.target.value) || 0))}
+    className="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-shadow duration-150 ease-in-out shadow-sm"
+    step="0.1"
+    min="0"
+  />
+</div>
 
         <h3 className="text-xl font-semibold mb-4 text-gray-700 mt-8">RENTS</h3>
         <div className="mb-5">
@@ -795,7 +807,7 @@ export default function PropertyAnalyzerPage() {
           <input
             type="number"
             id="vacancyRate"
-            value={vacancyRate ?? 0}
+            value={vacancyRate || ''}
             onChange={(e) => setVacancyRate(Math.max(0, Math.min(100, parseFloat(e.target.value) || 0)))}
             className="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-shadow duration-150 ease-in-out shadow-sm"
             step="0.1"
@@ -809,7 +821,7 @@ export default function PropertyAnalyzerPage() {
           <input
             type="number"
             id="annualRentalGrowthRate"
-            value={annualRentalGrowthRate ?? 0}
+            value={annualRentalGrowthRate || ''}
             onChange={(e) => setAnnualRentalGrowthRate(Math.max(0, parseFloat(e.target.value) || 0))}
             className="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-shadow duration-150 ease-in-out shadow-sm"
             step="0.1"
@@ -875,7 +887,7 @@ export default function PropertyAnalyzerPage() {
           <input
             type="number"
             id="propertyManagementFeePercentage"
-            value={propertyManagementFeePercentage ?? 0}
+            value={propertyManagementFeePercentage || ''}
             onChange={(e) => setPropertyManagementFeePercentage(Math.max(0, parseFloat(e.target.value) || 0))}
             className="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-shadow duration-150 ease-in-out shadow-sm"
             step="0.1"
