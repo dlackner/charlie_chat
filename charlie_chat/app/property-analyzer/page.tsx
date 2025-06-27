@@ -220,7 +220,7 @@ export default function PropertyAnalyzerPage() {
   // --- Input States: CAPITAL EXPENDITURES (ANNUAL) ---
   const [capitalReservePerUnitAnnual, setCapitalReservePerUnitAnnual] = useState<number>(500); // Per unit, annual
   const [holdingPeriodYears, setHoldingPeriodYears] = useState<number>(10); // Years
-
+  const [deferredCapitalReservePerUnit, setDeferredCapitalReservePerUnit] = useState<number>(0);
   // --- Helper function for formatting and parsing numerical inputs with commas ---
   const formatAndParseNumberInput = (
     setter: React.Dispatch<React.SetStateAction<number>>
@@ -303,14 +303,18 @@ export default function PropertyAnalyzerPage() {
     return capitalReservePerUnitAnnual * numUnits;
   }, [capitalReservePerUnitAnnual, numUnits]);
 
+  const totalDeferredCapitalReserve = useMemo(() => {
+  return deferredCapitalReservePerUnit * numUnits;
+}, [deferredCapitalReservePerUnit, numUnits]);
+
   // Cash Flow & Returns (Year 1)
   const cashFlowBeforeTax = useMemo(() => {
     return netOperatingIncome - annualDebtService;
   }, [netOperatingIncome, annualDebtService]);
 
-  const cashFlowAfterCapitalReserve = useMemo(() => {
-    return cashFlowBeforeTax - annualCapitalReserveTotal;
-  }, [cashFlowBeforeTax, annualCapitalReserveTotal]);
+const cashFlowAfterCapitalReserve = useMemo(() => {
+  return cashFlowBeforeTax - annualCapitalReserveTotal - totalDeferredCapitalReserve;
+}, [cashFlowBeforeTax, annualCapitalReserveTotal, totalDeferredCapitalReserve]);
 
   const capRate = useMemo(() => {
     if (purchasePrice === 0) return 0;
@@ -404,9 +408,10 @@ export default function PropertyAnalyzerPage() {
       currentNetOperatingIncome = currentEffectiveGrossIncome - currentTotalOperatingExpenses;
       currentCashFlowBeforeTax = currentNetOperatingIncome - annualDebtService;
 
-      currentAnnualCapitalReserveTotal = capitalReservePerUnitAnnual * numUnits;
-      const annualCashFlow = currentCashFlowBeforeTax - currentAnnualCapitalReserveTotal;
-      cumulativeCashFlow += annualCashFlow;
+currentAnnualCapitalReserveTotal = capitalReservePerUnitAnnual * numUnits;
+const annualDeferredCapitalReserve = totalDeferredCapitalReserve;
+const annualCashFlow = currentCashFlowBeforeTax - currentAnnualCapitalReserveTotal - annualDeferredCapitalReserve;
+cumulativeCashFlow += annualCashFlow;
 
       if (cumulativeCashFlow >= 0 && currentBreakEvenYear === null) {
         currentBreakEvenYear = y;
@@ -456,17 +461,18 @@ export default function PropertyAnalyzerPage() {
     setIRR(calculatedIRR * 100); // Convert to percentage
 
     // --- Calculate Overall Grade ---
-    const gradeMetrics: GradeMetrics = {
-      irr: calculatedIRR * 100, // Convert to percentage for grading
-      roiAtHorizon: roi,
-      cashOnCashReturn: cashOnCashReturn,
-      debtServiceCoverageRatio: debtServiceCoverageRatio,
-      capRate: capRate,
-      breakEvenYear: currentBreakEvenYear,
-      netOperatingIncome: currentNetOperatingIncome,
-      cashFlowBeforeTax: currentCashFlowBeforeTax,
-      purchasePrice: purchasePrice,
-    };
+const adjustedCashFlowForGrading = currentCashFlowBeforeTax - totalDeferredCapitalReserve;
+const gradeMetrics: GradeMetrics = {
+  irr: calculatedIRR * 100,
+  roiAtHorizon: roi,
+  cashOnCashReturn: cashOnCashReturn,
+  debtServiceCoverageRatio: debtServiceCoverageRatio,
+  capRate: capRate,
+  breakEvenYear: currentBreakEvenYear,
+  netOperatingIncome: currentNetOperatingIncome,
+  cashFlowBeforeTax: adjustedCashFlowForGrading,
+  purchasePrice: purchasePrice,
+};
     setOverallGrade(calculateOverallGrade(gradeMetrics));
 
 }, [
@@ -474,7 +480,7 @@ export default function PropertyAnalyzerPage() {
   propertyTaxes, insurance, propertyManagementFeePercentage, maintenanceRepairsAnnual, utilitiesAnnual,
   contractServicesAnnual, payrollAnnual, marketingAnnual, gAndAAnnual,
   otherExpensesAnnual, expenseGrowthRate,
-  capitalReservePerUnitAnnual, holdingPeriodYears,
+  capitalReservePerUnitAnnual, deferredCapitalReservePerUnit, holdingPeriodYears,
   purchasePrice, downPaymentPercentage, interestRate, loanTermYears, closingCostsPercentage,
   dispositionCapRate, // Target cap rate at sale
   grossPotentialRent, effectiveGrossIncome, propertyManagementFeeAmount, totalOperatingExpenses, netOperatingIncome,
@@ -999,7 +1005,7 @@ export default function PropertyAnalyzerPage() {
           />
         </div>
 
-        <h3 className="text-xl font-semibold mb-4 text-gray-700 mt-8">CAPITAL EXPENDITURES</h3>
+        <h3 className="text-xl font-semibold mb-4 text-gray-700 mt-8">CAPITAL EXPENDITURES (ANNUAL)</h3>
         <div className="mb-5">
           <label htmlFor="capitalReservePerUnitAnnual" className="block text-sm font-medium text-gray-700 mb-1">Capital Reserve (per unit) ($)</label>
           <input
@@ -1012,7 +1018,18 @@ export default function PropertyAnalyzerPage() {
             suppressHydrationWarning={true}
           />
         </div>
-
+<div className="mb-5">
+  <label htmlFor="deferredCapitalReservePerUnit" className="block text-sm font-medium text-gray-700 mb-1">Deferred Capital Reserve (per unit) ($)</label>
+  <input
+    type="text"
+    id="deferredCapitalReservePerUnit"
+    value={(deferredCapitalReservePerUnit ?? 0).toLocaleString('en-US')}
+    onChange={formatAndParseNumberInput(setDeferredCapitalReservePerUnit)}
+    className="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-shadow duration-150 ease-in-out shadow-sm"
+    step="10"
+    suppressHydrationWarning={true}
+  />
+</div>
         <div className="mb-6">
           <label htmlFor="holdingPeriodYears" className="block text-sm font-medium text-gray-700 mb-1">Holding Period (Years)</label>
           <div className="flex items-center">
