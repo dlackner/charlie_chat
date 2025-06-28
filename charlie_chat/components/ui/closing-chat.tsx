@@ -7,7 +7,25 @@ import { Sidebar } from "@/components/ui/sidebar";
 import { Plus, SendHorizonal } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
+import { useChat } from "@/contexts/ChatContext";
+import { ComposerAddAttachment, ComposerAttachments } from "@/components/attachment";
 import type { User } from '@supabase/supabase-js'
+import { useChatRuntime } from "@assistant-ui/react-ai-sdk";
+import { AssistantRuntimeProvider } from "@assistant-ui/react";
+import {
+  Attachment,
+  AttachmentStatus,
+} from "@assistant-ui/react";
+import OpenAI from "openai";
+
+// Extend the Window interface to include our custom properties
+declare global {
+  interface Window {
+    __LATEST_FILE_ID__?: string;
+    __LATEST_FILE_NAME__?: string;
+    __CURRENT_THREAD_ID__?: string;
+  }
+}
 
 //const DEFAULT_USER_CLASS: UserClass = 'charlie_chat'; 
 //const [userClass, setUserClass] = useState<UserClass>('charlie_chat'); // WE SET THIS DOWN BELOW
@@ -86,16 +104,102 @@ const EXAMPLES = [
   "How do I get started in multifamily investing? ",
 ];
 
+// PDF Attachment Adapter
+class PDFAttachmentAdapter {
+  matches(attachment: Attachment) {
+    return attachment.file?.type === "application/pdf";
+  }
+
+async send(attachment: Attachment): Promise<{
+  id: string;
+  type: "document";
+  name: string;
+  content: any[];
+  status: AttachmentStatus;
+}> {
+  const openai = new OpenAI({
+    apiKey: process.env.NEXT_PUBLIC_OPENAI_API_KEY,
+    dangerouslyAllowBrowser: true,
+  });
+
+  const uploaded = await openai.files.create({
+    file: attachment.file!,
+    purpose: "assistants",
+  });
+
+  // Store the file_id globally so we can access it later
+  window.__LATEST_FILE_ID__ = uploaded.id;
+  window.__LATEST_FILE_NAME__ = attachment.file!.name;
+  
+  console.log("📎 File uploaded with ID:", uploaded.id);
+
+  return {
+    id: attachment.id,
+    type: "document",
+    name: attachment.file!.name,
+    content: [
+      {
+        type: "file_search",
+        file_id: uploaded.id,
+      },
+    ],
+    status: { type: "complete" },
+  };
+}
+
+  async remove(attachment: Attachment) {
+    const openai = new OpenAI({
+      apiKey: process.env.NEXT_PUBLIC_OPENAI_API_KEY,
+      dangerouslyAllowBrowser: true,
+    });
+    
+    const fileId = (attachment.content?.[0] as any)?.file_id;
+    if (fileId) {
+      try {
+        await openai.files.del(fileId);
+      } catch (err) {
+        console.warn("Failed to delete file from OpenAI:", err);
+      }
+    }
+  }
+}
 
 export function ClosingChat() {
-//const [userClass, setUserClass] = useState<UserClass>(DEFAULT_USER_CLASS);
-const [userClass, setUserClass] = useState<UserClass>('charlie_chat'); // Remove the line above when we go to production
+  // Add this component here
+  const PropertyAnalysisLoader = ({ propertyCount, currentProperty = null }: { propertyCount: number; currentProperty?: string | null }) => {
+    return (
+      <div className="flex justify-start mb-4">
+        <div className="inline-block max-w-[75%] px-4 py-3 bg-gray-100 text-gray-800 rounded-xl rounded-bl-none shadow-sm">
+          <div className="flex items-center gap-3">
+            <div className="w-5 h-5 border-2 border-gray-300 border-t-blue-500 rounded-full animate-spin"></div>
+            <div className="leading-relaxed">
+              <div className="font-medium">
+                {currentProperty 
+                  ? `Analyzing ${currentProperty}...` 
+                  : `Wait while Charlie analyzes your ${propertyCount} ${propertyCount === 1 ? 'property' : 'properties'}`
+                }
+              </div>
+              <div className="text-sm text-gray-600 mt-1">
+                This may take a moment...
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+
+const [userClass, setUserClass] = useState<UserClass>('charlie_chat'); 
+
 
 const {
   user: currentUser,
   isLoading: isLoadingAuth,
   supabase,
 } = useAuth() as { user: ExtendedUser; isLoading: boolean; supabase: any };
+
+const { chatState, updateChatState, clearChat } = useChat();
 
 useEffect(() => {
   const fetchStripeCustomerId = async () => {
@@ -159,21 +263,133 @@ const availablePackages = userClass === 'trial' ? [] : getPackagesFor(userClass)
 
   const isLoggedIn = !!currentUser;
 
-  const [messages, setMessages] = useState<{ role: string; content: string, isPropertyDump?: boolean }[]>([]);
-  const [input, setInput] = useState("");
-  const [threadId, setThreadId] = useState<string | null>(null);
+  const messages = chatState.messages;
+  const input = chatState.input;
+  const threadId = chatState.threadId;
+  const listings = chatState.listings;
+  const selectedListings = chatState.selectedListings;
   const [showProModal, setShowProModal] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [isPro, setIsPro] = useState(false);
   const [count, setCount] = useState(0);
-  const [listings, setListings] = useState<Listing[]>([]);
-  const [selectedListings, setSelectedListings] = useState<Listing[]>([]);
   const [currentBatch, setCurrentBatch] = useState(0);
   const [batchSize] = useState(2);
   const [isWaitingForContinuation, setIsWaitingForContinuation] = useState(false);
   const [totalPropertiesToAnalyze, setTotalPropertiesToAnalyze] = useState(0);
   const hasMessages = messages.length > 0;
   const [isStreaming, setIsStreaming] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+const [isUploadingFile, setIsUploadingFile] = useState(false);
+const runtime = useChatRuntime({
+  api: "/api/chat",
+  adapters: {
+    attachments: {
+      accept: "application/pdf",
+      add: async ({ file }: { file: File }) => {
+  // Clear any previous errors
+  setUploadError(null);
+  
+  // Validate file type
+  if (file.type !== "application/pdf") {
+    const errorMsg = `Only PDF files are supported. You tried to upload: ${file.name}`;
+    setUploadError(errorMsg);
+    
+    // Auto-clear error after 5 seconds
+    setTimeout(() => setUploadError(null), 5000);
+    
+    throw new Error(errorMsg);
+  }
+
+  // Set loading state at the start
+  setIsUploadingFile(true);
+  
+  try {
+    // Auto-clear existing attachments before adding new one
+    try {
+      // Clear visual elements first
+      const attachmentElements = document.querySelectorAll('div[class*="flex-grow"][class*="basis-0"]');
+      attachmentElements.forEach(container => {
+        const textContent = container.textContent || '';
+        if (textContent.includes('Property_Profile') || textContent.includes('.pdf')) {
+          const parentContainer = container.closest('div[class*="relative mt-3"]');
+          if (parentContainer) {
+            parentContainer.remove();
+          } else {
+            container.remove();
+          }
+        }
+      });
+      
+      // Clear stored file references
+      if ((window as any).__LATEST_FILE_ID__) {
+        // Delete previous file from OpenAI
+        const openai = new OpenAI({
+          apiKey: process.env.NEXT_PUBLIC_OPENAI_API_KEY,
+          dangerouslyAllowBrowser: true,
+        });
+        try {
+          await openai.files.del((window as any).__LATEST_FILE_ID__);
+          console.log("Deleted previous file:", (window as any).__LATEST_FILE_ID__);
+        } catch (err) {
+          console.warn("Failed to delete previous file:", err);
+        }
+      }
+      
+      delete (window as any).__LATEST_FILE_ID__;
+      delete (window as any).__LATEST_FILE_NAME__;
+      
+      // Small delay to ensure cleanup completes
+      await new Promise(resolve => setTimeout(resolve, 100));
+    } catch (e) {
+      console.log("Could not auto-clear existing attachments:", e);
+    }
+
+   // Now add the new attachment
+       const adapter = new PDFAttachmentAdapter();
+const result = await adapter.send({
+  id: crypto.randomUUID(),
+  file,
+  type: "document",
+  name: file.name,
+  contentType: "application/pdf",
+  status: { type: "requires-action", reason: "composer-send" }
+});
+    // Clear thread to start fresh conversation with new document
+    localStorage.removeItem("threadId");
+    delete (window as any).__CURRENT_THREAD_ID__;
+
+    console.log("New document uploaded - cleared thread for fresh conversation");
+    return {
+      ...result,
+      contentType: "application/pdf",
+      file: file
+    };
+    
+  } catch (error) {
+    console.error("File upload failed:", error);
+    throw error;
+ } finally {
+    // Clear loading state when done (success or failure)
+    setIsUploadingFile(false);
+  }
+},
+      remove: async (attachment: Attachment) => {
+        const fileId = (attachment.content?.[0] as any)?.file_id;
+        if (fileId) {
+          try {
+            const openai = new OpenAI({
+              apiKey: process.env.NEXT_PUBLIC_OPENAI_API_KEY,
+              dangerouslyAllowBrowser: true,
+            });
+            await openai.files.del(fileId);
+          } catch (err) {
+            console.warn("Failed to delete file from OpenAI:", err);
+          }
+        }
+      },
+    } as any,
+  },
+});
   const handleCreditsUpdated = (newBalance: number) => {
     //console.log("[ClosingChat] handleCreditsUpdated CALLED with newBalance:", newBalance);
     setUserCredits(prevCredits => {
@@ -182,28 +398,83 @@ const availablePackages = userClass === 'trial' ? [] : getPackagesFor(userClass)
     });
   };
   
+  const handleDoneWithProperty = async () => {
+  try {
+    // 1. Delete the file from OpenAI
+    if ((window as any).__LATEST_FILE_ID__) {
+      const openai = new OpenAI({
+        apiKey: process.env.NEXT_PUBLIC_OPENAI_API_KEY,
+        dangerouslyAllowBrowser: true,
+      });
+      
+      try {
+        await openai.files.del((window as any).__LATEST_FILE_ID__);
+        console.log("🗑️ Deleted file from OpenAI:", (window as any).__LATEST_FILE_ID__);
+      } catch (err) {
+        console.warn("Failed to delete file from OpenAI:", err);
+      }
+    }
+
+    // 2. Clear all file references
+    delete (window as any).__LATEST_FILE_ID__;
+    delete (window as any).__LATEST_FILE_NAME__;
+
+    // 3. Force a re-render to update the UI
+    updateChatState({ messages: [...messages] }); // Trigger re-render
+
+    console.log("✅ Done with property - switched back to general mode");
+    
+  } catch (error) {
+    console.error("Error removing property:", error);
+  }
+};
+
   const toggleListingSelect = (listing: any) => {
     const exists = selectedListings.some((l) => l.id === listing.id);
     if (exists) {
-      setSelectedListings((prev) => prev.filter((l) => l.id !== listing.id));
+      updateChatState({ selectedListings: selectedListings.filter((l) => l.id !== listing.id) });
     } else {
-      setSelectedListings((prev) => [...prev, listing]);
+      updateChatState({ selectedListings: [...selectedListings, listing] });
     }
   };
+const onSendToGPT = (filteredListings?: any[], autoProcessOrBatchIndex?: boolean | number) => {
+  // Handle both calling patterns
+  let batchIndex = 0;
+  let autoProcess = false;
+  let listingsToProcess = selectedListings;
 
-const onSendToGPT = (batchIndex = 0, autoProcess = false) => {
+  if (Array.isArray(filteredListings)) {
+    // Called from sidebar with filtered listings
+    listingsToProcess = filteredListings;
+    batchIndex = 0;
+    autoProcess = typeof autoProcessOrBatchIndex === 'boolean' ? autoProcessOrBatchIndex : false;
+  } else {
+    // Called internally with batch index (existing behavior)
+    batchIndex = filteredListings || 0;
+    autoProcess = typeof autoProcessOrBatchIndex === 'boolean' ? autoProcessOrBatchIndex : false;
+    listingsToProcess = selectedListings;
+  }
   // Batch processing logic
 if (batchIndex === 0) {
   // Starting fresh analysis - store total count
   setTotalPropertiesToAnalyze(selectedListings.length);
   setCurrentBatch(0);
   setIsWaitingForContinuation(false);
+  
+  // Add loading message to chat
+  updateChatState({
+    messages: [...messages, {
+      role: "assistant",
+      content: "",
+      metadata: { isLoading: true, propertyCount: selectedListings.length }
+    }]
+  });
 }
 
 // Calculate which properties to analyze in this batch
 const startIndex = batchIndex * batchSize;
-const endIndex = Math.min(startIndex + batchSize, selectedListings.length);
-const propertiesForThisBatch = selectedListings.slice(startIndex, endIndex);
+const endIndex = Math.min(startIndex + batchSize, listingsToProcess.length);
+const propertiesForThisBatch = listingsToProcess.slice(startIndex, endIndex);
 
 console.log(`📊 Processing batch ${batchIndex + 1}, properties ${startIndex + 1}-${endIndex} of ${selectedListings.length}`);
 
@@ -253,69 +524,63 @@ if (propertiesForThisBatch.length === 0) {
     const mainDisplayAddress = listing.address?.address || "Unknown Address";
     
     // Send ALL available data instead of filtering specific fields
-    const propertyDetails = Object.entries(listing)
-      .filter(([key, value]) => {
-        // Skip null, undefined, empty strings, and the main address (since we show it separately)
-        return value !== null && 
-               value !== undefined && 
-               value !== "" && 
-               key !== 'address'; // We handle address separately
-      })
-      .map(([key, value]) => {
-        // Use field mapping if available, otherwise format the key nicely
-        const fieldLabel = fieldMappings[key] || key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
-        
-        // Handle different value types
-        if (typeof value === 'boolean') {
-          value = value ? "Yes" : "No";
-        } else if (typeof value === 'object' && value !== null) {
-          if (key === "mailAddress") {
-            // Special handling for mail address object
-            const mailAddr = value as any;
-            let formattedMailAddress = "";
-            if (mailAddr.street || mailAddr.address) {
-              formattedMailAddress += (mailAddr.street || mailAddr.address);
-            }
-            if (mailAddr.city) {
-              formattedMailAddress += formattedMailAddress ? `, ${mailAddr.city}` : mailAddr.city;
-            }
-            if (mailAddr.state) {
-              formattedMailAddress += formattedMailAddress ? `, ${mailAddr.state}` : mailAddr.state;
-            }
-            if (mailAddr.zip) {
-              formattedMailAddress += formattedMailAddress ? ` ${mailAddr.zip}` : mailAddr.zip;
-            }
-            value = formattedMailAddress.trim() || "N/A";
-          } else {
-            // For other objects, stringify them
-            value = JSON.stringify(value);
-          }
-        } else if (typeof value === 'number') {
-          // Format currency fields
-          if (key.toLowerCase().includes('value') || 
-              key.toLowerCase().includes('price') || 
-              key.toLowerCase().includes('amount') || 
-              key.toLowerCase().includes('equity') ||
-              key.toLowerCase().includes('balance') ||
-              key.toLowerCase().includes('rent')) {
-            value = value.toLocaleString('en-US', {
-              style: 'currency',
-              currency: 'USD',
-              minimumFractionDigits: 0,
-              maximumFractionDigits: 0,
-            });
-          } else if (key.toLowerCase().includes('squar') || key.toLowerCase().includes('feet')) {
-            // Format square footage
-            value = `${value.toLocaleString()} sq ft`;
-          } else {
-            // For other numbers, just add commas
-            value = value.toLocaleString();
-          }
+    // Data is already filtered by sidebar, just format it nicely
+const propertyDetails = Object.entries(listing)
+  .filter(([key, value]) => {
+    return value !== null && 
+           value !== undefined && 
+           value !== "" && 
+           key !== 'address' && 
+           key !== 'id';
+  })
+  .map(([key, value]) => {
+    const fieldLabel = fieldMappings[key] || key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
+    
+    if (typeof value === 'boolean') {
+      value = value ? "Yes" : "No";
+    } else if (typeof value === 'object' && value !== null) {
+      if (key === "mailAddress") {
+        const mailAddr = value as any;
+        let formattedMailAddress = "";
+        if (mailAddr.street || mailAddr.address) {
+          formattedMailAddress += (mailAddr.street || mailAddr.address);
         }
-        
-        return `${fieldLabel}: ${value}`;
-      })
-      .join('\n');
+        if (mailAddr.city) {
+          formattedMailAddress += formattedMailAddress ? `, ${mailAddr.city}` : mailAddr.city;
+        }
+        if (mailAddr.state) {
+          formattedMailAddress += formattedMailAddress ? `, ${mailAddr.state}` : mailAddr.state;
+        }
+        if (mailAddr.zip) {
+          formattedMailAddress += formattedMailAddress ? ` ${mailAddr.zip}` : mailAddr.zip;
+        }
+        value = formattedMailAddress.trim() || "N/A";
+      } else {
+        value = JSON.stringify(value);
+      }
+    } else if (typeof value === 'number') {
+      if (key.toLowerCase().includes('value') || 
+          key.toLowerCase().includes('price') || 
+          key.toLowerCase().includes('amount') || 
+          key.toLowerCase().includes('equity') ||
+          key.toLowerCase().includes('balance') ||
+          key.toLowerCase().includes('rent')) {
+        value = value.toLocaleString('en-US', {
+          style: 'currency',
+          currency: 'USD',
+          minimumFractionDigits: 0,
+          maximumFractionDigits: 0,
+        });
+      } else if (key.toLowerCase().includes('squar') || key.toLowerCase().includes('feet')) {
+        value = `${value.toLocaleString()} sq ft`;
+      } else {
+        value = value.toLocaleString();
+      }
+    }
+    
+    return `${fieldLabel}: ${value}`;
+  })
+  .join('\n');
 
     // Handle the main address separately to include full address details
     let addressInfo = "";
@@ -339,7 +604,7 @@ if (propertiesForThisBatch.length === 0) {
 
   const summaryPrompt = `Senior multifamily analyst: Analyze each property using ONLY provided data. Calculate exact numbers, no generic statements.
 
-  For EACH property:
+  For EACH property calculate but do not show the calculations::
   
   **CALCULATIONS REQUIRED:**
   - LTV: (openMortgageBalance ÷ estimatedValue) × 100
@@ -382,7 +647,7 @@ if (hasMoreProperties && !autoProcess) {
   setIsWaitingForContinuation(true);
 } else if (!hasMoreProperties) {
   // All done - clear selections
-  setSelectedListings([]);
+  updateChatState({ selectedListings: [] });
   setIsWaitingForContinuation(false);
   setCurrentBatch(0);
   setTotalPropertiesToAnalyze(0);
@@ -445,7 +710,8 @@ const fetchUserCreditsAndClass = async (userToFetchFor: User) => {
       isMounted = false;
       //console.log("[ClosingChat CreditsEffect] Cleanup.");
     };
-  }, [currentUser, supabase]);
+  }, [currentUser, supabase])
+  ;
 
   // Safe access to localStorage on client only (for non-auth critical things or fallbacks)
   useEffect(() => {
@@ -456,10 +722,7 @@ const fetchUserCreditsAndClass = async (userToFetchFor: User) => {
       setIsPro(storedPro); // This might be overridden if logged in and fetching from DB
       setCount(isNaN(storedCount) ? 0 : storedCount);
     }
-    const savedThreadId = localStorage.getItem("threadId");
-    if (savedThreadId) {
-      setThreadId(savedThreadId);
-    }
+    // ThreadId is now handled by ChatContext
   }, [isLoggedIn]); // Re-run if login status changes
 
 const scrollToBottom = useCallback(() => {
@@ -482,35 +745,212 @@ useEffect(() => {
   return () => clearTimeout(timeoutId);
 }, [messages, throttledScroll]);
 
-  const sendMessage = async (message: string, isPropertyDump = false, displayMessage?: string) => {
-    if (!message.trim()) return;
+ const sendMessage = async (message: string, isPropertyDump = false, displayMessage?: string) => {
+  if (!message.trim()) return;
+  
+  // Your existing message limit checks
+  let currentMessageCount = count;
+  if (!isLoggedIn) {
+    let guestCount = Number(localStorage.getItem("questionCount") || 0);
+    if (isNaN(guestCount)) guestCount = 0;
+    currentMessageCount = guestCount;
+  }
+
+  if (!isLoggedIn && !isPro && currentMessageCount >= 3) {
+    setShowModal(true);
+    return;
+  }
+
+  if (!isLoggedIn) {
+    localStorage.setItem("questionCount", String(currentMessageCount + 1));
+  }
+
+  setCount((prev) => prev + 1);
+
+  // Check if there are attachments in the UI
+const hasAttachments = document.querySelector('[data-attachment]') !== null ||
+                      document.querySelector('.aui-attachment') !== null ||
+                      document.querySelector('[class*="attachment"]') !== null ||
+                      document.querySelector('[class*="file"]') !== null ||
+                      Array.from(document.querySelectorAll('div')).some(el => el.textContent?.includes('Property_Profil'));
+
+console.log("Attachment detection:", {
+  dataAttachment: !!document.querySelector('[data-attachment]'),
+  auiAttachment: !!document.querySelector('.aui-attachment'),
+  anyAttachment: !!document.querySelector('[class*="attachment"]'),
+  fileElement: !!document.querySelector('[class*="file"]'),
+  propertyDiv: Array.from(document.querySelectorAll('div')).some(el => el.textContent?.includes('Property_Profil')),
+  hasAttachments
+});
+
+console.log("All possible attachment elements:");
+console.log("Elements with 'document':", document.querySelectorAll('*[class*="document"]'));
+console.log("Elements with 'file':", document.querySelectorAll('*[class*="file"]'));
+console.log("Elements with 'composer':", document.querySelectorAll('*[class*="composer"]'));
+console.log("All divs with text content:", Array.from(document.querySelectorAll('div')).filter(el => el.textContent?.includes('Property_Profil')));
+  
+if (hasAttachments) {
+  console.log("Using custom system WITH attachments");
+    localStorage.removeItem("threadId");
+    updateChatState({ threadId: null });
+  
+  // Try to extract attachment data from the DOM/runtime state
+  let attachmentData = [];
+  
+  // Method 1: Try to find attachment data in the runtime state
+  try {
+    // Look for attachment data in various places
+    const runtimeState = runtime.getState?.();
+    if (runtimeState?.attachments) {
+      attachmentData = runtimeState.attachments;
+    }
+  } catch (e) {
+    console.log("Runtime getState failed:", e);
+  }
+  
+  // Method 2: If no runtime data, create attachment data from DOM
+if (attachmentData.length === 0) {
+  const fileElements = document.querySelectorAll('[class*="file"]');
+  const propertyDivs = Array.from(document.querySelectorAll('div')).filter(el => el.textContent?.includes('Property_Profil'));
+  
+  if (fileElements.length > 0 || propertyDivs.length > 0) {
+    console.log("Found attachment elements but need to extract file_id");
+    console.log("File elements:", fileElements);
+    console.log("Property divs:", propertyDivs);
     
-    // The 'count' and 'isPro' are now potentially managed by Supabase user data for logged-in users
-    // For guests, it still uses localStorage or default values
-    let currentMessageCount = count;
-    if (!isLoggedIn) {
-        let guestCount = Number(localStorage.getItem("questionCount") || 0);
-        if (isNaN(guestCount)) guestCount = 0;
-        currentMessageCount = guestCount;
+    // Use the stored file_id from upload
+    const storedFileId = window.__LATEST_FILE_ID__;
+    const storedFileName = window.__LATEST_FILE_NAME__ || "Property_Profile.pdf";
+    
+    if (storedFileId) {
+      console.log("Using stored file_id:", storedFileId);
+      attachmentData.push({
+        id: crypto.randomUUID(),
+        type: "document", 
+        name: storedFileName,
+        content: [{
+          type: "file_search",
+          file_id: storedFileId
+        }],
+        status: { type: "complete" }
+      });
+    } else {
+      console.log("No stored file_id found - creating placeholder");
+      attachmentData.push({
+        id: crypto.randomUUID(),
+        type: "document", 
+        name: "Property_Profile.pdf",
+        content: [{
+          type: "file_search",
+          file_id: "PLACEHOLDER"
+        }],
+        status: { type: "complete" }
+      });
     }
+  }
+}
+  
+  console.log("Extracted attachment data:", attachmentData);
+  
+// Add message to your UI for display
+const messageToDisplay = displayMessage || message;
+updateChatState({
+  messages: [...messages, 
+    { role: "user", content: messageToDisplay, metadata: { isPropertyDump } }, 
+    { role: "assistant", content: "" }
+  ],
+  input: ""
+});
 
-    if (!isLoggedIn && !isPro && currentMessageCount >= 3) {
-      setShowModal(true);
-      return;
+// Let the AI decide if the document is relevant
+const enhancedMessage = message; // Don't force document usage
+
+const res = await fetch("/api/chat", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({ 
+    message: enhancedMessage,  // Just the original message
+    threadId,
+    attachments: attachmentData  // Attachments available but not forced
+  }),
+});
+
+
+// Continue with your existing streaming logic...
+const reader = res.body?.getReader();
+const decoder = new TextDecoder("utf-8");
+
+if (reader) {
+  let fullText = ""; 
+
+  while (true) {
+    const { value, done } = await reader.read();
+    if (done) break;
+
+    const chunk = decoder.decode(value, { stream: true });
+    const lines = chunk.split("\n").filter((line) => line.trim().startsWith("data:"));
+
+    for (const line of lines) {
+      const json = line.replace("data: ", "").trim();
+      if (json === "[DONE]") return;
+
+      try {
+        const parsed = JSON.parse(json);
+        const contentBlocks = parsed?.data?.delta?.content;
+
+        if (Array.isArray(contentBlocks)) {
+          for (const block of contentBlocks) {
+            if (block.type === "text" && block.text?.value) {
+              const delta = block.text.value;
+
+              fullText += delta;
+             const newMessages = [...messages];
+  
+  // Remove any loading messages
+  const filteredMessages = newMessages.filter(msg => !msg.metadata?.isLoading);
+  
+  // Add or update the assistant response
+  if (filteredMessages.length > 0 && filteredMessages[filteredMessages.length - 1].role === 'assistant') {
+      filteredMessages[filteredMessages.length - 1].content = fullText;
+  } else {
+    filteredMessages.push({ role: "assistant", content: fullText });
+  }
+  
+  updateChatState({ messages: filteredMessages });
+            }
+          }
+        }
+      } catch (err) {
+        console.warn("❌ Failed to parse line:", json, err);
+      }
     }
-
-    if (!isLoggedIn) {
-        localStorage.setItem("questionCount", String(currentMessageCount + 1));
+  }
+  
+  // Handle threadId assignment
+  if (!threadId && res.headers) {
+    const newThreadId = res.headers.get("x-thread-id");
+    if (newThreadId && newThreadId.startsWith("thread_")) {
+      const titles = JSON.parse(localStorage.getItem("chatTitles") || "{}");
+      titles[newThreadId] = message.slice(0, 50);
+      localStorage.setItem("chatTitles", JSON.stringify(titles));
+      updateChatState({ threadId: newThreadId });
+      localStorage.setItem("threadId", newThreadId);
     }
-    // If logged in, token decrementing should happen server-side or via a call to update Supabase DB
-
-    setCount((prev) => prev + 1); // This now reflects either guest count or DB-driven count
-
-    // Use displayMessage if provided (for property analysis), otherwise use the actual message
+  }
+}
+  
+} else {
+  console.log("Using custom system (no attachments)");
+    
+    // Your existing custom sendMessage logic
     const messageToDisplay = displayMessage || message;
-    
-    setMessages((prev) => [...prev, { role: "user", content: messageToDisplay, isPropertyDump }, { role: "assistant", content: "" }]);
-    setInput("");
+    updateChatState({
+      messages: [...messages, 
+        { role: "user", content: messageToDisplay, metadata: { isPropertyDump } }, 
+        { role: "assistant", content: "" }
+      ],
+      input: ""
+    });
 
     const res = await fetch("/api/chat", {
       method: "POST",
@@ -518,38 +958,18 @@ useEffect(() => {
       body: JSON.stringify({ message, threadId }),
     });
 
-    const resClone = res.clone();
-    let resJson: any = {};
-
-    try {
-      const contentType = resClone.headers.get("Content-Type") || "";
-      if (contentType.includes("application/json")) {
-        resJson = await resClone.json();
-
-        if (resJson.autoSwitched && resJson.threadId) {
-          console.warn("⚠️ Backend forked to new thread due to stuck run:", resJson.threadId);
-          setThreadId(resJson.threadId);
-          localStorage.setItem("threadId", resJson.threadId);
-
-          const titles = JSON.parse(localStorage.getItem("chatTitles") || "{}");
-          titles[resJson.threadId] = message.slice(0, 50);
-          localStorage.setItem("chatTitles", JSON.stringify(titles));
-        }
-      }
-    } catch (e) {
-    }
-    
-    if (messages.length === 0 && message.trim().length > 0) {
-      const newThreadId = res.headers.get("x-thread-id");
-    
-      if (newThreadId && newThreadId.startsWith("thread_")) {
-        const titles = JSON.parse(localStorage.getItem("chatTitles") || "{}");
-        titles[newThreadId] = message.slice(0, 50); 
-        localStorage.setItem("chatTitles", JSON.stringify(titles));
-        setThreadId(newThreadId);
-        localStorage.setItem("threadId", newThreadId);
-      }
-    }
+    // Handle threadId assignment
+if (!threadId && res.headers) {
+  const newThreadId = res.headers.get("x-thread-id");
+  if (newThreadId && newThreadId.startsWith("thread_")) {
+    const titles = JSON.parse(localStorage.getItem("chatTitles") || "{}");
+    titles[newThreadId] = message.slice(0, 50);
+    localStorage.setItem("chatTitles", JSON.stringify(titles));
+    updateChatState({ threadId: newThreadId });
+    localStorage.setItem("threadId", newThreadId);
+  }
+}
+    // Your existing streaming logic...
     const reader = res.body?.getReader();
     const decoder = new TextDecoder("utf-8");
     
@@ -577,14 +997,19 @@ useEffect(() => {
                   const delta = block.text.value;
     
                   fullText += delta;
-                  setMessages((prev) => {
-                    const newMessages = [...prev];
-                    if (newMessages.length > 0 && newMessages[newMessages.length - 1].role === 'assistant') {
-                        newMessages[newMessages.length - 1].content = fullText;
-                        return newMessages;
-                    }
-                    return [...newMessages, { role: "assistant", content: fullText }];
-                  });
+                  const newMessages = [...messages];
+  
+  // Remove any loading messages
+  const filteredMessages = newMessages.filter(msg => !msg.metadata?.isLoading);
+  
+  // Add or update the assistant response
+  if (filteredMessages.length > 0 && filteredMessages[filteredMessages.length - 1].role === 'assistant') {
+      filteredMessages[filteredMessages.length - 1].content = fullText;
+  } else {
+    filteredMessages.push({ role: "assistant", content: fullText });
+  }
+  
+  updateChatState({ messages: filteredMessages });
                 }
               }
             }
@@ -593,18 +1018,10 @@ useEffect(() => {
           }
         }
       }
-      if (!threadId && res.headers) {
-        const newThreadId = res.headers.get("x-thread-id");
-        if (newThreadId && newThreadId.startsWith("thread_")) {
-          const titles = JSON.parse(localStorage.getItem("chatTitles") || "{}");
-          titles[newThreadId] = message.slice(0, 50);
-          localStorage.setItem("chatTitles", JSON.stringify(titles));
-          setThreadId(newThreadId);
-          localStorage.setItem("threadId", newThreadId);
-        }
-      }
+        
     }
-  };
+  }
+};
 
 const handlePackageSelection = async (userClass: string, amount: number) => {
   if (!currentUser?.id) {
@@ -643,39 +1060,38 @@ const handlePackageSelection = async (userClass: string, amount: number) => {
     );
   }
 
-  return (
+return (
+  <AssistantRuntimeProvider runtime={runtime}>
     <>
       {/* Main layout container */}
       <div className="flex h-screen overflow-hidden bg-white text-black">
          {/* Sidebar */}
-         <Sidebar
-          onSearch={async (filters: Record<string, string | number | boolean>) => {
-           //console.log("🚀 Sending API request:", filters); 
-
-            try {
-              const res = await fetch("/api/realestateapi", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(filters),
-              });
-            
-              const data = await res.json();
-              //console.log("🔍 Raw Returned data:", data);
-              setListings(data || []);
-            } catch (err) {
-              console.error("Realestateapi API error:", err);
-            }
-          }}
-          listings={listings}
-          selectedListings={selectedListings}
-          toggleListingSelect={toggleListingSelect}
-          onSendToGPT={onSendToGPT}
-          isLoggedIn={isLoggedIn}
-          triggerAuthModal={() => setShowModal(true)}
-          onCreditsUpdate={handleCreditsUpdated}
-          userClass={userClass}
-          triggerBuyCreditsModal={() => setShowCreditOptionsModal(true)}
-        />
+ 
+<Sidebar
+  onSearch={async (filters: Record<string, string | number | boolean>) => {
+    try {
+      const res = await fetch("/api/realestateapi", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(filters),
+      });
+    
+      const data = await res.json();
+      updateChatState({ listings: data || [] });
+    } catch (err) {
+      console.error("Realestateapi API error:", err);
+    }
+  }}
+  listings={listings}
+  selectedListings={selectedListings}
+  toggleListingSelect={toggleListingSelect}
+  onSendToGPT={onSendToGPT}
+  isLoggedIn={isLoggedIn}
+  triggerAuthModal={() => setShowModal(true)}
+  onCreditsUpdate={handleCreditsUpdated}
+  userClass={userClass}
+  triggerBuyCreditsModal={() => setShowCreditOptionsModal(true)}
+/>
 
        {/* Left: Chat UI */}
 <div className="flex-1 flex flex-col items-center justify-start overflow-hidden">
@@ -711,13 +1127,23 @@ const handlePackageSelection = async (userClass: string, amount: number) => {
   {/* Message list */}
   <div className={`w-full max-w-4xl flex-1 overflow-y-auto px-6 space-y-4 transition-all duration-500 ease-in-out ${
     hasMessages 
-      ? "py-2 pb-32" // Minimal top padding when chat is active
-      : "py-6 pb-32" // Full padding when no messages
+      ? "py-2 pb-12" // Minimal top padding when chat is active
+      : "py-6 pb-12" // Full padding when no messages
   }`}>
     {/* Rest of your messages mapping code stays exactly the same */}
     {messages.map((m, i) => {
-      const isUser = m.role === "user";
-      const cleanContent = m.content
+  // Show loading component for loading messages
+  if (m.metadata?.isLoading) {
+    return (
+      <PropertyAnalysisLoader 
+        key={i}
+        propertyCount={m.metadata?.propertyCount || 0} 
+      />
+    );
+  }
+  
+  const isUser = m.role === "user";
+  const cleanContent = m.content
         .replace(/\s?【\d+:\d+†[^】]+】\s?/g, "")
         .replace(/\s?\[\d+:\d+\^source\]\s?/g, "")
         .replace(/\s?\[\^?\d+\]\s?/g, "")
@@ -737,7 +1163,7 @@ const handlePackageSelection = async (userClass: string, amount: number) => {
                 : "bg-gray-100 text-gray-800 rounded-bl-none"
             }`}
           >
-            <div className={`leading-relaxed font-sans text-base ${isUser && m.isPropertyDump ? "italic" : ""}`}>
+            <div className={`leading-relaxed font-sans text-base ${isUser && m.metadata?.isPropertyDump ? "italic" : ""}`}>
               <ReactMarkdown
                 components={{
                   h1: (props) => <h1 className="text-lg font-bold mt-4 mb-2" {...props} />,
@@ -765,7 +1191,7 @@ const handlePackageSelection = async (userClass: string, amount: number) => {
                 <div className="flex items-center mb-3">
                   <span className="text-lg">✅</span>
                   <h3 className="ml-2 text-lg font-semibold text-blue-900">
-                    Batch {currentBatch} in process
+                    Please wait. Batch {currentBatch} in progress...
                   </h3>
                 </div>
                 
@@ -789,10 +1215,10 @@ const handlePackageSelection = async (userClass: string, amount: number) => {
 
                 <div className="flex gap-3">
                   <button
-                    onClick={() => {
-                      setIsWaitingForContinuation(false);
-                      onSendToGPT(currentBatch, false);
-                    }}
+                   onClick={() => {
+  setIsWaitingForContinuation(false);
+  onSendToGPT(undefined, currentBatch);
+}}
                     className="bg-blue-900 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition font-medium"
                     style={{ cursor: 'pointer' }}
                   >
@@ -802,7 +1228,7 @@ const handlePackageSelection = async (userClass: string, amount: number) => {
                   <button
                     onClick={() => {
                       setIsWaitingForContinuation(false);
-                      setSelectedListings([]);
+                      updateChatState({ selectedListings: [] });
                       setCurrentBatch(0);
                       setTotalPropertiesToAnalyze(0);
                     }}
@@ -815,53 +1241,95 @@ const handlePackageSelection = async (userClass: string, amount: number) => {
             </div>
           )}
 
-          <div className="w-full max-w-5xl border-t p-4 bg-white sticky bottom-0 z-10">
-           <div className="flex items-center border border-gray-300 rounded-lg shadow-sm p-2 focus-within:ring-2 focus-within:ring-black">
-              <button
-                id="upload-docs"
-                type="button"
-                onClick={() => {
-                    if (!isLoggedIn) {
-                        setShowModal(true);
-                    } else if (!isPro) {
-                        setShowProModal(true);
-                    } else {
-                        // TODO: Implement file upload logic for Pro users
-                        alert("File upload for Pro users coming soon!");
-                    }
-                }}
-                className="p-2 hover:bg-gray-100 rounded transition"
-                title={isPro ? "Upload documents (Pro)" : "Upgrade to Pro to upload"}
-              >
-                <Plus className="w-5 h-5 text-gray-600" />
-              </button>
+<div className="w-full max-w-5xl border-t p-4 bg-white sticky bottom-0 z-10">
+<div className="flex items-center justify-between mb-2">
+  <div className="flex items-center gap-2">
+{isUploadingFile ? (
+  <div className="flex items-center gap-2 px-3 py-1 bg-orange-50 border border-orange-200 rounded-lg">
+    <div className="animate-spin h-4 w-4 border-2 border-orange-500 border-t-transparent rounded-full"></div>
+    <span className="text-sm text-orange-700">Processing document...</span>
+  </div>
+) : (
+  (window as any).__LATEST_FILE_NAME__ && (
+    <div className="flex items-center gap-3">
+      {/* Attachment display */}
+      <div className="flex items-center gap-2 px-2 py-1 bg-gray-50 border border-gray-200 rounded">
+        <div className="w-4 h-4 bg-red-500 rounded text-white text-xs flex items-center justify-center">📄</div>
+        <span className="text-sm text-gray-700">{(window as any).__LATEST_FILE_NAME__}</span>
+      </div>
+      
+      {/* NEW: Done with Property button */}
+      <button
+        onClick={handleDoneWithProperty}
+        className="px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white text-xs font-medium rounded-lg transition-colors shadow-sm"
+        title="Remove attachment and switch back to general mode"
+      >
+        Remove Document
+      </button>
+    </div>
+  )
+)}
+  </div>
+
+</div>
+  {/* File upload error display */}
+{uploadError && (
+  <div className="mb-3 p-3 bg-red-50 border border-red-200 rounded-lg">
+    <div className="flex items-center">
+      <span className="text-red-500 mr-2">⚠️</span>
+      <span className="text-red-700 text-sm">{uploadError}</span>
+      <button 
+        onClick={() => setUploadError(null)}
+        className="ml-auto text-red-500 hover:text-red-700"
+      >
+        ✕
+      </button>
+    </div>
+  </div>
+)}
+  <div className="flex items-center border border-gray-300 rounded-lg shadow-sm p-2 focus-within:ring-2 focus-within:ring-black">
+
+{isLoggedIn && (userClass === 'charlie_chat_pro' || userClass === 'cohort') && <ComposerAddAttachment />}
+
+{!(userClass === 'charlie_chat_pro' || userClass === 'cohort') && (
+  <button
+    type="button"
+    onClick={() => (isLoggedIn ? setShowProModal(true) : setShowModal(true))}
+    className="p-2 hover:bg-gray-100 rounded transition"
+    title="Upgrade to Pro to upload"
+  >
+    <Plus className="w-5 h-5 text-gray-400" />
+  </button>
+)}
+
               <input
                 id="chat-input"
                 className="flex-1 px-3 py-2 text-base sm:text-lg focus:outline-none placeholder-gray-500"
                 placeholder="Ask me anything..."
                 value={input}
-                onChange={(e) => setInput(e.target.value)}
+                onChange={(e) => updateChatState({ input: e.target.value })}
                 onKeyDown={(e) => {
-                  if (e.key === "Enter" && !e.shiftKey) { 
-                    e.preventDefault(); 
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
                     sendMessage(input);
                   }
                 }}
               />
+
               <button
                 type="button"
                 onClick={() => sendMessage(input)}
-                disabled={!input.trim()} 
+                disabled={!input.trim()}
                 className="p-2 hover:bg-gray-100 rounded transition disabled:opacity-50"
                 title="Send"
               >
                 <SendHorizonal className="w-5 h-5 text-gray-600" />
               </button>
             </div>
-        </div>
-  
+          </div>
+
           {messages.length === 0 && (
-              <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-3xl w-full mx-auto">
+            <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-3xl w-full mx-auto">
               {EXAMPLES.map((ex, i) => (
                 <button
                   key={i}
@@ -873,9 +1341,9 @@ const handlePackageSelection = async (userClass: string, amount: number) => {
               ))}
             </div>
           )}
-          </div>
         </div>
       </div>
+    </div>
   
   
       {/* Replace the pricing page code with this simple modal */}
@@ -915,7 +1383,7 @@ const handlePackageSelection = async (userClass: string, amount: number) => {
               Charlie Chat Pro
             </Dialog.Title>
             <Dialog.Description className="text-sm text-gray-500">
-              File uploads and enhanced analytics are coming soon!
+              File uploads and enhanced analytics are only available in pro!
             </Dialog.Description>
           </Dialog.Panel>
         </div>
@@ -1027,6 +1495,7 @@ const handlePackageSelection = async (userClass: string, amount: number) => {
     )}
   </div>
 )}
-</>
-  );
+  </>
+  </AssistantRuntimeProvider>
+);
 }

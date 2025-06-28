@@ -72,7 +72,7 @@ type Props = {
   listings: Listing[];
   selectedListings: Listing[];
   toggleListingSelect: (listing: Listing) => void;
-  onSendToGPT: () => void;
+  onSendToGPT: (filteredListings?: any[]) => void;
   isLoggedIn: boolean;
   triggerAuthModal: () => void;
   onCreditsUpdate?: (newBalance: number) => void;
@@ -494,7 +494,59 @@ useClickOutside(
     const safeAddress = (listing.address?.address || "property").replace(/[^a-zA-Z0-9]/g, "_");
     doc.save(`Property_Profile_${safeAddress}.pdf`);
   };
-
+const filterRelevantFields = (listing: Listing) => {
+  return {
+    id: listing.id,
+    address: listing.address,
+    
+    // Property basics
+    property_type: listing.property_type,
+    unitsCount: listing.unitsCount,
+    yearBuilt: listing.yearBuilt,
+    squareFeet: listing.squareFeet,
+    lotSquareFeet: listing.lotSquareFeet,
+    stories: listing.stories,
+    
+    // Financial data
+    estimatedValue: listing.estimatedValue,
+    assessedValue: listing.assessedValue,
+    lastSaleAmount: listing.lastSaleAmount,
+    lastSaleDate: listing.lastSaleDate,
+    rentEstimate: listing.rentEstimate,
+    
+    // Owner & financing
+    mortgageBalance: listing.mortgageBalance,
+    estimatedEquity: listing.estimatedEquity,
+    lenderName: listing.lenderName,
+    mortgageMaturingDate: listing.mortgageMaturingDate,
+    privateLender: listing.privateLender,
+    
+    // Owner profile
+    owner1FirstName: listing.owner1FirstName,
+    owner1LastName: listing.owner1LastName,
+    mailAddress: listing.mailAddress,
+    yearsOwned: listing.yearsOwned,
+    ownerOccupied: listing.ownerOccupied,
+    corporate_owned: listing.corporate_owned,
+    totalPropertiesOwned: listing.totalPropertiesOwned,
+    totalPortfolioEquity: listing.totalPortfolioEquity,
+    
+    // Distress indicators
+    preForeclosure: listing.preForeclosure,
+    foreclosure: listing.foreclosure,
+    reo: listing.reo,
+    auction: listing.auction,
+    taxLien: listing.taxLien,
+    
+    // Market indicators
+    mlsActive: listing.mlsActive,
+    forSale: listing.forSale,
+    floodZone: listing.floodZone,
+    lastSaleArmsLength: listing.lastSaleArmsLength,
+    investorBuyer: listing.investorBuyer,
+    assumable: listing.assumable
+  };
+};
 
   const goToPrev = () => {
     if (activeListingIndex !== null && activeListingIndex > 0) {
@@ -912,8 +964,10 @@ if (rpcError) {
           <div className="p-4 border rounded bg-[#D15834] text-sm shadow text-white">
             <p className="mb-2 font-medium">Add {selectedListings.length} {selectedListings.length === 1 ? "property" : "properties"} to Charlie Chat</p>
             <button 
-    
-  onClick={() => onSendToGPT()} 
+  onClick={() => {
+    const filteredListings = selectedListings.map(listing => filterRelevantFields(listing));
+    onSendToGPT(filteredListings);
+  }} 
   className="bg-blue-900 text-white px-4 py-2 rounded hover:bg-blue-950 transition w-full"
 >
   Begin Analysis
