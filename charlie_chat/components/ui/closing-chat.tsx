@@ -7,6 +7,7 @@ import { Sidebar } from "@/components/ui/sidebar";
 import { Plus, SendHorizonal } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
+import { useChat } from "@/contexts/ChatContext";
 import { ComposerAddAttachment, ComposerAttachments } from "@/components/attachment";
 import type { User } from '@supabase/supabase-js'
 import { useChatRuntime } from "@assistant-ui/react-ai-sdk";
@@ -198,6 +199,8 @@ const {
   supabase,
 } = useAuth() as { user: ExtendedUser; isLoading: boolean; supabase: any };
 
+const { chatState, updateChatState, clearChat } = useChat();
+
 useEffect(() => {
   const fetchStripeCustomerId = async () => {
     const { data, error } = await supabase
@@ -260,15 +263,15 @@ const availablePackages = userClass === 'trial' ? [] : getPackagesFor(userClass)
 
   const isLoggedIn = !!currentUser;
 
-  const [messages, setMessages] = useState<{ role: string; content: string, isPropertyDump?: boolean, isLoading?: boolean, propertyCount?: number }[]>([]);
-  const [input, setInput] = useState("");
-  const [threadId, setThreadId] = useState<string | null>(null);
+  const messages = chatState.messages;
+  const input = chatState.input;
+  const threadId = chatState.threadId;
+  const listings = chatState.listings;
+  const selectedListings = chatState.selectedListings;
   const [showProModal, setShowProModal] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [isPro, setIsPro] = useState(false);
   const [count, setCount] = useState(0);
-  const [listings, setListings] = useState<Listing[]>([]);
-  const [selectedListings, setSelectedListings] = useState<Listing[]>([]);
   const [currentBatch, setCurrentBatch] = useState(0);
   const [batchSize] = useState(2);
   const [isWaitingForContinuation, setIsWaitingForContinuation] = useState(false);
@@ -417,7 +420,7 @@ const result = await adapter.send({
     delete (window as any).__LATEST_FILE_NAME__;
 
     // 3. Force a re-render to update the UI
-    setMessages(prev => [...prev]); // Trigger re-render
+    updateChatState({ messages: [...messages] }); // Trigger re-render
 
     console.log("✅ Done with property - switched back to general mode");
     
@@ -429,9 +432,9 @@ const result = await adapter.send({
   const toggleListingSelect = (listing: any) => {
     const exists = selectedListings.some((l) => l.id === listing.id);
     if (exists) {
-      setSelectedListings((prev) => prev.filter((l) => l.id !== listing.id));
+      updateChatState({ selectedListings: selectedListings.filter((l) => l.id !== listing.id) });
     } else {
-      setSelectedListings((prev) => [...prev, listing]);
+      updateChatState({ selectedListings: [...selectedListings, listing] });
     }
   };
 const onSendToGPT = (filteredListings?: any[], autoProcessOrBatchIndex?: boolean | number) => {
@@ -459,12 +462,13 @@ if (batchIndex === 0) {
   setIsWaitingForContinuation(false);
   
   // Add loading message to chat
-  setMessages(prev => [...prev, {
-    role: "assistant",
-    content: "",
-    isLoading: true,
-    propertyCount: selectedListings.length
-  }]);
+  updateChatState({
+    messages: [...messages, {
+      role: "assistant",
+      content: "",
+      metadata: { isLoading: true, propertyCount: selectedListings.length }
+    }]
+  });
 }
 
 // Calculate which properties to analyze in this batch
@@ -643,7 +647,7 @@ if (hasMoreProperties && !autoProcess) {
   setIsWaitingForContinuation(true);
 } else if (!hasMoreProperties) {
   // All done - clear selections
-  setSelectedListings([]);
+  updateChatState({ selectedListings: [] });
   setIsWaitingForContinuation(false);
   setCurrentBatch(0);
   setTotalPropertiesToAnalyze(0);
@@ -706,7 +710,8 @@ const fetchUserCreditsAndClass = async (userToFetchFor: User) => {
       isMounted = false;
       //console.log("[ClosingChat CreditsEffect] Cleanup.");
     };
-  }, [currentUser, supabase]);
+  }, [currentUser, supabase])
+  ;
 
   // Safe access to localStorage on client only (for non-auth critical things or fallbacks)
   useEffect(() => {
@@ -717,10 +722,7 @@ const fetchUserCreditsAndClass = async (userToFetchFor: User) => {
       setIsPro(storedPro); // This might be overridden if logged in and fetching from DB
       setCount(isNaN(storedCount) ? 0 : storedCount);
     }
-    const savedThreadId = localStorage.getItem("threadId");
-    if (savedThreadId) {
-      setThreadId(savedThreadId);
-    }
+    // ThreadId is now handled by ChatContext
   }, [isLoggedIn]); // Re-run if login status changes
 
 const scrollToBottom = useCallback(() => {
@@ -790,7 +792,7 @@ console.log("All divs with text content:", Array.from(document.querySelectorAll(
 if (hasAttachments) {
   console.log("Using custom system WITH attachments");
     localStorage.removeItem("threadId");
-    setThreadId(null);
+    updateChatState({ threadId: null });
   
   // Try to extract attachment data from the DOM/runtime state
   let attachmentData = [];
@@ -852,8 +854,13 @@ if (attachmentData.length === 0) {
   
 // Add message to your UI for display
 const messageToDisplay = displayMessage || message;
-setMessages((prev) => [...prev, { role: "user", content: messageToDisplay, isPropertyDump }, { role: "assistant", content: "" }]);
-setInput("");
+updateChatState({
+  messages: [...messages, 
+    { role: "user", content: messageToDisplay, metadata: { isPropertyDump } }, 
+    { role: "assistant", content: "" }
+  ],
+  input: ""
+});
 
 // Let the AI decide if the document is relevant
 const enhancedMessage = message; // Don't force document usage
@@ -897,19 +904,19 @@ if (reader) {
               const delta = block.text.value;
 
               fullText += delta;
-             setMessages((prev) => {
-  const newMessages = [...prev];
+             const newMessages = [...messages];
   
   // Remove any loading messages
-  const filteredMessages = newMessages.filter(msg => !msg.isLoading);
+  const filteredMessages = newMessages.filter(msg => !msg.metadata?.isLoading);
   
   // Add or update the assistant response
   if (filteredMessages.length > 0 && filteredMessages[filteredMessages.length - 1].role === 'assistant') {
       filteredMessages[filteredMessages.length - 1].content = fullText;
-      return filteredMessages;
+  } else {
+    filteredMessages.push({ role: "assistant", content: fullText });
   }
-  return [...filteredMessages, { role: "assistant", content: fullText }];
-});
+  
+  updateChatState({ messages: filteredMessages });
             }
           }
         }
@@ -926,7 +933,7 @@ if (reader) {
       const titles = JSON.parse(localStorage.getItem("chatTitles") || "{}");
       titles[newThreadId] = message.slice(0, 50);
       localStorage.setItem("chatTitles", JSON.stringify(titles));
-      setThreadId(newThreadId);
+      updateChatState({ threadId: newThreadId });
       localStorage.setItem("threadId", newThreadId);
     }
   }
@@ -937,8 +944,13 @@ if (reader) {
     
     // Your existing custom sendMessage logic
     const messageToDisplay = displayMessage || message;
-    setMessages((prev) => [...prev, { role: "user", content: messageToDisplay, isPropertyDump }, { role: "assistant", content: "" }]);
-    setInput("");
+    updateChatState({
+      messages: [...messages, 
+        { role: "user", content: messageToDisplay, metadata: { isPropertyDump } }, 
+        { role: "assistant", content: "" }
+      ],
+      input: ""
+    });
 
     const res = await fetch("/api/chat", {
       method: "POST",
@@ -953,7 +965,7 @@ if (!threadId && res.headers) {
     const titles = JSON.parse(localStorage.getItem("chatTitles") || "{}");
     titles[newThreadId] = message.slice(0, 50);
     localStorage.setItem("chatTitles", JSON.stringify(titles));
-    setThreadId(newThreadId);
+    updateChatState({ threadId: newThreadId });
     localStorage.setItem("threadId", newThreadId);
   }
 }
@@ -985,19 +997,19 @@ if (!threadId && res.headers) {
                   const delta = block.text.value;
     
                   fullText += delta;
-                  setMessages((prev) => {
-  const newMessages = [...prev];
+                  const newMessages = [...messages];
   
   // Remove any loading messages
-  const filteredMessages = newMessages.filter(msg => !msg.isLoading);
+  const filteredMessages = newMessages.filter(msg => !msg.metadata?.isLoading);
   
   // Add or update the assistant response
   if (filteredMessages.length > 0 && filteredMessages[filteredMessages.length - 1].role === 'assistant') {
       filteredMessages[filteredMessages.length - 1].content = fullText;
-      return filteredMessages;
+  } else {
+    filteredMessages.push({ role: "assistant", content: fullText });
   }
-  return [...filteredMessages, { role: "assistant", content: fullText }];
-});
+  
+  updateChatState({ messages: filteredMessages });
                 }
               }
             }
@@ -1065,7 +1077,7 @@ return (
       });
     
       const data = await res.json();
-      setListings(data || []);
+      updateChatState({ listings: data || [] });
     } catch (err) {
       console.error("Realestateapi API error:", err);
     }
@@ -1121,11 +1133,11 @@ return (
     {/* Rest of your messages mapping code stays exactly the same */}
     {messages.map((m, i) => {
   // Show loading component for loading messages
-  if (m.isLoading) {
+  if (m.metadata?.isLoading) {
     return (
       <PropertyAnalysisLoader 
         key={i}
-        propertyCount={m.propertyCount || 0} 
+        propertyCount={m.metadata?.propertyCount || 0} 
       />
     );
   }
@@ -1151,7 +1163,7 @@ return (
                 : "bg-gray-100 text-gray-800 rounded-bl-none"
             }`}
           >
-            <div className={`leading-relaxed font-sans text-base ${isUser && m.isPropertyDump ? "italic" : ""}`}>
+            <div className={`leading-relaxed font-sans text-base ${isUser && m.metadata?.isPropertyDump ? "italic" : ""}`}>
               <ReactMarkdown
                 components={{
                   h1: (props) => <h1 className="text-lg font-bold mt-4 mb-2" {...props} />,
@@ -1216,7 +1228,7 @@ return (
                   <button
                     onClick={() => {
                       setIsWaitingForContinuation(false);
-                      setSelectedListings([]);
+                      updateChatState({ selectedListings: [] });
                       setCurrentBatch(0);
                       setTotalPropertiesToAnalyze(0);
                     }}
@@ -1295,7 +1307,7 @@ return (
                 className="flex-1 px-3 py-2 text-base sm:text-lg focus:outline-none placeholder-gray-500"
                 placeholder="Ask me anything..."
                 value={input}
-                onChange={(e) => setInput(e.target.value)}
+                onChange={(e) => updateChatState({ input: e.target.value })}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" && !e.shiftKey) {
                     e.preventDefault();
@@ -1371,7 +1383,7 @@ return (
               Charlie Chat Pro
             </Dialog.Title>
             <Dialog.Description className="text-sm text-gray-500">
-              File uploads and enhanced analytics are coming soon!
+              File uploads and enhanced analytics are only available in pro!
             </Dialog.Description>
           </Dialog.Panel>
         </div>
