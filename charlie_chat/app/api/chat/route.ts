@@ -2,156 +2,146 @@ import { AssistantResponse } from "ai";
 import OpenAI from "openai";
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-
 export const maxDuration = 30;
 
 export async function POST(req: Request) {
   try {
     const input = await req.json();
-
+    console.log("🔍 Full request body:", JSON.stringify(input, null, 2));
     if (!input.message || !input.message.trim()) {
       return new Response("Missing message content", { status: 400 });
     }
 
+    /* ───────────────────────── 1. Thread handling (unchanged) ───────────────────────── 
     let threadId = input.threadId;
     let threadExists = false;
 
-    if (threadId && threadId.startsWith("thread_")) {
+    if (threadId?.startsWith("thread_")) {
       try {
-          await openai.beta.threads.retrieve(threadId);
-          threadExists = true;
-          //console.log("Existing thread confirmed:", threadId);
-      } catch (error: any) {
-          if (error.status === 404) {
-              console.warn("Received threadId that was not found, will create a new one:", threadId);
-              threadId = null; // Force creation of a new thread
-          } else {
-              console.error("Error retrieving thread:", error);
-              // Decide if you want to proceed or throw an error
-              // For now, let's try to create a new thread if unsure
-              threadId = null;
-          }
+        await openai.beta.threads.retrieve(threadId);
+        threadExists = true;
+      } catch (e: any) {
+        if (e.status !== 404) console.error("Error retrieving thread:", e);
+        threadId = null;
       }
     }
+    if (!threadId || !threadExists) {
+      threadId = (await openai.beta.threads.create({})).id;
+    }*/
+
+      /* ───────────────────────── 1. TEMPORARY: Always create fresh thread ───────────────────────── */
+console.log("Creating fresh thread to avoid stuck runs");
+let threadId = input.threadId;
+
+if (!threadId || !threadId.startsWith("thread_")) {
+  console.log("Creating new thread");
+  threadId = (await openai.beta.threads.create({})).id;
+} else {
+  console.log("Using existing thread:", threadId);
+}
+/* ───────────────────── 2. Force cancel ALL stuck runs ─────────────────── 
+try {
+  const runs = await openai.beta.threads.runs.list(threadId, { limit: 10 });
+  for (const run of runs.data) {
+    if (["queued", "in_progress", "requires_action"].includes(run.status)) {
+      console.log(`Force cancelling run ${run.id} with status ${run.status}`);
+      try {
+        await openai.beta.threads.runs.cancel(threadId, run.id);
+      } catch (e) {
+        console.log(`Failed to cancel run ${run.id}:`, e.message);
+      }
+    }
+  }
   
-    if (!threadId || !threadExists) { // Create new thread if no ID, or it didn't start with "thread_", or it didn't exist
-        //console.log("Creating a new thread...");
-        const newThread = await openai.beta.threads.create({});
-        threadId = newThread.id;
-        //console.log("New thread created:", threadId);
+  // Wait for all cancellations to process
+  await new Promise(resolve => setTimeout(resolve, 1000));
+  
+  // Check if any runs are still active - if so, create a new thread
+  const finalCheck = await openai.beta.threads.runs.list(threadId, { limit: 1 });
+  if (finalCheck.data[0]?.status && ["queued", "in_progress", "requires_action"].includes(finalCheck.data[0].status)) {
+    console.log("Still has active runs, creating new thread");
+    threadId = (await openai.beta.threads.create({})).id;
+  }
+} catch (e) {
+  console.log("Error managing runs, creating new thread:", e.message);
+  threadId = (await openai.beta.threads.create({})).id;
+}*/
+
+
+/* ─────────────────────── 3. Create the user message ─────────────────────── */
+const attachments = input.attachments || [];
+
+// Filter out placeholder attachments and validate file_ids
+const validAttachments = attachments.filter((att: any) => {
+  const fileId = att.content?.[0]?.file_id;
+  return fileId && fileId !== "PLACEHOLDER" && fileId.startsWith("file-");
+});
+
+console.log("Received attachments:", attachments);
+console.log("Valid attachments:", validAttachments);
+
+const messageData = {
+   role: "user" as const,
+  content: input.message,
+};
+
+// Only add attachments if we have valid ones
+if (validAttachments.length > 0) {
+  (messageData as any).attachments = validAttachments.map((att: any) => ({
+    file_id: att.content[0].file_id,
+    tools: [{ type: "file_search" }]
+  }));
+}
+
+const createdMessage = await openai.beta.threads.messages.create(threadId, messageData);
+
+    /* ───────────────── 4. Detect if this message references a file ───────────── */
+    const hasFileAttachment = validAttachments.length > 0;
+    const selectedModel = hasFileAttachment ? "gpt-4o-mini" : "gpt-3.5-turbo";
+
+// 5. Stream the run with chosen model
+const instructionText = hasFileAttachment 
+  ? "You have access to an uploaded document. For each question, intelligently decide whether it requires information from the specific uploaded document or can be answered with general knowledge. If the question asks about specific content, data, or details from the uploaded file, search and use that document. If the question is asking for general advice, strategies, or concepts that don't require the specific document content, answer from your general knowledge. Do NOT reference previous documents or files from other conversations."
+  : "Answer using your general knowledge and knowledge base. Do not reference any previously uploaded files.";
+
+  // ADD LOGGING HERE:
+console.log("🤖 Model selected:", selectedModel);
+console.log("📋 Instructions sent:", instructionText);
+console.log("📎 File attachments:", validAttachments.length);
+console.log("📝 User message:", input.message);
+console.log("🔗 Thread ID:", threadId);
+
+const runStream = await openai.beta.threads.runs.stream(threadId, {
+  assistant_id: process.env.ASSISTANT_ID!,
+  model: selectedModel,
+  instructions: instructionText
+});
+
+// 6. Convert to SSE for the frontend
+const encoder = new TextEncoder();
+const stream = new ReadableStream({
+  async start(controller) {
+    controller.enqueue(
+      encoder.encode(`data: ${JSON.stringify({ threadId, messageId: createdMessage.id })}\n\n`)
+    );
+    for await (const chunk of runStream) {
+      controller.enqueue(encoder.encode(`data: ${JSON.stringify(chunk)}\n\n`));
     }
-
-    const runs = await openai.beta.threads.runs.list(threadId!, { limit: 1 });
-    if (runs.data.length > 0) {
-        let latestRun = runs.data[0];
-    
-        // Only attempt to cancel if the run is in a state that *can* be cancelled
-        if (['queued', 'in_progress'].includes(latestRun.status)) { // <--- MODIFIED CONDITION HERE
-            //console.log(`Previous run ${latestRun.id} is active (${latestRun.status}). Attempting to cancel it.`);
-            try {
-                await openai.beta.threads.runs.cancel(threadId!, latestRun.id);
-                //console.log(`Cancellation request sent for run ${latestRun.id}. It will move to 'cancelling' then 'cancelled'.`);
-                // After sending cancel, it will go to 'cancelling'. We still need to poll until it's truly terminal.
-            } catch (cancelError: any) {
-                console.error(`Error sending cancellation request for run ${latestRun.id}:`, cancelError);
-                // If cancelling itself fails (e.g. run just completed or failed),
-                // we might want to retrieve its status again before deciding to error out.
-                // For now, let's log and proceed to polling, as the run might have already terminated.
-                latestRun = await openai.beta.threads.runs.retrieve(threadId!, latestRun.id); // Refresh status
-            }
-        } else if (['cancelling'].includes(latestRun.status)) {
-            //console.log(`Previous run ${latestRun.id} is already in 'cancelling' state. Will poll for completion.`);
-        }
-      
-      
-        // Poll if the run is still in any non-terminal "active" state (including 'cancelling')
-        if (['queued', 'in_progress', 'requires_action', 'cancelling'].includes(latestRun.status)) {
-            //console.log(`Polling for run ${latestRun.id} (current status: ${latestRun.status}) to reach a terminal state...`);
-            let attempts = 0;
-            const maxAttempts = 15; // Poll for a maximum of ~15 seconds (1s interval)
-            let runIsStillActive = true;
-        
-            while (runIsStillActive && attempts < maxAttempts) {
-                await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second
-                try {
-                    latestRun = await openai.beta.threads.runs.retrieve(threadId!, latestRun.id);
-                } catch (retrieveError: any) {
-                    console.error(`Error retrieving run ${latestRun.id} during polling:`, retrieveError);
-                    runIsStillActive = false; 
-                    break;
-                }
-
-                //console.log(`Run ${latestRun.id} status: ${latestRun.status} (Attempt ${attempts + 1})`);
-                if (!['queued', 'in_progress', 'requires_action', 'cancelling'].includes(latestRun.status)) {
-                    runIsStillActive = false; // It has reached a terminal state
-                }
-                attempts++;
-            }
-          
-            if (runIsStillActive) {
-              console.warn(`Run ${latestRun.id} is stuck. Creating a new thread instead.`);
-            
-              const newThread = await openai.beta.threads.create();
-              threadId = newThread.id;
-            
-              return new Response(JSON.stringify({
-                threadId,
-                warning: `Previous run ${latestRun.id} was stuck in ${latestRun.status}. A new thread (${threadId}) was created automatically.`,
-                autoSwitched: true,
-              }), {
-                status: 200,
-                headers: {
-                  "Content-Type": "application/json",
-                  "x-new-thread-id": threadId,
-                },
-              });
-            }
-            //console.log(`Run ${latestRun.id} is now in a terminal state: ${latestRun.status}`);
-        }
-    }
-
-
-
-    const createdMessage = await openai.beta.threads.messages.create(threadId, {
-      role: "user",
-      content: input.message,
-    });
-
-    const runStream = await openai.beta.threads.runs.stream(threadId, {
-      assistant_id: process.env.ASSISTANT_ID!,
-    });
-
-    const encoder = new TextEncoder();
-    const stream = new ReadableStream({
-      async start(controller) {
-        const encoder = new TextEncoder();
-    
-        //console.log("🔥 Starting OpenAI run stream..."); // ✅ this is the key one
-    
-        controller.enqueue(encoder.encode(`data: ${JSON.stringify({ threadId, messageId: createdMessage.id })}\n\n`));
-    
-        for await (const chunk of runStream) {
-          //console.log("📦 Streaming chunk:", chunk); // ✅ log every chunk
-    
-          controller.enqueue(encoder.encode(`data: ${JSON.stringify(chunk)}\n\n`));
-        }
-    
-        controller.enqueue(encoder.encode("data: [DONE]\n\n"));
-        controller.close();
-      },
-    });
-    
+    controller.enqueue(encoder.encode("data: [DONE]\n\n"));
+    controller.close();
+  },
+});
 
     return new Response(stream, {
       headers: {
         "Content-Type": "text/event-stream",
         "Cache-Control": "no-cache",
-        "Connection": "keep-alive",
+        Connection: "keep-alive",
         "x-thread-id": threadId,
       },
     });
   } catch (err) {
-    //console.error("🔥 Assistant error:", err);
+    console.error("Assistant error:", err);
     return new Response("Internal Server Error", { status: 500 });
   }
 }
