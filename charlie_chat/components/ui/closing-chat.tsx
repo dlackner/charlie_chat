@@ -434,21 +434,27 @@ const result = await adapter.send({
       setSelectedListings((prev) => [...prev, listing]);
     }
   };
-const onSendToGPT = (filteredListings?: any[], autoProcessOrBatchIndex?: boolean | number) => {
-  // Handle both calling patterns
+const onSendToGPT = (firstParam?: any[] | number, autoProcessOrBatchIndex?: boolean | number) => {
   let batchIndex = 0;
   let autoProcess = false;
   let listingsToProcess = selectedListings;
 
-  if (Array.isArray(filteredListings)) {
-    // Called from sidebar with filtered listings
-    listingsToProcess = filteredListings;
+  if (Array.isArray(firstParam)) {
+    // Called from sidebar with filtered listings - NEW SEARCH
+    console.log("📋 New search from sidebar with", firstParam.length, "properties");
+    listingsToProcess = firstParam;
     batchIndex = 0;
     autoProcess = typeof autoProcessOrBatchIndex === 'boolean' ? autoProcessOrBatchIndex : false;
-  } else {
-    // Called internally with batch index (existing behavior)
-    batchIndex = filteredListings || 0;
+  } else if (typeof firstParam === 'number') {
+    // Called internally with batch index - CONTINUING EXISTING SEARCH
+    console.log("📋 Continuing batch processing, batch index:", firstParam);
+    batchIndex = firstParam;
     autoProcess = typeof autoProcessOrBatchIndex === 'boolean' ? autoProcessOrBatchIndex : false;
+    listingsToProcess = selectedListings; // Use existing selectedListings
+  } else {
+    // Called with no parameters - treat as batch 0 of existing selectedListings
+    console.log("📋 Called with no parameters, starting batch 0");
+    batchIndex = 0;
     listingsToProcess = selectedListings;
   }
   // Batch processing logic
@@ -598,36 +604,15 @@ const propertyDetails = Object.entries(listing)
     return `**${globalIndex}. ${mainDisplayAddress}**\n${finalPropertyDetails.trim()}`;
   });
 
-  const summaryPrompt = `Senior multifamily analyst: Analyze each property using ONLY provided data. Calculate exact numbers, no generic statements.
+ 
 
-  For EACH property calculate but do not show the calculations::
-  
-  **CALCULATIONS REQUIRED:**
-  - LTV: (openMortgageBalance ÷ estimatedValue) × 100
-  - Equity: estimatedValue - openMortgageBalance 
-  - Appreciation: ((estimatedValue - lastSaleAmount) ÷ lastSaleAmount) × 100
-  - Price/Unit: estimatedValue ÷ unitsCount
-  - Tax Ratio: assessedValue ÷ estimatedValue
-  
-  **ANALYZE:**
-  1. Owner: corporateOwned, yearsOwned, totalPropertiesOwned, distress signals
-  2. Property: age, units, sq ft, flood risk, financing details
-  3. Strategy: Based on LTV, equity, owner motivation, distress flags
-  
-  **OUTPUT:**
-  **Property: [Address] - [units] Units, Built [year]**
-  - LTV: X% | Equity: $X | Price/Unit: $X | Appreciation: X%
-  - Owner: [name], [years] owned, [portfolio size], [motivation signals]
-  - Strategy: [specific approach based on data]
-  - **Verdict: Pursue/Monitor/Pass** - [data-driven rationale]
-  
-  Use actual numbers only. Reference specific amounts/percentages from data.
-  
-  **BATCH ${batchIndex + 1} ANALYSIS** - Properties ${startIndex + 1}-${endIndex} of ${totalPropertiesToAnalyze}
-  
-  ---
-  ${rows.join("\n\n---\n")}
-  ---`;
+const summaryPrompt = `Analyze these ${propertiesForThisBatch.length} properties. Compile a complete description using all available data.  Then Calculate LTV, equity, price/unit, and appreciation for each. Output the complete description for each property, a specific pursuit strategy, and a final  **Verdict: Pursue/Monitor/Pass** with a rationale for each property.
+
+Do not show calculation steps. Do not repeat properties. Start immediately:
+
+**BATCH ${batchIndex + 1} ANALYSIS** - Properties ${startIndex + 1}-${endIndex} of ${totalPropertiesToAnalyze}
+
+${rows.join("\n\n")}`;
 
   // Send the full prompt to the API but display simplified message to user
   sendMessage(summaryPrompt, true, `Analyzing properties`);
@@ -928,9 +913,39 @@ if (reader) {
       localStorage.setItem("chatTitles", JSON.stringify(titles));
       setThreadId(newThreadId);
       localStorage.setItem("threadId", newThreadId);
+}
     }
   }
-}
+  
+  // Batch completion logic
+  if (isPropertyDump) {
+    const hasMoreProperties = (currentBatch * batchSize) < totalPropertiesToAnalyze;
+    
+    if (hasMoreProperties) {
+      // More properties to analyze - show continuation UI
+      setIsWaitingForContinuation(true);
+    } else {
+      // All properties complete - show completion message
+      setMessages((prev) => {
+        const newMessages = [...prev];
+        newMessages.push({
+          role: "assistant",
+          content: `✅ **Analysis Complete!** 
+
+All ${totalPropertiesToAnalyze} properties have been analyzed.`,
+          isPropertyDump: false
+        });
+        return newMessages;
+      });
+      
+      // Reset batch tracking
+      setCurrentBatch(0);
+      setTotalPropertiesToAnalyze(0);
+      setSelectedListings([]);
+    }
+  }
+  
+  // Handle threadId assignment
   
 } else {
   console.log("Using custom system (no attachments)");
@@ -1205,7 +1220,7 @@ return (
                   <button
                    onClick={() => {
   setIsWaitingForContinuation(false);
-  onSendToGPT(undefined, currentBatch);
+  onSendToGPT(currentBatch);
 }}
                     className="bg-blue-900 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition font-medium"
                     style={{ cursor: 'pointer' }}
