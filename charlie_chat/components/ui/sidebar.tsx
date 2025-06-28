@@ -72,7 +72,7 @@ type Props = {
   listings: Listing[];
   selectedListings: Listing[];
   toggleListingSelect: (listing: Listing) => void;
-  onSendToGPT: (filteredListings?: any[]) => void;
+  onSendToGPT: (filteredListings?: any[], autoProcessOrBatchIndex?: boolean | number) => void;
   isLoggedIn: boolean;
   triggerAuthModal: () => void;
   onCreditsUpdate?: (newBalance: number) => void;
