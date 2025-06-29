@@ -351,6 +351,7 @@ const result = await adapter.send({
   contentType: "application/pdf",
   status: { type: "requires-action", reason: "composer-send" }
 });
+  resetToDocumentMode();
     // Clear thread to start fresh conversation with new document
     localStorage.removeItem("threadId");
     delete (window as any).__CURRENT_THREAD_ID__;
@@ -425,6 +426,18 @@ const result = await adapter.send({
     console.error("Error removing property:", error);
   }
 };
+const resetToDocumentMode = () => {
+  setSelectedListings([]);
+  setCurrentBatch(0);
+  setTotalPropertiesToAnalyze(0);
+  setIsWaitingForContinuation(false);
+  localStorage.removeItem("threadId");
+  delete (window as any).__CURRENT_THREAD_ID__;
+  setMessages(prev => [
+    ...prev,
+    { role: "assistant", content: "📎 New document uploaded. Switched to file-based property analysis." }
+  ]);
+};
 
   const toggleListingSelect = (listing: any) => {
     const exists = selectedListings.some((l) => l.id === listing.id);
@@ -445,6 +458,7 @@ const onSendToGPT = (firstParam?: any[] | number, autoProcessOrBatchIndex?: bool
     listingsToProcess = firstParam;
     batchIndex = 0;
     autoProcess = typeof autoProcessOrBatchIndex === 'boolean' ? autoProcessOrBatchIndex : false;
+    setSelectedListings(firstParam); // Update state to match the filtered data
   } else if (typeof firstParam === 'number') {
     // Called internally with batch index - CONTINUING EXISTING SEARCH
     console.log("📋 Continuing batch processing, batch index:", firstParam);
@@ -460,7 +474,7 @@ const onSendToGPT = (firstParam?: any[] | number, autoProcessOrBatchIndex?: bool
   // Batch processing logic
 if (batchIndex === 0) {
   // Starting fresh analysis - store total count
-  setTotalPropertiesToAnalyze(selectedListings.length);
+  setTotalPropertiesToAnalyze(listingsToProcess.length);
   setCurrentBatch(0);
   setIsWaitingForContinuation(false);
   
@@ -478,7 +492,7 @@ const startIndex = batchIndex * batchSize;
 const endIndex = Math.min(startIndex + batchSize, listingsToProcess.length);
 const propertiesForThisBatch = listingsToProcess.slice(startIndex, endIndex);
 
-console.log(`📊 Processing batch ${batchIndex + 1}, properties ${startIndex + 1}-${endIndex} of ${selectedListings.length}`);
+console.log(`📊 Processing batch ${batchIndex + 1}, properties ${startIndex + 1}-${endIndex} of ${listingsToProcess.length}`);
 
 // If no properties in this batch, we're done
 if (propertiesForThisBatch.length === 0) {
@@ -606,7 +620,7 @@ const propertyDetails = Object.entries(listing)
 
  
 
-const summaryPrompt = `Analyze these ${propertiesForThisBatch.length} properties. Compile a complete description using all available data.  Then Calculate LTV, equity, price/unit, and appreciation for each. Output the complete description for each property, a specific pursuit strategy, and a final  **Verdict: Pursue/Monitor/Pass** with a rationale for each property.
+const summaryPrompt = `Analyze these ${propertiesForThisBatch.length} properties. Compile a complete description using all available data.  If the data exists, calculate LTV, equity, price/unit, and appreciation for each. Output the complete description for each property, a specific pursuit strategy, and a final  **Verdict: Pursue/Monitor/Pass** with a rationale for each property.
 
 Do not show calculation steps. Do not repeat properties. Start immediately:
 
@@ -615,13 +629,13 @@ Do not show calculation steps. Do not repeat properties. Start immediately:
 ${rows.join("\n\n")}`;
 
   // Send the full prompt to the API but display simplified message to user
-  sendMessage(summaryPrompt, true, `Analyzing properties`);
+  sendMessage(summaryPrompt, true, ` `);
   
   // Update batch tracking
 setCurrentBatch(batchIndex + 1);
 
 // Check if there are more properties to analyze
-const hasMoreProperties = endIndex < selectedListings.length;
+const hasMoreProperties = endIndex < listingsToProcess.length;
 
 if (hasMoreProperties && !autoProcess) {
   // Wait for user to decide whether to continue
@@ -1258,7 +1272,8 @@ return (
       {/* Attachment display */}
       <div className="flex items-center gap-2 px-2 py-1 bg-gray-50 border border-gray-200 rounded">
         <div className="w-4 h-4 bg-red-500 rounded text-white text-xs flex items-center justify-center">📄</div>
-        <span className="text-sm text-gray-700">{(window as any).__LATEST_FILE_NAME__}</span>
+        <span className="text-sm text-gray-700">
+        Analyzing: <strong>{(window as any).__LATEST_FILE_NAME__}</strong> </span>
       </div>
       
       {/* NEW: Done with Property button */}

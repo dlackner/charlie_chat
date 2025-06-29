@@ -961,14 +961,14 @@ if (rpcError) {
 
       {selectedListings.length > 0 && (
         <div className="fixed bottom-4 left-4 w-[240px] z-40">
-          <div className="p-4 border rounded bg-[#D15834] text-sm shadow text-white">
+          <div className="p-4 border rounded-lg bg-orange-500 text-sm shadow text-white">
             <p className="mb-2 font-medium">Add {selectedListings.length} {selectedListings.length === 1 ? "property" : "properties"} to Charlie Chat</p>
             <button 
   onClick={() => {
     const filteredListings = selectedListings.map(listing => filterRelevantFields(listing));
     onSendToGPT(filteredListings);
   }} 
-  className="bg-blue-900 text-white px-4 py-2 rounded hover:bg-blue-950 transition w-full"
+  className="bg-blue-900 text-white font-medium px-4 py-2 rounded-lg hover:bg-blue-950 transition w-full"
 >
   Begin Analysis
 </button>
