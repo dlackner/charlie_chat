@@ -80,18 +80,22 @@ const validAttachments = attachments.filter((att: any) => {
 console.log("Received attachments:", attachments);
 console.log("Valid attachments:", validAttachments);
 
-const messageData = {
-   role: "user" as const,
+const messageData: any = {
+  role: "user",
   content: input.message,
 };
 
-// Only add attachments if we have valid ones
+// ✅ Attach files only if present and valid
 if (validAttachments.length > 0) {
-  (messageData as any).attachments = validAttachments.map((att: any) => ({
+  messageData.attachments = validAttachments.map((att: any) => ({
     file_id: att.content[0].file_id,
-    tools: [{ type: "file_search" }]
+    tools: [
+      { type: "file_search" },
+      { type: "code_interpreter" }
+    ]
   }));
 }
+
 
 const createdMessage = await openai.beta.threads.messages.create(threadId, messageData);
 
@@ -101,7 +105,34 @@ const createdMessage = await openai.beta.threads.messages.create(threadId, messa
 
 // 5. Stream the run with chosen model
 const instructionText = hasFileAttachment 
-  ? "You have access to an uploaded document. For each question, intelligently decide whether it requires information from the specific uploaded document or can be answered with general knowledge. If the question asks about specific content, data, or details from the uploaded file, search and use that document. If the question is asking for general advice, strategies, or concepts that don't require the specific document content, answer from your general knowledge. Do NOT reference previous documents or files from other conversations."
+  ? `You are a document analysis assistant. Follow this workflow for every user question:
+
+**STEP 1: DOCUMENT IDENTIFICATION**
+- First, identify what type of document has been uploaded (real estate document, recipe, legal document, technical manual, etc.)
+- If it's a real estate document, act as a real estate investment analyst
+- If it's any other type of document, act as an appropriate expert for that document type
+
+**STEP 2: DOCUMENT ASSESSMENT**
+- Analyze ONLY the document uploaded in this specific conversation
+- Do NOT reference any documents from your knowledge base unless the uploaded document is missing information
+- Clearly state what type of document this is
+
+**STEP 3: RESPONSE STRATEGY**
+- **For specific data questions:** Always check the document first, regardless of document type
+- **For general knowledge questions:** Use your expertise for the appropriate domain, but mention if the document contains relevant context
+
+**STEP 4: TRANSPARENT COMMUNICATION**
+Always clearly state your source and document type:
+- "According to your [recipe/lease agreement/contract/etc.], the [specific data] is..."
+- "I don't see [requested information] in your [document type], but generally..."
+- "This [document type] contains [available info] but not [requested info]..."
+
+**EXAMPLES:**
+- User uploads recipe, asks "What are the ingredients?" → "According to your recipe for Spaghetti Carbonara, the ingredients are..."
+- User uploads lease agreement, asks "What's the rent?" → "According to your lease agreement, the monthly rent is $2,500..."
+- User uploads recipe, asks about real estate → "This appears to be a recipe document, not a real estate document. For real estate questions, please upload a property-related document."
+
+Be helpful, accurate, and transparent about what information comes from the document versus your general knowledge. Always identify the document type first, then respond appropriately for that domain.`
   : "Answer using your general knowledge and knowledge base. Do not reference any previously uploaded files.";
 
   // ADD LOGGING HERE:
