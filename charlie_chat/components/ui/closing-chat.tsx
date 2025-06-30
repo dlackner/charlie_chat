@@ -435,7 +435,7 @@ const resetToDocumentMode = () => {
   delete (window as any).__CURRENT_THREAD_ID__;
   setMessages(prev => [
     ...prev,
-    { role: "assistant", content: "📎 New document uploaded. Switched to file-based property analysis." }
+    { role: "assistant", content: "📎 You uploaded a new document. How can I help?" }
   ]);
 };
 
@@ -764,12 +764,14 @@ useEffect(() => {
 
   setCount((prev) => prev + 1);
 
-  // Check if there are attachments in the UI
-const hasAttachments = document.querySelector('[data-attachment]') !== null ||
+  // Check if there are attachments in the UI. This replaced with one line below on Monday morning.
+/*const hasAttachments = document.querySelector('[data-attachment]') !== null ||
                       document.querySelector('.aui-attachment') !== null ||
                       document.querySelector('[class*="attachment"]') !== null ||
                       document.querySelector('[class*="file"]') !== null ||
-                      Array.from(document.querySelectorAll('div')).some(el => el.textContent?.includes('Property_Profil'));
+                      Array.from(document.querySelectorAll('div')).some(el => el.textContent?.includes('Property_Profil'));*/
+
+  const hasAttachments = !!(window as any).__LATEST_FILE_ID__;
 
 console.log("Attachment detection:", {
   dataAttachment: !!document.querySelector('[data-attachment]'),
