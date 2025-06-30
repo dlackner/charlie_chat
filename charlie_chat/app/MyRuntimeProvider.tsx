@@ -44,11 +44,18 @@ class PDFAttachmentAdapter {
     } as any; // Cast entire return to any
   }
 
-  async send(attachment: Attachment): Promise<any> { // Use any return type
+async send(attachment: Attachment): Promise<any> { // Use any return type
+  console.log("🔄 Starting upload for:", attachment.file!.name);
+  console.log("🔄 File size:", attachment.file!.size);
+  console.log("🔄 File type:", attachment.file!.type);
+  
+  try {
     const uploaded = await openai.files.create({
       file: attachment.file!,
       purpose: "assistants",
     });
+
+    console.log("✅ Upload successful, file ID:", uploaded.id);
 
     return {
       id: attachment.id,
@@ -63,7 +70,10 @@ class PDFAttachmentAdapter {
       ],
       status: { type: "complete" },
     } as any;
+  } catch (error) {
+    throw error; // This will show the error in your UI
   }
+}
 
 async remove(attachment: Attachment) {
   const openai = new OpenAI({

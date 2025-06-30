@@ -301,8 +301,8 @@ const runtime = useChatRuntime({
   setIsUploadingFile(true);
   
   try {
-    // Auto-clear existing attachments before adding new one
-    try {
+    // Auto-clear existing attachments before adding new one. KEEP WHILE TESTING
+   /* try {
       // Clear visual elements first
       const attachmentElements = document.querySelectorAll('div[class*="flex-grow"][class*="basis-0"]');
       attachmentElements.forEach(container => {
@@ -339,7 +339,7 @@ const runtime = useChatRuntime({
       await new Promise(resolve => setTimeout(resolve, 100));
     } catch (e) {
       console.log("Could not auto-clear existing attachments:", e);
-    }
+    }*/
 
    // Now add the new attachment
        const adapter = new PDFAttachmentAdapter();
@@ -810,7 +810,7 @@ if (hasAttachments) {
   // Method 2: If no runtime data, create attachment data from DOM
 if (attachmentData.length === 0) {
   const fileElements = document.querySelectorAll('[class*="file"]');
-  const propertyDivs = Array.from(document.querySelectorAll('div')).filter(el => el.textContent?.includes('Property_Profil'));
+  const propertyDivs = Array.from(document.querySelectorAll('div')).filter(el => el.textContent?.includes('.pdf'));
   
   if (fileElements.length > 0 || propertyDivs.length > 0) {
     console.log("Found attachment elements but need to extract file_id");
@@ -1282,7 +1282,7 @@ return (
       <button
         onClick={handleDoneWithProperty}
         className="px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white text-xs font-medium rounded-lg transition-colors shadow-sm"
-        title="Remove attachment and switch back to general mode"
+        title="Remove attachment and switch back to chat mode"
       >
         Remove Document
       </button>
