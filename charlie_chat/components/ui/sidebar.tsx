@@ -7,8 +7,9 @@ import { Range, getTrackBackground } from "react-range";
 import { Document, Packer, Paragraph, TextRun, ISpacingProperties, LineRuleType } from 'docx';
 import { saveAs } from 'file-saver';
 import { createBrowserClient } from '@supabase/ssr';
+import { SkipTraceButton } from '../skiptrace/SkipTraceButton';
 
-type Listing = {
+export type Listing = {
   id: string;
   address: {
     street?: string;
@@ -953,6 +954,11 @@ if (rpcError) {
                 >
                   Download Profile 📄
                 </button>
+  {/* NEW: Add the Skip Trace Button */}
+  <SkipTraceButton 
+    listing={activeListing}
+    userClass={userClass}
+  />
              </div>
             </div>
           </div>
