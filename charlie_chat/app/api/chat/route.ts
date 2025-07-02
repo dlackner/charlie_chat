@@ -104,7 +104,10 @@ const createdMessage = await openai.beta.threads.messages.create(threadId, messa
     const selectedModel = hasFileAttachment ? "gpt-4o-mini" : "gpt-3.5-turbo";
 
 // 5. Stream the run with chosen model
-const instructionText = hasFileAttachment 
+const instructionText = hasFileAttachment
+  ? `A document has been uploaded. As Charlie, first determine if this is a real estate-related document (property analysis, legal contract, market research) or unrelated document. Follow your established document classification workflow and use the uploaded document as your primary source for real estate questions.`
+  : "Answer using your knowledge base and real estate expertise. Do not reference any previously uploaded files.";
+/*onst instructionText = hasFileAttachment 
   ? `You are a document analysis assistant. Follow this workflow for every user question:
 
 **STEP 1: DOCUMENT IDENTIFICATION**
@@ -133,7 +136,7 @@ Always clearly state your source and document type:
 - User uploads recipe, asks about real estate → "This appears to be a recipe document, not a real estate document. For real estate questions, please upload a property-related document."
 
 Be helpful, accurate, and transparent about what information comes from the document versus your general knowledge. Always identify the document type first, then respond appropriately for that domain.`
-  : "Answer using your general knowledge and knowledge base. Do not reference any previously uploaded files.";
+  : "Answer using your general knowledge and knowledge base. Do not reference any previously uploaded files.";*/
 
   // ADD LOGGING HERE:
 console.log("🤖 Model selected:", selectedModel);
