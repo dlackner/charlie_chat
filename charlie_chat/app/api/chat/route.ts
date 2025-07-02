@@ -105,7 +105,14 @@ const createdMessage = await openai.beta.threads.messages.create(threadId, messa
 
 // 5. Stream the run with chosen model
 const instructionText = hasFileAttachment
-  ? `A document has been uploaded. As Charlie, first determine if this is a real estate-related document (property analysis, legal contract, market research) or unrelated document. Follow your established document classification workflow and use the uploaded document as your primary source for real estate questions.`
+  ? `A document has been uploaded. As Charlie:
+
+**FOR ANY QUESTION about "this," "the," or "attached" document/property:**
+1. Read and analyze the uploaded document FIRST
+2. Base your response on the document content
+3. Only supplement with knowledge base if the document lacks information
+
+**IF NON-REAL ESTATE DOCUMENT:** Politely clarify the document type and ask if they meant to upload a real estate document.`
   : "Answer using your knowledge base and real estate expertise. Do not reference any previously uploaded files.";
 /*onst instructionText = hasFileAttachment 
   ? `You are a document analysis assistant. Follow this workflow for every user question:
