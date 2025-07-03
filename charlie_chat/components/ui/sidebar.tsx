@@ -6,6 +6,9 @@ import { PropertyProfileModal } from '../property/profile-modal';
 import { FilterToggle } from '../filters/toggle';
 import { FilterRange } from '../filters/range';
 import { BasicFilters } from '../filters/basic';
+import { AdvancedFilters } from '../filters/advanced';
+import { filterRelevantFields } from '../utils/listing';
+import { areAllListingsSelected, createSelectAllHandler } from '../utils/selection';
 
 export type Listing = {
     id: string;
@@ -97,27 +100,11 @@ export const Sidebar = ({
 
     // New state and logic for Select All
     const currentSearchListings = listings.slice(0, 50);
-    const allCurrentSelected = currentSearchListings.every(listing =>
-        selectedListings.some(selected => selected.id === listing.id)
-    );
+    const allCurrentSelected = areAllListingsSelected(currentSearchListings, selectedListings);
     const someCurrentSelected = selectedListings.length > 0;
 
     const handleSelectAll = () => {
-        if (allCurrentSelected) {
-            // Deselect all current listings
-            currentSearchListings.forEach(listing => {
-                if (selectedListings.some(selected => selected.id === listing.id)) {
-                    toggleListingSelect(listing);
-                }
-            });
-        } else {
-            // Select all current listings that aren't already selected
-            currentSearchListings.forEach(listing => {
-                if (!selectedListings.some(selected => selected.id === listing.id)) {
-                    toggleListingSelect(listing);
-                }
-            });
-        }
+        createSelectAllHandler(currentSearchListings, selectedListings, toggleListingSelect);
     };
 
     const [showAdvanced, setShowAdvanced] = useState(false);
@@ -225,60 +212,6 @@ export const Sidebar = ({
         [advancedFiltersToggleRef, sidebarRef],
         () => setShowAdvanced(false)
     );
-
-    const filterRelevantFields = (listing: Listing) => {
-        return {
-            id: listing.id,
-            address: listing.address,
-
-            // Property basics
-            property_type: listing.property_type,
-            unitsCount: listing.unitsCount,
-            yearBuilt: listing.yearBuilt,
-            squareFeet: listing.squareFeet,
-            lotSquareFeet: listing.lotSquareFeet,
-            stories: listing.stories,
-
-            // Financial data
-            estimatedValue: listing.estimatedValue,
-            assessedValue: listing.assessedValue,
-            lastSaleAmount: listing.lastSaleAmount,
-            lastSaleDate: listing.lastSaleDate,
-            rentEstimate: listing.rentEstimate,
-
-            // Owner & financing
-            mortgageBalance: listing.mortgageBalance,
-            estimatedEquity: listing.estimatedEquity,
-            lenderName: listing.lenderName,
-            mortgageMaturingDate: listing.mortgageMaturingDate,
-            privateLender: listing.privateLender,
-
-            // Owner profile
-            owner1FirstName: listing.owner1FirstName,
-            owner1LastName: listing.owner1LastName,
-            mailAddress: listing.mailAddress,
-            yearsOwned: listing.yearsOwned,
-            ownerOccupied: listing.ownerOccupied,
-            corporate_owned: listing.corporate_owned,
-            totalPropertiesOwned: listing.totalPropertiesOwned,
-            totalPortfolioEquity: listing.totalPortfolioEquity,
-
-            // Distress indicators
-            preForeclosure: listing.preForeclosure,
-            foreclosure: listing.foreclosure,
-            reo: listing.reo,
-            auction: listing.auction,
-            taxLien: listing.taxLien,
-
-            // Market indicators
-            mlsActive: listing.mlsActive,
-            forSale: listing.forSale,
-            floodZone: listing.floodZone,
-            lastSaleArmsLength: listing.lastSaleArmsLength,
-            investorBuyer: listing.investorBuyer,
-            assumable: listing.assumable
-        };
-    };
 
     const goToPrev = () => {
         if (activeListingIndex !== null && activeListingIndex > 0) {
@@ -492,7 +425,67 @@ export const Sidebar = ({
         }
         setShowAdvanced(false);
     };
+    // Prepare props for AdvancedFilters component
+    const advancedFiltersProps = {
+        // Location fields
+        street,
+        setStreet,
+        house,
+        setHouse: setNumber,
+        city,
+        setCity,
+        stateCode,
+        setStateCode,
 
+        // Owner location
+        ownerLocation,
+        setOwnerLocation,
+
+        // Boolean filters
+        corporateOwned,
+        setCorporateOwned,
+        mlsActive,
+        setMlsActive,
+        lastSaleArmsLength,
+        setLastSaleArmsLength,
+        floodZone,
+        setFloodZone,
+        assumable,
+        setAssumable,
+        auction,
+        setAuction,
+        reo,
+        setReo,
+        taxLien,
+        setTaxLien,
+        preForeclosure,
+        setPreForeclosure,
+        privateLender,
+        setPrivateLender,
+
+        // Range filters
+        yearsOwnedRange,
+        setYearsOwnedRange,
+        lastSalePriceRange,
+        setLastSalePriceRange,
+        yearBuiltRange,
+        setYearBuiltRange,
+        lotSizeRange,
+        setLotSizeRange,
+        storiesRange,
+        setStoriesRange,
+        mortgageBalanceRange,
+        setMortgageBalanceRange,
+        assessedValueRange,
+        setAssessedValueRange,
+        estimatedValueRange,
+        setEstimatedValueRange,
+        estimatedEquityRange,
+        setEstimatedEquityRange,
+
+        // Actions
+        onResetFilters: resetFilters
+    };
     return (
         <div className="relative flex">
             <div ref={sidebarRef} className="w-[260px] shrink-0 bg-white border-r border-gray-200 p-4 flex flex-col space-y-6 overflow-y-auto h-screen z-20">
@@ -568,7 +561,7 @@ export const Sidebar = ({
                                 const isSelected = selectedListings.some((l: Listing) => l.id === listing.id);
                                 return (
                                     <div
-                                        key={i}
+                                        key={listing.id}
                                         className={`
                       border-2 p-3 rounded text-sm shadow-sm bg-white cursor-pointer transition-all
                       ${isSelected ? "border-blue-600 bg-blue-50" : "border-transparent hover:border-gray-400"}
@@ -626,183 +619,8 @@ export const Sidebar = ({
             )}
 
             {showAdvanced && (
-                <div ref={panelRef} className="absolute top-0 left-[260px] w-[440px] h-full bg-white border-r border-gray-200 p-6 shadow-xl z-30 overflow-y-auto">
-                    <div className="flex items-center justify-between mb-4">
-                        <h3 className="text-lg text-gray-800 font-semibold">Advanced Filters</h3>
-                        <button
-                            onClick={resetFilters}
-                            className="text-sm bg-gray-100 text-gray-700 px-3 py-1.5 rounded hover:bg-gray-200 border border-gray-300"
-                        >
-                            Reset Filters
-                        </button>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4 mb-4">
-                        <div className="mb-4">
-                            <label htmlFor="advanced-street-number" className="block text-sm font-medium text-gray-700 mb-1">
-                                Street Number
-                            </label>
-                            <input
-                                type="text"
-                                id="advanced-street-number"
-                                className="w-full border border-gray-300 rounded px-3 py-2 text-sm shadow-sm focus:ring-orange-500 focus:border-orange-500"
-                                placeholder=""
-                                value={house}
-                                onChange={e => setNumber(e.target.value)}
-                            />
-                        </div>
-
-                        <div className="mb-4">
-                            <label htmlFor="advanced-street-name" className="block text-sm font-medium text-gray-700 mb-1">
-                                Street Name
-                            </label>
-                            <input
-                                type="text"
-                                id="advanced-street-name"
-                                className="w-full border border-gray-300 rounded px-3 py-2 text-sm shadow-sm focus:ring-orange-500 focus:border-orange-500"
-                                placeholder=""
-                                value={street}
-                                onChange={e => setStreet(e.target.value)}
-                            />
-                        </div>
-
-                        <div className="mb-4">
-                            <label htmlFor="advanced-city" className="block text-sm font-medium text-gray-700 mb-1">
-                                City
-                            </label>
-                            <input
-                                type="text"
-                                id="advanced-city"
-                                className="w-full border border-gray-300 rounded px-3 py-2 text-sm shadow-sm focus:ring-orange-500 focus:border-orange-500"
-                                placeholder=""
-                                value={city}
-                                onChange={e => setCity(e.target.value)}
-                            />
-                        </div>
-
-                        <div className="mb-4">
-                            <label htmlFor="advanced-state" className="block text-sm font-medium text-gray-700 mb-1">
-                                State
-                            </label>
-                            <input
-                                type="text"
-                                id="advanced-state"
-                                maxLength={2}
-                                className="w-16 border border-gray-300 rounded px-3 py-2 text-sm shadow-sm text-center uppercase focus:ring-orange-500 focus:border-orange-500"
-                                placeholder=""
-                                value={stateCode}
-                                onChange={e => setStateCode(e.target.value.toUpperCase())}
-                            />
-                        </div>
-
-                        <div className="col-span-2">
-                            <FilterToggle
-                                label="Owner Location"
-                                value={ownerLocation === "any" ? "" : ownerLocation === "instate" ? "true" : "false"}
-                                onChange={(value) => {
-                                    if (value === "") setOwnerLocation("any");
-                                    else if (value === "true") setOwnerLocation("instate");
-                                    else setOwnerLocation("outofstate");
-                                }}
-                                options={{
-                                    any: "Any",
-                                    yes: "In State",
-                                    no: "Out of State"
-                                }}
-                            />
-                        </div>
-                    </div>
-                    <FilterToggle label="Corporate Owned" value={corporateOwned} onChange={setCorporateOwned} />
-                    <div className="h-4"></div>
-                    <FilterRange
-                        label="Years Owned"
-                        values={yearsOwnedRange}
-                        onChange={setYearsOwnedRange}
-                        min={0}
-                        max={100}
-                        step={1}
-                    />
-                    <div className="h-4"></div>
-                    <FilterRange
-                        label="Last Sale Price"
-                        values={lastSalePriceRange}
-                        onChange={setLastSalePriceRange}
-                        min={0}
-                        max={10000000}
-                        step={1}
-                    />
-                    <div className="h-4"></div>
-                    <div className="grid grid-cols-2 gap-4">
-                    <FilterToggle label="Active MLS" value={mlsActive} onChange={setMlsActive} />
-                    <FilterToggle label="Last Sale Arms Length" value={lastSaleArmsLength} onChange={setLastSaleArmsLength} />
-                    </div>
-
-                    <h4 className="text-md font-semibold text-gray-700 mt-6 mb-2">Physical Characteristics</h4>
-                    <div className="grid grid-cols-2 gap-4 mb-4">
-                        <FilterRange
-                            label="Year Built"
-                            values={yearBuiltRange}
-                            onChange={setYearBuiltRange}
-                            min={1800}
-                            max={2025}
-                        />
-                        <FilterRange
-                            label="Lot Size"
-                            values={lotSizeRange}
-                            onChange={setLotSizeRange}
-                            min={0}
-                            max={100000}
-                        />
-                        <FilterRange
-                            label="Number of Stories"
-                            values={storiesRange}
-                            onChange={setStoriesRange}
-                            min={0}
-                            max={100}
-                        />
-                        <FilterToggle label="Flood Zone" value={floodZone} onChange={setFloodZone} />
-                    </div>
-
-                    <h4 className="text-md font-semibold text-gray-700 mt-6 mb-2">Financials</h4>
-                    <div className="grid grid-cols-2 gap-4">
-                        <FilterRange
-                            label="Mortgage Balance"
-                            values={mortgageBalanceRange}
-                            onChange={setMortgageBalanceRange}
-                            min={0}
-                            max={10000000}
-                            step={10000}
-                        />
-                        <FilterRange
-                            label="Assessed Value"
-                            values={assessedValueRange}
-                            onChange={setAssessedValueRange}
-                            min={0}
-                            max={10000000}
-                            step={10000}
-                        />
-                        <FilterRange
-                            label="Estimated Value"
-                            values={estimatedValueRange}
-                            onChange={setEstimatedValueRange}
-                            min={0}
-                            max={10000000}
-                            step={10000}
-                        />
-                        <FilterRange
-                            label="Estimated Equity"
-                            values={estimatedEquityRange}
-                            onChange={setEstimatedEquityRange}
-                            min={0}
-                            max={10000000}
-                            step={10000}
-                        />
-                        <FilterToggle label="Assumable" value={assumable} onChange={setAssumable} />
-                        <FilterToggle label="Auction" value={auction} onChange={setAuction} />
-                        <FilterToggle label="REO" value={reo} onChange={setReo} />
-                        <FilterToggle label="Tax Lien" value={taxLien} onChange={setTaxLien} />
-                        <FilterToggle label="Pre-Foreclosure" value={preForeclosure} onChange={setPreForeclosure} />
-                        <FilterToggle label="Private Lender" value={privateLender} onChange={setPrivateLender} />
-                    </div>
+                <div ref={panelRef} className="absolute top-0 left-[260px] z-30">
+                    <AdvancedFilters {...advancedFiltersProps} />
                 </div>
             )}
         </div>
