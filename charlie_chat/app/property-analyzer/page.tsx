@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { generatePropertySummary, PropertySummaryButton } from './summary-generator';
 import {
   LineChart,
   Line,
@@ -62,8 +63,7 @@ const calculateIRR = (cashFlows: number[], guess: number = 0.1): number => {
   }
   return irr; // Return the last approximation if not converged
 };
-
-// --- New Grading System Function ---
+// --- Multifamily-Specific Investment Grading System ---
 interface GradeMetrics {
   irr: number;
   roiAtHorizon: number;
@@ -76,116 +76,263 @@ interface GradeMetrics {
   purchasePrice: number;
 }
 
-const calculateOverallGrade = (metrics: GradeMetrics): string => {
-  const {
-    irr,
-    roiAtHorizon,
-    cashOnCashReturn,
-    debtServiceCoverageRatio,
-    capRate,
-    breakEvenYear,
-    netOperatingIncome,
-    cashFlowBeforeTax,
-    purchasePrice,
-  } = metrics;
-  let totalScore = 0;
+interface MultifamilyMarketBenchmarks {
+  avgIRR: number;
+  avgCashOnCash: number;
+  avgDSCR: number;
+  avgCapRate: number;
+  avgExpenseRatio: number;
+}
 
-  // 1. IRR (Internal Rate of Return) - Weight: 25%
-  let irrScore = 0;
-  if (irr >= 15) irrScore = 100;
-  else if (irr >= 10) irrScore = 80;
-  else if (irr >= 5) irrScore = 60;
-  else if (irr >= 0) irrScore = 40;
-  else irrScore = 20;
-  totalScore += irrScore * 0.25;
+interface PropertyCharacteristics {
+  purchasePrice: number;
+  numUnits: number;
+  avgMonthlyRentPerUnit: number;
+  capRate: number;
+  expenseRatio: number;
+}
 
-  // 2. ROI (Return on Investment) at Horizon - Weight: 20%
-  let roiScore = 0;
-  if (roiAtHorizon >= 100) roiScore = 100;
-  else if (roiAtHorizon >= 50) roiScore = 80;
-  else if (roiAtHorizon >= 20) roiScore = 60;
-  else if (roiAtHorizon >= 0) roiScore = 40;
-  else roiScore = 20;
-  totalScore += roiScore * 0.20;
+interface MultifamilyGradeMetrics extends GradeMetrics {
+  expenseRatio: number;
+  assetClass?: 'a-class' | 'b-class' | 'c-class' | 'value-add';
+  marketTier?: 'tier-1' | 'tier-2' | 'tier-3' | 'emerging';
+}
 
-  // 3. Cash-on-Cash Return - Weight: 20%
-  let cocScore = 0;
-  if (cashOnCashReturn >= 8) cocScore = 100;
-  else if (cashOnCashReturn >= 5) cocScore = 80;
-  else if (cashOnCashReturn >= 2) cocScore = 60;
-  else if (cashOnCashReturn >= 0) cocScore = 40;
-  else cocScore = 20;
-  totalScore += cocScore * 0.20;
-
-  // 4. Debt Service Coverage Ratio (DSCR) - Weight: 15%
-  let dscrScore = 0;
-  if (debtServiceCoverageRatio >= 1.5) dscrScore = 100;
-  else if (debtServiceCoverageRatio >= 1.25) dscrScore = 80;
-  else if (debtServiceCoverageRatio >= 1.0) dscrScore = 60;
-  else dscrScore = 20;
-  totalScore += dscrScore * 0.15;
-
-  // 5. Capitalization Rate (Cap Rate) - Weight: 7.5%
-  let capRateScore = 0;
-  if (capRate >= 8) capRateScore = 100; // High Cap (Good for Income)
-  else if (capRate >= 5) capRateScore = 80;
-  else if (capRate >= 3) capRateScore = 60;
-  else capRateScore = 20;
-  totalScore += capRateScore * 0.075;
-
-  // 6. Break-Even Year - Weight: 2.5%
-  let breakEvenScore = 0;
-  if (breakEvenYear === null) { // Never Breaks Even
-    breakEvenScore = 20;
-  } else if (breakEvenYear <= 3) { // Very Fast
-    breakEvenScore = 100;
-  } else if (breakEvenYear <= 5) { // Good
-    breakEvenScore = 80;
-  } else if (breakEvenYear <= 10) { // Moderate
-    breakEvenScore = 60;
-  } else { // Long Break-Even
-    breakEvenScore = 40;
+// Current 2024/2025 Multifamily Market Benchmarks
+const MULTIFAMILY_BENCHMARKS = {
+  assetClass: {
+    'a-class': { avgIRR: 8.5, avgCashOnCash: 3.5, avgDSCR: 1.20, avgCapRate: 4.7, avgExpenseRatio: 35 },
+    'b-class': { avgIRR: 10.0, avgCashOnCash: 4.5, avgDSCR: 1.25, avgCapRate: 4.9, avgExpenseRatio: 40 },
+    'c-class': { avgIRR: 12.0, avgCashOnCash: 6.0, avgDSCR: 1.30, avgCapRate: 5.4, avgExpenseRatio: 45 },
+    'value-add': { avgIRR: 14.0, avgCashOnCash: 5.5, avgDSCR: 1.15, avgCapRate: 5.2, avgExpenseRatio: 50 }
+  },
+  marketTier: {
+    'tier-1': { avgIRR: 8.0, avgCashOnCash: 3.0, avgDSCR: 1.20, avgCapRate: 4.2, avgExpenseRatio: 38 },
+    'tier-2': { avgIRR: 10.0, avgCashOnCash: 4.5, avgDSCR: 1.25, avgCapRate: 4.8, avgExpenseRatio: 42 },
+    'tier-3': { avgIRR: 12.0, avgCashOnCash: 5.5, avgDSCR: 1.30, avgCapRate: 5.5, avgExpenseRatio: 45 },
+    'emerging': { avgIRR: 14.0, avgCashOnCash: 7.0, avgDSCR: 1.35, avgCapRate: 6.2, avgExpenseRatio: 48 }
   }
-  totalScore += breakEvenScore * 0.025;
-
-  // 7. Net Operating Income (NOI) - Weight: 5%
-  let noiScore = 0;
-  if (purchasePrice > 0) {
-    const noiPct = (netOperatingIncome / purchasePrice) * 100;
-    if (noiPct >= 8) noiScore = 100;
-    else if (noiPct >= 5) noiScore = 80;
-    else if (noiPct >= 2) noiScore = 60;
-    else if (noiPct > 0) noiScore = 40;
-    else noiScore = 20;
-  } else {
-    noiScore = 20; // Cannot calculate, treat as poor
-  }
-  totalScore += noiScore * 0.05;
-
-  // 8. Cash Flow Before Tax (CFBT) - Weight: 5%
-  let cfbtScore = 0;
-  if (purchasePrice > 0) {
-    const cfbtPct = (cashFlowBeforeTax / purchasePrice) * 100;
-    if (cfbtPct >= 5) cfbtScore = 100; // Generally lower % than NOI
-    else if (cfbtPct >= 3) cfbtScore = 80;
-    else if (cfbtPct >= 1) cfbtScore = 60;
-    else if (cfbtPct > 0) cfbtScore = 40;
-    else cfbtScore = 20;
-  } else {
-    cfbtScore = 20; // Cannot calculate, treat as poor
-  }
-  totalScore += cfbtScore * 0.05;
-
-  // Map total score to letter grade
-  if (totalScore >= 90) return "A+";
-  else if (totalScore >= 80) return "A";
-  else if (totalScore >= 70) return "B+";
-  else if (totalScore >= 60) return "B";
-  else if (totalScore >= 50) return "C+";
-  else if (totalScore >= 40) return "C";
-  else if (totalScore >= 30) return "D";
-  else return "F";
 };
+
+// Auto-detect asset class based on property characteristics
+const detectAssetClass = (characteristics: PropertyCharacteristics): string => {
+  const { purchasePrice, numUnits, avgMonthlyRentPerUnit, capRate, expenseRatio } = characteristics;
+
+  const pricePerUnit = purchasePrice / numUnits;
+  let score = 0;
+
+  // Price per unit scoring (40% weight)
+  if (pricePerUnit >= 300000) score += 40;
+  else if (pricePerUnit >= 200000) score += 30;
+  else if (pricePerUnit >= 100000) score += 20;
+  else score += 10;
+
+  // Monthly rent scoring (30% weight)
+  if (avgMonthlyRentPerUnit >= 2500) score += 30;
+  else if (avgMonthlyRentPerUnit >= 1800) score += 25;
+  else if (avgMonthlyRentPerUnit >= 1200) score += 20;
+  else score += 10;
+
+  // Cap rate scoring (20% weight) - Lower cap = higher class
+  if (capRate <= 4.5) score += 20;
+  else if (capRate <= 5.5) score += 15;
+  else if (capRate <= 6.5) score += 10;
+  else score += 5;
+
+  // Expense ratio scoring (10% weight) - Lower expenses = higher class
+  if (expenseRatio <= 35) score += 10;
+  else if (expenseRatio <= 45) score += 8;
+  else if (expenseRatio <= 55) score += 6;
+  else score += 3;
+
+  if (score >= 85) return 'a-class';
+  else if (score >= 65) return 'b-class';
+  else if (score >= 45) return 'c-class';
+  else return 'value-add';
+};
+
+// Auto-detect market tier based on pricing
+const detectMarketTier = (characteristics: PropertyCharacteristics): string => {
+  const { purchasePrice, numUnits, avgMonthlyRentPerUnit } = characteristics;
+
+  const pricePerUnit = purchasePrice / numUnits;
+  let score = 0;
+
+  // Price per unit indicators
+  if (pricePerUnit >= 400000) score += 40;
+  else if (pricePerUnit >= 250000) score += 30;
+  else if (pricePerUnit >= 150000) score += 20;
+  else score += 10;
+
+  // Rent level indicators
+  if (avgMonthlyRentPerUnit >= 3000) score += 30;
+  else if (avgMonthlyRentPerUnit >= 2000) score += 25;
+  else if (avgMonthlyRentPerUnit >= 1400) score += 20;
+  else score += 10;
+
+  if (score >= 60) return 'tier-1';
+  else if (score >= 45) return 'tier-2';
+  else if (score >= 30) return 'tier-3';
+  else return 'emerging';
+};
+
+// Enhanced Grading System for Multifamily Properties
+const calculateMultifamilyGrade = (
+  metrics: MultifamilyGradeMetrics,
+  customBenchmarks?: MultifamilyMarketBenchmarks
+): { grade: string; score: number; breakdown: Record<string, number>; classification: { assetClass: string; marketTier: string } } => {
+
+
+  // Determine benchmarks to use
+  let benchmarks: MultifamilyMarketBenchmarks;
+
+  if (customBenchmarks) {
+    benchmarks = customBenchmarks;
+  } else {
+    const assetBench = MULTIFAMILY_BENCHMARKS.assetClass[metrics.assetClass || 'b-class'];
+    const marketBench = MULTIFAMILY_BENCHMARKS.marketTier[metrics.marketTier || 'tier-2'];
+
+    // Weight: 60% asset class, 40% market tier
+    benchmarks = {
+      avgIRR: (assetBench.avgIRR * 0.6) + (marketBench.avgIRR * 0.4),
+      avgCashOnCash: (assetBench.avgCashOnCash * 0.6) + (marketBench.avgCashOnCash * 0.4),
+      avgDSCR: (assetBench.avgDSCR * 0.6) + (marketBench.avgDSCR * 0.4),
+      avgCapRate: (assetBench.avgCapRate * 0.6) + (marketBench.avgCapRate * 0.4),
+      avgExpenseRatio: (assetBench.avgExpenseRatio * 0.6) + (marketBench.avgExpenseRatio * 0.4)
+    };
+  }
+
+  let totalScore = 0;
+  const breakdown: Record<string, number> = {};
+
+  // 1. IRR Score - 35% weight (most important for multifamily)
+  const irrRatio = metrics.irr / benchmarks.avgIRR;
+  let irrScore = 0;
+  if (irrRatio >= 1.5) irrScore = 100;
+  else if (irrRatio >= 1.25) irrScore = 85;
+  else if (irrRatio >= 1.1) irrScore = 70;
+  else if (irrRatio >= 0.9) irrScore = 55;
+  else if (irrRatio >= 0.75) irrScore = 40;
+  else if (irrRatio >= 0.5) irrScore = 25;
+  else irrScore = 10;
+
+  totalScore += irrScore * 0.35;
+  breakdown['IRR vs Market'] = irrScore;
+
+  // 2. Cash-on-Cash Return - 25% weight
+  const cocRatio = metrics.cashOnCashReturn / benchmarks.avgCashOnCash;
+  let cocScore = 0;
+  if (cocRatio >= 1.5) cocScore = 100;
+  else if (cocRatio >= 1.25) cocScore = 85;
+  else if (cocRatio >= 1.1) cocScore = 70;
+  else if (cocRatio >= 0.9) cocScore = 55;
+  else if (cocRatio >= 0.75) cocScore = 40;
+  else if (cocRatio >= 0.5) cocScore = 25;
+  else cocScore = 10;
+
+  totalScore += cocScore * 0.25;
+  breakdown['Cash-on-Cash vs Market'] = cocScore;
+
+  // 3. DSCR - 20% weight (critical for multifamily financing)
+  const dscrRatio = metrics.debtServiceCoverageRatio / benchmarks.avgDSCR;
+  let dscrScore = 0;
+  if (dscrRatio >= 1.4) dscrScore = 100;
+  else if (dscrRatio >= 1.2) dscrScore = 85;
+  else if (dscrRatio >= 1.1) dscrScore = 70;
+  else if (dscrRatio >= 1.0) dscrScore = 55;
+  else if (dscrRatio >= 0.9) dscrScore = 40;
+  else if (dscrRatio >= 0.8) dscrScore = 25;
+  else dscrScore = 10;
+
+  totalScore += dscrScore * 0.20;
+  breakdown['DSCR vs Market'] = dscrScore;
+
+  // 4. Cap Rate Attractiveness - 8% weight
+  const capRateRatio = metrics.capRate / benchmarks.avgCapRate;
+  let capScore = 0;
+  if (capRateRatio >= 1.3) capScore = 100;
+  else if (capRateRatio >= 1.15) capScore = 85;
+  else if (capRateRatio >= 1.05) capScore = 70;
+  else if (capRateRatio >= 0.95) capScore = 55;
+  else if (capRateRatio >= 0.85) capScore = 40;
+  else if (capRateRatio >= 0.7) capScore = 25;
+  else capScore = 10;
+
+  totalScore += capScore * 0.08;
+  breakdown['Cap Rate vs Market'] = capScore;
+
+  // 5. Expense Efficiency - 7% weight
+  const expenseRatio = metrics.expenseRatio || 40;
+  const expenseEfficiency = benchmarks.avgExpenseRatio / Math.max(expenseRatio, 1);
+  let expenseScore = 0;
+  if (expenseEfficiency >= 1.2) expenseScore = 100;
+  else if (expenseEfficiency >= 1.1) expenseScore = 85;
+  else if (expenseEfficiency >= 1.05) expenseScore = 70;
+  else if (expenseEfficiency >= 0.95) expenseScore = 55;
+  else if (expenseEfficiency >= 0.85) expenseScore = 40;
+  else if (expenseEfficiency >= 0.7) expenseScore = 25;
+  else expenseScore = 10;
+
+  totalScore += expenseScore * 0.07;
+  breakdown['Expense Efficiency'] = expenseScore;
+
+  // 6. Break-Even Analysis - 3% weight
+  let breakEvenScore = 0;
+  if (metrics.breakEvenYear === null) {
+    breakEvenScore = 10;
+  } else if (metrics.breakEvenYear <= 1) {
+    breakEvenScore = 100;
+  } else if (metrics.breakEvenYear <= 2) {
+    breakEvenScore = 80;
+  } else if (metrics.breakEvenYear <= 3) {
+    breakEvenScore = 60;
+  } else if (metrics.breakEvenYear <= 5) {
+    breakEvenScore = 40;
+  } else {
+    breakEvenScore = 20;
+  }
+
+  totalScore += breakEvenScore * 0.03;
+  breakdown['breakEvenSpeed'] = breakEvenScore;
+
+  // 7. ROI at Horizon - 2% weight (reduced importance)
+  let roiScore = 0;
+  if (metrics.roiAtHorizon >= 150) roiScore = 100;
+  else if (metrics.roiAtHorizon >= 100) roiScore = 85;
+  else if (metrics.roiAtHorizon >= 75) roiScore = 70;
+  else if (metrics.roiAtHorizon >= 50) roiScore = 55;
+  else if (metrics.roiAtHorizon >= 25) roiScore = 40;
+  else if (metrics.roiAtHorizon >= 0) roiScore = 25;
+  else roiScore = 10;
+
+  totalScore += roiScore * 0.02;
+  breakdown['ROI at Horizon'] = roiScore;
+
+  // Grade mapping - more stringent for multifamily
+  let grade: string;
+  if (totalScore >= 85) grade = "A+";
+  else if (totalScore >= 78) grade = "A";
+  else if (totalScore >= 70) grade = "A-";
+  else if (totalScore >= 62) grade = "B+";
+  else if (totalScore >= 55) grade = "B";
+  else if (totalScore >= 47) grade = "B-";
+  else if (totalScore >= 40) grade = "C+";
+  else if (totalScore >= 32) grade = "C";
+  else if (totalScore >= 25) grade = "C-";
+  else if (totalScore >= 18) grade = "D";
+  else grade = "F";
+
+  return {
+    grade,
+    score: Math.round(totalScore * 10) / 10,
+    breakdown,
+    classification: {
+      assetClass: metrics.assetClass || 'b-class',
+      marketTier: metrics.marketTier || 'tier-2'
+    }
+  };
+};
+
 
 export default function PropertyAnalyzerPage() {
   // --- Input States: FINANCING ---
@@ -294,9 +441,9 @@ export default function PropertyAnalyzerPage() {
   }, [effectiveGrossIncome, totalOperatingExpenses]);
 
   const expenseRatio = useMemo(() => {
-  if (effectiveGrossIncome === 0) return 0;
-  return (totalOperatingExpenses / effectiveGrossIncome) * 100; // Percentage
-}, [totalOperatingExpenses, effectiveGrossIncome]);
+    if (effectiveGrossIncome === 0) return 0;
+    return (totalOperatingExpenses / effectiveGrossIncome) * 100; // Percentage
+  }, [totalOperatingExpenses, effectiveGrossIncome]);
 
   // Capital Reserve (Year 1)
   const annualCapitalReserveTotal = useMemo(() => {
@@ -304,17 +451,17 @@ export default function PropertyAnalyzerPage() {
   }, [capitalReservePerUnitAnnual, numUnits]);
 
   const totalDeferredCapitalReserve = useMemo(() => {
-  return deferredCapitalReservePerUnit * numUnits;
-}, [deferredCapitalReservePerUnit, numUnits]);
+    return deferredCapitalReservePerUnit * numUnits;
+  }, [deferredCapitalReservePerUnit, numUnits]);
 
   // Cash Flow & Returns (Year 1)
   const cashFlowBeforeTax = useMemo(() => {
     return netOperatingIncome - annualDebtService;
   }, [netOperatingIncome, annualDebtService]);
 
-const cashFlowAfterCapitalReserve = useMemo(() => {
-  return cashFlowBeforeTax - annualCapitalReserveTotal - totalDeferredCapitalReserve;
-}, [cashFlowBeforeTax, annualCapitalReserveTotal, totalDeferredCapitalReserve]);
+  const cashFlowAfterCapitalReserve = useMemo(() => {
+    return cashFlowBeforeTax - annualCapitalReserveTotal - totalDeferredCapitalReserve;
+  }, [cashFlowBeforeTax, annualCapitalReserveTotal, totalDeferredCapitalReserve]);
 
   const capRate = useMemo(() => {
     if (purchasePrice === 0) return 0;
@@ -339,23 +486,28 @@ const cashFlowAfterCapitalReserve = useMemo(() => {
   const [roiAtHorizon, setRoiAtHorizon] = useState<number>(0);
   const [irr, setIRR] = useState<number>(0);
   const [overallGrade, setOverallGrade] = useState<string>('N/A');
+  const [gradeBreakdown, setGradeBreakdown] = useState<Record<string, number>>({});
+  const [detectedClassification, setDetectedClassification] = useState<{ assetClass: string; marketTier: string }>({
+    assetClass: 'b-class',
+    marketTier: 'tier-2'
+  });
   const [year1LoanBalance, setYear1LoanBalance] = useState<number>(0);
 
   // FIXED: Function to calculate remaining loan balance correctly
   const calculateRemainingLoanBalance = (yearsElapsed: number): number => {
     const monthsPaid = yearsElapsed * 12;
     if (monthsPaid >= numberOfPayments) return 0; // Loan is paid off
-    
+
     if (monthlyInterestRate === 0) {
       // Simple calculation for 0% interest
       return loanAmount - (monthlyMortgagePayment * monthsPaid);
     }
-    
+
     // Standard amortization formula for remaining balance
     const A = loanAmount;
     const r = monthlyInterestRate;
     const n = numberOfPayments;
-    
+
     const remainingBalance = A * (Math.pow(1 + r, n) - Math.pow(1 + r, monthsPaid)) / (Math.pow(1 + r, n) - 1);
     return Math.max(0, remainingBalance);
   };
@@ -403,15 +555,15 @@ const cashFlowAfterCapitalReserve = useMemo(() => {
       const projectedMarketing = marketingAnnual * Math.pow(1 + expenseGrowthRate / 100, y - 1);
       const projectedGAndA = gAndAAnnual * Math.pow(1 + expenseGrowthRate / 100, y - 1);
       const projectedOtherExpenses = otherExpensesAnnual * Math.pow(1 + expenseGrowthRate / 100, y - 1);
-      
+
       currentTotalOperatingExpenses = projectedPropertyTaxes + projectedInsurance + currentPropertyManagementFeeAmount + projectedMaintenanceRepairs + projectedUtilities + projectedContractServices + projectedPayroll + projectedMarketing + projectedGAndA + projectedOtherExpenses;
       currentNetOperatingIncome = currentEffectiveGrossIncome - currentTotalOperatingExpenses;
       currentCashFlowBeforeTax = currentNetOperatingIncome - annualDebtService;
 
-currentAnnualCapitalReserveTotal = capitalReservePerUnitAnnual * numUnits;
-const annualDeferredCapitalReserve = totalDeferredCapitalReserve;
-const annualCashFlow = currentCashFlowBeforeTax - currentAnnualCapitalReserveTotal - annualDeferredCapitalReserve;
-cumulativeCashFlow += annualCashFlow;
+      currentAnnualCapitalReserveTotal = capitalReservePerUnitAnnual * numUnits;
+      const annualDeferredCapitalReserve = totalDeferredCapitalReserve;
+      const annualCashFlow = currentCashFlowBeforeTax - currentAnnualCapitalReserveTotal - annualDeferredCapitalReserve;
+      cumulativeCashFlow += annualCashFlow;
 
       if (cumulativeCashFlow >= 0 && currentBreakEvenYear === null) {
         currentBreakEvenYear = y;
@@ -423,7 +575,7 @@ cumulativeCashFlow += annualCashFlow;
         noi: currentNetOperatingIncome,
         cashFlowBeforeTax: currentCashFlowBeforeTax,
       });
-      
+
       // Store annual cash flow for IRR calculation
       cashFlowsForIRR.push(annualCashFlow);
     }
@@ -434,7 +586,7 @@ cumulativeCashFlow += annualCashFlow;
     // Calculate sale price based on disposition cap rate
     const finalSalesPrice = currentNetOperatingIncome / (dispositionCapRate / 100);
     const finalLoanBalanceAtHorizon = calculateRemainingLoanBalance(holdingPeriodYears);
-    
+
     // FIXED: Calculate net sale proceeds correctly
     const sellingCosts = finalSalesPrice * 0.02; // 2% selling costs
     const finalProjectedEquity = finalSalesPrice - finalLoanBalanceAtHorizon - sellingCosts;
@@ -461,33 +613,53 @@ cumulativeCashFlow += annualCashFlow;
     setIRR(calculatedIRR * 100); // Convert to percentage
 
     // --- Calculate Overall Grade ---
-const adjustedCashFlowForGrading = currentCashFlowBeforeTax - totalDeferredCapitalReserve;
-const gradeMetrics: GradeMetrics = {
-  irr: calculatedIRR * 100,
-  roiAtHorizon: roi,
-  cashOnCashReturn: cashOnCashReturn,
-  debtServiceCoverageRatio: debtServiceCoverageRatio,
-  capRate: capRate,
-  breakEvenYear: currentBreakEvenYear,
-  netOperatingIncome: currentNetOperatingIncome,
-  cashFlowBeforeTax: adjustedCashFlowForGrading,
-  purchasePrice: purchasePrice,
-};
-    setOverallGrade(calculateOverallGrade(gradeMetrics));
+    const adjustedCashFlowForGrading = currentCashFlowBeforeTax - totalDeferredCapitalReserve;
 
-}, [
-  numUnits, avgMonthlyRentPerUnit, vacancyRate, annualRentalGrowthRate, otherIncomeAnnual, incomeReductionsAnnual,
-  propertyTaxes, insurance, propertyManagementFeePercentage, maintenanceRepairsAnnual, utilitiesAnnual,
-  contractServicesAnnual, payrollAnnual, marketingAnnual, gAndAAnnual,
-  otherExpensesAnnual, expenseGrowthRate,
-  capitalReservePerUnitAnnual, deferredCapitalReservePerUnit, holdingPeriodYears,
-  purchasePrice, downPaymentPercentage, interestRate, loanTermYears, closingCostsPercentage,
-  dispositionCapRate, // Target cap rate at sale
-  grossPotentialRent, effectiveGrossIncome, propertyManagementFeeAmount, totalOperatingExpenses, netOperatingIncome,
-  downPaymentAmount, loanAmount, totalInitialInvestment, monthlyInterestRate, numberOfPayments, monthlyMortgagePayment, annualDebtService,
-  cashFlowBeforeTax, annualCapitalReserveTotal,
-  capRate, cashOnCashReturn, debtServiceCoverageRatio,
-]);
+    // Auto-detect property classification
+    const propertyCharacteristics: PropertyCharacteristics = {
+      purchasePrice,
+      numUnits,
+      avgMonthlyRentPerUnit,
+      capRate,
+      expenseRatio
+    };
+
+    const detectedAssetClass = detectAssetClass(propertyCharacteristics);
+    const detectedMarketTier = detectMarketTier(propertyCharacteristics);
+
+    const gradeMetrics: MultifamilyGradeMetrics = {
+      irr: calculatedIRR * 100,
+      roiAtHorizon: roi,
+      cashOnCashReturn: cashOnCashReturn,
+      debtServiceCoverageRatio: debtServiceCoverageRatio,
+      capRate: capRate,
+      breakEvenYear: currentBreakEvenYear,
+      netOperatingIncome: currentNetOperatingIncome,
+      cashFlowBeforeTax: adjustedCashFlowForGrading,
+      purchasePrice: purchasePrice,
+      expenseRatio: expenseRatio,
+      assetClass: detectedAssetClass as any,
+      marketTier: detectedMarketTier as any
+    };
+
+    const gradingResult = calculateMultifamilyGrade(gradeMetrics);
+    setOverallGrade(gradingResult.grade);
+    setGradeBreakdown(gradingResult.breakdown);
+    setDetectedClassification(gradingResult.classification);
+
+  }, [
+    numUnits, avgMonthlyRentPerUnit, vacancyRate, annualRentalGrowthRate, otherIncomeAnnual, incomeReductionsAnnual,
+    propertyTaxes, insurance, propertyManagementFeePercentage, maintenanceRepairsAnnual, utilitiesAnnual,
+    contractServicesAnnual, payrollAnnual, marketingAnnual, gAndAAnnual,
+    otherExpensesAnnual, expenseGrowthRate,
+    capitalReservePerUnitAnnual, deferredCapitalReservePerUnit, holdingPeriodYears,
+    purchasePrice, downPaymentPercentage, interestRate, loanTermYears, closingCostsPercentage,
+    dispositionCapRate, // Target cap rate at sale
+    grossPotentialRent, effectiveGrossIncome, propertyManagementFeeAmount, totalOperatingExpenses, netOperatingIncome,
+    downPaymentAmount, loanAmount, totalInitialInvestment, monthlyInterestRate, numberOfPayments, monthlyMortgagePayment, annualDebtService,
+    cashFlowBeforeTax, annualCapitalReserveTotal, totalDeferredCapitalReserve,
+    capRate, cashOnCashReturn, debtServiceCoverageRatio, expenseRatio,
+  ]);
 
   // Helper function to format currency
   const formatCurrency = (value: number) => {
@@ -518,8 +690,8 @@ const gradeMetrics: GradeMetrics = {
   return (
     <div className="flex flex-col lg:flex-row p-4 md:p-8 bg-white text-gray-800 min-h-screen">
       <div className="lg:w-2/3 pr-0 lg:pr-8 mb-8 lg:mb-0">
-        
-        <div className="flex justify-between items-center mb-6">
+
+<div className="flex justify-between items-end mb-6">
           {/* Investment Grade Blue Box */}
           <div className="p-3 rounded-lg shadow-xl flex items-center text-white" style={{ backgroundColor: '#1C599F' }}>
             <div className="flex items-center space-x-3">
@@ -529,12 +701,27 @@ const gradeMetrics: GradeMetrics = {
               <p className="text-2xl font-bold">Investment Grade: <span className="text-2xl font-extrabold">{overallGrade}</span></p>
             </div>
           </div>
-          <button
-            onClick={() => window.print()}
-            className="bg-orange-600 hover:bg-orange-700 text-white font-bold py-2 px-4 rounded transition-colors duration-150 shadow-md print:hidden"
-          >
-            Print Page
-          </button>
+          <div className="flex space-x-3">
+            <PropertySummaryButton
+              gradeResult={{
+                grade: overallGrade,
+                score: Object.values(gradeBreakdown).reduce((sum, score) => sum + score, 0) / Object.keys(gradeBreakdown).length,
+                breakdown: gradeBreakdown,
+                classification: detectedClassification
+              }}
+              metrics={{
+                purchasePrice,
+                numUnits,
+                avgMonthlyRentPerUnit,
+                irr,
+                cashOnCashReturn,
+                capRate,
+                dscr: debtServiceCoverageRatio,
+                expenseRatio,
+                breakEvenYear
+              }}
+            />
+          </div>
         </div>
 
         <div className="bg-gray-50 p-4 md:p-6 rounded-lg shadow-xl border border-gray-200 h-[400px] md:h-[500px] flex items-center justify-center">
@@ -618,7 +805,7 @@ const gradeMetrics: GradeMetrics = {
           </ResponsiveContainer>
         </div>
 
-<div className="mt-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="mt-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {/* Row 1 Metrics */}
           <div className="bg-white p-5 rounded-xl shadow-lg border border-gray-200">
             <h3 className="text-md font-semibold text-orange-600 mb-1">Gross Operating Income</h3>
@@ -696,11 +883,12 @@ const gradeMetrics: GradeMetrics = {
             <p className="text-2xl font-bold text-gray-900">{formatCurrency(projectedEquityAtHorizon)}</p>
           </div>
         </div>
+
       </div>
 
-      <div className="lg:w-1/3 bg-gray-50 p-6 rounded-xl shadow-2xl border border-gray-200 lg:sticky lg:top-8 self-start max-h-[calc(100vh-4rem)] overflow-y-auto">
+      <div className="print-assumptions lg:w-1/3 bg-gray-50 p-6 rounded-xl shadow-2xl border border-gray-200 lg:sticky lg:top-8 self-start max-h-[calc(100vh-4rem)] overflow-y-auto">
         <h2 className="text-2xl font-semibold mb-6 text-orange-600">Assumptions</h2>
-        
+
         <h3 className="text-xl font-semibold mb-4 text-gray-700">FINANCING</h3>
         <div className="mb-5">
           <label htmlFor="purchasePrice" className="block text-sm font-medium text-gray-700 mb-1">Purchase Price ($)</label>
@@ -767,19 +955,19 @@ const gradeMetrics: GradeMetrics = {
           />
         </div>
 
-{/* Disposition Cap Rate */}
-<div className="mb-5">
-  <label htmlFor="dispositionCapRate" className="block text-sm font-medium text-gray-700 mb-1">Disposition Cap Rate (%)</label>
-  <input
-    type="number"
-    id="dispositionCapRate"
-    value={dispositionCapRate || ''}
-    onChange={(e) => setDispositionCapRate(Math.max(0, parseFloat(e.target.value) || 0))}
-    className="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-shadow duration-150 ease-in-out shadow-sm"
-    step="0.1"
-    min="0"
-  />
-</div>
+        {/* Disposition Cap Rate */}
+        <div className="mb-5">
+          <label htmlFor="dispositionCapRate" className="block text-sm font-medium text-gray-700 mb-1">Disposition Cap Rate (%)</label>
+          <input
+            type="number"
+            id="dispositionCapRate"
+            value={dispositionCapRate || ''}
+            onChange={(e) => setDispositionCapRate(Math.max(0, parseFloat(e.target.value) || 0))}
+            className="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-shadow duration-150 ease-in-out shadow-sm"
+            step="0.1"
+            min="0"
+          />
+        </div>
 
         <h3 className="text-xl font-semibold mb-4 text-gray-700 mt-8">RENTS</h3>
         <div className="mb-5">
@@ -861,7 +1049,7 @@ const gradeMetrics: GradeMetrics = {
           />
         </div>
 
-        <h3 className="text-xl font-semibold mb-4 text-gray-700 mt-8">OPERATING EXPENSES (ANNUAL)</h3>
+        <h3 id="operating-expenses-section" className="text-xl font-semibold mb-4 text-gray-700 mt-8">OPERATING EXPENSES (ANNUAL)</h3>
         <div className="mb-5">
           <label htmlFor="propertyTaxes" className="block text-sm font-medium text-gray-700 mb-1">Property Taxes ($)</label>
           <input
@@ -1018,18 +1206,18 @@ const gradeMetrics: GradeMetrics = {
             suppressHydrationWarning={true}
           />
         </div>
-<div className="mb-5">
-  <label htmlFor="deferredCapitalReservePerUnit" className="block text-sm font-medium text-gray-700 mb-1">Deferred Capital Reserve (per unit) ($)</label>
-  <input
-    type="text"
-    id="deferredCapitalReservePerUnit"
-    value={(deferredCapitalReservePerUnit ?? 0).toLocaleString('en-US')}
-    onChange={formatAndParseNumberInput(setDeferredCapitalReservePerUnit)}
-    className="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-shadow duration-150 ease-in-out shadow-sm"
-    step="10"
-    suppressHydrationWarning={true}
-  />
-</div>
+        <div className="mb-5">
+          <label htmlFor="deferredCapitalReservePerUnit" className="block text-sm font-medium text-gray-700 mb-1">Deferred Capital Reserve (per unit) ($)</label>
+          <input
+            type="text"
+            id="deferredCapitalReservePerUnit"
+            value={(deferredCapitalReservePerUnit ?? 0).toLocaleString('en-US')}
+            onChange={formatAndParseNumberInput(setDeferredCapitalReservePerUnit)}
+            className="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-shadow duration-150 ease-in-out shadow-sm"
+            step="10"
+            suppressHydrationWarning={true}
+          />
+        </div>
         <div className="mb-6">
           <label htmlFor="holdingPeriodYears" className="block text-sm font-medium text-gray-700 mb-1">Holding Period (Years)</label>
           <div className="flex items-center">
