@@ -227,7 +227,7 @@ const generatePropertySummary = (
     // Build summary
     let summary = `## Investment Summary\n\n`;
 
-    summary += `**${formatCurrency(metrics.purchasePrice)} • ${metrics.numUnits} Units • ${formatAssetClass(classification.assetClass)} • ${formatMarketTier(classification.marketTier)} Market**\n\n`;
+    summary += `**${formatCurrency(metrics.purchasePrice)} • ${metrics.numUnits} Units • Likely ${formatAssetClass(classification.assetClass)} • ${formatMarketTier(classification.marketTier)} Market**\n\n`;
 
     summary += `This property receives a **${grade} grade (${Math.round(score)}/100)** for ${performanceCategory} performance, ${performanceReason}.\n\n`;
 
@@ -314,7 +314,7 @@ const PropertySummaryButton = ({
     };
     const handlePrintSummary = () => {
         const printWindow = window.open('', '_blank');
-  if (!printWindow) return;
+        if (!printWindow) return;
         printWindow.document.write(`
     <!DOCTYPE html>
     <html>
@@ -377,18 +377,18 @@ const PropertySummaryButton = ({
 
     return (
         <>
-            {/* Summary Button */}
-            <div className="mt-8 text-center">
-                <button
-                    onClick={handleGenerateSummary}
-                    className="bg-orange-600 hover:bg-orange-700 text-white font-bold text-2xl py-5 px-6 rounded-lg transition-colors duration-150 shadow-lg flex items-center mx-auto space-x-2"
-                >
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                    </svg>
-                    <span>Charlie's Analysis</span>
-                </button>
-            </div>
+{/* Summary Button */}
+<div className="mt-8 text-center">
+    <button
+        onClick={handleGenerateSummary}
+        className="bg-orange-600 hover:bg-orange-700 text-white font-bold text-2xl py-3 px-8 rounded-lg transition-colors duration-150 shadow-lg flex items-center mx-auto space-x-2 h-16"
+    >
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+        </svg>
+        <span>Charlie's Analysis</span>
+    </button>
+</div>
 
             {/* Summary Modal */}
             {showSummary && (

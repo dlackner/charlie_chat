@@ -134,7 +134,7 @@ export const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({
   const ownerLocationValue = ownerLocation === "any" ? "" : ownerLocation === "instate" ? "true" : "false";
 
   return (
-    <div className="w-[440px] h-full bg-white border-r border-gray-200 p-6 shadow-xl overflow-y-auto">
+    <div className="w-[440px] max-h-screen bg-white border-r border-gray-200 p-6 shadow-xl overflow-y-auto">
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-lg text-gray-800 font-semibold">Advanced Filters</h3>
         <button

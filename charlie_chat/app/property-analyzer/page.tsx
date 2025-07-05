@@ -426,7 +426,8 @@ export default function PropertyAnalyzerPage() {
 
 <div className="flex justify-between items-end mb-6">
           {/* Investment Grade Blue Box */}
-          <div className="p-3 rounded-lg shadow-xl flex items-center text-white" style={{ backgroundColor: '#1C599F' }}>
+          {/*</div><div className="p-3 rounded-lg shadow-xl flex items-center text-white" style={{ backgroundColor: '#1C599F' }}>*/}
+           <div className="p-3 rounded-lg shadow-xl flex items-center text-white h-16" style={{ backgroundColor: '#1C599F' }}>
             <div className="flex items-center space-x-3">
               <div className="w-10 h-10">
                 <img src="/charlie.png" alt="Grade Icon" className="w-full h-full object-contain" />
