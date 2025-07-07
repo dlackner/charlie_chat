@@ -15,7 +15,8 @@ interface MessageListProps {
     hasMessages: boolean;
     bottomRef: React.RefObject<HTMLDivElement> | null;
     onExampleClick: (example: string) => void;
-    chatInputContent: React.ReactNode;
+    chatInputContent?: React.ReactNode;
+    propertyAnalysisContent?: React.ReactNode;
 }
 
 interface ChatInputProps {
@@ -30,6 +31,7 @@ interface ChatInputProps {
     uploadError: string | null;
     setUploadError: (error: string | null) => void;
     onDoneWithProperty: () => void;
+    onDocumentRemoved?: () => void;
 }
 
 interface PropertyAnalysisUIProps {
@@ -104,87 +106,113 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({ hasMessages }) => {
 };
 
 // Message List Component
+// Message List Component - FIXED VERSION
+// Message List Component - FIXED VERSION
+// Message List Component - FIXED VERSION
 export const MessageList: React.FC<MessageListProps> = ({
     messages,
     hasMessages,
     bottomRef,
     onExampleClick,
-    chatInputContent 
+    chatInputContent,
+    propertyAnalysisContent
 }) => {
     return (
-        <div className={`w-full max-w-4xl flex-1 overflow-y-auto px-6 space-y-4 transition-all duration-500 ease-in-out ${hasMessages
-            ? "py-2 pb-12" // Minimal top padding when chat is active
-            : "py-6 pb-12" // Full padding when no messages
-            }`}>
-            {messages.map((m, i) => {
-                // Show loading component for loading messages
-                if (m.isLoading) {
+        <div className="w-full max-w-4xl flex-1 flex flex-col h-full min-h-0">
+            {/* Scrollable messages area */}
+            <div className={`flex-1 overflow-y-auto px-6 space-y-4 transition-all duration-500 ease-in-out min-h-0 ${hasMessages
+                ? "py-2" // Minimal top padding when chat is active
+                : "py-6" // Full padding when no messages
+                }`}>
+                {messages.map((m, i) => {
+                    // Show loading component for loading messages
+                    if (m.isLoading) {
+                        return (
+                            <PropertyAnalysisLoader
+                                key={i}
+                                propertyCount={m.propertyCount || 0}
+                            />
+                        );
+                    }
+
+                    const isUser = m.role === "user";
+                    const cleanContent = m.content
+                        .replace(/\s?【\d+:\d+†[^】]+】\s?/g, "")
+                        .replace(/\s?\[\d+:\d+\^source\]\s?/g, "")
+                        .replace(/\s?\[\^?\d+\]\s?/g, "")
+                        .replace(/ +(?=\.|,|!|\?)/g, "")
+                        .replace(/\n/g, '\n\n')
+                        .trim();
+
                     return (
-                        <PropertyAnalysisLoader
-                            key={i}
-                            propertyCount={m.propertyCount || 0}
-                        />
-                    );
-                }
-
-                const isUser = m.role === "user";
-                const cleanContent = m.content
-                    .replace(/\s?【\d+:\d+†[^】]+】\s?/g, "")
-                    .replace(/\s?\[\d+:\d+\^source\]\s?/g, "")
-                    .replace(/\s?\[\^?\d+\]\s?/g, "")
-                    .replace(/ +(?=\.|,|!|\?)/g, "")
-                    .replace(/\n/g, '\n\n')
-                    .trim();
-
-                return (
-                    <div
-                        key={i}
-                        className={`flex ${isUser ? "justify-end" : "justify-start"}`}
-                    >
                         <div
-                            className={`inline-block max-w-[85%] sm:max-w-[75%] px-4 py-3 rounded-xl shadow-sm ${isUser
-                                ? "bg-sky-100 text-sky-900 rounded-br-none"
-                                : "bg-gray-100 text-gray-800 rounded-bl-none"
-                                }`}
+                            key={i}
+                            className={`flex ${isUser ? "justify-end" : "justify-start"}`}
                         >
-                            <div className={`leading-relaxed font-sans text-base ${isUser && m.isPropertyDump ? "italic" : ""}`}>
-                                <ReactMarkdown
-                                    components={{
-                                        h1: (props) => <h1 className="text-lg font-bold mt-4 mb-2" {...props} />,
-                                        h2: (props) => <h2 className="text-base font-semibold mt-3 mb-2" {...props} />,
-                                        h3: (props) => <h3 className="text-sm font-semibold mt-2 mb-1" {...props} />,
-                                        p: (props) => <p className="mb-2 last:mb-0 whitespace-pre-line" {...props} />,
-                                        strong: (props) => <strong className="font-semibold" {...props} />,
-                                        ul: (props) => <ul className="list-disc pl-5 my-2" {...props} />,
-                                        li: (props) => <li className="mb-1" {...props} />,
-                                    }}
-                                >
-                                    {cleanContent}
-                                </ReactMarkdown>
+                            <div
+                                className={`inline-block max-w-[85%] sm:max-w-[75%] px-4 py-3 rounded-xl shadow-sm ${isUser
+                                    ? "bg-sky-100 text-sky-900 rounded-br-none"
+                                    : "bg-gray-100 text-gray-800 rounded-bl-none"
+                                    }`}
+                            >
+                              <div className={`leading-relaxed font-sans text-base ${isUser && m.isPropertyDump ? "italic" : ""}`}>
+  {isUser && m.isPropertyDump ? (
+    // Simple rendering for property dumps - much faster
+    <pre className="whitespace-pre-wrap text-sm bg-gray-50 p-3 rounded border">
+      {cleanContent}
+    </pre>
+  ) : (
+    // Full ReactMarkdown for regular messages
+    <ReactMarkdown
+      components={{
+        h1: (props) => <h1 className="text-lg font-bold mt-4 mb-2" {...props} />,
+        h2: (props) => <h2 className="text-base font-semibold mt-3 mb-2" {...props} />,
+        h3: (props) => <h3 className="text-sm font-semibold mt-2 mb-1" {...props} />,
+        p: (props) => <p className="mb-2 last:mb-0 whitespace-pre-line" {...props} />,
+        strong: (props) => <strong className="font-semibold" {...props} />,
+        ul: (props) => <ul className="list-disc pl-5 my-2" {...props} />,
+        li: (props) => <li className="mb-1" {...props} />,
+      }}
+    >
+      {cleanContent}
+    </ReactMarkdown>
+  )}
+</div>
                             </div>
                         </div>
+                    );
+                })}
+                {bottomRef && <div ref={bottomRef} />}
+
+                {messages.length === 0 && (
+                    <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-3xl w-full mx-auto">
+                        {EXAMPLES.map((ex, i) => (
+                            <button
+                                key={i}
+                                onClick={() => onExampleClick(ex)}
+                                className="text-left text-sm px-4 py-3 bg-gray-100 hover:bg-gray-200 rounded-lg shadow-sm"
+                            >
+                                {ex}
+                            </button>
+                        ))}
                     </div>
-                );
-            })}
-            {bottomRef && <div ref={bottomRef} />}
-            {chatInputContent}
-            {messages.length === 0 && (
-                <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-3xl w-full mx-auto">
-                    {EXAMPLES.map((ex, i) => (
-                        <button
-                            key={i}
-                            onClick={() => onExampleClick(ex)}
-                            className="text-left text-sm px-4 py-3 bg-gray-100 hover:bg-gray-200 rounded-lg shadow-sm"
-                        >
-                            {ex}
-                        </button>
-                    ))}
+                )}
+            </div>
+
+            {/* PropertyAnalysisUI - positioned above chat input */}
+            {/*{propertyAnalysisContent && (
+                <div className="flex-shrink-0 w-full px-6">
+                    {propertyAnalysisContent}
                 </div>
             )}
+            
+            {/* Chat input pinned to bottom - MOVED OUTSIDE scrollable area */}
+            <div className="flex-shrink-0">
+                {chatInputContent}
+            </div>
         </div>
     );
 };
-
 // Chat Input Component
 export const ChatInput: React.FC<ChatInputProps> = ({
     input,
@@ -197,7 +225,8 @@ export const ChatInput: React.FC<ChatInputProps> = ({
     isUploadingFile,
     uploadError,
     setUploadError,
-    onDoneWithProperty
+    onDoneWithProperty,
+    onDocumentRemoved
 }) => {
     return (
         <div className="w-full max-w-5xl border-t p-4 bg-white">
@@ -221,7 +250,10 @@ export const ChatInput: React.FC<ChatInputProps> = ({
 
                                 {/* Done with Property button */}
                                 <button
-                                    onClick={onDoneWithProperty}
+                                    onClick={async () => {
+                                        await onDoneWithProperty();
+                                        onDocumentRemoved?.();
+                                    }}
                                     className="px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white text-xs font-medium rounded-lg transition-colors shadow-sm"
                                     title="Remove attachment and switch back to chat mode"
                                 >
@@ -273,13 +305,19 @@ export const ChatInput: React.FC<ChatInputProps> = ({
                         if (e.key === "Enter" && !e.shiftKey) {
                             e.preventDefault();
                             onSendMessage(input);
+                            setInput("");
                         }
                     }}
                 />
 
                 <button
                     type="button"
-                    onClick={() => onSendMessage(input)}
+                    onClick={() => {
+                        if (input.trim()) {
+                            onSendMessage(input);
+                            setInput("");
+                        }
+                    }}
                     disabled={!input.trim()}
                     className="p-2 hover:bg-gray-100 rounded transition disabled:opacity-50"
                     title="Send"
@@ -300,52 +338,25 @@ export const PropertyAnalysisUI: React.FC<PropertyAnalysisUIProps> = ({
     onContinueBatch,
     onStopAnalysis
 }) => {
-    if (!isWaitingForContinuation) return null;
+    if (!isWaitingForContinuation || currentBatch < 1) return null;
 
     const batchSize = BATCH_SIZE;
 
     return (
-        <div className="w-full max-w-4xl px-6 py-4">
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <div className="flex items-center mb-3">
-                    <span className="text-lg">✅</span>
-                    <h3 className="ml-2 text-lg font-semibold text-blue-900">
-                        Please wait. Batch {currentBatch} in progress...
-                    </h3>
-                </div>
-
-                <p className="text-blue-800 mb-4">
-                    Analyzing properties {((currentBatch - 1) * batchSize) + 1}-{Math.min(currentBatch * batchSize, totalPropertiesToAnalyze)} of {totalPropertiesToAnalyze}
-                </p>
-
-                <div className="mb-4">
-                    <p className="text-sm text-blue-700 font-medium mb-2">
-                        📋 Remaining properties ({totalPropertiesToAnalyze - (currentBatch * batchSize)}):
-                    </p>
-                    <div className="text-sm text-blue-600">
-                        {selectedListings.slice(currentBatch * batchSize, currentBatch * batchSize + 3).map((listing, i) => (
-                            <div key={i}>• {listing.address?.address || 'Unknown Address'}</div>
-                        ))}
-                        {totalPropertiesToAnalyze - (currentBatch * batchSize) > 3 && (
-                            <div>• ... and {totalPropertiesToAnalyze - (currentBatch * batchSize) - 3} more</div>
-                        )}
-                    </div>
-                </div>
-
-                <div className="flex gap-3">
+        <div className="w-full max-w-4xl px-6 py-2">
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                <div className="flex justify-start gap-2">
                     <button
                         onClick={onContinueBatch}
-                        className="bg-blue-900 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition font-medium"
-                        style={{ cursor: 'pointer' }}
+                        className="bg-blue-900 text-white px-3 py-1 rounded text-sm hover:bg-blue-700 transition font-medium"
                     >
-                        Analyze Next {Math.min(batchSize, totalPropertiesToAnalyze - (currentBatch * batchSize))} Properties
+                        Continue
                     </button>
-
                     <button
                         onClick={onStopAnalysis}
-                        className="bg-orange-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition font-medium"
+                        className="bg-gray-500 text-white px-3 py-1 rounded text-sm hover:bg-gray-600 transition font-medium"
                     >
-                        Stop Here
+                        Stop
                     </button>
                 </div>
             </div>

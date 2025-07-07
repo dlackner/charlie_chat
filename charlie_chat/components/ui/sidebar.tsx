@@ -103,9 +103,23 @@ export const Sidebar = ({
     const allCurrentSelected = areAllListingsSelected(currentSearchListings, selectedListings);
     const someCurrentSelected = selectedListings.length > 0;
 
-    const handleSelectAll = () => {
-        createSelectAllHandler(currentSearchListings, selectedListings, toggleListingSelect);
-    };
+const handleSelectAll = () => {
+  if (allCurrentSelected) {
+    // Deselect all current listings
+    currentSearchListings.forEach(listing => {
+      if (selectedListings.some(selected => selected.id === listing.id)) {
+        toggleListingSelect(listing);
+      }
+    });
+  } else {
+    // Select all current listings that aren't already selected
+    currentSearchListings.forEach(listing => {
+      if (!selectedListings.some(selected => selected.id === listing.id)) {
+        toggleListingSelect(listing);
+      }
+    });
+  }
+};
 
     const [showAdvanced, setShowAdvanced] = useState(false);
     const [showTrialUpgradeMessage, setShowTrialUpgradeMessage] = useState(false);
@@ -535,7 +549,7 @@ export const Sidebar = ({
                         to continue your analysis and find your next investment.
                     </div>
                 )}
-                <div className="flex-1 space-y-2 overflow-y-auto relative">
+                <div className="flex-1 space-y-2 overflow-y-auto relative pb-26">
 
                     {listings.length > 0 && (
                         <div className="flex items-center space-x-2 mb-2 px-1">

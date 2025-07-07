@@ -12,90 +12,56 @@ export async function POST(req: Request) {
       return new Response("Missing message content", { status: 400 });
     }
 
-    /* ───────────────────────── 1. Thread handling (unchanged) ───────────────────────── 
+    /* ───────────────────── MOVE THIS UP: Validate attachments first ─────────────────────── */
+    const attachments = input.attachments || [];
+
+    // Filter out placeholder attachments and validate file_ids
+    const validAttachments = attachments.filter((att: any) => {
+      const fileId = att.content?.[0]?.file_id;
+      return fileId && fileId !== "PLACEHOLDER" && fileId.startsWith("file-");
+    });
+
+    console.log("Received attachments:", attachments);
+    console.log("Valid attachments:", validAttachments);
+
+    /* ───────────────────────── NOW: Handle thread management ─────────────────────────*/
+    console.log("Managing thread for request");
     let threadId = input.threadId;
-    let threadExists = false;
 
-    if (threadId?.startsWith("thread_")) {
-      try {
-        await openai.beta.threads.retrieve(threadId);
-        threadExists = true;
-      } catch (e: any) {
-        if (e.status !== 404) console.error("Error retrieving thread:", e);
-        threadId = null;
-      }
-    }
-    if (!threadId || !threadExists) {
+    // Force new thread if there are valid attachments to avoid context pollution
+    if (validAttachments.length > 0) {
+      console.log("File attachment detected - creating fresh thread");
       threadId = (await openai.beta.threads.create({})).id;
-    }*/
-
-      /* ───────────────────────── 1. TEMPORARY: Always create fresh thread ───────────────────────── */
-console.log("Creating fresh thread to avoid stuck runs");
-let threadId = input.threadId;
-
-if (!threadId || !threadId.startsWith("thread_")) {
-  console.log("Creating new thread");
-  threadId = (await openai.beta.threads.create({})).id;
-} else {
-  console.log("Using existing thread:", threadId);
-}
-/* ───────────────────── 2. Force cancel ALL stuck runs ─────────────────── 
-try {
-  const runs = await openai.beta.threads.runs.list(threadId, { limit: 10 });
-  for (const run of runs.data) {
-    if (["queued", "in_progress", "requires_action"].includes(run.status)) {
-      console.log(`Force cancelling run ${run.id} with status ${run.status}`);
-      try {
-        await openai.beta.threads.runs.cancel(threadId, run.id);
-      } catch (e) {
-        console.log(`Failed to cancel run ${run.id}:`, e.message);
-      }
+    } else if (!threadId || !threadId.startsWith("thread_")) {
+      console.log("Creating new thread");
+      threadId = (await openai.beta.threads.create({})).id;
+    } else {
+      console.log("Using existing thread:", threadId);
     }
-  }
-  
-  // Wait for all cancellations to process
-  await new Promise(resolve => setTimeout(resolve, 1000));
-  
-  // Check if any runs are still active - if so, create a new thread
-  const finalCheck = await openai.beta.threads.runs.list(threadId, { limit: 1 });
-  if (finalCheck.data[0]?.status && ["queued", "in_progress", "requires_action"].includes(finalCheck.data[0].status)) {
-    console.log("Still has active runs, creating new thread");
-    threadId = (await openai.beta.threads.create({})).id;
-  }
-} catch (e) {
-  console.log("Error managing runs, creating new thread:", e.message);
-  threadId = (await openai.beta.threads.create({})).id;
-}*/
 
+    /* ─────────────────────── Create the user message ─────────────────────── */
+    const messageData: any = {
+      role: "user",
+      content: input.message,
+    };
 
-/* ─────────────────────── 3. Create the user message ─────────────────────── */
-const attachments = input.attachments || [];
-
-// Filter out placeholder attachments and validate file_ids
-const validAttachments = attachments.filter((att: any) => {
-  const fileId = att.content?.[0]?.file_id;
-  return fileId && fileId !== "PLACEHOLDER" && fileId.startsWith("file-");
+    // ✅ Attach files only if present and valid
+    if (validAttachments.length > 0) {
+      messageData.attachments = validAttachments.map((att: any) => ({
+        file_id: att.content[0].file_id,
+        tools: [
+          { type: "file_search" },
+          { type: "code_interpreter" }
+        ]
+      }));
+    }
+// ADD THIS DEBUGGING HERE:
+validAttachments.forEach((att: any, i: number) => {
+  console.log(`Attachment ${i}:`, JSON.stringify(att, null, 2));
+  console.log(`File ID extracted:`, att.content?.[0]?.file_id);
 });
 
-console.log("Received attachments:", attachments);
-console.log("Valid attachments:", validAttachments);
-
-const messageData: any = {
-  role: "user",
-  content: input.message,
-};
-
-// ✅ Attach files only if present and valid
-if (validAttachments.length > 0) {
-  messageData.attachments = validAttachments.map((att: any) => ({
-    file_id: att.content[0].file_id,
-    tools: [
-      { type: "file_search" },
-      { type: "code_interpreter" }
-    ]
-  }));
-}
-
+console.log("Sending to OpenAI:", JSON.stringify(messageData, null, 2));
 
 const createdMessage = await openai.beta.threads.messages.create(threadId, messageData);
 
@@ -105,45 +71,35 @@ const createdMessage = await openai.beta.threads.messages.create(threadId, messa
 
 // 5. Stream the run with chosen model
 const instructionText = hasFileAttachment
-  ? `A document has been uploaded. As Charlie:
+  ? `A document has been uploaded. Follow this strategy:
 
-**FOR ANY QUESTION about "this," "the," or "attached" document/property:**
-1. Read and analyze the uploaded document FIRST
-2. Base your response on the document content
-3. Only supplement with knowledge base if the document lacks information
+FOR SUMMARIZATION REQUESTS ("summarize", "summary", "tell me about this document"):
+- When a user says "summarize the document" refer to the attached document 
+- If asked to "summarize", treat it as: "What are the key points from this uploaded document?"
+- You MUST read and analyze the uploaded file content
+- Create a summary based ONLY on what is written in the uploaded document
+- Do NOT use your knowledge about Master Lease Options, syndications, or other real estate concepts
+- Start with: "This document contains information about [specific property/content from the file]..."
 
-**IF NON-REAL ESTATE DOCUMENT:** Politely clarify the document type and ask if they meant to upload a real estate document.`
-  : "Answer using your knowledge base and real estate expertise. Do not reference any previously uploaded files.";
-/*onst instructionText = hasFileAttachment 
-  ? `You are a document analysis assistant. Follow this workflow for every user question:
+FOR MATHEMATICAL CALCULATIONS:
+- Only show formulas or equations when asked
+- Just state the result: "Based on $50,000 NOI and 7% cap rate, offer around $714,286"
+- No LaTex or special formatting
 
-**STEP 1: DOCUMENT IDENTIFICATION**
-- First, identify what type of document has been uploaded (real estate document, recipe, legal document, technical manual, etc.)
-- If it's a real estate document, act as a real estate investment analyst
-- If it's any other type of document, act as an appropriate expert for that document type
+FOR OTHER QUESTIONS:
+- Answer based on the uploaded document when relevant
+- Use your real estate expertise when appropriate
 
-**STEP 2: DOCUMENT ASSESSMENT**
-- Analyze ONLY the document uploaded in this specific conversation
-- Do NOT reference any documents from your knowledge base unless the uploaded document is missing information
-- Clearly state what type of document this is
+**FOR ANALYSIS QUESTIONS** that require combining document data with real estate concepts:
+- Extract relevant data from the uploaded document first
+- Apply your real estate knowledge and expertise to analyze that data
+- Example: "Does this meet buy box criteria?" → Use document data + your buy box knowledge
 
-**STEP 3: RESPONSE STRATEGY**
-- **For specific data questions:** Always check the document first, regardless of document type
-- **For general knowledge questions:** Use your expertise for the appropriate domain, but mention if the document contains relevant context
+**FOR GENERAL REAL ESTATE QUESTIONS** unrelated to the document:
+- Use your expertise as normal
 
-**STEP 4: TRANSPARENT COMMUNICATION**
-Always clearly state your source and document type:
-- "According to your [recipe/lease agreement/contract/etc.], the [specific data] is..."
-- "I don't see [requested information] in your [document type], but generally..."
-- "This [document type] contains [available info] but not [requested info]..."
-
-**EXAMPLES:**
-- User uploads recipe, asks "What are the ingredients?" → "According to your recipe for Spaghetti Carbonara, the ingredients are..."
-- User uploads lease agreement, asks "What's the rent?" → "According to your lease agreement, the monthly rent is $2,500..."
-- User uploads recipe, asks about real estate → "This appears to be a recipe document, not a real estate document. For real estate questions, please upload a property-related document."
-
-Be helpful, accurate, and transparent about what information comes from the document versus your general knowledge. Always identify the document type first, then respond appropriately for that domain.`
-  : "Answer using your general knowledge and knowledge base. Do not reference any previously uploaded files.";*/
+Always be clear about your sources: "Based on the uploaded document, this property has X units. Regarding buy box criteria, typically investors look for..."`
+  : "Answer using your knowledge base and real estate expertise. Do not reference any uploaded documents.";
 
   // ADD LOGGING HERE:
 console.log("🤖 Model selected:", selectedModel);

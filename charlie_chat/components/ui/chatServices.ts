@@ -207,7 +207,7 @@ interface SendMessageCallbacks {
   onMessageUpdate: (updater: (prev: ChatMessage[]) => ChatMessage[]) => void;  
   onThreadIdUpdate: (threadId: string) => void;
   onBatchComplete: (hasMoreProperties: boolean) => void;
-}
+  }
 
 export const sendMessageWithAttachments = async (
   options: SendMessageOptions,

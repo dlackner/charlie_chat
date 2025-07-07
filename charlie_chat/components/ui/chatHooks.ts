@@ -279,14 +279,19 @@ export const useMessageLimits = () => {
 export const useListings = () => {
   const [listings, setListings] = useState<Listing[]>([]);
 
-  const toggleListingSelect = (listing: Listing, selectedListings: Listing[], setSelectedListings: (listings: Listing[]) => void) => {
-    const exists = selectedListings.some((l) => l.id === listing.id);
+// Replace the toggleListingSelect function in your useListings hook with this:
+
+const toggleListingSelect = (listing: Listing, selectedListings: Listing[], setSelectedListings: (listings: Listing[]) => void) => {
+  // @ts-ignore
+  setSelectedListings((prevSelectedListings) => {
+    const exists = prevSelectedListings.some((l: Listing) => l.id === listing.id);
     if (exists) {
-      setSelectedListings(selectedListings.filter((l) => l.id !== listing.id));
+      return prevSelectedListings.filter((l: Listing) => l.id !== listing.id);
     } else {
-      setSelectedListings([...selectedListings, listing]);
+      return [...prevSelectedListings, listing];
     }
-  };
+  });
+};
 
   return {
     listings,

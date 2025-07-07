@@ -260,8 +260,8 @@ export function ClosingChat() {
   };
 
   const toggleListingSelect = (listing: Listing) => {
-    toggleListingSelectFn(listing, selectedListings, setSelectedListings);
-  };
+  toggleListingSelectFn(listing, selectedListings, setSelectedListings);
+};
 
   const { handlePackageSelection } = usePackageSelection();
 
@@ -355,40 +355,43 @@ export function ClosingChat() {
             triggerBuyCreditsModal={() => setShowCreditOptionsModal(true)}
           />
 
-          {/* Chat UI */}
-          <div className="flex-1 flex flex-col items-center justify-start overflow-hidden">
-            <ChatHeader hasMessages={hasMessages} />
+{/* Chat UI */}
+<div className="flex-1 flex flex-col items-center justify-start overflow-hidden">
+  <ChatHeader hasMessages={hasMessages} />
 
-            <MessageList
-              messages={messages}
-              hasMessages={hasMessages}
-              bottomRef={bottomRef!}
-              onExampleClick={handleSendMessage}
-              chatInputContent={
-                <ChatInput
-                  input={input}
-                  setInput={setInput}
-                  onSendMessage={handleSendMessage}
-                  isLoggedIn={isLoggedIn}
-                  userClass={userClass}
-                  setShowProModal={setShowProModal}
-                  setShowModal={setShowModal}
-                  isUploadingFile={isUploadingFile}
-                  uploadError={uploadError}
-                  setUploadError={setUploadError}
-                  onDoneWithProperty={handleDoneWithProperty}
-                />
-              }
-            />
-            <PropertyAnalysisUI
-              isWaitingForContinuation={isWaitingForContinuation}
-              currentBatch={currentBatch}
-              totalPropertiesToAnalyze={totalPropertiesToAnalyze}
-              selectedListings={selectedListings}
-              onContinueBatch={handleContinueBatch}
-              onStopAnalysis={handleStopAnalysis}
-            />
-          </div>
+  <MessageList
+    messages={messages}
+    hasMessages={hasMessages}
+    bottomRef={bottomRef!}
+    onExampleClick={handleSendMessage}
+  />
+  
+  {/* PropertyAnalysisUI - now positioned above chat input */}
+  <PropertyAnalysisUI
+    isWaitingForContinuation={isWaitingForContinuation}
+    currentBatch={currentBatch}
+    totalPropertiesToAnalyze={totalPropertiesToAnalyze}
+    selectedListings={selectedListings}
+    onContinueBatch={handleContinueBatch}
+    onStopAnalysis={handleStopAnalysis}
+  />
+  
+  {/* Chat input - now at the bottom */}
+  <ChatInput
+    input={input}
+    setInput={setInput}
+    onSendMessage={handleSendMessage}
+    isLoggedIn={isLoggedIn}
+    userClass={userClass}
+    setShowProModal={setShowProModal}
+    setShowModal={setShowModal}
+    isUploadingFile={isUploadingFile}
+    uploadError={uploadError}
+    setUploadError={setUploadError}
+    onDoneWithProperty={handleDoneWithProperty}
+    onDocumentRemoved={() => setMessages(prev => [...prev])} 
+  />
+</div>
         </div>
 
         <CreditDisplay

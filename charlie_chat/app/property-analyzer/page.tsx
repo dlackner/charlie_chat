@@ -225,6 +225,7 @@ export default function PropertyAnalyzerPage() {
     marketTier: 'tier-2'
   });
   const [year1LoanBalance, setYear1LoanBalance] = useState<number>(0);
+  const [actualGradingScore, setActualGradingScore] = useState<number>(0);
 
   // FIXED: Function to calculate remaining loan balance correctly
   const calculateRemainingLoanBalance = (yearsElapsed: number): number => {
@@ -379,6 +380,8 @@ export default function PropertyAnalyzerPage() {
     setOverallGrade(gradingResult.grade);
     setGradeBreakdown(gradingResult.breakdown);
     setDetectedClassification(gradingResult.classification);
+    setActualGradingScore(gradingResult.score);
+
 
   }, [
     numUnits, avgMonthlyRentPerUnit, vacancyRate, annualRentalGrowthRate, otherIncomeAnnual, incomeReductionsAnnual,
@@ -424,10 +427,10 @@ export default function PropertyAnalyzerPage() {
     <div className="flex flex-col lg:flex-row p-4 md:p-8 bg-white text-gray-800 min-h-screen">
       <div className="lg:w-2/3 pr-0 lg:pr-8 mb-8 lg:mb-0">
 
-<div className="flex justify-between items-end mb-6">
+        <div className="flex justify-between items-end mb-6">
           {/* Investment Grade Blue Box */}
           {/*</div><div className="p-3 rounded-lg shadow-xl flex items-center text-white" style={{ backgroundColor: '#1C599F' }}>*/}
-           <div className="p-3 rounded-lg shadow-xl flex items-center text-white h-16" style={{ backgroundColor: '#1C599F' }}>
+          <div className="p-3 rounded-lg shadow-xl flex items-center text-white h-16" style={{ backgroundColor: '#1C599F' }}>
             <div className="flex items-center space-x-3">
               <div className="w-10 h-10">
                 <img src="/charlie.png" alt="Grade Icon" className="w-full h-full object-contain" />
@@ -439,7 +442,7 @@ export default function PropertyAnalyzerPage() {
             <PropertySummaryButton
               gradeResult={{
                 grade: overallGrade,
-                score: Object.values(gradeBreakdown).reduce((sum, score) => sum + score, 0) / Object.keys(gradeBreakdown).length,
+                score: actualGradingScore,
                 breakdown: gradeBreakdown,
                 classification: detectedClassification
               }}
@@ -707,13 +710,12 @@ export default function PropertyAnalyzerPage() {
         <div className="mb-5">
           <label htmlFor="numUnits" className="block text-sm font-medium text-gray-700 mb-1">Number of Units</label>
           <input
-            type="number"
+            type="text"
             id="numUnits"
-            value={numUnits ?? 0}
-            onChange={(e) => setNumUnits(Math.max(1, parseInt(e.target.value) || 1))}
+            value={(numUnits ?? 0).toLocaleString('en-US')}
+            onChange={formatAndParseNumberInput(setNumUnits)}
             className="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-shadow duration-150 ease-in-out shadow-sm"
-            step="1"
-            min="1"
+            suppressHydrationWarning={true}
           />
         </div>
 

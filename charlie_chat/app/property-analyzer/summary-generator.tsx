@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { getGradeFromScore, getGradeThreshold } from './grading-system'; 
 
 // Property Summary Generator
 const generatePropertySummary = (
@@ -260,23 +261,26 @@ const generatePropertySummary = (
             summary += `\n`;
         });
 
-        // Potential grade improvement estimate
+   // Potential grade improvement estimate
         const potentialImprovement = Math.min(15, improvements.length * 3);
         const potentialNewScore = Math.min(100, score + potentialImprovement);
-        let potentialGrade = 'F';
-        if (potentialNewScore >= 85) potentialGrade = 'A+';
-        else if (potentialNewScore >= 78) potentialGrade = 'A';
-        else if (potentialNewScore >= 70) potentialGrade = 'A-';
-        else if (potentialNewScore >= 62) potentialGrade = 'B+';
-        else if (potentialNewScore >= 55) potentialGrade = 'B';
-        else if (potentialNewScore >= 47) potentialGrade = 'B-';
-        else if (potentialNewScore >= 40) potentialGrade = 'C+';
-        else if (potentialNewScore >= 32) potentialGrade = 'C';
-        else if (potentialNewScore >= 25) potentialGrade = 'C-';
-        else if (potentialNewScore >= 18) potentialGrade = 'D';
+        const potentialGrade = getGradeFromScore(potentialNewScore);
+        const currentGradeThreshold = getGradeThreshold(grade);
 
-        if (potentialNewScore > score + 2) {
-            summary += `**Improvement Potential:** Implementing these strategies could potentially improve the grade to **${potentialGrade} (${Math.round(potentialNewScore)}/100)**\n\n`;
+        // Only show improvement potential if there's meaningful improvement
+        if (potentialNewScore > score + 2 && improvements.length > 0) {
+            if (grade === 'A+') {
+                // Already at top grade
+                if (potentialNewScore > score + 3) {
+                    summary += `**Improvement Potential:** Implementing these strategies could further strengthen the A+ performance to **${Math.round(potentialNewScore)}/100**, solidifying the investment case.\n\n`;
+                }
+            } else if (potentialGrade !== grade) {
+                // Grade would actually improve
+                summary += `**Improvement Potential:** Implementing these strategies could potentially improve the grade to **${potentialGrade} (${Math.round(potentialNewScore)}/100)**\n\n`;
+            } else {
+                // Same grade but higher score
+                summary += `**Improvement Potential:** Implementing these strategies could strengthen the **${grade}** performance to **${Math.round(potentialNewScore)}/100**\n\n`;
+            }
         }
     }
 

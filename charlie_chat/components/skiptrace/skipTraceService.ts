@@ -130,7 +130,7 @@ export const processSkipTraceResponse = (
     return {
       ownerName,
       propertyAddress,
-      searchSuccess: false,
+      searchSuccess: true,
       primaryContact: {},
       demographics: {},
       alternativeContacts: [],
@@ -143,7 +143,7 @@ export const processSkipTraceResponse = (
       }
     };
   }
-
+  
   const { identity, demographics, stats } = response.output;
 
   // Process contact information
