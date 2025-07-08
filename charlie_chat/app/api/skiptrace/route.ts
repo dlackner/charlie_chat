@@ -139,14 +139,14 @@ export async function POST(request: NextRequest) {
   try {
     // Parse the incoming request body
     const body: SkipTraceRequest = await request.json();
-    
+
     // Validate required fields
     const { first_name, last_name, mail_address, mail_city, mail_state } = body;
-    
+
     if (!first_name || !last_name || !mail_address || !mail_city || !mail_state) {
       return NextResponse.json(
-        { 
-          error: 'Missing required fields', 
+        {
+          error: 'Missing required fields',
           required: ['first_name', 'last_name', 'mail_address', 'mail_city', 'mail_state'],
           received: body
         },
@@ -184,9 +184,9 @@ export async function POST(request: NextRequest) {
         statusText: externalApiResponse.statusText,
         body: errorText
       });
-      
+
       return NextResponse.json(
-        { 
+        {
           error: 'Skip trace API request failed',
           status: externalApiResponse.status,
           message: errorText
@@ -205,10 +205,21 @@ export async function POST(request: NextRequest) {
       credits: apiData.credits
     });
 
-    // Check if the skip trace was successful
+      // Check if the skip trace was successful
     if (apiData.responseCode !== 0) {
+      // Handle specific "no phones found" case differently
+      if (apiData.responseMessage && apiData.responseMessage.includes('No phones found')) {
+        return NextResponse.json({
+          success: false,
+          message: 'No contact information available for this property owner',
+          responseCode: apiData.responseCode,
+          data: null
+        }, { status: 200 }); // Return 200 instead of 422
+      }
+
+      // Handle other actual errors
       return NextResponse.json(
-        { 
+        {
           error: 'Skip trace failed',
           responseCode: apiData.responseCode,
           message: apiData.responseMessage,
@@ -223,7 +234,7 @@ export async function POST(request: NextRequest) {
 
   } catch (error) {
     console.error('Skip trace endpoint error:', error);
-    
+
     // Handle JSON parsing errors
     if (error instanceof SyntaxError) {
       return NextResponse.json(
@@ -231,7 +242,7 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
-    
+
     // Handle network errors
     if (error instanceof TypeError && error.message.includes('fetch')) {
       return NextResponse.json(
@@ -239,10 +250,10 @@ export async function POST(request: NextRequest) {
         { status: 503 }
       );
     }
-    
+
     // Handle other errors
     return NextResponse.json(
-      { 
+      {
         error: 'Internal server error',
         message: error instanceof Error ? error.message : 'Unknown error'
       },
@@ -254,7 +265,7 @@ export async function POST(request: NextRequest) {
 // Optional: Add GET method for health check
 export async function GET() {
   return NextResponse.json(
-    { 
+    {
       message: 'Skip trace API endpoint is running',
       timestamp: new Date().toISOString()
     },

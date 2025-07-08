@@ -10,15 +10,11 @@ interface AdvancedFiltersProps {
   setStreet: (value: string) => void;
   house: string;
   setHouse: (value: string) => void;
-  city: string;
-  setCity: (value: string) => void;
-  stateCode: string;
-  setStateCode: (value: string) => void;
-  
+
   // Owner location
   ownerLocation: "any" | "instate" | "outofstate";
   setOwnerLocation: (value: "any" | "instate" | "outofstate") => void;
-  
+
   // Boolean filters
   corporateOwned: string;
   setCorporateOwned: (value: string) => void;
@@ -40,7 +36,7 @@ interface AdvancedFiltersProps {
   setPreForeclosure: (value: string) => void;
   privateLender: string;
   setPrivateLender: (value: string) => void;
-  
+
   // Range filters
   yearsOwnedRange: [number, number];
   setYearsOwnedRange: (value: [number, number]) => void;
@@ -60,7 +56,7 @@ interface AdvancedFiltersProps {
   setEstimatedValueRange: (value: [number, number]) => void;
   estimatedEquityRange: [number, number];
   setEstimatedEquityRange: (value: [number, number]) => void;
-  
+
   // Actions
   onResetFilters: () => void;
 }
@@ -71,15 +67,11 @@ export const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({
   setStreet,
   house,
   setHouse,
-  city,
-  setCity,
-  stateCode,
-  setStateCode,
-  
+
   // Owner location
   ownerLocation,
   setOwnerLocation,
-  
+
   // Boolean filters
   corporateOwned,
   setCorporateOwned,
@@ -101,7 +93,7 @@ export const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({
   setPreForeclosure,
   privateLender,
   setPrivateLender,
-  
+
   // Range filters
   yearsOwnedRange,
   setYearsOwnedRange,
@@ -121,7 +113,7 @@ export const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({
   setEstimatedValueRange,
   estimatedEquityRange,
   setEstimatedEquityRange,
-  
+
   // Actions
   onResetFilters
 }) => {
@@ -176,35 +168,6 @@ export const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({
               onChange={(e) => setStreet(e.target.value)}
             />
           </div>
-
-          <div>
-            <label htmlFor="advanced-city" className="block text-sm font-medium text-gray-700 mb-1">
-              City
-            </label>
-            <input
-              type="text"
-              id="advanced-city"
-              className="w-full border border-gray-300 rounded px-3 py-2 text-sm shadow-sm focus:ring-orange-500 focus:border-orange-500"
-              placeholder=""
-              value={city}
-              onChange={(e) => setCity(e.target.value)}
-            />
-          </div>
-
-          <div>
-            <label htmlFor="advanced-state" className="block text-sm font-medium text-gray-700 mb-1">
-              State
-            </label>
-            <input
-              type="text"
-              id="advanced-state"
-              maxLength={2}
-              className="w-16 border border-gray-300 rounded px-3 py-2 text-sm shadow-sm text-center uppercase focus:ring-orange-500 focus:border-orange-500"
-              placeholder=""
-              value={stateCode}
-              onChange={(e) => setStateCode(e.target.value.toUpperCase())}
-            />
-          </div>
         </div>
       </div>
 
@@ -222,13 +185,13 @@ export const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({
               no: "Out of State"
             }}
           />
-          
-          <FilterToggle 
-            label="Corporate Owned" 
-            value={corporateOwned} 
-            onChange={setCorporateOwned} 
+
+          <FilterToggle
+            label="Corporate Owned"
+            value={corporateOwned}
+            onChange={setCorporateOwned}
           />
-          
+
           <FilterRange
             label="Years Owned"
             values={yearsOwnedRange}
@@ -252,17 +215,17 @@ export const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({
             max={10000000}
             step={1}
           />
-          
+
           <div className="grid grid-cols-2 gap-4">
-            <FilterToggle 
-              label="Active MLS" 
-              value={mlsActive} 
-              onChange={setMlsActive} 
+            <FilterToggle
+              label="Active MLS"
+              value={mlsActive}
+              onChange={setMlsActive}
             />
-            <FilterToggle 
-              label="Last Sale Arms Length" 
-              value={lastSaleArmsLength} 
-              onChange={setLastSaleArmsLength} 
+            <FilterToggle
+              label="Last Sale Arms Length"
+              value={lastSaleArmsLength}
+              onChange={setLastSaleArmsLength}
             />
           </div>
         </div>
@@ -279,7 +242,7 @@ export const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({
             min={1800}
             max={2025}
           />
-          
+
           <FilterRange
             label="Lot Size"
             values={lotSizeRange}
@@ -287,7 +250,7 @@ export const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({
             min={0}
             max={100000}
           />
-          
+
           <FilterRange
             label="Number of Stories"
             values={storiesRange}
@@ -295,11 +258,11 @@ export const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({
             min={0}
             max={100}
           />
-          
-          <FilterToggle 
-            label="Flood Zone" 
-            value={floodZone} 
-            onChange={setFloodZone} 
+
+          <FilterToggle
+            label="Flood Zone"
+            value={floodZone}
+            onChange={setFloodZone}
           />
         </div>
       </div>
@@ -316,7 +279,7 @@ export const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({
             max={10000000}
             step={10000}
           />
-          
+
           <FilterRange
             label="Assessed Value"
             values={assessedValueRange}
@@ -325,7 +288,7 @@ export const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({
             max={10000000}
             step={10000}
           />
-          
+
           <FilterRange
             label="Estimated Value"
             values={estimatedValueRange}
@@ -334,7 +297,7 @@ export const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({
             max={10000000}
             step={10000}
           />
-          
+
           <FilterRange
             label="Estimated Equity"
             values={estimatedEquityRange}
@@ -350,35 +313,35 @@ export const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({
       <div className="mb-6">
         <h4 className="text-md font-semibold text-gray-700 mb-3">Distress & Special Conditions</h4>
         <div className="grid grid-cols-2 gap-4">
-          <FilterToggle 
-            label="Assumable" 
-            value={assumable} 
-            onChange={setAssumable} 
+          <FilterToggle
+            label="Assumable"
+            value={assumable}
+            onChange={setAssumable}
           />
-          <FilterToggle 
-            label="Auction" 
-            value={auction} 
-            onChange={setAuction} 
+          <FilterToggle
+            label="Auction"
+            value={auction}
+            onChange={setAuction}
           />
-          <FilterToggle 
-            label="REO" 
-            value={reo} 
-            onChange={setReo} 
+          <FilterToggle
+            label="REO"
+            value={reo}
+            onChange={setReo}
           />
-          <FilterToggle 
-            label="Tax Lien" 
-            value={taxLien} 
-            onChange={setTaxLien} 
+          <FilterToggle
+            label="Tax Lien"
+            value={taxLien}
+            onChange={setTaxLien}
           />
-          <FilterToggle 
-            label="Pre-Foreclosure" 
-            value={preForeclosure} 
-            onChange={setPreForeclosure} 
+          <FilterToggle
+            label="Pre-Foreclosure"
+            value={preForeclosure}
+            onChange={setPreForeclosure}
           />
-          <FilterToggle 
-            label="Private Lender" 
-            value={privateLender} 
-            onChange={setPrivateLender} 
+          <FilterToggle
+            label="Private Lender"
+            value={privateLender}
+            onChange={setPrivateLender}
           />
         </div>
       </div>

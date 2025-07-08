@@ -353,6 +353,7 @@ export function ClosingChat() {
             onCreditsUpdate={handleCreditsUpdated}
             userClass={userClass}
             triggerBuyCreditsModal={() => setShowCreditOptionsModal(true)}
+            clearSelectedListings={() => setSelectedListings([])} 
           />
 
 {/* Chat UI */}

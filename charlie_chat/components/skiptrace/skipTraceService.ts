@@ -39,6 +39,77 @@ export const validateSkipTraceData = (listing: Listing): SkipTraceValidation => 
   };
 };
 
+// ===== PDF GENERATION SUPPORT =====
+
+// Create a minimal ContactSummary for PDF generation when skip trace data is incomplete
+export const createMinimalContactSummary = (listing: Listing): ContactSummary => {
+  const ownerName = `${listing.owner1FirstName || ''} ${listing.owner1LastName || ''}`.trim() || 'Unknown Owner';
+  const propertyAddress = listing.address?.address || 'Unknown Property';
+
+  return {
+    ownerName,
+    propertyAddress,
+    searchSuccess: false, // This will trigger the "no contact information found" section in PDF
+    primaryContact: {},
+    demographics: {},
+    alternativeContacts: [],
+    addressHistory: [],
+    searchStats: {
+      totalResults: 0,
+      phoneNumbers: 0,
+      emailAddresses: 0,
+      addresses: 0
+    }
+  };
+};
+
+// Function to get contact summary for PDF generation (works with incomplete data)
+export const getContactSummaryForPdf = async (listing: Listing): Promise<ContactSummary> => {
+  const validation = validateSkipTraceData(listing);
+  
+  if (!validation.isValid) {
+    // If data is incomplete, return a minimal contact summary for PDF generation
+    return createMinimalContactSummary(listing);
+  }
+
+  try {
+    // If data is complete, attempt skip trace
+    return await performSkipTrace(listing);
+  } catch (error) {
+    // Check if this is a "no results found" type error
+    if (error instanceof Error && 
+        (error.message.includes('No phones found') || 
+         error.message.includes('No contact information') ||
+         error.message.includes('Skip trace failed'))) {
+      
+      // This is a valid "no results" response, not a real error
+      // Create a contact summary that shows the search was attempted but no results found
+      const ownerName = `${listing.owner1FirstName || ''} ${listing.owner1LastName || ''}`.trim();
+      const propertyAddress = listing.address?.address || 'Unknown Property';
+      
+      return {
+        ownerName,
+        propertyAddress,
+        searchSuccess: false, // This will show "No contact information found" in PDF
+        primaryContact: {},
+        demographics: {},
+        alternativeContacts: [],
+        addressHistory: [],
+        searchStats: {
+          totalResults: 0,
+          phoneNumbers: 0,
+          emailAddresses: 0,
+          addresses: 0
+        }
+      };
+    }
+    
+    // For other types of errors (network issues, etc.), fall back to minimal data
+    console.warn('Skip trace failed, generating PDF with minimal data:', error);
+    return createMinimalContactSummary(listing);
+  }
+};
+
 // ===== DATA MAPPING =====
 
 export const mapListingToSkipTraceRequest = (listing: Listing): SkipTraceRequest => {

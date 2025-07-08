@@ -4,7 +4,7 @@
 
 import { useState } from 'react';
 import type { SkipTraceButtonProps } from './types';
-import { validateSkipTraceData, performSkipTrace } from './skipTraceService';
+import { validateSkipTraceData, getContactSummaryForPdf } from './skipTraceService';
 import { generateSkipTracePdf } from './skipTracePdfGenerator';
 
 export const SkipTraceButton = ({ listing, userClass }: SkipTraceButtonProps) => {
@@ -14,19 +14,21 @@ export const SkipTraceButton = ({ listing, userClass }: SkipTraceButtonProps) =>
   // Check if user has permission
   const hasPermission = userClass === 'charlie_chat_pro' || userClass === 'cohort';
 
-  // Validate if required data is available
+  // Validate if required data is available for full skip trace
   const validation = validateSkipTraceData(listing);
-  const canPerformSkipTrace = hasPermission && validation.isValid;
+  
+  // Check if we have minimum data needed for PDF generation (owner name OR property address)
+  const hasMinimumData = (listing.owner1FirstName?.trim() || listing.owner1LastName?.trim() || listing.address?.address?.trim());
 
   const handleSkipTrace = async () => {
-    if (!canPerformSkipTrace) return;
+    if (!hasPermission || !hasMinimumData) return;
 
     setIsLoading(true);
     setError(null);
 
     try {
-      // Perform the skip trace
-      const contactSummary = await performSkipTrace(listing);
+      // Use the new function that handles incomplete data gracefully
+      const contactSummary = await getContactSummaryForPdf(listing);
       
       // Generate and download the PDF
       await generateSkipTracePdf(contactSummary);
@@ -36,15 +38,7 @@ export const SkipTraceButton = ({ listing, userClass }: SkipTraceButtonProps) =>
       
       // Handle different types of errors
       if (err instanceof Error) {
-        if (err.message.includes('Missing required data')) {
-          setError('Missing owner or property information');
-        } else if (err.message.includes('API call failed')) {
-          setError('Skip trace service temporarily unavailable');
-        } else if (err.message.includes('Skip trace failed')) {
-          setError('No contact information found for this owner');
-        } else {
-          setError('Failed to generate contact report');
-        }
+        setError('Failed to generate contact report');
       } else {
         setError('An unexpected error occurred');
       }
@@ -58,34 +52,29 @@ export const SkipTraceButton = ({ listing, userClass }: SkipTraceButtonProps) =>
     return null;
   }
 
-  // Render disabled button with tooltip if data is missing
-  if (!validation.isValid) {
-    return (
-      <button
-        disabled
-        className="bg-gray-400 text-white px-4 py-2 rounded cursor-not-allowed opacity-50"
-        title={`Missing required information: ${validation.missingFields.join(', ')}`}
-      >
-        Skip Trace 🔍
-      </button>
-    );
-  }
-
   return (
     <div className="relative">
       <button
         onClick={handleSkipTrace}
-        disabled={isLoading}
+        disabled={isLoading || !hasMinimumData}
         className={`
           px-4 py-2 rounded font-medium transition-all duration-150 ease-in-out
           transform focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500
-          ${isLoading
-            ? 'bg-gray-400 text-white cursor-wait opacity-75'
+          ${isLoading || !hasMinimumData
+            ? 'bg-gray-400 text-white cursor-not-allowed opacity-50'
             : 'bg-black text-white hover:bg-gray-900 hover:scale-105 active:scale-90'
           }
         `}
+        title={
+          !hasMinimumData
+            ? 'Missing owner name and property address'
+            : 'Generate skip trace report'
+        }
       >
-        {isLoading ? 'Searching...' : 'Skip Trace 🔍'}
+        {isLoading 
+          ? 'Generating...' 
+          : 'Skip Trace 🔍'
+        }
       </button>
       
       {error && (

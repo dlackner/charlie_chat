@@ -9,6 +9,9 @@ import { BasicFilters } from '../filters/basic';
 import { AdvancedFilters } from '../filters/advanced';
 import { filterRelevantFields } from '../utils/listing';
 import { areAllListingsSelected, createSelectAllHandler } from '../utils/selection';
+import { SmartQueries } from '../filters/smart-queries';
+import { ChevronRight } from 'lucide-react';
+
 
 export type Listing = {
     id: string;
@@ -79,7 +82,8 @@ type Props = {
     triggerAuthModal: () => void;
     onCreditsUpdate?: (newBalance: number) => void;
     userClass: 'trial' | 'charlie_chat' | 'charlie_chat_pro' | 'cohort';
-    triggerBuyCreditsModal: () => void
+    triggerBuyCreditsModal: () => void;
+    clearSelectedListings?: () => void;
 };
 
 export const Sidebar = ({
@@ -92,7 +96,8 @@ export const Sidebar = ({
     triggerAuthModal,
     onCreditsUpdate,
     userClass,
-    triggerBuyCreditsModal
+    triggerBuyCreditsModal,
+    clearSelectedListings
 }: Props) => {
     const [zipcode, setZipcode] = useState("");
     const [minUnits, setMinUnits] = useState<number | string>(2);
@@ -103,23 +108,23 @@ export const Sidebar = ({
     const allCurrentSelected = areAllListingsSelected(currentSearchListings, selectedListings);
     const someCurrentSelected = selectedListings.length > 0;
 
-const handleSelectAll = () => {
-  if (allCurrentSelected) {
-    // Deselect all current listings
-    currentSearchListings.forEach(listing => {
-      if (selectedListings.some(selected => selected.id === listing.id)) {
-        toggleListingSelect(listing);
-      }
-    });
-  } else {
-    // Select all current listings that aren't already selected
-    currentSearchListings.forEach(listing => {
-      if (!selectedListings.some(selected => selected.id === listing.id)) {
-        toggleListingSelect(listing);
-      }
-    });
-  }
-};
+    const handleSelectAll = () => {
+        if (allCurrentSelected) {
+            // Deselect all current listings
+            currentSearchListings.forEach(listing => {
+                if (selectedListings.some(selected => selected.id === listing.id)) {
+                    toggleListingSelect(listing);
+                }
+            });
+        } else {
+            // Select all current listings that aren't already selected
+            currentSearchListings.forEach(listing => {
+                if (!selectedListings.some(selected => selected.id === listing.id)) {
+                    toggleListingSelect(listing);
+                }
+            });
+        }
+    };
 
     const [showAdvanced, setShowAdvanced] = useState(false);
     const [showTrialUpgradeMessage, setShowTrialUpgradeMessage] = useState(false);
@@ -145,7 +150,7 @@ const handleSelectAll = () => {
 
         // Rule 2: If both city and state are not filled, then ZIP is required
         if (!hasCity && !hasState && !hasZip) {
-            setLocationError("Tip: Zipcode is required when City and State are not provided.");
+            setLocationError("Tip: ZIP code(s) is required when city and state are not provided.");
             return;
         }
 
@@ -240,14 +245,11 @@ const handleSelectAll = () => {
     };
 
     const resetFilters = () => {
-        setZipcode("");
         setMinUnits(2);
         setMaxUnits("");
         setMlsActive("");
         setStreet("");
         setNumber("");
-        setCity("");
-        setStateCode("");
         setPreForeclosure("");
         setFloodZone("");
         setAssumable("");
@@ -272,27 +274,47 @@ const handleSelectAll = () => {
     };
 
     const handleSearch = async (filters: Record<string, string | number | boolean>) => {
+        // Clear selected listings FIRST, before any search logic
+        if (clearSelectedListings) {
+            clearSelectedListings();
+        }
+
         if (!userIsLoggedIn) {
-            triggerAuthModal(); // ✅ still prompts sign-up for guests
+            triggerAuthModal();
             return;
         }
 
-        // ✨ Location Validation
+        // ✨ Location Validation - Enforce either zipcode OR city+state (not both)
         const hasCity = city.trim() !== "";
         const hasState = stateCode.trim() !== "";
         const hasZip = zipcode.trim() !== "";
 
-        if (hasCity && !hasState) {
-            setLocationError("State is required when City is provided.");
+        // Check if we have zipcode
+        const hasValidZip = hasZip;
+
+        // Check if we have both city and state
+        const hasValidCityState = hasCity && hasState;
+
+        // Cannot have both zipcode AND city+state filled in
+        if (hasValidZip && hasValidCityState) {
+            setLocationError("Enter ZIP code OR city and state, not both.");
             return;
         }
 
-        if (!(hasCity && hasState) && !hasZip) {
-            setLocationError("ZIP Code is required when City and State are not both provided.");
+        // Must have either zipcode OR both city and state
+        if (!hasValidZip && !hasValidCityState) {
+            if (hasCity && !hasState) {
+                setLocationError("State is required when City is provided.");
+            } else if (!hasCity && hasState) {
+                setLocationError("City is required when State is provided.");
+            } else {
+                setLocationError("Either ZIP code OR both City and State are required.");
+            }
             return;
         }
 
-        setLocationError(null); // ✅ Clear any prior errors
+        // Clear any existing errors if validation passes
+        setLocationError(null);
 
         // 🔍 Continue with search
         setIsSearching(true);
@@ -365,6 +387,11 @@ const handleSelectAll = () => {
                     ids_only: false,
                     obfuscate: false,
                     summary: false,
+                };
+                // Merge any filters passed from SmartQueries (overrides form state)
+                searchParameters = {
+                    ...searchParameters,
+                    ...filters  // This will add/override with SmartQueries filters
                 };
             }
 
@@ -446,10 +473,6 @@ const handleSelectAll = () => {
         setStreet,
         house,
         setHouse: setNumber,
-        city,
-        setCity,
-        stateCode,
-        setStateCode,
 
         // Owner location
         ownerLocation,
@@ -503,7 +526,7 @@ const handleSelectAll = () => {
     return (
         <div className="relative flex">
             <div ref={sidebarRef} className="w-[260px] shrink-0 bg-white border-r border-gray-200 p-4 flex flex-col space-y-6 overflow-y-auto h-screen z-20">
-                <h2 className="text-lg font-medium text-gray-800">Property Search</h2>
+                <h2 className="text-lg font-medium text-gray-800 mb-2">Property Search</h2>
                 <div className="space-y-4">
                     <BasicFilters
                         zipcode={zipcode}
@@ -513,14 +536,39 @@ const handleSelectAll = () => {
                         maxUnits={maxUnits}
                         setMaxUnits={setMaxUnits}
                         locationError={locationError}
+                        city={city}
+                        setCity={setCity}
+                        stateCode={stateCode}
+                        setStateCode={setStateCode}
+                    />
+
+                    <SmartQueries
+                        setMinUnits={setMinUnits}
+                        setMaxUnits={setMaxUnits}
+                        setOwnerLocation={setOwnerLocation}
+                        setCorporateOwned={setCorporateOwned}
+                        setPrivateLender={setPrivateLender}
+                        setPreForeclosure={setPreForeclosure}
+                        setTaxLien={setTaxLien}
+                        setReo={setReo}
+                        setAuction={setAuction}
+                        setYearsOwnedRange={setYearsOwnedRange}
+                        setEstimatedEquityRange={setEstimatedEquityRange}
+                        setYearBuiltRange={setYearBuiltRange}
+                        yearsOwnedRange={yearsOwnedRange}
+                        estimatedEquityRange={estimatedEquityRange}
+                        handleSearch={handleSearch}
+                        resetFilters={resetFilters}
+                        clearSelectedListings={clearSelectedListings}
                     />
 
                     <button
                         ref={advancedFiltersToggleRef}
                         onClick={() => setShowAdvanced(!showAdvanced)}
-                        className="w-full text-sm text-blue-700 underline hover:text-blue-900 transition"
+                        className="flex items-center justify-between w-full text-sm font-medium text-gray-700 hover:text-gray-900 transition"
                     >
-                        {showAdvanced ? "Hide Advanced Filters" : "Show Advanced Filters"}
+                        <span>Advanced Filters</span>
+                        <ChevronRight className="w-4 h-4" />
                     </button>
                 </div>
 
@@ -615,28 +663,32 @@ const handleSelectAll = () => {
                 />
             </div>
 
-            {selectedListings.length > 0 && (
-                <div className="fixed bottom-4 left-4 w-[240px] z-40">
-                    <div className="p-4 border rounded-lg bg-orange-500 text-sm shadow text-white">
-                        <p className="mb-2 font-medium">Add {selectedListings.length} {selectedListings.length === 1 ? "property" : "properties"} to Charlie Chat</p>
-                        <button
-                            onClick={() => {
-                                const filteredListings = selectedListings.map(listing => filterRelevantFields(listing));
-                                onSendToGPT(filteredListings);
-                            }}
-                            className="bg-blue-900 text-white font-medium px-4 py-2 rounded-lg hover:bg-blue-950 transition w-full"
-                        >
-                            Begin Analysis
-                        </button>
+            {
+                selectedListings.length > 0 && (
+                    <div className="fixed bottom-4 left-4 w-[260px] z-40">
+                        <div className="p-4 border rounded-lg bg-orange-500 text-sm shadow text-white">
+                            <p className="mb-2 font-medium">Add {selectedListings.length} {selectedListings.length === 1 ? "property" : "properties"} to Charlie Chat</p>
+                            <button
+                                onClick={() => {
+                                    const filteredListings = selectedListings.map(listing => filterRelevantFields(listing));
+                                    onSendToGPT(filteredListings);
+                                }}
+                                className="bg-blue-900 text-white font-medium px-4 py-2 rounded-lg hover:bg-blue-950 transition w-full"
+                            >
+                                Begin Analysis
+                            </button>
+                        </div>
                     </div>
-                </div>
-            )}
+                )
+            }
 
-            {showAdvanced && (
-                <div ref={panelRef} className="absolute top-0 left-[260px] z-30">
-                    <AdvancedFilters {...advancedFiltersProps} />
-                </div>
-            )}
-        </div>
+            {
+                showAdvanced && (
+                    <div ref={panelRef} className="absolute top-0 left-[260px] z-30">
+                        <AdvancedFilters {...advancedFiltersProps} />
+                    </div>
+                )
+            }
+        </div >
     );
 };

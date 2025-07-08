@@ -10,6 +10,10 @@ interface BasicFiltersProps {
   maxUnits: number | string;
   setMaxUnits: (value: number | string) => void;
   locationError: string | null;
+  city: string;
+  setCity: (value: string) => void;
+  stateCode: string;
+  setStateCode: (value: string) => void;
 }
 
 export const BasicFilters: React.FC<BasicFiltersProps> = ({
@@ -19,12 +23,16 @@ export const BasicFilters: React.FC<BasicFiltersProps> = ({
   setMinUnits,
   maxUnits,
   setMaxUnits,
-  locationError
+  locationError,
+  city,
+  setCity,
+  stateCode,
+  setStateCode
 }) => {
   return (
     <div className="space-y-4">
       <div className="space-y-2">
-        <label className="block text-sm font-medium text-gray-600">Zipcode</label>
+        <label className="block text-sm font-medium text-gray-600">ZIP code(s)</label>
         <input
           type="text"
           className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
@@ -32,9 +40,32 @@ export const BasicFilters: React.FC<BasicFiltersProps> = ({
           onChange={(e) => setZipcode(e.target.value)}
         />
       </div>
+
+      {/* Add City and State fields here */}
+<div className="grid grid-cols-4 gap-2">
+  <div className="col-span-3">
+    <label className="block text-sm font-medium text-gray-600 mb-1">City</label>
+    <input
+      type="text"
+      className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
+      value={city}
+      onChange={(e) => setCity(e.target.value)}
+    />
+  </div>
+  <div className="col-span-1">
+    <label className="block text-sm font-medium text-gray-600 mb-1">State</label>
+    <input
+      type="text"
+      maxLength={2}
+      className="w-full border border-gray-300 rounded px-3 py-2 text-sm text-center uppercase"
+      value={stateCode}
+      onChange={(e) => setStateCode(e.target.value.toUpperCase())}
+    />
+  </div>
+</div>
       
       {locationError && (
-        <p className="text-gray-400 text-xs mt-1">{locationError}</p>
+        <p className="text-red-400 text-xs mt-1">{locationError}</p>
       )}
       
       <div className="space-y-1">
