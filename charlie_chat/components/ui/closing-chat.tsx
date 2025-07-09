@@ -260,8 +260,8 @@ export function ClosingChat() {
   };
 
   const toggleListingSelect = (listing: Listing) => {
-  toggleListingSelectFn(listing, selectedListings, setSelectedListings);
-};
+    toggleListingSelectFn(listing, selectedListings, setSelectedListings);
+  };
 
   const { handlePackageSelection } = usePackageSelection();
 
@@ -311,18 +311,11 @@ export function ClosingChat() {
         <div className="flex h-screen overflow-hidden bg-white text-black">
           {/* Sidebar */}
           <Sidebar
-            onSearch={async (filters: Record<string, string | number | boolean>) => {
-              try {
-                const res = await fetch("/api/realestateapi", {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify(filters),
-                });
-
-                const data = await res.json();
-                setListings(data || []);
-              } catch (err) {
-                console.error("Realestateapi API error:", err);
+            onSearch={async (data: any) => {
+              if (data.clearResults) {
+                setListings([]);
+              } else if (data.listings) {
+                setListings(data.listings);
               }
             }}
             listings={listings}
@@ -353,46 +346,46 @@ export function ClosingChat() {
             onCreditsUpdate={handleCreditsUpdated}
             userClass={userClass}
             triggerBuyCreditsModal={() => setShowCreditOptionsModal(true)}
-            clearSelectedListings={() => setSelectedListings([])} 
+            clearSelectedListings={() => setSelectedListings([])}
           />
 
-{/* Chat UI */}
-<div className="flex-1 flex flex-col items-center justify-start overflow-hidden">
-  <ChatHeader hasMessages={hasMessages} />
+          {/* Chat UI */}
+          <div className="flex-1 flex flex-col items-center justify-start overflow-hidden">
+            <ChatHeader hasMessages={hasMessages} />
 
-  <MessageList
-    messages={messages}
-    hasMessages={hasMessages}
-    bottomRef={bottomRef!}
-    onExampleClick={handleSendMessage}
-  />
-  
-  {/* PropertyAnalysisUI - now positioned above chat input */}
-  <PropertyAnalysisUI
-    isWaitingForContinuation={isWaitingForContinuation}
-    currentBatch={currentBatch}
-    totalPropertiesToAnalyze={totalPropertiesToAnalyze}
-    selectedListings={selectedListings}
-    onContinueBatch={handleContinueBatch}
-    onStopAnalysis={handleStopAnalysis}
-  />
-  
-  {/* Chat input - now at the bottom */}
-  <ChatInput
-    input={input}
-    setInput={setInput}
-    onSendMessage={handleSendMessage}
-    isLoggedIn={isLoggedIn}
-    userClass={userClass}
-    setShowProModal={setShowProModal}
-    setShowModal={setShowModal}
-    isUploadingFile={isUploadingFile}
-    uploadError={uploadError}
-    setUploadError={setUploadError}
-    onDoneWithProperty={handleDoneWithProperty}
-    onDocumentRemoved={() => setMessages(prev => [...prev])} 
-  />
-</div>
+            <MessageList
+              messages={messages}
+              hasMessages={hasMessages}
+              bottomRef={bottomRef!}
+              onExampleClick={handleSendMessage}
+            />
+
+            {/* PropertyAnalysisUI - now positioned above chat input */}
+            <PropertyAnalysisUI
+              isWaitingForContinuation={isWaitingForContinuation}
+              currentBatch={currentBatch}
+              totalPropertiesToAnalyze={totalPropertiesToAnalyze}
+              selectedListings={selectedListings}
+              onContinueBatch={handleContinueBatch}
+              onStopAnalysis={handleStopAnalysis}
+            />
+
+            {/* Chat input - now at the bottom */}
+            <ChatInput
+              input={input}
+              setInput={setInput}
+              onSendMessage={handleSendMessage}
+              isLoggedIn={isLoggedIn}
+              userClass={userClass}
+              setShowProModal={setShowProModal}
+              setShowModal={setShowModal}
+              isUploadingFile={isUploadingFile}
+              uploadError={uploadError}
+              setUploadError={setUploadError}
+              onDoneWithProperty={handleDoneWithProperty}
+              onDocumentRemoved={() => setMessages(prev => [...prev])}
+            />
+          </div>
         </div>
 
         <CreditDisplay

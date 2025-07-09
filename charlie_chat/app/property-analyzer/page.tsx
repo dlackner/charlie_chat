@@ -407,6 +407,80 @@ export default function PropertyAnalyzerPage() {
     return `${value.toFixed(2)}%`;
   };
 
+  //Clear defaults
+  const resetAllValues = () => {
+    // FINANCING
+    setPurchasePrice(0);
+    setDownPaymentPercentage(0);
+    setInterestRate(0);
+    setLoanTermYears(1); // Keep at 1 minimum for calculations
+    setClosingCostsPercentage(0);
+    setDispositionCapRate(0);
+
+    // RENTS
+    setNumUnits(0);
+    setAvgMonthlyRentPerUnit(0);
+    setVacancyRate(0);
+    setAnnualRentalGrowthRate(0);
+    setOtherIncomeAnnual(0);
+    setIncomeReductionsAnnual(0);
+
+    // OPERATING EXPENSES
+    setPropertyTaxes(0);
+    setInsurance(0);
+    setPropertyManagementFeePercentage(0);
+    setMaintenanceRepairsAnnual(0);
+    setUtilitiesAnnual(0);
+    setContractServicesAnnual(0);
+    setPayrollAnnual(0);
+    setMarketingAnnual(0);
+    setGAndAAnnual(0);
+    setOtherExpensesAnnual(0);
+    setExpenseGrowthRate(0);
+
+    // CAPITAL EXPENDITURES
+    setCapitalReservePerUnitAnnual(0);
+    setDeferredCapitalReservePerUnit(0);
+    setHoldingPeriodYears(1);
+  };
+
+  //Reset to defaults
+  const resetToDefaults = () => {
+    // FINANCING
+    setPurchasePrice(7000000);
+    setDownPaymentPercentage(20);
+    setInterestRate(7.0);
+    setLoanTermYears(24);
+    setClosingCostsPercentage(3);
+    setDispositionCapRate(6);
+
+    // RENTS
+    setNumUnits(47);
+    setAvgMonthlyRentPerUnit(2500);
+    setVacancyRate(10);
+    setAnnualRentalGrowthRate(2);
+    setOtherIncomeAnnual(0);
+    setIncomeReductionsAnnual(0);
+
+    // OPERATING EXPENSES
+    setPropertyTaxes(12000);
+    setInsurance(10000);
+    setPropertyManagementFeePercentage(6);
+    setMaintenanceRepairsAnnual(12000);
+    setUtilitiesAnnual(6000);
+    setContractServicesAnnual(6000);
+    setPayrollAnnual(15000);
+    setMarketingAnnual(2400);
+    setGAndAAnnual(1200);
+    setOtherExpensesAnnual(5000);
+    setExpenseGrowthRate(2);
+
+    // CAPITAL EXPENDITURES
+    setCapitalReservePerUnitAnnual(500);
+    setDeferredCapitalReservePerUnit(0);
+    setHoldingPeriodYears(10);
+  };
+
   // Custom Tooltip Content for Recharts
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
@@ -624,7 +698,24 @@ export default function PropertyAnalyzerPage() {
       </div>
 
       <div className="print-assumptions lg:w-1/3 bg-gray-50 p-6 rounded-xl shadow-2xl border border-gray-200 lg:sticky lg:top-8 self-start max-h-[calc(100vh-4rem)] overflow-y-auto">
-        <h2 className="text-2xl font-semibold mb-6 text-orange-600">Assumptions</h2>
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-2xl font-semibold text-orange-600">Assumptions</h2>
+          <div className="flex space-x-2">
+            <button
+              onClick={resetToDefaults}
+              className="px-4 py-2 text-white rounded-lg transition text-sm"
+              style={{ backgroundColor: '#1C599F' }}
+            >
+              Defaults
+            </button>
+            <button
+              onClick={resetAllValues}
+              className="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition text-sm"
+            >
+              Clear
+            </button>
+          </div>
+        </div>
 
         <h3 className="text-xl font-semibold mb-4 text-gray-700">FINANCING</h3>
         <div className="mb-5">

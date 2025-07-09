@@ -104,9 +104,16 @@ export const Sidebar = ({
     const [maxUnits, setMaxUnits] = useState<number | string>("");
 
     // New state and logic for Select All
-    const currentSearchListings = listings.slice(0, 50);
+    const currentSearchListings = listings;
     const allCurrentSelected = areAllListingsSelected(currentSearchListings, selectedListings);
     const someCurrentSelected = selectedListings.length > 0;
+
+    //New states to support property paging
+    const [currentPage, setCurrentPage] = useState(0);
+    const [totalCount, setTotalCount] = useState(0);
+    const [lastSearchParameters, setLastSearchParameters] = useState<Record<string, any> | null>(null);
+    const [hasMoreProperties, setHasMoreProperties] = useState(false);
+    const [isLoadingMore, setIsLoadingMore] = useState(false);
 
     const handleSelectAll = () => {
         if (allCurrentSelected) {
@@ -333,7 +340,9 @@ export const Sidebar = ({
                     house: house,
                     street: street,
                     propertyType: "MFR",
-                    ids_only: false,
+                    count: false,        // Get actual data, not just count
+                    size: 10,           // 10 properties per page
+                    resultIndex: 0,     // Start at beginning
                     obfuscate: false,
                     summary: false,
                 };
@@ -384,6 +393,9 @@ export const Sidebar = ({
                     tax_lien: taxLien || undefined,
                     pre_foreclosure: preForeclosure || undefined, // Use the new string-based filter here
                     private_lender: privateLender || undefined,
+                    count: false,        // Get actual data, not just count
+                    size: 10,           // 10 properties per page
+                    resultIndex: 0,     // Start at beginning
                     ids_only: false,
                     obfuscate: false,
                     summary: false,
@@ -395,39 +407,39 @@ export const Sidebar = ({
                 };
             }
 
-            const countResponse = await fetch("/api/realestateapi", {
+            const response = await fetch("/api/realestateapi", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ ...searchParameters, ids_only: true }),
+                body: JSON.stringify(searchParameters),
             });
 
-            if (!countResponse.ok) {
-                const errorText = await countResponse.text();
-                console.error("Count API failed:", countResponse.status, errorText);
+            if (!response.ok) {
+                const errorText = await response.text();
+                console.error("Search API failed:", response.status, errorText);
                 setCreditsError("There was a problem with your search. Please try again or adjust your filters.");
                 setIsSearching(false);
                 return;
             }
-            const { ids } = await countResponse.json();
-            const totalCount = Array.isArray(ids) ? ids.length : 0;
 
-            if (totalCount === 0) {
+            const data = await response.json();
+
+            if (!data.data || data.data.length === 0) {
                 setCreditsError("No properties matched your criteria.");
                 await onSearch({ clearResults: true });
                 setIsSearching(false);
                 return;
             }
 
-            if (totalCount > 25) {
-                setCreditsError(`Your search returned ${totalCount} properties. Think about your Buy Box and refine your filters to 25 or fewer results.`);
-                setIsSearching(false);
-                return;
-            }
+            // Store pagination info
+            setTotalCount(data.resultCount || 0);
+            setCurrentPage(0);
+            setLastSearchParameters(searchParameters);
+            setHasMoreProperties((data.resultIndex || 0) + (data.recordCount || 0) < (data.resultCount || 0));
 
             const { data: newCreditBalance, error: rpcError } = await supabase.rpc(
                 "decrement_search_credits",
                 {
-                    amount_to_decrement: totalCount,
+                    amount_to_decrement: data.recordCount || 0,
                 }
             );
 
@@ -457,7 +469,11 @@ export const Sidebar = ({
                 onCreditsUpdate(newCreditBalance);
             }
 
-            await onSearch(searchParameters);
+            await onSearch({
+                listings: data.data,
+                totalCount: data.resultCount,
+                hasMore: (data.resultIndex || 0) + (data.recordCount || 0) < (data.resultCount || 0)
+            });
         } catch (error) {
             console.error("Unexpected error during search handling:", error);
             setCreditsError("A critical error occurred with the search. Please try again later.");
@@ -466,6 +482,88 @@ export const Sidebar = ({
         }
         setShowAdvanced(false);
     };
+
+
+    //New logic to support paging through properties
+    const loadMoreProperties = async () => {
+        if (!lastSearchParameters || !hasMoreProperties) return;
+
+        setIsLoadingMore(true);
+        setCreditsError(null);
+
+        try {
+            const nextResultIndex = (currentPage + 1) * 10;
+
+            const paginatedParameters = {
+                ...lastSearchParameters,
+                resultIndex: nextResultIndex,
+                size: 10
+            };
+
+            const response = await fetch("/api/realestateapi", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(paginatedParameters),
+            });
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                console.error("Load More API failed:", response.status, errorText);
+                setCreditsError("There was a problem loading more properties. Please try again.");
+                return;
+            }
+
+            const data = await response.json();
+
+            // Charge credits for this batch
+            const { data: newCreditBalance, error: rpcError } = await supabase.rpc(
+                "decrement_search_credits",
+                {
+                    amount_to_decrement: data.recordCount || 0,
+                }
+            );
+
+            if (rpcError) {
+                const errorMessage = typeof rpcError === "object" && rpcError !== null && "message" in rpcError
+                    ? String(rpcError.message)
+                    : String(rpcError);
+
+                if (errorMessage.includes("Insufficient credits")) {
+                    if (userClass === "trial") {
+                        setShowTrialUpgradeMessage(true);
+                    } else {
+                        triggerBuyCreditsModal();
+                    }
+                    return;
+                }
+                setCreditsError("There was a problem with your account. Please log in again.");
+                return;
+            }
+
+            if (onCreditsUpdate && typeof newCreditBalance === "number") {
+                onCreditsUpdate(newCreditBalance);
+            }
+
+            // Update state
+            const updatedListings = [...listings, ...data.data];
+            setCurrentPage(currentPage + 1);
+            setHasMoreProperties(nextResultIndex + (data.recordCount || 0) < (data.resultCount || 0));
+
+            await onSearch({
+                listings: updatedListings,
+                totalCount: data.resultCount,
+                hasMore: nextResultIndex + (data.recordCount || 0) < (data.resultCount || 0)
+            });
+
+        } catch (error) {
+            console.error("Unexpected error during load more:", error);
+            setCreditsError("A critical error occurred loading more properties. Please try again later.");
+        } finally {
+            setIsLoadingMore(false);
+        }
+    };
+
+
     // Prepare props for AdvancedFilters component
     const advancedFiltersProps = {
         // Location fields
@@ -525,7 +623,7 @@ export const Sidebar = ({
     };
     return (
         <div className="relative flex">
-            <div ref={sidebarRef} className="w-[260px] shrink-0 bg-white border-r border-gray-200 p-4 flex flex-col space-y-6 overflow-y-auto h-screen z-20">
+            <div ref={sidebarRef} className="w-[400px] shrink-0 bg-white border-r border-gray-200 p-4 flex flex-col space-y-6 overflow-y-auto h-screen z-20">
                 <h2 className="text-lg font-medium text-gray-800 mb-2">Property Search</h2>
                 <div className="space-y-4">
                     <BasicFilters
@@ -565,7 +663,8 @@ export const Sidebar = ({
                     <button
                         ref={advancedFiltersToggleRef}
                         onClick={() => setShowAdvanced(!showAdvanced)}
-                        className="flex items-center justify-between w-full text-sm font-medium text-gray-700 hover:text-gray-900 transition"
+                        className="w-48 py-2 px-4 text-white rounded-lg transition text-sm flex items-center justify-between hover:opacity-80"
+                        style={{ backgroundColor: '#1C599F' }}
                     >
                         <span>Advanced Filters</span>
                         <ChevronRight className="w-4 h-4" />
@@ -618,7 +717,6 @@ export const Sidebar = ({
                     {Array.isArray(listings) &&
                         listings
                             .sort((a, b) => (b.rentEstimate ?? 0) - (a.rentEstimate ?? 0))
-                            .slice(0, 50)
                             .map((listing, i) => {
                                 const isSelected = selectedListings.some((l: Listing) => l.id === listing.id);
                                 return (
@@ -649,6 +747,25 @@ export const Sidebar = ({
                                     </div>
                                 );
                             })}
+                    {/* Load More Button */}
+                    {hasMoreProperties && (
+                        <div className="pt-4 pb-2">
+                            <button
+                                onClick={loadMoreProperties}
+                                disabled={isLoadingMore}
+                                className="w-full text-white py-2 px-4 rounded-lg font-medium hover:opacity-80 transition disabled:opacity-75 disabled:cursor-not-allowed"
+                                style={{ backgroundColor: '#1C599F' }}
+                            >
+                                {isLoadingMore ? "Loading..." : (
+                                    <>
+                                        Load more?
+                                        <br />
+                                        ({totalCount - listings.length} remaining)
+                                    </>
+                                )}
+                            </button>
+                        </div>
+                    )}
                 </div>
 
                 <PropertyProfileModal
@@ -665,7 +782,7 @@ export const Sidebar = ({
 
             {
                 selectedListings.length > 0 && (
-                    <div className="fixed bottom-4 left-4 w-[260px] z-40">
+                    <div className="fixed bottom-4 left-4 w-[400px] z-40">
                         <div className="p-4 border rounded-lg bg-orange-500 text-sm shadow text-white">
                             <p className="mb-2 font-medium">Add {selectedListings.length} {selectedListings.length === 1 ? "property" : "properties"} to Charlie Chat</p>
                             <button
@@ -673,7 +790,7 @@ export const Sidebar = ({
                                     const filteredListings = selectedListings.map(listing => filterRelevantFields(listing));
                                     onSendToGPT(filteredListings);
                                 }}
-                                className="bg-blue-900 text-white font-medium px-4 py-2 rounded-lg hover:bg-blue-950 transition w-full"
+                                className="bg-blue-600 text-white font-medium px-4 py-2 rounded-lg hover:bg-blue-650 transition w-full"
                             >
                                 Begin Analysis
                             </button>
