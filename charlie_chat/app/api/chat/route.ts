@@ -2,147 +2,325 @@ import { AssistantResponse } from "ai";
 import OpenAI from "openai";
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-export const maxDuration = 30;
 
+async function isRunActive(threadId: string): Promise<boolean> {
+  try {
+    const runs = await openai.beta.threads.runs.list(threadId);
+    return runs.data.some(run =>
+      run.status === "queued" || run.status === "in_progress"
+    );
+  } catch (err) {
+    console.error("Error checking active runs:", err);
+    return true; // safest to assume the run is active
+  }
+}
+
+async function performWebSearch(query: string) {
+  try {
+    console.log('🔍 Brave Search requested for:', query);
+    console.log('🔍 BRAVE_API_KEY exists:', !!process.env.BRAVE_API_KEY);
+
+    const response = await fetch(`https://api.search.brave.com/res/v1/web/search?q=${encodeURIComponent(query)}&count=5`, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json',
+        'Accept-Encoding': 'gzip',
+        'X-Subscription-Token': process.env.BRAVE_API_KEY!,
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`Brave API error: ${response.status}`);
+    }
+
+    const data = await response.json();
+
+    const results = data.web?.results?.slice(0, 3).map((result: any) => ({
+      title: result.title,
+      snippet: result.description,
+      url: result.url,
+      published: result.age || 'Recent'
+    })) || [];
+
+    return {
+      query,
+      results,
+      summary: `Found ${results.length} current results for "${query}". Data sourced from Brave Search.`,
+      source: 'Brave Search API'
+    };
+
+  } catch (error) {
+    console.error('Brave Search failed:', error);
+
+    return {
+      query,
+      results: [{
+        title: "Search Service Unavailable",
+        snippet: `Unable to search for current data on "${query}". Using general knowledge: For accurate rental rates, check local listings on Zillow, Apartments.com, or contact local real estate agents.`,
+        url: "https://example.com"
+      }],
+      error: 'Brave Search temporarily unavailable',
+      fallback: true
+    };
+  }
+}
+
+// Implement Stuck Run Cleanup
+async function cleanupStuckRuns(threadId: string): Promise<void> {
+  try {
+    const runs = await openai.beta.threads.runs.list(threadId, { limit: 10 });
+    
+    for (const run of runs.data) {
+      if (["queued", "in_progress", "requires_action"].includes(run.status)) {
+        console.log(`🛠️ Cancelling stuck run ${run.id} with status ${run.status}`);
+        try {
+          await openai.beta.threads.runs.cancel(threadId, run.id);
+        } catch (e) {
+          console.log(`Failed to cancel run ${run.id}:`, e);
+        }
+      }
+    }
+    
+    // Wait for cancellations to process
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    
+  } catch (error) {
+    console.error("Error cleaning up stuck runs:", error);
+  }
+}
+
+export const maxDuration = 30;
 export async function POST(req: Request) {
   try {
     const input = await req.json();
     console.log("🔍 Full request body:", JSON.stringify(input, null, 2));
+
     if (!input.message || !input.message.trim()) {
       return new Response("Missing message content", { status: 400 });
     }
 
-    /* ───────────────────── MOVE THIS UP: Validate attachments first ─────────────────────── */
+    // 1. Validate attachments
     const attachments = input.attachments || [];
-
-    // Filter out placeholder attachments and validate file_ids
     const validAttachments = attachments.filter((att: any) => {
       const fileId = att.content?.[0]?.file_id;
       return fileId && fileId !== "PLACEHOLDER" && fileId.startsWith("file-");
     });
 
-    console.log("Received attachments:", attachments);
-    console.log("Valid attachments:", validAttachments);
+    console.log("📎 Attachments received:", attachments.length);
+    console.log("✅ Valid attachments:", validAttachments.length);
 
-    /* ───────────────────────── NOW: Handle thread management ─────────────────────────*/
-    console.log("Managing thread for request");
+    // 2. Create or reuse thread - ALWAYS CREATE NEW FOR NOW
+    //console.log("🔁 Creating new thread to avoid stuck runs");
+    //let threadId = (await openai.beta.threads.create({})).id;
     let threadId = input.threadId;
+let threadExists = false;
 
-    // Force new thread if there are valid attachments to avoid context pollution
-    if (validAttachments.length > 0) {
-      console.log("File attachment detected - creating fresh thread");
-      threadId = (await openai.beta.threads.create({})).id;
-    } else if (!threadId || !threadId.startsWith("thread_")) {
-      console.log("Creating new thread");
-      threadId = (await openai.beta.threads.create({})).id;
-    } else {
-      console.log("Using existing thread:", threadId);
+if (threadId?.startsWith("thread_")) {
+  try {
+    // Check if thread exists
+    await openai.beta.threads.retrieve(threadId);
+    threadExists = true;
+    
+    // Check for stuck runs and handle them
+    if (await isRunActive(threadId)) {
+      console.log("⚠️ Thread has active runs, attempting cleanup...");
+      await cleanupStuckRuns(threadId);
+      
+      // If still stuck after cleanup, create new thread
+      if (await isRunActive(threadId)) {
+        console.log("🔁 Creating new thread due to unresolvable stuck runs");
+        threadId = (await openai.beta.threads.create({})).id;
+        threadExists = false;
+      }
     }
+  } catch (e: any) {
+    if (e.status === 404) {
+      console.log("Thread not found, creating new one");
+    } else {
+      console.error("Error retrieving thread:", e);
+    }
+    threadId = null;
+    threadExists = false;
+  }
+}
 
-    /* ─────────────────────── Create the user message ─────────────────────── */
+if (!threadId || !threadExists) {
+  console.log("Creating new thread");
+  threadId = (await openai.beta.threads.create({})).id;
+}
+
+    // 3. Create user message
     const messageData: any = {
       role: "user",
       content: input.message,
     };
 
-    // ✅ Attach files only if present and valid
     if (validAttachments.length > 0) {
       messageData.attachments = validAttachments.map((att: any) => ({
         file_id: att.content[0].file_id,
-        tools: [
-          { type: "file_search" },
-          { type: "code_interpreter" }
-        ]
+        tools: [{ type: "file_search" }],
       }));
     }
-// ADD THIS DEBUGGING HERE:
-validAttachments.forEach((att: any, i: number) => {
-  console.log(`Attachment ${i}:`, JSON.stringify(att, null, 2));
-  console.log(`File ID extracted:`, att.content?.[0]?.file_id);
-});
 
-console.log("Sending to OpenAI:", JSON.stringify(messageData, null, 2));
+    validAttachments.forEach((att: any, i: number) => {
+      console.log(`📎 Attachment ${i}:`, JSON.stringify(att, null, 2));
+      console.log(`📄 File ID:`, att.content?.[0]?.file_id);
+    });
 
-const createdMessage = await openai.beta.threads.messages.create(threadId, messageData);
+    console.log("📝 Sending message to OpenAI:", JSON.stringify(messageData, null, 2));
 
-    /* ───────────────── 4. Detect if this message references a file ───────────── */
+    const createdMessage = await openai.beta.threads.messages.create(threadId, messageData);
+
+    // 4. Construct instructions
     const hasFileAttachment = validAttachments.length > 0;
     const selectedModel = hasFileAttachment ? "gpt-4o-mini" : "gpt-3.5-turbo";
 
-// 5. Stream the run with chosen model
-const instructionText = hasFileAttachment
-  ? `CRITICAL: Never use LaTeX, formulas, or mathematical notation. Just state results directly.
-  **CRITICAL: Never say "I don't have internet access" or "I cannot access the internet"
+    const instructionText = hasFileAttachment
+      ? `You are Charlie, a seasoned real estate expert.
 
-A document has been uploaded. You are Charlie, a seasoned real estate expert with extensive market knowledge.
+An uploaded document is attached. You MUST prioritize its content when answering questions.
 
-FOR SUMMARIZATION REQUESTS ("summarize", "summary", "tell me about this document"):
-- When a user says "summarize the document" refer to the attached document 
-- If asked to "summarize", treat it as: "What are the key points from this uploaded document?"
-- You MUST read and analyze the uploaded file content
-- Create a summary based ONLY on what is written in the uploaded document
-- Do NOT use your knowledge about Master Lease Options, syndications, or other real estate concepts
-- Start with: "This document contains information about [specific property/content from the file]..."
+Use the uploaded document when it contains relevant information. Otherwise, answer based on your real estate expertise.
 
-FOR MATHEMATICAL CALCULATIONS:
-- Never show formulas or equations
-- Just state the result: "Based on $50,000 NOI and 7% cap rate, offer around $714,286"
-- No LaTeX, brackets, fractions, or special formatting
+If the document does not contain helpful information, say so directly—do NOT make assumptions or infer unrelated topics.
 
-FOR OTHER QUESTIONS:
-- Answer based on the uploaded document when relevant
-- Use your real estate expertise when appropriate
+⭑ For summarization: extract key points from the document only.
+⭑ For analysis: use document data first, then apply real estate expertise.
+⭑ For math: never use LaTeX or formulas, just give clean numbers.
+⭑ For market advice: use your general knowledge and offer insights confidently.
 
-**FOR ANALYSIS QUESTIONS** that require combining document data with real estate concepts:
-- Extract relevant data from the uploaded document first
-- Apply your real estate knowledge and expertise to analyze that data
-- Example: "Does this meet buy box criteria?" → Use document data + your buy box knowledge
+Your tone is helpful, experienced, and direct.`
+      : `You are Charlie, a seasoned real estate expert. Answer questions clearly and confidently.
 
-**FOR GENERAL REAL ESTATE QUESTIONS** (even with document attached):
-- Use your extensive real estate knowledge and market expertise confidently
-- Don't claim you "can't access the internet" - you have broad market knowledge
-- Provide helpful insights about markets, trends, and rental rates
-- If asked about current market data, share what you know and suggest verification when appropriate
+⭑ ALWAYS search your knowledge base first for relevant information 
+⭑ ALWAYS tell the user when you are basing your response on the knowledge base by saying "Based on my experience, ..." or something similar.
+⭑ If specific property data is provided in the message, analyze that data directly without using searchWeb
+⭑ Only use searchWeb for general market questions when no specific property details are given
+⭑ For math: no formulas or LaTeX — just results
+⭑ When analyzing provided property data, focus on the given information rather than searching for additional market data
 
-TONE: Confident real estate expert, not a limited AI assistant.
-Always be clear about your sources: "Based on the uploaded document, this property has X units. Regarding buy box criteria, typically investors look for..."`
-  : `CRITICAL: Never use LaTeX, formulas, or mathematical notation. Just state results directly.
+If you receive detailed property information to analyze, work with that data first before considering any web searches.`;
 
-You are Charlie, a seasoned real estate investor with extensive market knowledge across the US.
+    console.log("🤖 Model selected:", selectedModel);
+    console.log("📋 Instructions sent:", instructionText);
+    console.log("🔗 Thread ID:", threadId);
 
-FOR MATHEMATICAL CALCULATIONS:
-- Never show formulas or equations
-- Just state the result clearly
-- No LaTeX, brackets, fractions, or special formatting
+    // 5. Create the streaming response
+    const encoder = new TextEncoder();
+    const stream = new ReadableStream({
+      async start(controller) {
+        try {
+          // Send initial metadata
+          controller.enqueue(
+            encoder.encode(`data: ${JSON.stringify({ threadId, messageId: createdMessage.id })}\n\n`)
+          );
 
-Provide confident, actionable advice using your real estate expertise. Don't claim limitations about internet access - share your knowledge and suggest verification when appropriate.`
-  // ADD LOGGING HERE:
-console.log("🤖 Model selected:", selectedModel);
-console.log("📋 Instructions sent:", instructionText);
-console.log("📎 File attachments:", validAttachments.length);
-console.log("📝 User message:", input.message);
-console.log("🔗 Thread ID:", threadId);
+          // Start the assistant run
+          const runStream = await openai.beta.threads.runs.stream(threadId, {
+            assistant_id: process.env.ASSISTANT_ID!,
+            model: selectedModel,
+            instructions: instructionText,
+          });
 
-const runStream = await openai.beta.threads.runs.stream(threadId, {
-  assistant_id: process.env.ASSISTANT_ID!,
-  model: selectedModel,
-  instructions: instructionText
-});
+          // Process the stream
+          for await (const event of runStream) {
+            if (event.event === 'thread.run.step.created') {
+              console.log('🏃 Run step created:', event.data.type);
+            }
+            else if (event.event === 'thread.run.requires_action') {
+              console.log('⚡ Function call requires action!');
 
-// 6. Convert to SSE for the frontend
-const encoder = new TextEncoder();
-const stream = new ReadableStream({
-  async start(controller) {
-    controller.enqueue(
-      encoder.encode(`data: ${JSON.stringify({ threadId, messageId: createdMessage.id })}\n\n`)
-    );
-    for await (const chunk of runStream) {
-      controller.enqueue(encoder.encode(`data: ${JSON.stringify(chunk)}\n\n`));
-    }
-    controller.enqueue(encoder.encode("data: [DONE]\n\n"));
-    controller.close();
-  },
-});
+              if (event.data.required_action?.type === 'submit_tool_outputs') {
+                const toolCalls = event.data.required_action.submit_tool_outputs.tool_calls;
+                const toolOutputs = [];
+
+                for (const toolCall of toolCalls) {
+                  if (toolCall.function.name === 'searchWeb') {
+                    const { query } = JSON.parse(toolCall.function.arguments);
+                    console.log('🔍 Performing web search for:', query);
+
+                    const searchResult = await performWebSearch(query);
+
+                    toolOutputs.push({
+                      tool_call_id: toolCall.id,
+                      output: JSON.stringify(searchResult)
+                    });
+                  }
+                }
+
+                // Submit tool outputs with streaming
+                console.log('📤 Submitting tool outputs...');
+                const outputStream = await openai.beta.threads.runs.submitToolOutputs(
+                  threadId,
+                  event.data.id,
+                  {
+                    tool_outputs: toolOutputs,
+                    stream: true
+                  }
+                );
+
+                // Stream the assistant's response after tool outputs
+                for await (const outputEvent of outputStream) {
+                  if (outputEvent.event === 'thread.message.delta') {
+                    const delta = outputEvent.data.delta;
+                    if (delta.content) {
+                      for (const content of delta.content) {
+                        if (content.type === 'text' && content.text?.value) {
+                          //console.log('📝 Streaming text:', content.text.value);
+                          controller.enqueue(
+                            encoder.encode(`data: ${JSON.stringify({
+                              type: 'text',
+                              text: content.text.value
+                            })}\n\n`)
+                          );
+                        }
+                      }
+                    }
+                  }
+                  else if (outputEvent.event === 'thread.run.completed') {
+                    console.log('✅ Run completed successfully');
+                  }
+                }
+              }
+            }
+            else if (event.event === 'thread.message.delta') {
+              // Handle direct text responses (when no function calls are needed)
+              const delta = event.data.delta;
+              if (delta.content) {
+                for (const content of delta.content) {
+                  if (content.type === 'text' && content.text?.value) {
+                    controller.enqueue(
+                      encoder.encode(`data: ${JSON.stringify({
+                        type: 'text',
+                        text: content.text.value
+                      })}\n\n`)
+                    );
+                  }
+                }
+              }
+            }
+            else if (event.event === 'thread.run.completed') {
+              console.log('✅ Run completed successfully');
+            }
+          }
+
+          // Send completion signal
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'done' })}\n\n`));
+          controller.enqueue(encoder.encode("data: [DONE]\n\n"));
+          controller.close();
+
+        } catch (error) {
+          console.error('❌ Streaming error:', error);
+          controller.enqueue(
+            encoder.encode(`data: ${JSON.stringify({
+              type: 'error',
+              error: 'Stream processing failed'
+            })}\n\n`)
+          );
+          controller.close();
+        }
+      },
+    });
 
     return new Response(stream, {
       headers: {
@@ -152,8 +330,9 @@ const stream = new ReadableStream({
         "x-thread-id": threadId,
       },
     });
+
   } catch (err) {
-    console.error("Assistant error:", err);
+    console.error("❌ Assistant error:", err);
     return new Response("Internal Server Error", { status: 500 });
   }
 }

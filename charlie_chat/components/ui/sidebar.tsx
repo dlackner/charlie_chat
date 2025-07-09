@@ -412,7 +412,7 @@ export const Sidebar = ({
             const totalCount = Array.isArray(ids) ? ids.length : 0;
 
             if (totalCount === 0) {
-                setCreditsError("No properties matched your criteria. Try broadening your filters.");
+                setCreditsError("No properties matched your criteria.");
                 await onSearch({ clearResults: true });
                 setIsSearching(false);
                 return;

@@ -258,27 +258,38 @@ export const sendMessageWithAttachments = async (
 
         try {
           const parsed = JSON.parse(json);
-          const contentBlocks = parsed?.data?.delta?.content;
+          console.log("🔍 Parsed data:", parsed);
 
-          if (Array.isArray(contentBlocks)) {
-            for (const block of contentBlocks) {
-              if (block.type === "text" && block.text?.value) {
-                const delta = block.text.value;
-                fullText += delta;
-                
-                onMessageUpdate((prev: ChatMessage[]) => {
-                  const newMessages = [...prev];
-                  const filteredMessages = newMessages.filter(msg => !msg.isLoading);
-                  
-                  if (filteredMessages.length > 0 && filteredMessages[filteredMessages.length - 1].role === 'assistant') {
-                    filteredMessages[filteredMessages.length - 1].content = fullText;
-                    return filteredMessages;
-                  }
-                  return [...filteredMessages, { role: "assistant", content: fullText }];
-                });
+          
+          // NEW: Handle the updated response format
+          if (parsed.type === 'text' && parsed.text) {
+            const delta = parsed.text;
+            fullText += delta;
+            
+console.log("📝 About to update UI with:", fullText);
+console.log("📝 Current messages length before update");
+
+            onMessageUpdate((prev: ChatMessage[]) => {
+              const newMessages = [...prev];
+              const filteredMessages = newMessages.filter(msg => !msg.isLoading);
+              
+              if (filteredMessages.length > 0 && filteredMessages[filteredMessages.length - 1].role === 'assistant') {
+                filteredMessages[filteredMessages.length - 1].content = fullText;
+                return filteredMessages;
               }
+              return [...filteredMessages, { role: "assistant", content: fullText }];
+            });
+
+            console.log("📝 UI update completed");
+          }
+          // Handle threadId and messageId from initial response
+          else if (parsed.threadId) {
+            if (!threadId) {
+              onThreadIdUpdate(parsed.threadId);
+              localStorage.setItem("threadId", parsed.threadId);
             }
           }
+          
         } catch (err) {
           console.warn("❌ Failed to parse line:", json, err);
         }
@@ -286,7 +297,7 @@ export const sendMessageWithAttachments = async (
     }
   }
 
-  // Handle threadId assignment
+  // Handle threadId assignment from headers as fallback
   if (!threadId && res.headers) {
     const newThreadId = res.headers.get("x-thread-id");
     if (newThreadId && newThreadId.startsWith("thread_")) {
@@ -298,6 +309,7 @@ export const sendMessageWithAttachments = async (
     }
   }
 };
+
 
 export const sendMessageWithoutAttachments = async (
   options: SendMessageOptions,
@@ -320,7 +332,7 @@ export const sendMessageWithoutAttachments = async (
     body: JSON.stringify({ message, threadId }),
   });
 
-  // Handle threadId assignment
+  // Handle threadId assignment from headers
   if (!threadId && res.headers) {
     const newThreadId = res.headers.get("x-thread-id");
     if (newThreadId && newThreadId.startsWith("thread_")) {
@@ -352,27 +364,33 @@ export const sendMessageWithoutAttachments = async (
 
         try {
           const parsed = JSON.parse(json);
-          const contentBlocks = parsed?.data?.delta?.content;
+          console.log("🔍 Parsed data:", parsed);
 
-          if (Array.isArray(contentBlocks)) {
-            for (const block of contentBlocks) {
-              if (block.type === "text" && block.text?.value) {
-                const delta = block.text.value;
-                fullText += delta;
-                
-                onMessageUpdate((prev: ChatMessage[]) => {
-                  const newMessages = [...prev];
-                  const filteredMessages = newMessages.filter(msg => !msg.isLoading);
-                  
-                  if (filteredMessages.length > 0 && filteredMessages[filteredMessages.length - 1].role === 'assistant') {
-                    filteredMessages[filteredMessages.length - 1].content = fullText;
-                    return filteredMessages;
-                  }
-                  return [...filteredMessages, { role: "assistant", content: fullText }];
-                });
+          
+          // NEW: Handle the updated response format
+          if (parsed.type === 'text' && parsed.text) {
+            const delta = parsed.text;
+            fullText += delta;
+            
+            onMessageUpdate((prev: ChatMessage[]) => {
+              const newMessages = [...prev];
+              const filteredMessages = newMessages.filter(msg => !msg.isLoading);
+              
+              if (filteredMessages.length > 0 && filteredMessages[filteredMessages.length - 1].role === 'assistant') {
+                filteredMessages[filteredMessages.length - 1].content = fullText;
+                return filteredMessages;
               }
+              return [...filteredMessages, { role: "assistant", content: fullText }];
+            });
+          }
+          // Handle threadId and messageId from initial response
+          else if (parsed.threadId) {
+            if (!threadId) {
+              onThreadIdUpdate(parsed.threadId);
+              localStorage.setItem("threadId", parsed.threadId);
             }
           }
+          
         } catch (err) {
           console.warn("❌ Failed to parse line:", json, err);
         }

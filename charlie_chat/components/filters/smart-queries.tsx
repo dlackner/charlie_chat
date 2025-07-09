@@ -242,7 +242,7 @@ export const SmartQueries: React.FC<SmartQueriesProps> = ({
                             key={query.id}
                             onClick={() => applySmartQuery(query.id)}
                             title={query.tooltip}
-                            className="w-full text-left text-sm text-gray-600"
+                            className="w-full text-left text-sm text-gray-600 cursor-pointer"
                         >
                             {query.icon} {query.title}
                         </button>
