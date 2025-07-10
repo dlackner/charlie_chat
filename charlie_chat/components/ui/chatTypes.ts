@@ -31,7 +31,7 @@ export type Listing = {
   lastSaleAmount?: number;
   lotSquareFeet?: number;
   yearsOwned?: number;
-  outOfStateAbsenteeOwner?: number;
+  outOfStateAbsenteeOwner?: boolean;
   property_type?: string;
   squareFeet?: number;
   rentEstimate?: number;

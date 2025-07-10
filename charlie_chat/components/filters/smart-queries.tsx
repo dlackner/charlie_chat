@@ -21,6 +21,7 @@ interface SmartQuery {
         year_built_max?: number;
         corporate_owned?: boolean;
         private_lender?: boolean;
+        or?: { [key: string]: boolean }[];
     };
     unitsConfig: { min: number | string; max: number | string };
 }
@@ -61,16 +62,11 @@ const smartQueries: Record<string, SmartQuery> = {
         id: 'motivated-sellers',
         icon: '>',
         title: 'Motivated Sellers',
-        tooltip: 'Finds out-of-state owners who have owned for 10+ years with high equity ($500k+)',
-        filters: [
-            'Out-of-state owners',
-            '10+ years owned',
-            'High equity ($500k+)'
-        ],
+        tooltip: 'Out-of-state owners who have owned 10+ years - likely motivated to sell',
+        filters: ['Out-of-state owners', '10+ years owned', 'Likely motivated to sell'],
         apiFields: {
             out_of_state_owner: true,
-            years_owned_min: 10,
-            estimated_equity_min: 500000
+            years_owned_min: 10
         },
         unitsConfig: { min: 2, max: '' }
     },
@@ -78,18 +74,15 @@ const smartQueries: Record<string, SmartQuery> = {
         id: 'distressed-assets',
         icon: '>',
         title: 'Distressed Assets',
-        tooltip: 'Properties in financial distress: pre-foreclosure, tax liens, REO, or auction',
-        filters: [
-            'Pre-foreclosure',
-            'Tax liens',
-            'REO properties',
-            'Auction properties'
-        ],
+        tooltip: 'Properties with legal/financial distress: pre-foreclosure, tax liens, REO, or auction',
+        filters: ['Pre-foreclosure', 'Tax liens', 'REO properties', 'Auction properties'],
         apiFields: {
-            pre_foreclosure: true,
-            tax_lien: true,
-            reo: true,
-            auction: true
+            or: [
+                { pre_foreclosure: true },
+                { tax_lien: true },
+                { reo: true },
+                { auction: true }
+            ]
         },
         unitsConfig: { min: 2, max: '' }
     },
@@ -97,34 +90,23 @@ const smartQueries: Record<string, SmartQuery> = {
         id: 'value-add-deals',
         icon: '>',
         title: 'Value-Add Deals',
-        tooltip: 'Properties built 1970-1995 with out-of-state, non-corporate owners',
-        filters: [
-            'Built 1970-1995',
-            'Absentee owners',
-            'Non-corporate owned'
-        ],
+        tooltip: 'Older properties (1970-1995) with absentee owners - likely need updates',
+        filters: ['Built 1970-1995', 'Absentee owners', 'Renovation potential'],
         apiFields: {
             year_built_min: 1970,
             year_built_max: 1995,
-            out_of_state_owner: true,
-            corporate_owned: false
+            out_of_state_owner: true
         },
         unitsConfig: { min: 2, max: 50 }
     },
     'private-lender-deals': {
         id: 'private-lender-deals',
         icon: '>',
-        title: 'Private Lender Deals',
-        tooltip: 'Properties with private financing, out-of-state owners, and high equity ($200k+)',
-        filters: [
-            'Private financing',
-            'Recent sales (2-7 years)',
-            'High equity ($200k+)',
-            'Absentee owners'
-        ],
+        title: 'Private Lender',
+        tooltip: 'Properties with private financing and absentee owners',
+        filters: ['Private financing', 'Absentee owners', 'Alternative financing'],
         apiFields: {
             private_lender: true,
-            estimated_equity_min: 200000,
             out_of_state_owner: true
         },
         unitsConfig: { min: 2, max: '' }
@@ -157,66 +139,68 @@ export const SmartQueries: React.FC<SmartQueriesProps> = ({
         const query = smartQueries[queryId];
         if (!query) return;
 
-        // Reset all filters first before applying the smart query
         resetFilters();
-
         setActiveSmartQuery(queryId);
-
-
-        const { apiFields } = query;
-
         setShowSmartQueries(false);
 
-        // Clear selected listings before starting new search
         if (clearSelectedListings) {
             clearSelectedListings();
         }
 
-        // Build filter parameters directly from the smart query configuration
-        const filterParams: Record<string, any> = {};
+        const { apiFields } = query;
 
-        // Only add max units if specified in the query
+        // For distressed assets, use compound query structure
+        if (queryId === 'distressed-assets' && 'or' in apiFields && Array.isArray(apiFields.or)) {
+            const filterParams: Record<string, any> = {
+                or: [
+                    { pre_foreclosure: true },
+                    { tax_lien: true },
+                    { reo: true },
+                    { auction: true }
+                ],
+                propertyType: "MFR",
+                units_min: query.unitsConfig.min,
+                count: false,
+                size: 10,
+                resultIndex: 0,
+                obfuscate: false,
+                summary: false
+            };
+
+            // Add units_max only if specified
+            if (query.unitsConfig.max && query.unitsConfig.max !== '') {
+                filterParams.units_max = query.unitsConfig.max;
+            }
+
+            console.log("📦 Distressed Assets filterParams:", filterParams);
+            handleSearch(filterParams);
+            return;
+        }
+
+        // For all other queries, use simple parameter structure
+        const filterParams: Record<string, any> = {
+            propertyType: "MFR",
+            units_min: query.unitsConfig.min,
+            count: false,
+            size: 10,
+            resultIndex: 0,
+            obfuscate: false,
+            summary: false
+        };
+
+        // Add regular API fields
+        Object.keys(apiFields).forEach(key => {
+            if (key !== 'or') {
+                filterParams[key] = apiFields[key as keyof typeof apiFields];
+            }
+        });
+
+        // Add units_max only if specified
         if (query.unitsConfig.max && query.unitsConfig.max !== '') {
             filterParams.units_max = query.unitsConfig.max;
         }
-        // Add API field mappings to filterParams
 
-        if (apiFields.out_of_state_owner) {
-            filterParams.out_of_state_owner = true;
-        }
-        if (apiFields.corporate_owned === false) {
-            filterParams.corporate_owned = 'false';
-        }
-        if (apiFields.corporate_owned === true) {
-            filterParams.corporate_owned = 'true';
-        }
-        if (apiFields.private_lender) {
-            filterParams.private_lender = 'true';
-        }
-        if (apiFields.pre_foreclosure) {
-            filterParams.pre_foreclosure = 'true';
-        }
-        if (apiFields.tax_lien) {
-            filterParams.tax_lien = 'true';
-        }
-        if (apiFields.reo) {
-            filterParams.reo = 'true';
-        }
-        if (apiFields.auction) {
-            filterParams.auction = 'true';
-        }
-        if (apiFields.years_owned_min) {
-            filterParams.years_owned_min = apiFields.years_owned_min;
-        }
-        if (apiFields.estimated_equity_min) {
-            filterParams.estimated_equity_min = apiFields.estimated_equity_min;
-        }
-        if (apiFields.year_built_min && apiFields.year_built_max) {
-            filterParams.year_built_min = apiFields.year_built_min;
-            filterParams.year_built_max = apiFields.year_built_max;
-        }
-
-        // Pass the filters directly to handleSearch
+        console.log(`📦 ${query.title} filterParams:`, filterParams);
         handleSearch(filterParams);
     };
 
@@ -226,32 +210,32 @@ export const SmartQueries: React.FC<SmartQueriesProps> = ({
     };
 
     return (
-        <div className="space-y-2">
+        <div className="relative">
             <button
                 onClick={() => setShowSmartQueries(!showSmartQueries)}
-                className="w-48 py-2 px-4 text-white rounded-lg transition text-sm flex items-center justify-between hover:opacity-80"
+                className="w-40 h-[40px] py-2 px-3 text-white rounded-lg transition text-xs flex items-center justify-between hover:opacity-90"
                 style={{ backgroundColor: '#1C599F' }}
             >
                 <span>Charlie's Picks</span>
-                {showSmartQueries ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                {showSmartQueries ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
             </button>
 
             {showSmartQueries && (
-                <div className="space-y-1 pl-2">
-                    {Object.values(smartQueries).map((query) => (
-                        <button
-                            key={query.id}
-                            onClick={() => applySmartQuery(query.id)}
-                            title={query.tooltip}
-                            className="w-full text-left text-sm text-gray-600 cursor-pointer"
-                        >
-                            {query.icon} {query.title}
-                        </button>
-                    ))}
+                <div className="absolute top-full left-0 mt-1 w-40 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
+                    <div className="space-y-1 p-2">
+                        {Object.values(smartQueries).map((query) => (
+                            <button
+                                key={query.id}
+                                onClick={() => applySmartQuery(query.id)}
+                                title={query.tooltip}
+                                className="w-full text-left text-sm text-gray-600 hover:bg-gray-100 p-2 rounded cursor-pointer"
+                            >
+                                {query.icon} {query.title}
+                            </button>
+                        ))}
+                    </div>
                 </div>
             )}
-
-
         </div>
     );
 };

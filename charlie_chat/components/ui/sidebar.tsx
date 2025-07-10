@@ -11,6 +11,8 @@ import { filterRelevantFields } from '../utils/listing';
 import { areAllListingsSelected, createSelectAllHandler } from '../utils/selection';
 import { SmartQueries } from '../filters/smart-queries';
 import { ChevronRight } from 'lucide-react';
+import { getPrimaryClassification } from '../property/property-classifier';
+import { PropertyBadge } from '../property/property-badge';
 
 
 export type Listing = {
@@ -35,7 +37,7 @@ export type Listing = {
     lastSaleAmount?: number;
     lotSquareFeet?: number;
     yearsOwned?: number;
-    outOfStateAbsenteeOwner?: number;
+    outOfStateAbsenteeOwner?: boolean;
     property_type?: string;
     squareFeet?: number;
     rentEstimate?: number;
@@ -280,133 +282,38 @@ export const Sidebar = ({
         setPrivateLender("");
     };
 
-    const handleSearch = async (filters: Record<string, string | number | boolean>) => {
-        // Clear selected listings FIRST, before any search logic
-        if (clearSelectedListings) {
-            clearSelectedListings();
-        }
+//Handle the Search
+const handleSearch = async (filters: Record<string, any>) => {
+    // Clear selected listings FIRST, before any search logic
+    if (clearSelectedListings) {
+        clearSelectedListings();
+    }
 
-        if (!userIsLoggedIn) {
-            triggerAuthModal();
-            return;
-        }
+    if (!userIsLoggedIn) {
+        triggerAuthModal();
+        return;
+    }
 
-        // ✨ Location Validation - Enforce either zipcode OR city+state (not both)
-        const hasCity = city.trim() !== "";
-        const hasState = stateCode.trim() !== "";
-        const hasZip = zipcode.trim() !== "";
+    // Check if this is a compound query from SmartQueries
+    if (filters.or || filters.and) {
+        console.log("🔧 Handling compound query from SmartQueries:", filters);
+        
+        // For compound queries, use the structure as-is and add location data
+        const searchParameters = {
+            ...filters,
+            // Add location data from form
+            zip: zipcode || undefined,
+            city: city || undefined,
+            state: stateCode || undefined,
+        };
 
-        // Check if we have zipcode
-        const hasValidZip = hasZip;
-
-        // Check if we have both city and state
-        const hasValidCityState = hasCity && hasState;
-
-        // Cannot have both zipcode AND city+state filled in
-        if (hasValidZip && hasValidCityState) {
-            setLocationError("Enter ZIP code OR city and state, not both.");
-            return;
-        }
-
-        // Must have either zipcode OR both city and state
-        if (!hasValidZip && !hasValidCityState) {
-            if (hasCity && !hasState) {
-                setLocationError("State is required when City is provided.");
-            } else if (!hasCity && hasState) {
-                setLocationError("City is required when State is provided.");
-            } else {
-                setLocationError("Either ZIP code OR both City and State are required.");
-            }
-            return;
-        }
-
-        // Clear any existing errors if validation passes
-        setLocationError(null);
-
-        // 🔍 Continue with search
+        console.log("📤 Sending compound query:", searchParameters);
+        
         setIsSearching(true);
         setCreditsError(null);
+        
         try {
-            // Build searchParameters FIRST before anything else
-            let searchParameters;
-            if (
-                zipcode && typeof zipcode === 'string' && zipcode.trim() !== '' &&
-                house && typeof house === 'string' && house.trim() !== '' &&
-                street && typeof street === 'string' && street.trim() !== ''
-            ) {
-                // Specific address search
-                searchParameters = {
-                    zip: zipcode,
-                    house: house,
-                    street: street,
-                    propertyType: "MFR",
-                    count: false,        // Get actual data, not just count
-                    size: 10,           // 10 properties per page
-                    resultIndex: 0,     // Start at beginning
-                    obfuscate: false,
-                    summary: false,
-                };
-            } else {
-                // General search
-                const [lastSalePriceMin, lastSalePriceMax] = lastSalePriceRange;
-                const [lotSizeMin, lotSizeMax] = lotSizeRange;
-                const [storiesMin, storiesMax] = storiesRange;
-                const [yearsOwnedMin, yearsOwnedMax] = yearsOwnedRange;
-                const [yearBuiltMin, yearBuiltMax] = yearBuiltRange;
-                const [mortgageMin, mortgageMax] = mortgageBalanceRange;
-                const [assessedMin, assessedMax] = assessedValueRange;
-                const [estimatedMin, estimatedMax] = estimatedValueRange;
-                const [equityMin, equityMax] = estimatedEquityRange;
-                const includeIfChanged = (min: number, max: number, defaultRange: [number, number], keys: [string, string]) =>
-                    min !== defaultRange[0] || max !== defaultRange[1] ? { [keys[0]]: min, [keys[1]]: max } : {};
-
-                searchParameters = {
-                    zip: zipcode || undefined,
-                    city: city || undefined,
-                    state: stateCode || undefined,
-                    units_min: minUnits || undefined,
-                    units_max: maxUnits || undefined,
-                    propertyType: "MFR",
-                    mls_active: mlsActive || undefined,
-                    flood_zone: floodZone || undefined,
-                    ...includeIfChanged(yearBuiltMin, yearBuiltMax, DEFAULT_YEAR_RANGE, ["year_built_min", "year_built_max"]),
-                    ...includeIfChanged(lotSizeMin, lotSizeMax, DEFAULT_LOT_SIZE_RANGE, ["lot_size_min", "lot_size_max"]),
-                    ...includeIfChanged(mortgageMin, mortgageMax, DEFAULT_MORTGAGE_BALANCE_RANGE, ["mortgage_min", "mortgage_max"]),
-                    ...includeIfChanged(assessedMin, assessedMax, DEFAULT_ASSESSED_VALUE_RANGE, ["assessed_value_min", "assessed_value_max"]),
-                    ...includeIfChanged(estimatedMin, estimatedMax, DEFAULT_ESTIMATED_VALUE_RANGE, ["value_min", "value_max"]),
-                    ...includeIfChanged(equityMin, equityMax, DEFAULT_ESTIMATED_EQUITY_RANGE, ["estimated_equity_min", "estimated_equity_max"]),
-                    ...includeIfChanged(storiesMin, storiesMax, DEFAULT_STORIES_RANGE, ["stories_min", "stories_max"]),
-                    ...includeIfChanged(yearsOwnedMin, yearsOwnedMax, DEFAULT_YEARS_OWNED_RANGE, ["years_owned_min", "years_owned_max"]),
-                    ...(lastSalePriceMin !== DEFAULT_LAST_SALE_PRICE_RANGE[0] || lastSalePriceMax !== DEFAULT_LAST_SALE_PRICE_RANGE[1]
-                        ? { last_sale_price_min: lastSalePriceMin, last_sale_price_max: lastSalePriceMax }
-                        : {}),
-                    ...(ownerLocation === "instate" && { in_state_owner: true, out_of_state_owner: false }),
-                    ...(ownerLocation === "outofstate" && { in_state_owner: false, out_of_state_owner: true }),
-                    corporate_owned: corporateOwned || undefined,
-                    last_sale_arms_length: lastSaleArmsLength || undefined,
-                    assumable: assumable || undefined,
-                    street: street || undefined,
-                    house: house || undefined,
-                    // Add new filters to search parameters
-                    auction: auction || undefined,
-                    reo: reo || undefined,
-                    tax_lien: taxLien || undefined,
-                    pre_foreclosure: preForeclosure || undefined, // Use the new string-based filter here
-                    private_lender: privateLender || undefined,
-                    count: false,        // Get actual data, not just count
-                    size: 10,           // 10 properties per page
-                    resultIndex: 0,     // Start at beginning
-                    ids_only: false,
-                    obfuscate: false,
-                    summary: false,
-                };
-                // Merge any filters passed from SmartQueries (overrides form state)
-                searchParameters = {
-                    ...searchParameters,
-                    ...filters  // This will add/override with SmartQueries filters
-                };
-            }
-
+             console.log("🚀 ACTUAL API REQUEST BODY:", JSON.stringify(searchParameters, null, 2));
             const response = await fetch("/api/realestateapi", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -481,7 +388,200 @@ export const Sidebar = ({
             setIsSearching(false);
         }
         setShowAdvanced(false);
-    };
+        return;
+    }
+
+    // ✨ Location Validation - Enforce either zipcode OR city+state (not both)
+    const hasCity = city.trim() !== "";
+    const hasState = stateCode.trim() !== "";
+    const hasZip = zipcode.trim() !== "";
+
+    // Check if we have zipcode
+    const hasValidZip = hasZip;
+
+    // Check if we have both city and state
+    const hasValidCityState = hasCity && hasState;
+
+    // Cannot have both zipcode AND city+state filled in
+    if (hasValidZip && hasValidCityState) {
+        setLocationError("Enter ZIP code OR city and state, not both.");
+        return;
+    }
+
+    // Must have either zipcode OR both city and state
+    if (!hasValidZip && !hasValidCityState) {
+        if (hasCity && !hasState) {
+            setLocationError("State is required when City is provided.");
+        } else if (!hasCity && hasState) {
+            setLocationError("City is required when State is provided.");
+        } else {
+            setLocationError("Either ZIP code OR both City and State are required.");
+        }
+        return;
+    }
+
+    // Clear any existing errors if validation passes
+    setLocationError(null);
+
+    // 🔍 Continue with regular search (non-compound)
+    setIsSearching(true);
+    setCreditsError(null);
+    try {
+        // Build searchParameters FIRST before anything else
+        let searchParameters;
+        if (
+            zipcode && typeof zipcode === 'string' && zipcode.trim() !== '' &&
+            house && typeof house === 'string' && house.trim() !== '' &&
+            street && typeof street === 'string' && street.trim() !== ''
+        ) {
+            // Specific address search
+            searchParameters = {
+                zip: zipcode,
+                house: house,
+                street: street,
+                propertyType: "MFR",
+                count: false,        // Get actual data, not just count
+                size: 10,           // 10 properties per page
+                resultIndex: 0,     // Start at beginning
+                obfuscate: false,
+                summary: false,
+            };
+        } else {
+            // General search
+            const [lastSalePriceMin, lastSalePriceMax] = lastSalePriceRange;
+            const [lotSizeMin, lotSizeMax] = lotSizeRange;
+            const [storiesMin, storiesMax] = storiesRange;
+            const [yearsOwnedMin, yearsOwnedMax] = yearsOwnedRange;
+            const [yearBuiltMin, yearBuiltMax] = yearBuiltRange;
+            const [mortgageMin, mortgageMax] = mortgageBalanceRange;
+            const [assessedMin, assessedMax] = assessedValueRange;
+            const [estimatedMin, estimatedMax] = estimatedValueRange;
+            const [equityMin, equityMax] = estimatedEquityRange;
+            const includeIfChanged = (min: number, max: number, defaultRange: [number, number], keys: [string, string]) =>
+                min !== defaultRange[0] || max !== defaultRange[1] ? { [keys[0]]: min, [keys[1]]: max } : {};
+
+            searchParameters = {
+                zip: zipcode || undefined,
+                city: city || undefined,
+                state: stateCode || undefined,
+                units_min: minUnits || undefined,
+                units_max: maxUnits || undefined,
+                propertyType: "MFR",
+                mls_active: mlsActive || undefined,
+                flood_zone: floodZone || undefined,
+                ...includeIfChanged(yearBuiltMin, yearBuiltMax, DEFAULT_YEAR_RANGE, ["year_built_min", "year_built_max"]),
+                ...includeIfChanged(lotSizeMin, lotSizeMax, DEFAULT_LOT_SIZE_RANGE, ["lot_size_min", "lot_size_max"]),
+                ...includeIfChanged(mortgageMin, mortgageMax, DEFAULT_MORTGAGE_BALANCE_RANGE, ["mortgage_min", "mortgage_max"]),
+                ...includeIfChanged(assessedMin, assessedMax, DEFAULT_ASSESSED_VALUE_RANGE, ["assessed_value_min", "assessed_value_max"]),
+                ...includeIfChanged(estimatedMin, estimatedMax, DEFAULT_ESTIMATED_VALUE_RANGE, ["value_min", "value_max"]),
+                ...includeIfChanged(equityMin, equityMax, DEFAULT_ESTIMATED_EQUITY_RANGE, ["estimated_equity_min", "estimated_equity_max"]),
+                ...includeIfChanged(storiesMin, storiesMax, DEFAULT_STORIES_RANGE, ["stories_min", "stories_max"]),
+                ...includeIfChanged(yearsOwnedMin, yearsOwnedMax, DEFAULT_YEARS_OWNED_RANGE, ["years_owned_min", "years_owned_max"]),
+                ...(lastSalePriceMin !== DEFAULT_LAST_SALE_PRICE_RANGE[0] || lastSalePriceMax !== DEFAULT_LAST_SALE_PRICE_RANGE[1]
+                    ? { last_sale_price_min: lastSalePriceMin, last_sale_price_max: lastSalePriceMax }
+                    : {}),
+                ...(ownerLocation === "instate" && { in_state_owner: true, out_of_state_owner: false }),
+                ...(ownerLocation === "outofstate" && { in_state_owner: false, out_of_state_owner: true }),
+                corporate_owned: corporateOwned || undefined,
+                last_sale_arms_length: lastSaleArmsLength || undefined,
+                assumable: assumable || undefined,
+                street: street || undefined,
+                house: house || undefined,
+                // Add new filters to search parameters
+                auction: auction || undefined,
+                reo: reo || undefined,
+                tax_lien: taxLien || undefined,
+                pre_foreclosure: preForeclosure || undefined, // Use the new string-based filter here
+                private_lender: privateLender || undefined,
+                count: false,        // Get actual data, not just count
+                size: 10,           // 10 properties per page
+                resultIndex: 0,     // Start at beginning
+                ids_only: false,
+                obfuscate: false,
+                summary: false,
+            };
+            // Merge any NON-compound filters passed from SmartQueries (overrides form state)
+            searchParameters = {
+                ...searchParameters,
+                ...filters  // This will add/override with SmartQueries filters
+            };
+        }
+
+        const response = await fetch("/api/realestateapi", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(searchParameters),
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error("Search API failed:", response.status, errorText);
+            setCreditsError("There was a problem with your search. Please try again or adjust your filters.");
+            setIsSearching(false);
+            return;
+        }
+
+        const data = await response.json();
+
+        if (!data.data || data.data.length === 0) {
+            setCreditsError("No properties matched your criteria.");
+            await onSearch({ clearResults: true });
+            setIsSearching(false);
+            return;
+        }
+
+        // Store pagination info
+        setTotalCount(data.resultCount || 0);
+        setCurrentPage(0);
+        setLastSearchParameters(searchParameters);
+        setHasMoreProperties((data.resultIndex || 0) + (data.recordCount || 0) < (data.resultCount || 0));
+
+        const { data: newCreditBalance, error: rpcError } = await supabase.rpc(
+            "decrement_search_credits",
+            {
+                amount_to_decrement: data.recordCount || 0,
+            }
+        );
+
+        if (rpcError) {
+            const errorMessage =
+                typeof rpcError === "object" && rpcError !== null && "message" in rpcError
+                    ? String(rpcError.message)
+                    : String(rpcError);
+
+            if (errorMessage.includes("Insufficient credits")) {
+                if (userClass === "trial") {
+                    setShowTrialUpgradeMessage(true);
+                } else {
+                    triggerBuyCreditsModal();
+                }
+
+                setIsSearching(false);
+                return;
+            }
+
+            setCreditsError("There was a problem with your account. Please log in again.");
+            setIsSearching(false);
+            return;
+        }
+
+        if (onCreditsUpdate && typeof newCreditBalance === "number") {
+            onCreditsUpdate(newCreditBalance);
+        }
+
+        await onSearch({
+            listings: data.data,
+            totalCount: data.resultCount,
+            hasMore: (data.resultIndex || 0) + (data.recordCount || 0) < (data.resultCount || 0)
+        });
+    } catch (error) {
+        console.error("Unexpected error during search handling:", error);
+        setCreditsError("A critical error occurred with the search. Please try again later.");
+    } finally {
+        setIsSearching(false);
+    }
+    setShowAdvanced(false);
+};
 
 
     //New logic to support paging through properties
@@ -565,6 +665,7 @@ export const Sidebar = ({
 
 
     // Prepare props for AdvancedFilters component
+    // Prepare props for AdvancedFilters component
     const advancedFiltersProps = {
         // Location fields
         street,
@@ -621,10 +722,12 @@ export const Sidebar = ({
         // Actions
         onResetFilters: resetFilters
     };
+
     return (
         <div className="relative flex">
-            <div ref={sidebarRef} className="w-[400px] shrink-0 bg-white border-r border-gray-200 p-4 flex flex-col space-y-6 overflow-y-auto h-screen z-20">
+            <div ref={sidebarRef} className="w-[400px] shrink-0 bg-white border-r border-gray-200 p-4 flex flex-col space-y-6 h-screen z-20 overflow-y-auto overflow-x-visible">
                 <h2 className="text-lg font-medium text-gray-800 mb-2">Property Search</h2>
+
                 <div className="space-y-4">
                     <BasicFilters
                         zipcode={zipcode}
@@ -640,35 +743,40 @@ export const Sidebar = ({
                         setStateCode={setStateCode}
                     />
 
-                    <SmartQueries
-                        setMinUnits={setMinUnits}
-                        setMaxUnits={setMaxUnits}
-                        setOwnerLocation={setOwnerLocation}
-                        setCorporateOwned={setCorporateOwned}
-                        setPrivateLender={setPrivateLender}
-                        setPreForeclosure={setPreForeclosure}
-                        setTaxLien={setTaxLien}
-                        setReo={setReo}
-                        setAuction={setAuction}
-                        setYearsOwnedRange={setYearsOwnedRange}
-                        setEstimatedEquityRange={setEstimatedEquityRange}
-                        setYearBuiltRange={setYearBuiltRange}
-                        yearsOwnedRange={yearsOwnedRange}
-                        estimatedEquityRange={estimatedEquityRange}
-                        handleSearch={handleSearch}
-                        resetFilters={resetFilters}
-                        clearSelectedListings={clearSelectedListings}
-                    />
-
-                    <button
-                        ref={advancedFiltersToggleRef}
-                        onClick={() => setShowAdvanced(!showAdvanced)}
-                        className="w-48 py-2 px-4 text-white rounded-lg transition text-sm flex items-center justify-between hover:opacity-80"
-                        style={{ backgroundColor: '#1C599F' }}
-                    >
-                        <span>Advanced Filters</span>
-                        <ChevronRight className="w-4 h-4" />
-                    </button>
+                    {/* Combined row for Charlie's Picks and Advanced Filters */}
+                    <div className="flex space-x-2 items-start">
+                        <div className="relative">
+                            <SmartQueries
+                                setMinUnits={setMinUnits}
+                                setMaxUnits={setMaxUnits}
+                                setOwnerLocation={setOwnerLocation}
+                                setCorporateOwned={setCorporateOwned}
+                                setPrivateLender={setPrivateLender}
+                                setPreForeclosure={setPreForeclosure}
+                                setTaxLien={setTaxLien}
+                                setReo={setReo}
+                                setAuction={setAuction}
+                                setYearsOwnedRange={setYearsOwnedRange}
+                                setEstimatedEquityRange={setEstimatedEquityRange}
+                                setYearBuiltRange={setYearBuiltRange}
+                                yearsOwnedRange={yearsOwnedRange}
+                                estimatedEquityRange={estimatedEquityRange}
+                                handleSearch={handleSearch}
+                                resetFilters={resetFilters}
+                                clearSelectedListings={clearSelectedListings}
+                            />
+                        </div>
+                        
+                        <button
+                            ref={advancedFiltersToggleRef}
+                            onClick={() => setShowAdvanced(!showAdvanced)}
+                            className="w-40 py-2 px-3 text-white rounded-lg transition text-sm flex items-center justify-center hover:opacity-80 whitespace-nowrap h-[40px]"
+                            style={{ backgroundColor: '#1C599F' }}
+                        >
+                            <span className="text-xs">Advanced Filters</span>
+                            <ChevronRight className="w-4 h-4 ml-1" />
+                        </button>
+                    </div>
                 </div>
 
                 <button
@@ -696,7 +804,7 @@ export const Sidebar = ({
                         to continue your analysis and find your next investment.
                     </div>
                 )}
-                <div className="flex-1 space-y-2 overflow-y-auto relative pb-26">
+                <div className="flex-1 space-y-2 relative pb-26" style={{ overflow: 'visible' }}>
 
                     {listings.length > 0 && (
                         <div className="flex items-center space-x-2 mb-2 px-1">
@@ -723,15 +831,22 @@ export const Sidebar = ({
                                     <div
                                         key={listing.id}
                                         className={`
-                      border-2 p-3 rounded text-sm shadow-sm bg-white cursor-pointer transition-all
-                      ${isSelected ? "border-blue-600 bg-blue-50" : "border-transparent hover:border-gray-400"}
-                    `}
+    border-2 p-3 rounded text-sm shadow-sm bg-white cursor-pointer transition-all
+    ${isSelected ? "border-blue-600 bg-blue-50" : "border-transparent hover:border-gray-400"}
+  `}
+                                        style={{ overflow: 'visible' }}
                                     >
                                         <div className="flex items-start justify-between">
-                                            <div onClick={() => setActiveListingIndex(i)} className="flex-1 cursor-pointer" title="Click on address to view property profile & marketing letter. Then check the box & let Charlie analyze it for you!" >
-                                                <p className="font-medium text-gray-800">
-                                                    {listing.address?.street || "No street info"}
-                                                </p>
+                                            <div onClick={() => setActiveListingIndex(i)} className="flex-1 cursor-pointer mr-3">
+                                                <div className="flex items-center justify-between">
+                                                    <p className="font-medium text-gray-800">
+                                                        {listing.address?.street || "No street info"}
+                                                    </p>
+                                                    {(() => {
+                                                        const classification = getPrimaryClassification(listing);
+                                                        return classification ? <PropertyBadge classification={classification} size="sm" /> : null;
+                                                    })()}
+                                                </div>
                                                 <p className="text-xs text-gray-500 mt-1 font-mono leading-relaxed">
                                                     Assessed: ${listing.assessedValue?.toLocaleString() ?? "N/A"}<br />
                                                     Units: {listing.unitsCount ?? "?"} • Year: {listing.yearBuilt ?? "?"}
@@ -782,7 +897,7 @@ export const Sidebar = ({
 
             {
                 selectedListings.length > 0 && (
-                    <div className="fixed bottom-4 left-4 w-[400px] z-40">
+                    <div className="fixed bottom-4 left-4 w-[320px] z-40">
                         <div className="p-4 border rounded-lg bg-orange-500 text-sm shadow text-white">
                             <p className="mb-2 font-medium">Add {selectedListings.length} {selectedListings.length === 1 ? "property" : "properties"} to Charlie Chat</p>
                             <button
@@ -790,7 +905,8 @@ export const Sidebar = ({
                                     const filteredListings = selectedListings.map(listing => filterRelevantFields(listing));
                                     onSendToGPT(filteredListings);
                                 }}
-                                className="bg-blue-600 text-white font-medium px-4 py-2 rounded-lg hover:bg-blue-650 transition w-full"
+                                className="text-white font-medium px-4 py-2 rounded-lg hover:opacity-90 transition w-full cursor-pointer"
+                                style={{ backgroundColor: '#1C599F' }}
                             >
                                 Begin Analysis
                             </button>
