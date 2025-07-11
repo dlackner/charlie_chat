@@ -11,7 +11,7 @@ import { filterRelevantFields } from '../utils/listing';
 import { areAllListingsSelected, createSelectAllHandler } from '../utils/selection';
 import { SmartQueries } from '../filters/smart-queries';
 import { ChevronRight } from 'lucide-react';
-import { getPrimaryClassification } from '../property/property-classifier';
+import { getPrimaryClassification, getClassificationCount } from '../property/property-classifier';
 import { PropertyBadge } from '../property/property-badge';
 
 
@@ -282,38 +282,239 @@ export const Sidebar = ({
         setPrivateLender("");
     };
 
-//Handle the Search
-const handleSearch = async (filters: Record<string, any>) => {
-    // Clear selected listings FIRST, before any search logic
-    if (clearSelectedListings) {
-        clearSelectedListings();
-    }
+    //Handle the Search
+    const handleSearch = async (filters: Record<string, any>) => {
+        // Clear selected listings FIRST, before any search logic
+        if (clearSelectedListings) {
+            clearSelectedListings();
+        }
 
-    if (!userIsLoggedIn) {
-        triggerAuthModal();
-        return;
-    }
+        if (!userIsLoggedIn) {
+            triggerAuthModal();
+            return;
+        }
 
-    // Check if this is a compound query from SmartQueries
-    if (filters.or || filters.and) {
-        console.log("🔧 Handling compound query from SmartQueries:", filters);
-        
-        // For compound queries, use the structure as-is and add location data
-        const searchParameters = {
-            ...filters,
-            // Add location data from form
-            zip: zipcode || undefined,
-            city: city || undefined,
-            state: stateCode || undefined,
-        };
+        // Check if this is a compound query from SmartQueries
+        if (filters.or || filters.and) {
+            console.log("🔧 Handling compound query from SmartQueries:", filters);
 
-        console.log("📤 Sending compound query:", searchParameters);
-        
+            // For compound queries, use the structure as-is and add location data
+            const searchParameters = {
+                ...filters,
+                // Add location data from form
+                zip: zipcode || undefined,
+                city: city || undefined,
+                state: stateCode || undefined,
+            };
+
+            console.log("📤 Sending compound query:", searchParameters);
+
+            setIsSearching(true);
+            setCreditsError(null);
+
+            try {
+                console.log("🚀 ACTUAL API REQUEST BODY:", JSON.stringify(searchParameters, null, 2));
+                const response = await fetch("/api/realestateapi", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(searchParameters),
+                });
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error("Search API failed:", response.status, errorText);
+                    setCreditsError("There was a problem with your search. Please try again or adjust your filters.");
+                    setIsSearching(false);
+                    return;
+                }
+
+                const data = await response.json();
+
+                console.log("🔍 Normal Search API Response Structure:", {
+  resultCount: data.resultCount,
+  resultIndex: data.resultIndex,
+  recordCount: data.recordCount,
+  dataLength: data.data?.length,
+  hasMoreCalculation: (data.resultIndex || 0) + (data.recordCount || 0) < (data.resultCount || 0)
+});
+
+                if (!data.data || data.data.length === 0) {
+                    setCreditsError("No properties matched your criteria.");
+                    await onSearch({ clearResults: true });
+                    setIsSearching(false);
+                    return;
+                }
+
+                // Store pagination info
+                setTotalCount(data.resultCount || 0);
+                setCurrentPage(0);
+                setLastSearchParameters(searchParameters);
+                setHasMoreProperties(data.resultIndex < data.resultCount);
+
+                const { data: newCreditBalance, error: rpcError } = await supabase.rpc(
+                    "decrement_search_credits",
+                    {
+                        amount_to_decrement: data.recordCount || 0,
+                    }
+                );
+
+                if (rpcError) {
+                    const errorMessage =
+                        typeof rpcError === "object" && rpcError !== null && "message" in rpcError
+                            ? String(rpcError.message)
+                            : String(rpcError);
+
+                    if (errorMessage.includes("Insufficient credits")) {
+                        if (userClass === "trial") {
+                            setShowTrialUpgradeMessage(true);
+                        } else {
+                            triggerBuyCreditsModal();
+                        }
+
+                        setIsSearching(false);
+                        return;
+                    }
+
+                    setCreditsError("There was a problem with your account. Please log in again.");
+                    setIsSearching(false);
+                    return;
+                }
+
+                if (onCreditsUpdate && typeof newCreditBalance === "number") {
+                    onCreditsUpdate(newCreditBalance);
+                }
+
+                await onSearch({
+                    listings: data.data,
+                    totalCount: data.resultCount,
+                    hasMore: (data.resultIndex || 0) + (data.recordCount || 0) < (data.resultCount || 0)
+                });
+            } catch (error) {
+                console.error("Unexpected error during search handling:", error);
+                setCreditsError("A critical error occurred with the search. Please try again later.");
+            } finally {
+                setIsSearching(false);
+            }
+            setShowAdvanced(false);
+            return;
+        }
+
+        // ✨ Location Validation - Enforce either zipcode OR city+state (not both)
+        const hasCity = city.trim() !== "";
+        const hasState = stateCode.trim() !== "";
+        const hasZip = zipcode.trim() !== "";
+
+        // Check if we have zipcode
+        const hasValidZip = hasZip;
+
+        // Check if we have both city and state
+        const hasValidCityState = hasCity && hasState;
+
+        // Cannot have both zipcode AND city+state filled in
+        if (hasValidZip && hasValidCityState) {
+            setLocationError("Enter ZIP code OR city and state, not both.");
+            return;
+        }
+
+        // Must have either zipcode OR both city and state
+        if (!hasValidZip && !hasValidCityState) {
+            if (hasCity && !hasState) {
+                setLocationError("State is required when City is provided.");
+            } else if (!hasCity && hasState) {
+                setLocationError("City is required when State is provided.");
+            } else {
+                setLocationError("Either ZIP code OR both City and State are required.");
+            }
+            return;
+        }
+
+        // Clear any existing errors if validation passes
+        setLocationError(null);
+
+        // 🔍 Continue with regular search (non-compound)
         setIsSearching(true);
         setCreditsError(null);
-        
         try {
-             console.log("🚀 ACTUAL API REQUEST BODY:", JSON.stringify(searchParameters, null, 2));
+            // Build searchParameters FIRST before anything else
+            let searchParameters;
+            if (
+                zipcode && typeof zipcode === 'string' && zipcode.trim() !== '' &&
+                house && typeof house === 'string' && house.trim() !== '' &&
+                street && typeof street === 'string' && street.trim() !== ''
+            ) {
+                // Specific address search
+                searchParameters = {
+                    zip: zipcode,
+                    house: house,
+                    street: street,
+                    propertyType: "MFR",
+                    count: false,        // Get actual data, not just count
+                    size: 10,           // 10 properties per page
+                    resultIndex: 0,     // Start at beginning
+                    obfuscate: false,
+                    summary: false,
+                };
+            } else {
+                // General search
+                const [lastSalePriceMin, lastSalePriceMax] = lastSalePriceRange;
+                const [lotSizeMin, lotSizeMax] = lotSizeRange;
+                const [storiesMin, storiesMax] = storiesRange;
+                const [yearsOwnedMin, yearsOwnedMax] = yearsOwnedRange;
+                const [yearBuiltMin, yearBuiltMax] = yearBuiltRange;
+                const [mortgageMin, mortgageMax] = mortgageBalanceRange;
+                const [assessedMin, assessedMax] = assessedValueRange;
+                const [estimatedMin, estimatedMax] = estimatedValueRange;
+                const [equityMin, equityMax] = estimatedEquityRange;
+                const includeIfChanged = (min: number, max: number, defaultRange: [number, number], keys: [string, string]) =>
+                    min !== defaultRange[0] || max !== defaultRange[1] ? { [keys[0]]: min, [keys[1]]: max } : {};
+
+                searchParameters = {
+                    zip: zipcode || undefined,
+                    city: city || undefined,
+                    state: stateCode || undefined,
+                    units_min: minUnits || undefined,
+                    units_max: maxUnits || undefined,
+                    propertyType: "MFR",
+                    mls_active: mlsActive || undefined,
+                    flood_zone: floodZone || undefined,
+                    ...includeIfChanged(yearBuiltMin, yearBuiltMax, DEFAULT_YEAR_RANGE, ["year_built_min", "year_built_max"]),
+                    ...includeIfChanged(lotSizeMin, lotSizeMax, DEFAULT_LOT_SIZE_RANGE, ["lot_size_min", "lot_size_max"]),
+                    ...includeIfChanged(mortgageMin, mortgageMax, DEFAULT_MORTGAGE_BALANCE_RANGE, ["mortgage_min", "mortgage_max"]),
+                    ...includeIfChanged(assessedMin, assessedMax, DEFAULT_ASSESSED_VALUE_RANGE, ["assessed_value_min", "assessed_value_max"]),
+                    ...includeIfChanged(estimatedMin, estimatedMax, DEFAULT_ESTIMATED_VALUE_RANGE, ["value_min", "value_max"]),
+                    ...includeIfChanged(equityMin, equityMax, DEFAULT_ESTIMATED_EQUITY_RANGE, ["estimated_equity_min", "estimated_equity_max"]),
+                    ...includeIfChanged(storiesMin, storiesMax, DEFAULT_STORIES_RANGE, ["stories_min", "stories_max"]),
+                    ...includeIfChanged(yearsOwnedMin, yearsOwnedMax, DEFAULT_YEARS_OWNED_RANGE, ["years_owned_min", "years_owned_max"]),
+                    ...(lastSalePriceMin !== DEFAULT_LAST_SALE_PRICE_RANGE[0] || lastSalePriceMax !== DEFAULT_LAST_SALE_PRICE_RANGE[1]
+                        ? { last_sale_price_min: lastSalePriceMin, last_sale_price_max: lastSalePriceMax }
+                        : {}),
+                    ...(ownerLocation === "instate" && { in_state_owner: true, out_of_state_owner: false }),
+                    ...(ownerLocation === "outofstate" && { in_state_owner: false, out_of_state_owner: true }),
+                    corporate_owned: corporateOwned || undefined,
+                    last_sale_arms_length: lastSaleArmsLength || undefined,
+                    assumable: assumable || undefined,
+                    street: street || undefined,
+                    house: house || undefined,
+                    // Add new filters to search parameters
+                    auction: auction || undefined,
+                    reo: reo || undefined,
+                    tax_lien: taxLien || undefined,
+                    pre_foreclosure: preForeclosure || undefined, // Use the new string-based filter here
+                    private_lender: privateLender || undefined,
+                    count: false,        // Get actual data, not just count
+                    size: 10,           // 10 properties per page
+                    resultIndex: 0,     // Start at beginning
+                    ids_only: false,
+                    obfuscate: false,
+                    summary: false,
+                };
+                // Merge any NON-compound filters passed from SmartQueries (overrides form state)
+                searchParameters = {
+                    ...searchParameters,
+                    ...filters  // This will add/override with SmartQueries filters
+                };
+            }
+
             const response = await fetch("/api/realestateapi", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -329,6 +530,13 @@ const handleSearch = async (filters: Record<string, any>) => {
             }
 
             const data = await response.json();
+            console.log("🔍 External API Response Structure:", {
+  resultCount: data.resultCount,
+  resultIndex: data.resultIndex,
+  recordCount: data.recordCount,
+  dataLength: data.data?.length,
+  responseKeys: Object.keys(data)
+});
 
             if (!data.data || data.data.length === 0) {
                 setCreditsError("No properties matched your criteria.");
@@ -341,7 +549,7 @@ const handleSearch = async (filters: Record<string, any>) => {
             setTotalCount(data.resultCount || 0);
             setCurrentPage(0);
             setLastSearchParameters(searchParameters);
-            setHasMoreProperties((data.resultIndex || 0) + (data.recordCount || 0) < (data.resultCount || 0));
+            setHasMoreProperties(data.resultIndex < data.resultCount);
 
             const { data: newCreditBalance, error: rpcError } = await supabase.rpc(
                 "decrement_search_credits",
@@ -388,200 +596,7 @@ const handleSearch = async (filters: Record<string, any>) => {
             setIsSearching(false);
         }
         setShowAdvanced(false);
-        return;
-    }
-
-    // ✨ Location Validation - Enforce either zipcode OR city+state (not both)
-    const hasCity = city.trim() !== "";
-    const hasState = stateCode.trim() !== "";
-    const hasZip = zipcode.trim() !== "";
-
-    // Check if we have zipcode
-    const hasValidZip = hasZip;
-
-    // Check if we have both city and state
-    const hasValidCityState = hasCity && hasState;
-
-    // Cannot have both zipcode AND city+state filled in
-    if (hasValidZip && hasValidCityState) {
-        setLocationError("Enter ZIP code OR city and state, not both.");
-        return;
-    }
-
-    // Must have either zipcode OR both city and state
-    if (!hasValidZip && !hasValidCityState) {
-        if (hasCity && !hasState) {
-            setLocationError("State is required when City is provided.");
-        } else if (!hasCity && hasState) {
-            setLocationError("City is required when State is provided.");
-        } else {
-            setLocationError("Either ZIP code OR both City and State are required.");
-        }
-        return;
-    }
-
-    // Clear any existing errors if validation passes
-    setLocationError(null);
-
-    // 🔍 Continue with regular search (non-compound)
-    setIsSearching(true);
-    setCreditsError(null);
-    try {
-        // Build searchParameters FIRST before anything else
-        let searchParameters;
-        if (
-            zipcode && typeof zipcode === 'string' && zipcode.trim() !== '' &&
-            house && typeof house === 'string' && house.trim() !== '' &&
-            street && typeof street === 'string' && street.trim() !== ''
-        ) {
-            // Specific address search
-            searchParameters = {
-                zip: zipcode,
-                house: house,
-                street: street,
-                propertyType: "MFR",
-                count: false,        // Get actual data, not just count
-                size: 10,           // 10 properties per page
-                resultIndex: 0,     // Start at beginning
-                obfuscate: false,
-                summary: false,
-            };
-        } else {
-            // General search
-            const [lastSalePriceMin, lastSalePriceMax] = lastSalePriceRange;
-            const [lotSizeMin, lotSizeMax] = lotSizeRange;
-            const [storiesMin, storiesMax] = storiesRange;
-            const [yearsOwnedMin, yearsOwnedMax] = yearsOwnedRange;
-            const [yearBuiltMin, yearBuiltMax] = yearBuiltRange;
-            const [mortgageMin, mortgageMax] = mortgageBalanceRange;
-            const [assessedMin, assessedMax] = assessedValueRange;
-            const [estimatedMin, estimatedMax] = estimatedValueRange;
-            const [equityMin, equityMax] = estimatedEquityRange;
-            const includeIfChanged = (min: number, max: number, defaultRange: [number, number], keys: [string, string]) =>
-                min !== defaultRange[0] || max !== defaultRange[1] ? { [keys[0]]: min, [keys[1]]: max } : {};
-
-            searchParameters = {
-                zip: zipcode || undefined,
-                city: city || undefined,
-                state: stateCode || undefined,
-                units_min: minUnits || undefined,
-                units_max: maxUnits || undefined,
-                propertyType: "MFR",
-                mls_active: mlsActive || undefined,
-                flood_zone: floodZone || undefined,
-                ...includeIfChanged(yearBuiltMin, yearBuiltMax, DEFAULT_YEAR_RANGE, ["year_built_min", "year_built_max"]),
-                ...includeIfChanged(lotSizeMin, lotSizeMax, DEFAULT_LOT_SIZE_RANGE, ["lot_size_min", "lot_size_max"]),
-                ...includeIfChanged(mortgageMin, mortgageMax, DEFAULT_MORTGAGE_BALANCE_RANGE, ["mortgage_min", "mortgage_max"]),
-                ...includeIfChanged(assessedMin, assessedMax, DEFAULT_ASSESSED_VALUE_RANGE, ["assessed_value_min", "assessed_value_max"]),
-                ...includeIfChanged(estimatedMin, estimatedMax, DEFAULT_ESTIMATED_VALUE_RANGE, ["value_min", "value_max"]),
-                ...includeIfChanged(equityMin, equityMax, DEFAULT_ESTIMATED_EQUITY_RANGE, ["estimated_equity_min", "estimated_equity_max"]),
-                ...includeIfChanged(storiesMin, storiesMax, DEFAULT_STORIES_RANGE, ["stories_min", "stories_max"]),
-                ...includeIfChanged(yearsOwnedMin, yearsOwnedMax, DEFAULT_YEARS_OWNED_RANGE, ["years_owned_min", "years_owned_max"]),
-                ...(lastSalePriceMin !== DEFAULT_LAST_SALE_PRICE_RANGE[0] || lastSalePriceMax !== DEFAULT_LAST_SALE_PRICE_RANGE[1]
-                    ? { last_sale_price_min: lastSalePriceMin, last_sale_price_max: lastSalePriceMax }
-                    : {}),
-                ...(ownerLocation === "instate" && { in_state_owner: true, out_of_state_owner: false }),
-                ...(ownerLocation === "outofstate" && { in_state_owner: false, out_of_state_owner: true }),
-                corporate_owned: corporateOwned || undefined,
-                last_sale_arms_length: lastSaleArmsLength || undefined,
-                assumable: assumable || undefined,
-                street: street || undefined,
-                house: house || undefined,
-                // Add new filters to search parameters
-                auction: auction || undefined,
-                reo: reo || undefined,
-                tax_lien: taxLien || undefined,
-                pre_foreclosure: preForeclosure || undefined, // Use the new string-based filter here
-                private_lender: privateLender || undefined,
-                count: false,        // Get actual data, not just count
-                size: 10,           // 10 properties per page
-                resultIndex: 0,     // Start at beginning
-                ids_only: false,
-                obfuscate: false,
-                summary: false,
-            };
-            // Merge any NON-compound filters passed from SmartQueries (overrides form state)
-            searchParameters = {
-                ...searchParameters,
-                ...filters  // This will add/override with SmartQueries filters
-            };
-        }
-
-        const response = await fetch("/api/realestateapi", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(searchParameters),
-        });
-
-        if (!response.ok) {
-            const errorText = await response.text();
-            console.error("Search API failed:", response.status, errorText);
-            setCreditsError("There was a problem with your search. Please try again or adjust your filters.");
-            setIsSearching(false);
-            return;
-        }
-
-        const data = await response.json();
-
-        if (!data.data || data.data.length === 0) {
-            setCreditsError("No properties matched your criteria.");
-            await onSearch({ clearResults: true });
-            setIsSearching(false);
-            return;
-        }
-
-        // Store pagination info
-        setTotalCount(data.resultCount || 0);
-        setCurrentPage(0);
-        setLastSearchParameters(searchParameters);
-        setHasMoreProperties((data.resultIndex || 0) + (data.recordCount || 0) < (data.resultCount || 0));
-
-        const { data: newCreditBalance, error: rpcError } = await supabase.rpc(
-            "decrement_search_credits",
-            {
-                amount_to_decrement: data.recordCount || 0,
-            }
-        );
-
-        if (rpcError) {
-            const errorMessage =
-                typeof rpcError === "object" && rpcError !== null && "message" in rpcError
-                    ? String(rpcError.message)
-                    : String(rpcError);
-
-            if (errorMessage.includes("Insufficient credits")) {
-                if (userClass === "trial") {
-                    setShowTrialUpgradeMessage(true);
-                } else {
-                    triggerBuyCreditsModal();
-                }
-
-                setIsSearching(false);
-                return;
-            }
-
-            setCreditsError("There was a problem with your account. Please log in again.");
-            setIsSearching(false);
-            return;
-        }
-
-        if (onCreditsUpdate && typeof newCreditBalance === "number") {
-            onCreditsUpdate(newCreditBalance);
-        }
-
-        await onSearch({
-            listings: data.data,
-            totalCount: data.resultCount,
-            hasMore: (data.resultIndex || 0) + (data.recordCount || 0) < (data.resultCount || 0)
-        });
-    } catch (error) {
-        console.error("Unexpected error during search handling:", error);
-        setCreditsError("A critical error occurred with the search. Please try again later.");
-    } finally {
-        setIsSearching(false);
-    }
-    setShowAdvanced(false);
-};
+    };
 
 
     //New logic to support paging through properties
@@ -592,7 +607,7 @@ const handleSearch = async (filters: Record<string, any>) => {
         setCreditsError(null);
 
         try {
-            const nextResultIndex = (currentPage + 1) * 10;
+            const nextResultIndex = listings.length;
 
             const paginatedParameters = {
                 ...lastSearchParameters,
@@ -614,6 +629,13 @@ const handleSearch = async (filters: Record<string, any>) => {
             }
 
             const data = await response.json();
+            console.log("🔍 External API Response Structure:", {
+  resultCount: data.resultCount,
+  resultIndex: data.resultIndex,
+  recordCount: data.recordCount,
+  dataLength: data.data?.length,
+  responseKeys: Object.keys(data)
+});
 
             // Charge credits for this batch
             const { data: newCreditBalance, error: rpcError } = await supabase.rpc(
@@ -647,7 +669,7 @@ const handleSearch = async (filters: Record<string, any>) => {
             // Update state
             const updatedListings = [...listings, ...data.data];
             setCurrentPage(currentPage + 1);
-            setHasMoreProperties(nextResultIndex + (data.recordCount || 0) < (data.resultCount || 0));
+            setHasMoreProperties(data.resultIndex < data.resultCount);
 
             await onSearch({
                 listings: updatedListings,
@@ -664,7 +686,6 @@ const handleSearch = async (filters: Record<string, any>) => {
     };
 
 
-    // Prepare props for AdvancedFilters component
     // Prepare props for AdvancedFilters component
     const advancedFiltersProps = {
         // Location fields
@@ -720,7 +741,8 @@ const handleSearch = async (filters: Record<string, any>) => {
         setEstimatedEquityRange,
 
         // Actions
-        onResetFilters: resetFilters
+        onResetFilters: resetFilters,
+        onClose: () => setShowAdvanced(false) 
     };
 
     return (
@@ -766,7 +788,7 @@ const handleSearch = async (filters: Record<string, any>) => {
                                 clearSelectedListings={clearSelectedListings}
                             />
                         </div>
-                        
+
                         <button
                             ref={advancedFiltersToggleRef}
                             onClick={() => setShowAdvanced(!showAdvanced)}
@@ -779,14 +801,16 @@ const handleSearch = async (filters: Record<string, any>) => {
                     </div>
                 </div>
 
-                <button
-                    onClick={() => handleSearch({})}
-                    id="sidebar-search"
-                    disabled={isSearching}
-                    className="w-full bg-orange-500 text-white py-2 px-4 rounded-lg font-semibold transition duration-200 ease-in-out transform hover:scale-105 hover:bg-orange-600 focus:outline-none focus:ring-2 focus:ring-orange-400 focus:ring-opacity-75 hover:shadow-lg active:scale-95 disabled:opacity-75 disabled:cursor-not-allowed"
-                >
-                    {isSearching ? "Processing..." : "Search"}
-                </button>
+                <div className="flex justify-center">
+                    <button
+                        onClick={() => handleSearch({})}
+                        id="sidebar-search"
+                        disabled={isSearching}
+                        className="w-60 bg-orange-500 text-white py-2 px-4 rounded-lg font-semibold transition duration-200 ease-in-out transform hover:scale-105 hover:bg-orange-600 focus:outline-none focus:ring-2 focus:ring-orange-400 focus:ring-opacity-75 hover:shadow-lg active:scale-95 disabled:opacity-75 disabled:cursor-not-allowed"
+                    >
+                        {isSearching ? "Searching..." : "Search"}
+                    </button>
+                </div>
 
                 {creditsError && (
                     <p className="text-red-600 text-xs mt-1 text-center">{creditsError}</p>
@@ -844,7 +868,14 @@ const handleSearch = async (filters: Record<string, any>) => {
                                                     </p>
                                                     {(() => {
                                                         const classification = getPrimaryClassification(listing);
-                                                        return classification ? <PropertyBadge classification={classification} size="sm" /> : null;
+                                                        const totalCount = getClassificationCount(listing);
+                                                        return classification ? (
+                                                            <PropertyBadge
+                                                                classification={classification}
+                                                                size="sm"
+                                                                totalCount={getClassificationCount(listing)}
+                                                            />
+                                                        ) : null;
                                                     })()}
                                                 </div>
                                                 <p className="text-xs text-gray-500 mt-1 font-mono leading-relaxed">

@@ -129,6 +129,13 @@ export async function POST(req: NextRequest) {
     });
 
     const data = await res.json();
+    console.log("🔍 External API Response Structure:", {
+  resultCount: data.resultCount,
+  resultIndex: data.resultIndex,
+  recordCount: data.recordCount,
+  dataLength: data.data?.length,
+  responseKeys: Object.keys(data)
+});
 
     if (!res.ok) {
       console.error("❌ API returned error:", data);
