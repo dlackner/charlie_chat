@@ -156,10 +156,18 @@ if (!threadId || !threadExists) {
     };
 
     if (validAttachments.length > 0) {
+      // Attach files directly to the message
       messageData.attachments = validAttachments.map((att: any) => ({
         file_id: att.content[0].file_id,
         tools: [{ type: "file_search" }],
       }));
+      
+      // Also try adding file content as part of the message context
+      const fileInfo = validAttachments.map((att: any) => 
+        `[ATTACHED FILE: ${att.name} (ID: ${att.content[0].file_id})]`
+      ).join('\n');
+      
+      messageData.content = `${fileInfo}\n\n${input.message}`;
     }
 
     validAttachments.forEach((att: any, i: number) => {
@@ -170,6 +178,12 @@ if (!threadId || !threadExists) {
     console.log("📝 Sending message to OpenAI:", JSON.stringify(messageData, null, 2));
 
     const createdMessage = await openai.beta.threads.messages.create(threadId, messageData);
+    
+    // Log the created message to verify attachments were included
+    console.log("✅ Message created with ID:", createdMessage.id);
+    if (validAttachments.length > 0) {
+      console.log("📎 Message includes", validAttachments.length, "file attachment(s)");
+    }
 
     // 4. Construct instructions
     const hasFileAttachment = validAttachments.length > 0;
@@ -178,19 +192,29 @@ if (!threadId || !threadExists) {
     const instructionText = hasFileAttachment
       ? `You are Charlie, a seasoned real estate expert.
 
-An uploaded document is attached. You MUST prioritize its content when answering questions.
+CRITICAL: The user has uploaded a PDF document that is attached to this message with file_id: ${validAttachments[0]?.content[0]?.file_id}
 
-Use the uploaded document when it contains relevant information. Otherwise, answer based on your real estate expertise.
+You MUST analyze THIS SPECIFIC uploaded document, NOT your knowledge base.
 
-If the document does not contain helpful information, say so directly—do NOT make assumptions or infer unrelated topics.
+MANDATORY PROCESS:
+1. Use file_search to read the ATTACHED document (not your knowledge base)
+2. The document is likely a property profile or real estate document
+3. Extract and summarize ALL information from the document including:
+   - Property address and details
+   - Price, size, specifications
+   - Financial metrics if available
+   - Any other data in the document
 
-⭑ For summarization: extract key points from the document only.
-⭑ For analysis: use document data first, then apply real estate expertise.
-⭑ For math: never use LaTeX or formulas, just give clean numbers.
-⭑ For market advice: use your general knowledge and offer insights confidently.
-⭑ Do not provide citations when using searchWeb
+IMPORTANT RULES:
+- This is a USER-UPLOADED document that needs analysis
+- Do NOT search your knowledge base - analyze the ATTACHED file
+- Do NOT use web search unless specifically asked
+- Focus ONLY on the content of the uploaded document
+- If you cannot access the document, say so clearly
 
-Your tone is helpful, experienced, and direct.`
+The user's file is named: ${validAttachments[0]?.name || 'Property Document'}
+
+Start your response by confirming you're analyzing the uploaded document, not your knowledge base.`
       : `You are Charlie, a seasoned real estate expert. Answer questions clearly and confidently.
 
 ⭑ ALWAYS search your knowledge base first for relevant information 
@@ -218,16 +242,54 @@ If you receive detailed property information to analyze, work with that data fir
           );
 
           // Start the assistant run
-          const runStream = await openai.beta.threads.runs.stream(threadId, {
+          const runConfig: any = {
             assistant_id: process.env.ASSISTANT_ID!,
             model: selectedModel,
             instructions: instructionText,
-          });
+          };
+          
+          // When attachments are present, we need to ensure the assistant uses them
+          if (hasFileAttachment) {
+            // Log assistant configuration for debugging
+            try {
+              const assistant = await openai.beta.assistants.retrieve(process.env.ASSISTANT_ID!);
+              console.log("🤖 Assistant tools:", assistant.tools);
+              console.log("🤖 Assistant file_search enabled:", assistant.tools?.some(t => t.type === 'file_search'));
+              
+              // Check if assistant has vector stores attached
+              if ((assistant as any).tool_resources?.file_search?.vector_store_ids) {
+                console.log("⚠️ Assistant has pre-configured vector stores:", (assistant as any).tool_resources.file_search.vector_store_ids);
+              }
+            } catch (e) {
+              console.error("Failed to retrieve assistant config:", e);
+            }
+            
+            // Try to override tool resources to prioritize message attachments
+            runConfig.additional_instructions = `IMPORTANT: Use ONLY the files attached to this specific message. Do NOT use any pre-configured knowledge base or vector stores. The user has uploaded file ID: ${validAttachments[0]?.content[0]?.file_id}`;
+          }
+          
+          const runStream = await openai.beta.threads.runs.stream(threadId, runConfig);
 
           // Process the stream
           for await (const event of runStream) {
             if (event.event === 'thread.run.step.created') {
               console.log('🏃 Run step created:', event.data.type);
+              console.log('🏃 Step details:', JSON.stringify(event.data, null, 2));
+            }
+            else if (event.event === 'thread.run.step.completed') {
+              if (event.data.type === 'tool_calls') {
+                const toolCalls = (event.data as any).step_details?.tool_calls;
+                if (toolCalls) {
+                  toolCalls.forEach((tc: any) => {
+                    console.log('🔧 Tool completed:', tc.type);
+                    if (tc.type === 'file_search') {
+                      console.log('✅ File search completed successfully!');
+                    } else if (tc.type === 'function') {
+                      console.log('🔍 Function called:', tc.function?.name);
+                    }
+                  });
+                }
+              }
             }
             else if (event.event === 'thread.run.requires_action') {
               console.log('⚡ Function call requires action!');

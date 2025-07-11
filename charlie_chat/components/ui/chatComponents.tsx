@@ -75,6 +75,24 @@ export const PropertyAnalysisLoader = ({ propertyCount, currentProperty = null }
     );
 };
 
+// Charlie Thinking Loader Component
+export const CharlieThinkingLoader = () => {
+    return (
+        <div className="flex justify-start mb-4">
+            <div className="inline-block max-w-[75%] px-4 py-3 bg-gray-100 text-gray-800 rounded-xl rounded-bl-none shadow-sm">
+                <div className="flex items-center gap-3">
+                    <div className="w-5 h-5 border-2 border-gray-300 border-t-orange-500 rounded-full animate-spin"></div>
+                    <div className="leading-relaxed">
+                        <div className="font-medium text-gray-700">
+                            Charlie is thinking...
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
+
 // Chat Header Component
 export const ChatHeader: React.FC<ChatHeaderProps> = ({ hasMessages }) => {
     return (
@@ -136,6 +154,12 @@ export const MessageList: React.FC<MessageListProps> = ({
                     }
 
                     const isUser = m.role === "user";
+                    
+                    // Show thinking loader for empty assistant messages
+                    if (!isUser && !m.content.trim()) {
+                        return <CharlieThinkingLoader key={i} />;
+                    }
+                    
                     const cleanContent = m.content
                         .replace(/\s?【\d+:\d+†[^】]+】\s?/g, "")
                         .replace(/\s?\[\d+:\d+\^source\]\s?/g, "")
