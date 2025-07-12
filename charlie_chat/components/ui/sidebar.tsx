@@ -72,6 +72,9 @@ export type Listing = {
     owner1FirstName?: string;
     owner1LastName?: string;
     stories?: number;
+    freeClear?: boolean;
+    latitude?: number;
+    longitude?: number;
 };
 
 type Props = {
@@ -102,7 +105,7 @@ export const Sidebar = ({
     clearSelectedListings
 }: Props) => {
     const [zipcode, setZipcode] = useState("");
-    const [minUnits, setMinUnits] = useState<number | string>(2);
+    const [minUnits, setMinUnits] = useState<number | string>("");
     const [maxUnits, setMaxUnits] = useState<number | string>("");
 
     // New state and logic for Select All
@@ -211,6 +214,37 @@ export const Sidebar = ({
     const [isSearching, setIsSearching] = useState(false);
     const [creditsError, setCreditsError] = useState<string | null>(null);
 
+    const hasActiveAdvancedFilters = () => {
+        // Check all advanced filter states for non-default values
+        return (
+            street.trim() !== "" ||
+            house.trim() !== "" ||
+            mlsActive !== "" ||
+            lastSaleArmsLength !== "" ||
+            floodZone !== "" ||
+            assumable !== "" ||
+            auction !== "" ||
+            reo !== "" ||
+            taxLien !== "" ||
+            preForeclosure !== "" ||
+            privateLender !== "" ||
+            corporateOwned !== "" ||
+            ownerLocation !== "any" ||
+            !arraysEqual(yearsOwnedRange, DEFAULT_YEARS_OWNED_RANGE) ||
+            !arraysEqual(lastSalePriceRange, DEFAULT_LAST_SALE_PRICE_RANGE) ||
+            !arraysEqual(yearBuiltRange, DEFAULT_YEAR_RANGE) ||
+            !arraysEqual(lotSizeRange, DEFAULT_LOT_SIZE_RANGE) ||
+            !arraysEqual(storiesRange, DEFAULT_STORIES_RANGE) ||
+            !arraysEqual(mortgageBalanceRange, DEFAULT_MORTGAGE_BALANCE_RANGE) ||
+            !arraysEqual(assessedValueRange, DEFAULT_ASSESSED_VALUE_RANGE) ||
+            !arraysEqual(estimatedValueRange, DEFAULT_ESTIMATED_VALUE_RANGE) ||
+            !arraysEqual(estimatedEquityRange, DEFAULT_ESTIMATED_EQUITY_RANGE)
+        );
+    };
+
+    const arraysEqual = (a: [number, number], b: [number, number]) => {
+        return a[0] === b[0] && a[1] === b[1];
+    };
     const useClickOutside = (
         panelToCloseRef: React.RefObject<HTMLElement | null>,
         ignoreClickRefs: Array<React.RefObject<HTMLElement | null>>,
@@ -331,12 +365,12 @@ export const Sidebar = ({
                 const data = await response.json();
 
                 console.log("🔍 Normal Search API Response Structure:", {
-  resultCount: data.resultCount,
-  resultIndex: data.resultIndex,
-  recordCount: data.recordCount,
-  dataLength: data.data?.length,
-  hasMoreCalculation: (data.resultIndex || 0) + (data.recordCount || 0) < (data.resultCount || 0)
-});
+                    resultCount: data.resultCount,
+                    resultIndex: data.resultIndex,
+                    recordCount: data.recordCount,
+                    dataLength: data.data?.length,
+                    hasMoreCalculation: (data.resultIndex || 0) + (data.recordCount || 0) < (data.resultCount || 0)
+                });
 
                 if (!data.data || data.data.length === 0) {
                     setCreditsError("No properties matched your criteria.");
@@ -531,12 +565,12 @@ export const Sidebar = ({
 
             const data = await response.json();
             console.log("🔍 External API Response Structure:", {
-  resultCount: data.resultCount,
-  resultIndex: data.resultIndex,
-  recordCount: data.recordCount,
-  dataLength: data.data?.length,
-  responseKeys: Object.keys(data)
-});
+                resultCount: data.resultCount,
+                resultIndex: data.resultIndex,
+                recordCount: data.recordCount,
+                dataLength: data.data?.length,
+                responseKeys: Object.keys(data)
+            });
 
             if (!data.data || data.data.length === 0) {
                 setCreditsError("No properties matched your criteria.");
@@ -630,12 +664,12 @@ export const Sidebar = ({
 
             const data = await response.json();
             console.log("🔍 External API Response Structure:", {
-  resultCount: data.resultCount,
-  resultIndex: data.resultIndex,
-  recordCount: data.recordCount,
-  dataLength: data.data?.length,
-  responseKeys: Object.keys(data)
-});
+                resultCount: data.resultCount,
+                resultIndex: data.resultIndex,
+                recordCount: data.recordCount,
+                dataLength: data.data?.length,
+                responseKeys: Object.keys(data)
+            });
 
             // Charge credits for this batch
             const { data: newCreditBalance, error: rpcError } = await supabase.rpc(
@@ -742,7 +776,7 @@ export const Sidebar = ({
 
         // Actions
         onResetFilters: resetFilters,
-        onClose: () => setShowAdvanced(false) 
+        onClose: () => setShowAdvanced(false)
     };
 
     return (
@@ -793,7 +827,7 @@ export const Sidebar = ({
                             ref={advancedFiltersToggleRef}
                             onClick={() => setShowAdvanced(!showAdvanced)}
                             className="w-40 py-2 px-3 text-white rounded-lg transition text-sm flex items-center justify-center hover:opacity-80 whitespace-nowrap h-[40px]"
-                            style={{ backgroundColor: '#1C599F' }}
+                            style={{ backgroundColor: hasActiveAdvancedFilters() ? '#16a34a' : '#1C599F' }}
                         >
                             <span className="text-xs">Advanced Filters</span>
                             <ChevronRight className="w-4 h-4 ml-1" />

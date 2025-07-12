@@ -68,7 +68,7 @@ const smartQueries: Record<string, SmartQuery> = {
             out_of_state_owner: true,
             years_owned_min: 10
         },
-        unitsConfig: { min: 2, max: '' }
+        unitsConfig: { min: 0, max: '' }
     },
     'distressed-assets': {
         id: 'distressed-assets',
@@ -84,7 +84,7 @@ const smartQueries: Record<string, SmartQuery> = {
                 { auction: true }
             ]
         },
-        unitsConfig: { min: 2, max: '' }
+        unitsConfig: { min: 0, max: '' }
     },
     'value-add-deals': {
         id: 'value-add-deals',
@@ -97,7 +97,7 @@ const smartQueries: Record<string, SmartQuery> = {
             year_built_max: 1995,
             out_of_state_owner: true
         },
-        unitsConfig: { min: 2, max: 50 }
+        unitsConfig: { min: 0, max: '' }
     },
     'private-lender-deals': {
         id: 'private-lender-deals',
@@ -109,7 +109,7 @@ const smartQueries: Record<string, SmartQuery> = {
             private_lender: true,
             out_of_state_owner: true
         },
-        unitsConfig: { min: 2, max: '' }
+        unitsConfig: { min: 0, max: '' }
     }
 };
 
