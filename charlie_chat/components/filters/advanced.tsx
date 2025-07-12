@@ -1,6 +1,6 @@
 // components/filters/advanced.tsx
 
-import React from 'react';
+import React, { useRef, useEffect } from 'react';
 import { FilterToggle } from './toggle';
 import { FilterRange } from './range';
 
@@ -59,6 +59,7 @@ interface AdvancedFiltersProps {
 
   // Actions
   onResetFilters: () => void;
+  onClose: () => void; // Add this prop for closing the filters
 }
 
 export const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({
@@ -115,8 +116,42 @@ export const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({
   setEstimatedEquityRange,
 
   // Actions
-  onResetFilters
+  onResetFilters,
+  onClose
 }) => {
+  const filtersRef = useRef<HTMLDivElement>(null);
+
+  // Handle click outside to close filters
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (filtersRef.current && !filtersRef.current.contains(event.target as Node)) {
+        if (typeof onClose === 'function') {
+          onClose();
+        }
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [onClose]);
+
+  useEffect(() => {
+    const handleEscapeKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        if (typeof onClose === 'function') {
+          onClose();
+        }
+      }
+    };
+
+    document.addEventListener('keydown', handleEscapeKey);
+    return () => {
+      document.removeEventListener('keydown', handleEscapeKey);
+    };
+  }, [onClose]);
+
   const handleOwnerLocationChange = (value: string) => {
     if (value === "") setOwnerLocation("any");
     else if (value === "true") setOwnerLocation("instate");
@@ -126,15 +161,27 @@ export const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({
   const ownerLocationValue = ownerLocation === "any" ? "" : ownerLocation === "instate" ? "true" : "false";
 
   return (
-    <div className="w-[440px] max-h-screen bg-white border-r border-gray-200 p-6 shadow-xl overflow-y-auto">
+    <div
+      ref={filtersRef}
+      className="w-[440px] max-h-screen bg-white border-r border-gray-200 p-6 shadow-xl overflow-y-auto"
+    >
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-lg text-gray-800 font-semibold">Advanced Filters</h3>
-        <button
-          onClick={onResetFilters}
-          className="text-sm bg-gray-100 text-gray-700 px-3 py-1.5 rounded hover:bg-gray-200 border border-gray-300"
-        >
-          Reset Filters
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={onResetFilters}
+            className="text-sm bg-gray-100 text-gray-700 px-3 py-1.5 rounded hover:bg-gray-200 border border-gray-300"
+          >
+            Reset Filters
+          </button>
+          <button
+            onClick={() => typeof onClose === 'function' && onClose()}
+            className="text-sm bg-gray-100 text-gray-700 px-3 py-1.5 rounded hover:bg-gray-200 border border-gray-300"
+            aria-label="Close filters"
+          >
+            ✕
+          </button>
+        </div>
       </div>
 
       {/* Location Section */}

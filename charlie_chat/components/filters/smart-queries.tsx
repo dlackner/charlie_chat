@@ -213,7 +213,7 @@ export const SmartQueries: React.FC<SmartQueriesProps> = ({
         <div className="relative">
             <button
                 onClick={() => setShowSmartQueries(!showSmartQueries)}
-                className="w-40 h-[40px] py-2 px-3 text-white rounded-lg transition text-xs flex items-center justify-between hover:opacity-90"
+                className="w-40 h-[40px] py-2 px-3 text-white rounded-lg transition text-xs flex items-center justify-between hover:opacity-90 ml-4"
                 style={{ backgroundColor: '#1C599F' }}
             >
                 <span>Charlie's Picks</span>

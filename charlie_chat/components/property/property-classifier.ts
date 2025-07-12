@@ -199,3 +199,7 @@ export const getPrimaryClassification = (listing: Listing): PropertyClassificati
   
   return null;
 };
+
+export const getClassificationCount = (listing: Listing): number => {
+  return classifyProperty(listing).length;
+};

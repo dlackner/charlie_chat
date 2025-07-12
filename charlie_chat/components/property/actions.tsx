@@ -7,6 +7,7 @@ import { Document, Packer, Paragraph, TextRun, ISpacingProperties, LineRuleType 
 import { saveAs } from 'file-saver';
 import type { Listing } from '../ui/sidebar';
 import { SkipTraceButton } from '../skiptrace/SkipTraceButton';
+import { classifyProperty } from '../property/property-classifier';
 
 interface PropertyActionsProps {
   listing: Listing;
@@ -152,7 +153,10 @@ export const PropertyActions = ({ listing, userClass }: PropertyActionsProps) =>
     const leftX = 10;
     const rightX = 150;
     let startY = 30;
+    
+    // Use the lower resolution logo
     doc.addImage("/MFOS.png", "PNG", 10, 8, 50, 10);
+    
     doc.setFont("helvetica", "bold");
     doc.setFontSize(18);
     const address = listing.address?.address || "No Address";
@@ -171,6 +175,13 @@ export const PropertyActions = ({ listing, userClass }: PropertyActionsProps) =>
     doc.setFont("helvetica", "normal");
 
     startY = 45;
+    
+    // Get property classifications for the badge
+    const classifications = classifyProperty(listing);
+    const classificationText = classifications.length > 0 
+      ? classifications.map(c => c.label).join(", ")
+      : "Standard";
+
     const addSection = (title: string, fields: [string, any][], x: number, y: number) => {
       doc.setFont("helvetica", "bold");
       doc.setFontSize(12);
@@ -181,13 +192,59 @@ export const PropertyActions = ({ listing, userClass }: PropertyActionsProps) =>
         doc.text(`${label} ${value}`, x, y + 7 + i * 6);
       });
     };
-    addSection("PROPERTY OVERVIEW", [["Property ID:", listing.id], ["Units:", listing.unitsCount ?? "N/A"], ["Stories:", listing.stories ?? "N/A"], ["Year Built:", listing.yearBuilt ?? "N/A"], ["Lot Size:", `${listing.lotSquareFeet?.toLocaleString()} sq ft`], ["Years Owned:", listing.yearsOwned ?? "N/A"],], leftX, startY);
-    addSection("VALUATION & EQUITY", [["Assessed Value:", formatCurrency(listing.assessedValue)], ["Estimated Market Value:", formatCurrency(listing.estimatedValue)], ["Estimated Equity:", formatCurrency(listing.estimatedValue)], ["Listing Price:", "Not listed"],], leftX, startY + 46);
-    addSection("MORTGAGE & FINANCING", [["Mortgage Balance:", formatCurrency(listing.mortgageBalance)], ["Lender:", listing.lenderName ?? "N/A"], ["Mortgage Maturity Date:", listing.mortgageMaturingDate ?? "N/A"],], leftX, startY + 81);
-    addSection("SALES & TRANSACTION HISTORY", [["Last Sale Date:", listing.lastSaleDate ?? "N/A"], ["Last Sale Amount:", formatCurrency(listing.lastSaleAmount)], ["Arms-Length Sale:", listing.lastSaleArmsLength ? "Yes" : "No"], ["MLS Active:", listing.mlsActive ? "Yes" : "No"],], rightX, startY);
-    addSection("FLOOD ZONE INFORMATION", [["Flood Zone:", listing.floodZone ? "Yes" : "No"], ["Flood Zone Description:", listing.floodZoneDescription ?? "N/A"],], rightX, startY + 35);
-    addSection("OWNERSHIP DETAILS", [["Owner Name:", `${listing.owner1FirstName ?? ""} ${listing.owner1LastName ?? ""}`], ["Owner Address:", listing.mailAddress ?? "N/A"], ["In-State Absentee Owner:", listing.inStateAbsenteeOwner ? "Yes" : "No"], ["Out-of-State Absentee Owner:", listing.outOfStateAbsenteeOwner ? "Yes" : "No"],], rightX, startY + 60);
-    addSection("OTHER INFORMATION", [["Assumable:", listing.assumable ? "Yes" : "No"], ["REO:", listing.reo ? "Yes" : "No"], ["Auction:", listing.auction ? "Yes" : "No"], ["Tax Lien:", listing.taxLien ? "Yes" : "No"],["Pre Foreclosure:", listing.preForeclosure ? "Yes" : "No"], ["Private Lender:", listing.privateLender ? "Yes" : "No"],], rightX, startY + 95);
+    
+    // Add the classification to PROPERTY OVERVIEW
+    addSection("PROPERTY OVERVIEW", [
+      ["Property ID:", listing.id], 
+      ["Classification:", classificationText],
+      ["Units:", listing.unitsCount ?? "N/A"], 
+      ["Stories:", listing.stories ?? "N/A"], 
+      ["Year Built:", listing.yearBuilt ?? "N/A"], 
+      ["Lot Size:", `${listing.lotSquareFeet?.toLocaleString()} sq ft`], 
+      ["Years Owned:", listing.yearsOwned ?? "N/A"],
+    ], leftX, startY);
+    
+    addSection("VALUATION & EQUITY", [
+      ["Assessed Value:", formatCurrency(listing.assessedValue)], 
+      ["Estimated Market Value:", formatCurrency(listing.estimatedValue)], 
+      ["Estimated Equity:", formatCurrency(listing.estimatedValue)], 
+      ["Listing Price:", "Not listed"],
+    ], leftX, startY + 54); // Adjusted Y position to account for extra line
+    
+    addSection("MORTGAGE & FINANCING", [
+      ["Mortgage Balance:", formatCurrency(listing.mortgageBalance)], 
+      ["Lender:", listing.lenderName ?? "N/A"], 
+      ["Mortgage Maturity Date:", listing.mortgageMaturingDate ?? "N/A"],
+    ], leftX, startY + 89); // Adjusted Y position
+    
+    addSection("SALES & TRANSACTION HISTORY", [
+      ["Last Sale Date:", listing.lastSaleDate ?? "N/A"], 
+      ["Last Sale Amount:", formatCurrency(listing.lastSaleAmount)], 
+      ["Arms-Length Sale:", listing.lastSaleArmsLength ? "Yes" : "No"], 
+      ["MLS Active:", listing.mlsActive ? "Yes" : "No"],
+    ], rightX, startY);
+    
+    addSection("FLOOD ZONE INFORMATION", [
+      ["Flood Zone:", listing.floodZone ? "Yes" : "No"], 
+      ["Flood Zone Description:", listing.floodZoneDescription ?? "N/A"],
+    ], rightX, startY + 35);
+    
+    addSection("OWNERSHIP DETAILS", [
+      ["Owner Name:", `${listing.owner1FirstName ?? ""} ${listing.owner1LastName ?? ""}`], 
+      ["Owner Address:", listing.mailAddress ?? "N/A"], 
+      ["In-State Absentee Owner:", listing.inStateAbsenteeOwner ? "Yes" : "No"], 
+      ["Out-of-State Absentee Owner:", listing.outOfStateAbsenteeOwner ? "Yes" : "No"],
+    ], rightX, startY + 60);
+    
+    addSection("OTHER INFORMATION", [
+      ["Assumable:", listing.assumable ? "Yes" : "No"], 
+      ["REO:", listing.reo ? "Yes" : "No"], 
+      ["Auction:", listing.auction ? "Yes" : "No"], 
+      ["Tax Lien:", listing.taxLien ? "Yes" : "No"],
+      ["Pre Foreclosure:", listing.preForeclosure ? "Yes" : "No"], 
+      ["Private Lender:", listing.privateLender ? "Yes" : "No"],
+    ], rightX, startY + 95);
+    
     const safeAddress = (listing.address?.address || "property").replace(/[^a-zA-Z0-9]/g, "_");
     doc.save(`Property_Profile_${safeAddress}.pdf`);
   };

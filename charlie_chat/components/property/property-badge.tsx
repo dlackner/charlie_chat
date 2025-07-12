@@ -1,9 +1,11 @@
+// property-badge.tsx
 import React from 'react';
 import { PropertyClassification } from './property-classifier';
 
 interface PropertyBadgeProps {
     classification: PropertyClassification;
     size?: 'sm' | 'md';
+    totalCount?: number; // Total number of classifications for this property
 }
 
 // Tooltip content for each classification type
@@ -23,12 +25,15 @@ const getTooltipText = (type: PropertyClassification['type']): string => {
 
 export const PropertyBadge: React.FC<PropertyBadgeProps> = ({
     classification,
-    size = 'sm'
+    size = 'sm',
+    totalCount = 1
 }) => {
     const sizeClasses = {
         sm: 'px-2 py-1 text-xs',
         md: 'px-3 py-1.5 text-sm'
     };
+
+    const additionalCount = totalCount > 1 ? totalCount - 1 : 0;
 
     return (
         <span
@@ -41,11 +46,17 @@ export const PropertyBadge: React.FC<PropertyBadgeProps> = ({
         //title={getTooltipText(classification.type)}
         >
             {classification.label}
+            {additionalCount > 0 && (
+                <span className="ml-1">
+                    ...
+                </span>
+            )}
 
             {/* Custom tooltip */}
             <div className="absolute bottom-full left-0 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-[9999] shadow-lg"
-                style={{ transform: 'translateX(-50%) translateY(-2px)' }}>
+                style={{ transform: 'translateX(-60%) translateY(-2px)' }}>
                 {getTooltipText(classification.type)}
+                {additionalCount > 0 && ` (${totalCount} classes)`}
                 <div className="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-gray-900"></div>
             </div>
         </span>
