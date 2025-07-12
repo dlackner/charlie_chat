@@ -1113,7 +1113,147 @@ if (loiType === 'long') {
     <div className="min-h-screen bg-gray-50 flex flex-col items-center py-10 px-4 sm:px-6 lg:px-8">
       <div className="bg-white p-8 rounded-lg shadow-xl w-full max-w-4xl border border-gray-200">
         <h1 className="text-3xl md:text-4xl font-extrabold mb-6 text-orange-600 text-center font-sans">Generate a Letter of Intent</h1>
-        <p className="text-center text-gray-600 mb-8">Fill in the details below to generate your customized Letter of Intent. Select your version below.</p>
+        <p className="text-center text-gray-600 mb-8">Choose your LOI type and fill in the details to generate your customized document.</p>
+
+        {/* LOI Type Selection - Moved to Top with Card Design */}
+        <section className="mb-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+            {/* Short Form Card */}
+            <label className={`relative flex flex-col p-6 rounded-lg border-2 cursor-pointer transition-all h-full ${
+              loiType === 'short' ? 'border-orange-500 bg-orange-50' : 'border-gray-200 hover:border-gray-300'
+            }`}>
+              <input
+                type="radio"
+                className="sr-only"
+                name="loiType"
+                value="short"
+                checked={loiType === 'short'}
+                onChange={() => setLoiType('short')}
+              />
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-lg font-semibold text-gray-800">Short Form</span>
+                <div className={`w-5 h-5 rounded-full border-2 ${
+                  loiType === 'short' ? 'border-orange-500 bg-orange-500' : 'border-gray-400'
+                }`}>
+                  {loiType === 'short' && (
+                    <svg className="w-3 h-3 text-white mx-auto mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    </svg>
+                  )}
+                </div>
+              </div>
+              <p className="text-sm text-gray-600 leading-relaxed">Quick and simple LOI covering essential terms. Best for straightforward deals.</p>
+            </label>
+
+            {/* Long Form Card */}
+            <label className={`relative flex flex-col p-6 rounded-lg border-2 cursor-pointer transition-all h-full ${
+              loiType === 'long' ? 'border-orange-500 bg-orange-50' : 'border-gray-200 hover:border-gray-300'
+            }`}>
+              <input
+                type="radio"
+                className="sr-only"
+                name="loiType"
+                value="long"
+                checked={loiType === 'long'}
+                onChange={() => setLoiType('long')}
+              />
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-lg font-semibold text-gray-800">Long Form</span>
+                <div className={`w-5 h-5 rounded-full border-2 ${
+                  loiType === 'long' ? 'border-orange-500 bg-orange-500' : 'border-gray-400'
+                }`}>
+                  {loiType === 'long' && (
+                    <svg className="w-3 h-3 text-white mx-auto mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    </svg>
+                  )}
+                </div>
+              </div>
+              <p className="text-sm text-gray-600 leading-relaxed">Comprehensive LOI with detailed terms, warranties, and protections. Ideal for complex transactions.</p>
+            </label>
+
+            {/* Master Lease Card */}
+            <label className={`relative flex flex-col p-6 rounded-lg border-2 cursor-pointer transition-all h-full ${
+              loiType === 'master' ? 'border-orange-500 bg-orange-50' : 'border-gray-200 hover:border-gray-300'
+            }`}>
+              <input
+                type="radio"
+                className="sr-only"
+                name="loiType"
+                value="master"
+                checked={loiType === 'master'}
+                onChange={() => setLoiType('master')}
+              />
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-lg font-semibold text-gray-800">Master Lease</span>
+                <div className={`w-5 h-5 rounded-full border-2 ${
+                  loiType === 'master' ? 'border-orange-500 bg-orange-500' : 'border-gray-400'
+                }`}>
+                  {loiType === 'master' && (
+                    <svg className="w-3 h-3 text-white mx-auto mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    </svg>
+                  )}
+                </div>
+              </div>
+              <p className="text-sm text-gray-600 leading-relaxed">Master lease agreement with option to purchase. Perfect for lease-to-own strategies.</p>
+            </label>
+
+            {/* Assumption Card */}
+            <label className={`relative flex flex-col p-6 rounded-lg border-2 cursor-pointer transition-all h-full ${
+              loiType === 'assumption' ? 'border-orange-500 bg-orange-50' : 'border-gray-200 hover:border-gray-300'
+            }`}>
+              <input
+                type="radio"
+                className="sr-only"
+                name="loiType"
+                value="assumption"
+                checked={loiType === 'assumption'}
+                onChange={() => setLoiType('assumption')}
+              />
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-lg font-semibold text-gray-800">Assumption</span>
+                <div className={`w-5 h-5 rounded-full border-2 ${
+                  loiType === 'assumption' ? 'border-orange-500 bg-orange-500' : 'border-gray-400'
+                }`}>
+                  {loiType === 'assumption' && (
+                    <svg className="w-3 h-3 text-white mx-auto mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    </svg>
+                  )}
+                </div>
+              </div>
+              <p className="text-sm text-gray-600 leading-relaxed">For assuming existing loans. Includes lender approval contingencies and capital reserves.</p>
+            </label>
+
+            {/* Financing Card */}
+            <label className={`relative flex flex-col p-6 rounded-lg border-2 cursor-pointer transition-all h-full ${
+              loiType === 'financing' ? 'border-orange-500 bg-orange-50' : 'border-gray-200 hover:border-gray-300'
+            }`}>
+              <input
+                type="radio"
+                className="sr-only"
+                name="loiType"
+                value="financing"
+                checked={loiType === 'financing'}
+                onChange={() => setLoiType('financing')}
+              />
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-lg font-semibold text-gray-800">Seller Financing</span>
+                <div className={`w-5 h-5 rounded-full border-2 ${
+                  loiType === 'financing' ? 'border-orange-500 bg-orange-500' : 'border-gray-400'
+                }`}>
+                  {loiType === 'financing' && (
+                    <svg className="w-3 h-3 text-white mx-auto mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    </svg>
+                  )}
+                </div>
+              </div>
+              <p className="text-sm text-gray-600 leading-relaxed">Includes seller financing terms. Great for deals requiring creative financing solutions.</p>
+            </label>
+          </div>
+        </section>
 
         <form onSubmit={(e) => { e.preventDefault(); generateAndDownloadLOI(); }} className="space-y-6">
           <section>
@@ -1152,68 +1292,6 @@ if (loiType === 'long') {
             </div>
           </section>
 
-          {/* New LOI Type Selection - Radio Buttons */}
-          <section>
-            <h2 className="text-xl font-semibold text-gray-700 mb-4 border-b pb-2">LOI Type</h2>
-            <div className="flex items-center space-x-4">
-              <label className="inline-flex items-center">
-                <input
-                  type="radio"
-                  className="form-radio h-5 w-5 text-orange-600"
-                  name="loiType"
-                  value="short"
-                  checked={loiType === 'short'}
-                  onChange={() => setLoiType('short')}
-                />
-                <span className="ml-2 text-gray-700 font-medium">Short Form LOI</span>
-              </label>
-              <label className="inline-flex items-center">
-                <input
-                  type="radio"
-                  className="form-radio h-5 w-5 text-orange-600"
-                  name="loiType"
-                  value="long"
-                  checked={loiType === 'long'}
-                  onChange={() => setLoiType('long')}
-                />
-                <span className="ml-2 text-gray-700 font-medium">Long Form LOI</span>
-              </label>
-              <label className="inline-flex items-center">
-                <input
-                  type="radio"
-                  className="form-radio h-5 w-5 text-orange-600"
-                  name="loiType"
-                  value="master"
-                  checked={loiType === 'master'}
-                  onChange={() => setLoiType('master')}
-                />
-                <span className="ml-2 text-gray-700 font-medium">Master Lease LOI</span>
-              </label>
-              <label className="inline-flex items-center">
-    <input
-      type="radio"
-      className="form-radio h-5 w-5 text-orange-600"
-      name="loiType"
-      value="assumption"
-      checked={loiType === 'assumption'}
-      onChange={() => setLoiType('assumption')}
-    />
-    <span className="ml-2 text-gray-700 font-medium">Assumption LOI</span>
-  </label>
-<label className="inline-flex items-center">
-    <input
-      type="radio"
-      className="form-radio h-5 w-5 text-orange-600"
-      name="loiType"
-      value="financing"
-      checked={loiType === 'financing'}
-      onChange={() => setLoiType('financing')}
-    />
-    <span className="ml-2 text-gray-700 font-medium">Financing LOI</span>
-  </label>
-
-            </div>
-          </section>
 
           <button
             type="submit"

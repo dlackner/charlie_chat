@@ -3,10 +3,10 @@ import { NextRequest, NextResponse } from "next/server";
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    //console.log("📝 Raw body from client ➡️", body);
+    console.log("📝 Raw body from client ➡️", body);
 
     if (body.clearResults) {
-      //console.log("🧹 Clearing results as requested.");
+      console.log("🧹 Clearing results as requested.");
       return NextResponse.json([]);
     }
 
@@ -49,7 +49,13 @@ export async function POST(req: NextRequest) {
       private_lender,
       street,
       house,
-      ids_only // ✅ include ids_only
+      size,
+      resultIndex,
+      count,
+      ids_only,
+      // ADD COMPOUND QUERY FIELDS:
+      or,
+      and
     } = body;
 
     // ✅ Convert ZIP string to array
@@ -57,7 +63,7 @@ export async function POST(req: NextRequest) {
       ? zip.split(",").map((z: string) => z.trim()).filter((z: string) => z.length > 0)
       : [];
 
-    //console.log("📬 ZIP array being sent ➡️", zipArray);
+    console.log("📬 ZIP array being sent ➡️", zipArray);
 
     const payload = {
       zip: zipArray.length > 0 ? zipArray : undefined,
@@ -85,7 +91,9 @@ export async function POST(req: NextRequest) {
       ids_only: ids_only ?? false,
       obfuscate: false,
       summary: false,
-      size: 25,
+      size: size ?? 10,
+      resultIndex: resultIndex ?? 0,
+      count: count ?? false,
       in_state_owner,
       out_of_state_owner,
       corporate_owned,
@@ -101,10 +109,13 @@ export async function POST(req: NextRequest) {
       pre_foreclosure,
       private_lender,
       street,
-      house
+      house,
+      // ADD COMPOUND QUERY FIELDS TO PAYLOAD:
+      ...(or && { or }),
+      ...(and && { and })
     };
 
-    //console.log("📦 Outgoing payload ➡️", payload);
+    console.log("📦 Outgoing payload ➡️", JSON.stringify(payload, null, 2));
 
     const res = await fetch("https://api.realestateapi.com/v2/PropertySearch", {
       method: "POST",
@@ -126,13 +137,13 @@ export async function POST(req: NextRequest) {
 
     if (ids_only) {
       const ids = Array.isArray(data.data) ? data.data : [];
-      //console.log("🧠 Returning IDs only:", ids);
+      console.log("🧠 Returning IDs only:", ids);
       return NextResponse.json({ ids }); // ✅ wrapped in { ids }
     }
 
-   //console.log("📍 Sample listing:", data.data?.[0]);
+    console.log("📍 Sample listing:", data.data?.[0]);
 
-    return NextResponse.json(data.data);
+    return NextResponse.json(data);
   } catch (err) {
     console.error("🔥 Uncaught API route error:", err);
     return NextResponse.json({ error: "Unexpected server error" }, { status: 500 });

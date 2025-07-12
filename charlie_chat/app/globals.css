@@ -116,7 +116,32 @@
   * {
     @apply border-border outline-ring/50;
   }
+
   body {
     @apply bg-background text-foreground;
+  }
+}
+
+@media print {
+  .print-assumptions {
+    page-break-before: always;
+    column-count: 2;
+    column-gap: 2rem;
+  }
+
+  /* Force second column to start at OPERATING EXPENSES */
+  #operating-expenses-section {
+    break-before: column;
+    margin-top: 0;
+  }
+
+  .print-assumptions h2,
+  .print-assumptions h3 {
+    break-after: avoid;
+  }
+
+  /* Optional: prevent headers from splitting awkwardly */
+  .print-assumptions div {
+    break-inside: avoid;
   }
 }
