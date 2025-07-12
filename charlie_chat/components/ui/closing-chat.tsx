@@ -5,8 +5,13 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { Sidebar } from "@/components/ui/sidebar";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
+<<<<<<< HEAD
 import { PropertyBatchState } from './chatServices';
 import { PACKAGES, getPackagesFor } from '@/lib/pricing';
+=======
+import { useChat } from "@/contexts/ChatContext";
+import { ComposerAddAttachment, ComposerAttachments } from "@/components/attachment";
+>>>>>>> main
 import type { User } from '@supabase/supabase-js'
 import { useChatRuntime } from "@assistant-ui/react-ai-sdk";
 import {
