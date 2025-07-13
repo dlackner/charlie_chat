@@ -1,22 +1,30 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
+import { useChat as useChatContext } from '@/contexts/ChatContext';
 import { ChatMessage, UserClass, Listing, ExtendedUser } from './chatTypes';
 
 // Chat State Hook
 export const useChat = () => {
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [input, setInput] = useState("");
-  const [threadId, setThreadId] = useState<string | null>(null);
+  const { chatState, updateChatState } = useChatContext();
   const [isStreaming, setIsStreaming] = useState(false);
 
-  // Initialize thread from localStorage
-  useEffect(() => {
-    const savedThreadId = localStorage.getItem("threadId");
-    if (savedThreadId) {
-      setThreadId(savedThreadId);
+  const setMessages = (messagesOrUpdater: ChatMessage[] | ((prev: ChatMessage[]) => ChatMessage[])) => {
+    if (typeof messagesOrUpdater === 'function') {
+      const newMessages = messagesOrUpdater(chatState.messages);
+      updateChatState({ messages: newMessages });
+    } else {
+      updateChatState({ messages: messagesOrUpdater });
     }
-  }, []);
+  };
+
+  const setInput = (input: string) => {
+    updateChatState({ input });
+  };
+
+  const setThreadId = (threadId: string | null) => {
+    updateChatState({ threadId });
+  };
 
   // Auto-scroll functionality
   const bottomRef = useRef<HTMLDivElement | null>(null);
@@ -39,44 +47,61 @@ export const useChat = () => {
     }, 100);
 
     return () => clearTimeout(timeoutId);
-  }, [messages, throttledScroll]);
+  }, [chatState.messages, throttledScroll]);
 
   return {
-    messages,
+    messages: chatState.messages,
     setMessages,
-    input,
+    input: chatState.input,
     setInput,
-    threadId,
+    threadId: chatState.threadId,
     setThreadId,
     isStreaming,
     setIsStreaming,
     bottomRef: bottomRef as React.RefObject<HTMLDivElement>, 
-    hasMessages: messages.length > 0
+    hasMessages: chatState.messages.length > 0
   };
 };
 
 // Property Batch Processing Hook
 export const usePropertyBatch = () => {
-  const [selectedListings, setSelectedListings] = useState<Listing[]>([]);
-  const [currentBatch, setCurrentBatch] = useState(0);
+  const { chatState, updateChatState } = useChatContext();
   const [isWaitingForContinuation, setIsWaitingForContinuation] = useState(false);
-  const [totalPropertiesToAnalyze, setTotalPropertiesToAnalyze] = useState(0);
+
+  const setSelectedListings = (selectedListingsOrUpdater: Listing[] | ((prev: Listing[]) => Listing[])) => {
+    if (typeof selectedListingsOrUpdater === 'function') {
+      const newSelectedListings = selectedListingsOrUpdater(chatState.selectedListings);
+      updateChatState({ selectedListings: newSelectedListings });
+    } else {
+      updateChatState({ selectedListings: selectedListingsOrUpdater });
+    }
+  };
+
+  const setCurrentBatch = (currentBatch: number) => {
+    updateChatState({ currentBatch });
+  };
+
+  const setTotalPropertiesToAnalyze = (totalPropertiesToAnalyze: number) => {
+    updateChatState({ totalPropertiesToAnalyze });
+  };
 
   const resetBatch = () => {
-    setSelectedListings([]);
-    setCurrentBatch(0);
+    updateChatState({
+      selectedListings: [],
+      currentBatch: 0,
+      totalPropertiesToAnalyze: 0
+    });
     setIsWaitingForContinuation(false);
-    setTotalPropertiesToAnalyze(0);
   };
 
   return {
-    selectedListings,
+    selectedListings: chatState.selectedListings,
     setSelectedListings,
-    currentBatch,
+    currentBatch: chatState.currentBatch,
     setCurrentBatch,
     isWaitingForContinuation,
     setIsWaitingForContinuation,
-    totalPropertiesToAnalyze,
+    totalPropertiesToAnalyze: chatState.totalPropertiesToAnalyze,
     setTotalPropertiesToAnalyze,
     resetBatch
   };
@@ -277,26 +302,28 @@ export const useMessageLimits = () => {
 
 // Listing Management Hook
 export const useListings = () => {
-  const [listings, setListings] = useState<Listing[]>([]);
+  const { chatState, updateChatState } = useChatContext();
 
-// Replace the toggleListingSelect function in your useListings hook with this:
+  const setListings = (listings: Listing[]) => {
+    updateChatState({ listings });
+  };
 
-const toggleListingSelect = (listing: Listing, selectedListings: Listing[], setSelectedListings: (listings: Listing[]) => void) => {
-  // @ts-ignore
-  setSelectedListings((prevSelectedListings) => {
-    const exists = prevSelectedListings.some((l: Listing) => l.id === listing.id);
-    if (exists) {
-      return prevSelectedListings.filter((l: Listing) => l.id !== listing.id);
-    } else {
-      return [...prevSelectedListings, listing];
-    }
-  });
-};
+  const toggleListingSelectFn = (listing: Listing, selectedListings: Listing[], setSelectedListings: React.Dispatch<React.SetStateAction<Listing[]>>) => {
+    // Use the setSelectedListings function passed in
+    setSelectedListings((prevSelectedListings) => {
+      const exists = prevSelectedListings.some((l: Listing) => l.id === listing.id);
+      if (exists) {
+        return prevSelectedListings.filter((l: Listing) => l.id !== listing.id);
+      } else {
+        return [...prevSelectedListings, listing];
+      }
+    });
+  };
 
   return {
-    listings,
+    listings: chatState.listings,
     setListings,
-    toggleListingSelect
+    toggleListingSelect: toggleListingSelectFn
   };
 };
 
