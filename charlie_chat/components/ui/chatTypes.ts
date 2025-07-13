@@ -70,7 +70,7 @@ export type Listing = {
 
 // Message Types
 export interface ChatMessage {
-  role: string;
+  role: 'user' | 'assistant';
   content: string;
   isPropertyDump?: boolean;
   isLoading?: boolean;
