@@ -1420,10 +1420,6 @@ function Home() {
 
         <form onSubmit={(e) => { e.preventDefault(); generateAndDownloadLOI(); }} className="space-y-6">
 
-          <section>
-            <h2 className="text-xl font-semibold text-gray-700 mb-4 border-b pb-2">Property Information</h2>
-            <FormField label="Inspection Period (in days)" name="inspectionPeriod" value={formData.inspectionPeriod} onChange={handleChange} placeholder="30" />
-          </section>
 
           <section>
             <h2 className="text-xl font-semibold text-gray-700 mb-4 border-b pb-2">Owner Information</h2>
