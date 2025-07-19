@@ -31,7 +31,9 @@ interface LOIFormData {
   yourEmail: string;
   purchasePrice: string;
   earnestMoney: string;
-  inspectionPeriod: string
+  inspectionPeriod: string;
+  financingPeriod: string;
+  daysToClose: string;
   propertyAddress: string;
   ownerFirst: string;
   ownerLast: string;
@@ -101,6 +103,8 @@ function Home() {
     purchasePrice: '',
     earnestMoney: '',
     inspectionPeriod: '30',
+    financingPeriod: '45',
+    daysToClose: '30',
     propertyAddress: '',
     ownerFirst: '',
     ownerLast: '',
@@ -265,6 +269,8 @@ function Home() {
       return;
     }
     const inspectionDays = Math.min(Number(formData.inspectionPeriod) || 30, 999);
+    const financingDays = Math.min(Number(formData.financingPeriod) || 45, 999);
+    const closeDays = Math.min(Number(formData.daysToClose) || 30, 999);
     const data = {
       ...formData,
       yourName: `${userProfile.first_name} ${userProfile.last_name}`,
@@ -280,7 +286,9 @@ function Home() {
       currentDate: new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }),
       ownerFullName: `${formData.ownerFirst} ${formData.ownerLast}`.trim(),
       ownerCityStateZip: `${formData.ownerCity}, ${formData.ownerState} ${formData.ownerZip}`.trim(),
-      inspectionPeriodText: `${numberToWords.toWords(inspectionDays)} (${inspectionDays})`
+      inspectionPeriodText: `${numberToWords.toWords(inspectionDays)} (${inspectionDays})`,
+      financingPeriodText: `${numberToWords.toWords(financingDays)} (${financingDays})`,
+      daysToCloseText: `${numberToWords.toWords(closeDays)} (${closeDays})`
     };
 
     const tightParagraphConfig = {
@@ -399,7 +407,7 @@ function Home() {
       sections.push(new Paragraph({
         children: [
           new TextRun({ text: "10. FINANCING PERIOD: ", bold: true }),
-          new TextRun(`Purchaser’s obligation to purchase shall be subject to Purchaser receiving financing terms and conditions acceptable to Purchaser within [NUMBER OF DAYS FOR FINANCING] (XX) days (“Financing Period”) after the Effective Date of the Agreement. Purchaser may cancel the Agreement and receive full refund of the Deposit at any time prior to the expiration of the Financing Period.`)
+          new TextRun(`Purchaser’s obligation to purchase shall be subject to Purchaser receiving financing terms and conditions acceptable to Purchaser within ${data.financingPeriodText} days (“Financing Period”) after the Effective Date of the Agreement. Purchaser may cancel the Agreement and receive full refund of the Deposit at any time prior to the expiration of the Financing Period.`)
         ],
         spacing: { after: 120 }
       }));
@@ -413,7 +421,7 @@ function Home() {
       sections.push(new Paragraph({
         children: [
           new TextRun({ text: "12. CLOSING DATE: ", bold: true }),
-          new TextRun(`The closing will occur on or before [CLOSING DAYS AFTER FINANCING PERIOD] ([XX]) days (“Closing Date”) after the end of the Financing Period. Should financing constraints dictate additional time, an additional 30-day extension shall be available upon written request from Purchaser. Such written request shall be made prior to the target closing date.`)
+          new TextRun(`The closing will occur on or before ${data.daysToCloseText} days (“Closing Date”) after the end of the Financing Period. Should financing constraints dictate additional time, an additional 30-day extension shall be available upon written request from Purchaser. Such written request shall be made prior to the target closing date.`)
         ],
         spacing: { after: 120 }
       }));
@@ -641,7 +649,7 @@ function Home() {
       sections.push(new Paragraph({
         children: [
           new TextRun({ text: "11. FINANCING PERIOD: ", bold: true }),
-          new TextRun(`Purchaser’s obligation to purchase shall be subject to Purchaser receiving financing terms and conditions acceptable to Purchaser within [NUMBER OF DAYS FOR FINANCING] (XX) days (“Financing Period”) after the Effective Date of the Agreement. Purchaser may cancel the Agreement and receive full refund of the Deposit at any time prior to the expiration of the Financing Period.`)
+          new TextRun(`Purchaser’s obligation to purchase shall be subject to Purchaser receiving financing terms and conditions acceptable to Purchaser within ${data.financingPeriodText} days (“Financing Period”) after the Effective Date of the Agreement. Purchaser may cancel the Agreement and receive full refund of the Deposit at any time prior to the expiration of the Financing Period.`)
         ],
         spacing: { after: 120 }
       }));
@@ -655,7 +663,7 @@ function Home() {
       sections.push(new Paragraph({
         children: [
           new TextRun({ text: "13. CLOSING DATE: ", bold: true }),
-          new TextRun(`The closing will occur on or before [CLOSING DAYS AFTER FINANCING PERIOD] ([XX]) days (“Closing Date”) after the end of the Financing Period. Should financing constraints dictate additional time, an additional 30-day extension shall be available upon written request from Purchaser. Such written request shall be made prior to the target closing date.`)
+          new TextRun(`The closing will occur on or before ${data.daysToCloseText} days (“Closing Date”) after the end of the Financing Period. Should financing constraints dictate additional time, an additional 30-day extension shall be available upon written request from Purchaser. Such written request shall be made prior to the target closing date.`)
         ],
         spacing: { after: 120 }
       }));
@@ -840,7 +848,7 @@ function Home() {
       sections.push(new Paragraph({
         children: [
           new TextRun({ text: "10. FINANCING PERIOD: ", bold: true }),
-          new TextRun(`Purchaser's obligation to purchase shall be subject to Purchaser receiving financing terms and conditions acceptable to Purchaser within [NUMBER OF DAYS FOR FINANCING] (XX) days ("Financing Period") after the Effective Date of the Agreement. Purchaser may cancel the Agreement and receive full refund of the Deposit at any time prior to the expiration of the Financing Period.`)
+          new TextRun(`Purchaser's obligation to purchase shall be subject to Purchaser receiving financing terms and conditions acceptable to Purchaser within ${data.financingPeriodText} days ("Financing Period") after the Effective Date of the Agreement. Purchaser may cancel the Agreement and receive full refund of the Deposit at any time prior to the expiration of the Financing Period.`)
         ],
         spacing: { after: 120 }
       }));
@@ -869,7 +877,7 @@ function Home() {
       sections.push(new Paragraph({
         children: [
           new TextRun({ text: "14. CLOSING DATE: ", bold: true }),
-          new TextRun(`The closing will occur on or before [CLOSING DAYS AFTER FINANCING PERIOD] ([XX]) days ("Closing Date") after the end of the Financing Period. Should financing constraints dictate additional time, an additional 30-day extension shall be available upon written request from Purchaser. Such written request shall be made prior to the target closing date.`)
+          new TextRun(`The closing will occur on or before ${data.daysToCloseText} days ("Closing Date") after the end of the Financing Period. Should financing constraints dictate additional time, an additional 30-day extension shall be available upon written request from Purchaser. Such written request shall be made prior to the target closing date.`)
         ],
         spacing: { after: 120 }
       }));
@@ -1169,12 +1177,12 @@ function Home() {
         {
           num: "5",
           heading: "FINANCING PERIOD",
-          content: `Purchaser's obligation to purchase shall be subject to Purchaser receiving financing terms and conditions acceptable to Purchaser within [NUMBER OF DAYS FOR FINANCING] (XX) days ("Financing Period") after the Effective Date of the Agreement.  Purchaser may cancel the Agreement and receive a full refund of the Deposit at any time prior to the expiration of the Financing Period.`
+          content: `Purchaser's obligation to purchase shall be subject to Purchaser receiving financing terms and conditions acceptable to Purchaser within ${data.daysToCloseText} days ("Financing Period") after the Effective Date of the Agreement.  Purchaser may cancel the Agreement and receive a full refund of the Deposit at any time prior to the expiration of the Financing Period.`
         },
         {
           num: "6",
           heading: "CLOSING DATE",
-          content: 'The Closing will occur on or before [CLOSING DAYS AFTER FINANCING PERIOD] (XX) days ("Closing Date") after the end of the Financing Period. Should financing constraints dictate additional time, an additional 30-day extension shall be available upon written request from Purchaser. Such written request shall be made prior to the target closing date.'
+          content: `The Closing will occur on or before ${data.daysToCloseText} days ("Closing Date") after the end of the Financing Period. Should financing constraints dictate additional time, an additional 30-day extension shall be available upon written request from Purchaser. Such written request shall be made prior to the target closing date.`
         },
         {
           num: "7",
@@ -1414,8 +1422,8 @@ function Home() {
 
           <section>
             <h2 className="text-xl font-semibold text-gray-700 mb-4 border-b pb-2">Property Information</h2>
-           <FormField label="Inspection Period (in days)" name="inspectionPeriod" value={formData.inspectionPeriod} onChange={handleChange} placeholder="30" />
-      </section>
+            <FormField label="Inspection Period (in days)" name="inspectionPeriod" value={formData.inspectionPeriod} onChange={handleChange} placeholder="30" />
+          </section>
 
           <section>
             <h2 className="text-xl font-semibold text-gray-700 mb-4 border-b pb-2">Owner Information</h2>
@@ -1435,6 +1443,8 @@ function Home() {
               <FormField label="Purchase Price" name="purchasePrice" value={formData.purchasePrice} onChange={handleChange} placeholder="$500,000" />
               <FormField label="Earnest Money Deposit" name="earnestMoney" value={formData.earnestMoney} onChange={handleChange} placeholder="$10,000" />
               <FormField label="Inspection Period (in days)" name="inspectionPeriod" value={formData.inspectionPeriod} onChange={handleChange} placeholder="30" />
+              <FormField label="Financing Period (in days)" name="financingPeriod" value={formData.financingPeriod} onChange={handleChange} placeholder="45" />
+              <FormField label="Days to Close (after financing)" name="daysToClose" value={formData.daysToClose} onChange={handleChange} placeholder="30" />
             </div>
           </section>
 
