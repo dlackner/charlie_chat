@@ -69,7 +69,7 @@ export const Sidebar = ({
   onCreditsUpdate,
 }: Props) => {
   const [zipcode, setZipcode] = useState("");
-  const [minUnits, setMinUnits] = useState<number | string>(2);
+  const [minUnits, setMinUnits] = useState<number | string>("");
   const [maxUnits, setMaxUnits] = useState<number | string>("");
 
   const [showAdvanced, setShowAdvanced] = useState(false);
@@ -454,7 +454,7 @@ export const Sidebar = ({
     setlastSaleDateRange([0, 2025]);
     setLastSalePriceRange([0, 10000000]);
     setYearBuiltRange([1800, 2025]);
-    setLotSizeRange([0, 100000]);
+    setLotSizeRange([0, 1000000]);
     setStoriesRange([0, 20]);
     setMortgageBalanceRange([0, 10000000]);
     setAssessedValueRange([0, 10000000]);
@@ -881,7 +881,7 @@ export const Sidebar = ({
           <h4 className="text-md font-semibold text-gray-700 mt-6 mb-2">Physical Characteristics</h4>
           <div className="grid grid-cols-2 gap-4 mb-4">
             {renderRange("Year Built", yearBuiltRange, setYearBuiltRange, 1800, 2025)}
-            {renderRange("Lot Size", lotSizeRange, setLotSizeRange, 0, 100000)}
+            {renderRange("Lot Size", lotSizeRange, setLotSizeRange, 0, 1000000)}
             {renderRange("Number of Stories", storiesRange, setStoriesRange, 0, 100)}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Flood Zone</label>

@@ -53,26 +53,21 @@ interface CreditDisplayProps {
 
 // Property Analysis Loader Component
 export const PropertyAnalysisLoader = ({ propertyCount, currentProperty = null }: { propertyCount: number; currentProperty?: string | null }) => {
-    return (
-        <div className="flex justify-start mb-4">
-            <div className="inline-block max-w-[75%] px-4 py-3 bg-gray-100 text-gray-800 rounded-xl rounded-bl-none shadow-sm">
-                <div className="flex items-center gap-3">
-                    <div className="w-5 h-5 border-2 border-gray-300 border-t-blue-500 rounded-full animate-spin"></div>
-                    <div className="leading-relaxed">
-                        <div className="font-medium">
-                            {currentProperty
-                                ? `Analyzing ${currentProperty}...`
-                                : `Wait while Charlie analyzes your ${propertyCount} ${propertyCount === 1 ? 'property' : 'properties'}`
-                            }
-                        </div>
-                        <div className="text-sm text-gray-600 mt-1">
-                            This may take a moment...
-                        </div>
-                    </div>
-                </div>
-            </div>
+return (
+  <div className="flex justify-start mb-4">
+    <div className="inline-block max-w-[75%] px-4 py-3 bg-gray-100 text-gray-800 rounded-xl rounded-bl-none shadow-sm">
+      {/* removed gap so text stays flush */}
+      <div className="flex items-center">
+        {/*  🔄 Spinner + ring (commented out—uncomment to bring back)
+        <div className="w-5 h-5 border-2 border-gray-300 border-t-blue-500 rounded-full animate-spin"></div>
+        */}
+        <div className="leading-relaxed">
+          {/* your status text (already commented out) */}
         </div>
-    );
+      </div>
+    </div>
+  </div>
+);
 };
 
 // Charlie Thinking Loader Component

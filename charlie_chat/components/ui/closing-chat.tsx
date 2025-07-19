@@ -445,7 +445,7 @@ export function ClosingChat() {
               {/* Feature highlight */}
               <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
                 <Dialog.Description className="text-base text-gray-700 font-medium">
-                  Upload property documents, legal agreements, and market reports for advanced AI analysis
+                  Unlock the full potential of Charlie Chat
                 </Dialog.Description>
               </div>
 
@@ -457,11 +457,19 @@ export function ClosingChat() {
                 </div>
                 <div className="flex items-center gap-3">
                   <span className="text-green-500 font-bold">✓</span>
-                  <span className="text-sm text-gray-700">Legal templates</span>
+                  <span className="text-sm text-gray-700">Marketing & legal templates</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="text-green-500 font-bold">✓</span>
+                  <span className="text-sm text-gray-700">Mapping & advanced analytics </span>
                 </div>
                 <div className="flex items-center gap-3">
                   <span className="text-green-500 font-bold">✓</span>
                   <span className="text-sm text-gray-700">100 monthly property credits</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="text-green-500 font-bold">✓</span>
+                  <span className="text-sm text-gray-700">Access to my Master Class Training Program</span>
                 </div>
               </div>
 
@@ -483,11 +491,6 @@ export function ClosingChat() {
                   Maybe later
                 </button>
               </div>
-
-              {/* Subtle footer */}
-              <p className="text-xs text-gray-400 mt-4">
-                Unlock the full potential of Charlie Chat
-              </p>
             </Dialog.Panel>
           </div>
         </Dialog>

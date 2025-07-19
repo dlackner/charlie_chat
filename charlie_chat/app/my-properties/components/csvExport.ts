@@ -1,0 +1,278 @@
+// components/csvExport.ts
+import { CompleteSavedProperty as SavedProperty } from '../types';
+
+export const exportPropertiesToCSV = (
+  properties: SavedProperty[],
+  selectedPropertyIds: Set<string>
+) => {
+  if (selectedPropertyIds.size === 0) {
+    alert("Please select at least one property to download.");
+    return;
+  }
+
+  // Get the selected properties
+  const selectedProps = properties.filter(p =>
+    selectedPropertyIds.has(p.property_id)
+  );
+
+  // ALL 59 Supabase fields plus calculated fields
+  const csvHeaders = [
+    // Core identifiers
+    'ID',
+    'Property ID',
+
+    // Property address
+    'Address Street',
+    'Address Full',
+    'Address City',
+    'Address State',
+    'Address Zip',
+    'Latitude',
+    'Longitude',
+
+    // Mailing address
+    'Mail Address Full',
+    'Mail Address Street',
+    'Mail Address City',
+    'Mail Address County',
+    'Mail Address State',
+    'Mail Address Zip',
+
+    // Property details
+    'Property Type',
+    'Units Count',
+    'Stories',
+    'Year Built',
+    'Property Age (Calculated)', // Calculated field
+    'Square Feet',
+    'Lot Square Feet',
+    'Flood Zone',
+    'Flood Zone Description',
+
+    // Financial data
+    'Assessed Value',
+    'Assessed Land Value',
+    'Estimated Value',
+    'Estimated Equity',
+    'Rent Estimate',
+    'Listing Price',
+    'Mortgage Balance',
+    'Mortgage Maturing Date',
+    'Value Per Unit (Calculated)', // Calculated field
+
+    // Sale history
+    'Last Sale Date',
+    'Last Sale Amount',
+    'Last Sale Arms Length',
+    'Years Owned',
+
+    // Property status
+    'MLS Active',
+    'For Sale',
+    'Assumable',
+    'Auction',
+    'REO',
+    'Tax Lien',
+    'Pre Foreclosure',
+    'Foreclosure',
+    'Private Lender',
+
+    // Owner information
+    'Owner First Name',
+    'Owner Last Name',
+    'Out of State Absentee Owner',
+    'In State Absentee Owner',
+    'Owner Occupied',
+    'Corporate Owned',
+    'Investor Buyer',
+    'Lender Name',
+
+    // Portfolio data
+    'Total Portfolio Equity',
+    'Total Portfolio Mortgage Balance',
+    'Total Properties Owned',
+
+    // Metadata
+    'Created At',
+    'Updated At',
+    'Notes',
+    'Saved At',
+
+    // Skip Trace
+    'Skip Trace Name',
+    'Skip Trace Age',
+    'Skip Trace Gender',
+    'Skip Trace Occupation',
+    'Skip Trace Phone 1',
+    'Skip Trace Phone 2',
+    'Skip Trace Email',
+    'Skip Trace Current Address',
+    'Skip Trace Run Date'
+  ];
+
+  // Helper functions
+  const calculateAge = (yearBuilt: number) => {
+    return yearBuilt ? new Date().getFullYear() - yearBuilt : '';
+  };
+
+  const calculateValuePerUnit = (property: SavedProperty) => {
+    const value = property.assessed_value || property.estimated_value || 0;
+    return property.units_count > 0 ? Math.round(value / property.units_count) : 0;
+  };
+
+  const formatDate = (dateString: string | undefined) => {
+    if (!dateString) return '';
+    return new Date(dateString).toLocaleDateString('en-US');
+  };
+
+  const formatCurrency = (amount: number | null | undefined) => {
+    if (!amount || amount === 0) return '';
+    return `$${amount.toLocaleString()}`;
+  };
+
+  const formatBoolean = (value: boolean | null | undefined) => {
+    if (value === null || value === undefined) return '';
+    return value ? 'Yes' : 'No';
+  };
+
+  const escapeCSV = (value: any) => {
+    if (value === null || value === undefined) return '';
+    const str = String(value);
+    // Escape quotes and wrap in quotes if contains comma, quote, or newline
+    if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+      return `"${str.replace(/"/g, '""')}"`;
+    }
+    return str;
+  };
+
+  // Convert properties to CSV rows
+  const csvRows = selectedProps.map(property => {
+    // Access nested mailAddress properties safely
+    const getMailAddress = (field: string) => {
+      if (!property.mailAddress) return '';
+      if (!(field in property.mailAddress)) return '';
+
+      return (property.mailAddress as any)[field] || '';
+    };
+
+    return [
+      // Core identifiers
+      escapeCSV(property.id || ''),
+      escapeCSV(property.property_id || ''),
+
+      // Property address
+      escapeCSV(property.address_street || ''),
+      escapeCSV(property.address_full || ''),
+      escapeCSV(property.address_city || ''),
+      escapeCSV(property.address_state || ''),
+      escapeCSV(property.address_zip || ''),
+      escapeCSV(property.latitude || ''),
+      escapeCSV(property.longitude || ''),
+
+      // Mailing address
+      escapeCSV(property.mail_address_full || ''),
+      escapeCSV(property.mail_address_street || getMailAddress('street')),
+      escapeCSV(property.mail_address_city || getMailAddress('city')),
+      escapeCSV(property.mail_address_county || ''),
+      escapeCSV(property.mail_address_state || getMailAddress('state')),
+      escapeCSV(property.mail_address_zip || getMailAddress('zip')),
+
+      // Property details
+      escapeCSV(property.property_type || ''),
+      escapeCSV(property.units_count || ''),
+      escapeCSV(property.stories || ''),
+      escapeCSV(property.year_built || ''),
+      escapeCSV(calculateAge(property.year_built)),
+      escapeCSV(property.square_feet || ''),
+      escapeCSV(property.lot_square_feet || ''),
+      escapeCSV(property.flood_zone || ''),
+      escapeCSV(property.flood_zone_description || ''),
+
+      // Financial data
+      escapeCSV(formatCurrency(property.assessed_value)),
+      escapeCSV(formatCurrency(property.assessed_land_value)),
+      escapeCSV(formatCurrency(property.estimated_value)),
+      escapeCSV(formatCurrency(property.estimated_equity)),
+      escapeCSV(formatCurrency(property.rent_estimate)),
+      escapeCSV(formatCurrency(property.listing_price)),
+      escapeCSV(formatCurrency(property.mortgage_balance)),
+      escapeCSV(formatDate(property.mortgage_maturing_date)),
+      escapeCSV(formatCurrency(calculateValuePerUnit(property))),
+
+      // Sale history
+      escapeCSV(formatDate(property.last_sale_date)),
+      escapeCSV(formatCurrency(property.last_sale_amount)),
+      escapeCSV(formatBoolean(property.last_sale_arms_length)),
+      escapeCSV(property.years_owned || ''),
+
+      // Property status
+      escapeCSV(formatBoolean(property.mls_active)),
+      escapeCSV(formatBoolean(property.for_sale)),
+      escapeCSV(formatBoolean(property.assumable)),
+      escapeCSV(formatBoolean(property.auction)),
+      escapeCSV(formatBoolean(property.reo)),
+      escapeCSV(formatBoolean(property.tax_lien)),
+      escapeCSV(formatBoolean(property.pre_foreclosure)),
+      escapeCSV(formatBoolean(property.foreclosure)),
+      escapeCSV(formatBoolean(property.private_lender)),
+
+      // Owner information
+      escapeCSV(property.owner_first_name || ''),
+      escapeCSV(property.owner_last_name || ''),
+      escapeCSV(formatBoolean(property.out_of_state_absentee_owner)),
+      escapeCSV(formatBoolean(property.in_state_absentee_owner)),
+      escapeCSV(formatBoolean(property.owner_occupied)),
+      escapeCSV(formatBoolean(property.corporate_owned)),
+      escapeCSV(formatBoolean(property.investor_buyer)),
+      escapeCSV(property.lender_name || ''),
+
+      // Portfolio data
+      escapeCSV(formatCurrency(property.total_portfolio_equity)),
+      escapeCSV(formatCurrency(property.total_portfolio_mortgage_balance)),
+      escapeCSV(property.total_properties_owned || ''),
+
+      // Metadata
+      escapeCSV(formatDate(property.created_at)),
+      escapeCSV(formatDate(property.updated_at)),
+      escapeCSV(property.notes || ''),
+      escapeCSV(formatDate(property.saved_at)),
+
+      // Skip Trace (handle optional skipTraceData blob)
+      // Skip Trace (handle optional skipTraceData blob)
+      escapeCSV(property.mailAddress?.skipTraceData?.name || ''),
+      escapeCSV(property.mailAddress?.skipTraceData?.age || ''),
+      escapeCSV(property.mailAddress?.skipTraceData?.gender || ''),
+      escapeCSV(property.mailAddress?.skipTraceData?.occupation || ''),
+      escapeCSV(property.mailAddress?.skipTraceData?.phone1 || ''),
+      escapeCSV(property.mailAddress?.skipTraceData?.phone2 || ''),
+      escapeCSV(property.mailAddress?.skipTraceData?.email || ''),
+      escapeCSV(property.mailAddress?.skipTraceData?.currentAddress || ''),
+      escapeCSV(formatDate(property.mailAddress?.skipTraceData?.skipTracedAt)),
+
+    ].join(',');
+  });
+
+  // Combine headers and rows
+  const csvContent = [csvHeaders.join(','), ...csvRows].join('\n');
+
+  // Create and download the file
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const link = document.createElement('a');
+
+  if (link.download !== undefined) {
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+
+    // Generate filename with current date
+    const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
+    const filename = `my-properties-complete-${today}.csv`;
+
+    link.setAttribute('download', filename);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    console.log(`Downloaded ${selectedProps.length} properties with ${csvHeaders.length} fields to ${filename}`);
+  }
+};

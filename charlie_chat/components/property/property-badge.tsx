@@ -14,6 +14,7 @@ const getTooltipText = (type: PropertyClassification['type']): string => {
         'motivated-seller': 'Out-of-state or absentee owner for 5+ years',
         'distressed': 'Pre-foreclosure, foreclosure, tax liens, or auction',
         'value-add': 'Built before 1980 with renovation potential',
+        'comps':  'Arms-length sale in the past year - good market intel',
         'high-equity': '40%+ estimated equity in the property',
         'cash-flow': '8%+ annual rent-to-value ratio',
         'seller-financing': 'Assumable mortgage or high-equity absentee owner',

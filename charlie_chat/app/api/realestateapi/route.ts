@@ -14,7 +14,7 @@ export async function POST(req: NextRequest) {
       zip,
       city,
       state,
-      propertyType,
+      property_type,
       units_min,
       mls_active,
       units_max,
@@ -67,7 +67,7 @@ export async function POST(req: NextRequest) {
 
     const payload = {
       zip: zipArray.length > 0 ? zipArray : undefined,
-      property_type: propertyType,
+      property_type: property_type,
       city,
       state,
       units_min,
