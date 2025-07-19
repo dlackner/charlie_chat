@@ -15,6 +15,12 @@ interface BasicFiltersProps {
   stateCode: string;
   setStateCode: (value: string) => void;
 }
+// Utility ────────────────────────────────────────────────────────────
+const capitalizeWords = (str: string) =>
+  // Capitalize each word (“new york” → “New York”). For just the first
+  // character of the whole string, swap this line with:
+  // return str.charAt(0).toUpperCase() + str.slice(1);
+  str.replace(/\b\w/g, (c) => c.toUpperCase());
 
 export const BasicFilters: React.FC<BasicFiltersProps> = ({
   zipcode,
@@ -49,7 +55,7 @@ export const BasicFilters: React.FC<BasicFiltersProps> = ({
       type="text"
       className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
       value={city}
-      onChange={(e) => setCity(e.target.value)}
+      onChange={(e) => setCity(capitalizeWords(e.target.value))}
     />
   </div>
   <div className="col-span-1">
