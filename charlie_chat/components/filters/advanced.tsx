@@ -245,7 +245,7 @@ export const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({
             onChange={setYearsOwnedRange}
             min={0}
             max={100}
-            step={1}
+            step={5}
           />
         </div>
       </div>
@@ -259,8 +259,8 @@ export const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({
             values={lastSalePriceRange}
             onChange={setLastSalePriceRange}
             min={0}
-            max={10000000}
-            step={1}
+            max={100000000}
+            step={25000}
           />
 
           <div className="grid grid-cols-2 gap-4">
@@ -295,7 +295,7 @@ export const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({
             values={lotSizeRange}
             onChange={setLotSizeRange}
             min={0}
-            max={100000}
+            max={1000000}
           />
 
           <FilterRange
@@ -323,8 +323,8 @@ export const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({
             values={mortgageBalanceRange}
             onChange={setMortgageBalanceRange}
             min={0}
-            max={10000000}
-            step={10000}
+            max={100000000}
+            step={25000}
           />
 
           <FilterRange
@@ -332,8 +332,8 @@ export const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({
             values={assessedValueRange}
             onChange={setAssessedValueRange}
             min={0}
-            max={10000000}
-            step={10000}
+            max={100000000}
+            step={25000}
           />
 
           <FilterRange
@@ -341,8 +341,8 @@ export const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({
             values={estimatedValueRange}
             onChange={setEstimatedValueRange}
             min={0}
-            max={10000000}
-            step={10000}
+            max={100000000}
+            step={25000}
           />
 
           <FilterRange
@@ -350,8 +350,8 @@ export const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({
             values={estimatedEquityRange}
             onChange={setEstimatedEquityRange}
             min={0}
-            max={10000000}
-            step={10000}
+            max={100000000}
+            step={25000}
           />
         </div>
       </div>
