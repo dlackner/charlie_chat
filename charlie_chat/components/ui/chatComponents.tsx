@@ -53,6 +53,7 @@ interface CreditDisplayProps {
 
 // Property Analysis Loader Component
 export const PropertyAnalysisLoader = ({ propertyCount, currentProperty = null }: { propertyCount: number; currentProperty?: string | null }) => {
+    return null; 
 return (
   <div className="flex justify-start mb-4">
     <div className="inline-block max-w-[75%] px-4 py-3 bg-gray-100 text-gray-800 rounded-xl rounded-bl-none shadow-sm">

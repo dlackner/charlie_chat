@@ -67,7 +67,7 @@ export const getQuadrantInfo = (quadrant: QuadrantType): QuadrantInfo => {
             description: 'High value, newer buildings - Premium modern properties'
         },
         AVOID: {
-            name: 'Avoid',
+            name: 'Cautionaries',
             emoji: '',
             color: '#ef4444', // Red background
             description: 'Low value, newer buildings - Likely poor location/overbuilt'
