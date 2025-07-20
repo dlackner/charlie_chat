@@ -1,7 +1,7 @@
 import { Listing } from '../ui/sidebar';
 
 export interface PropertyClassification {
-  type: 'motivated-seller' | 'distressed' | 'value-add' | 'private-lender' | 'high-equity' | 'cash-flow' | 'seller-financing';
+  type: 'motivated-seller' | 'distressed' | 'value-add' | 'private-lender' | 'comps' |'high-equity' | 'cash-flow' | 'seller-financing';
   label: string;
   color: string;
   bgColor: string;
@@ -26,6 +26,12 @@ const CLASSIFICATIONS: Record<string, Omit<PropertyClassification, 'type'>> = {
     label: 'Value-Add',
     color: '#3B82F6', // Blue
     bgColor: '#EFF6FF',
+    priority: 3
+  },
+  'comps': {
+    label: 'Comps',
+    color: '#F97316',   // orange-500
+    bgColor: '#FFFAF0', // soft orange-tinted background (lighter than orange-100)
     priority: 3
   },
   'high-equity': {
@@ -58,40 +64,46 @@ export { CLASSIFICATIONS };
 
 // Classification logic functions
 const isMotivatedSeller = (listing: Listing): boolean => {
-    // Handle both boolean and number formats for outOfStateAbsenteeOwner
-    const isOutOfState = listing.outOfStateAbsenteeOwner === true;
-    // Match SmartQueries: 10+ years owned
-    const result = isOutOfState && (listing.yearsOwned || 0) >= 10;
-    console.log('isMotivatedSeller - outOfState:', listing.outOfStateAbsenteeOwner, 'yearsOwned:', listing.yearsOwned, 'result:', result);
-    return result;
+  // Handle both boolean and number formats for outOfStateAbsenteeOwner
+  const isOutOfState = listing.outOfStateAbsenteeOwner === true;
+  // Match SmartQueries: 10+ years owned
+  const result = isOutOfState && (listing.yearsOwned || 0) >= 10;
+  console.log('isMotivatedSeller - outOfState:', listing.outOfStateAbsenteeOwner, 'yearsOwned:', listing.yearsOwned, 'result:', result);
+  return result;
 };
 
 const isDistressed = (listing: Listing): boolean => {
-    const result = !!(listing.preForeclosure || 
-              listing.taxLien || 
-              listing.reo || 
-              listing.auction ||
-              listing.foreclosure);
-    console.log('isDistressed - preForeclosure:', listing.preForeclosure, 'taxLien:', listing.taxLien, 'reo:', listing.reo, 'auction:', listing.auction, 'foreclosure:', listing.foreclosure, 'result:', result);
-    return result;
+  const result = !!(listing.preForeclosure ||
+    listing.taxLien ||
+    listing.reo ||
+    listing.auction ||
+    listing.foreclosure);
+  console.log('isDistressed - preForeclosure:', listing.preForeclosure, 'taxLien:', listing.taxLien, 'reo:', listing.reo, 'auction:', listing.auction, 'foreclosure:', listing.foreclosure, 'result:', result);
+  return result;
 };
 
 const isValueAdd = (listing: Listing): boolean => {
-    const yearBuilt = listing.yearBuilt || 0;
-    // Handle both boolean and number formats for outOfStateAbsenteeOwner
-    const isOutOfState = listing.outOfStateAbsenteeOwner === true;
-    // Match SmartQueries: 1970-1995 built + out-of-state
-    const result = yearBuilt >= 1970 && 
-           yearBuilt <= 1995 && 
-           isOutOfState;
-    console.log('isValueAdd - yearBuilt:', yearBuilt, 'outOfState:', listing.outOfStateAbsenteeOwner, 'result:', result);
-    return result;
+  const yearBuilt = listing.yearBuilt || 0;
+  // Handle both boolean and number formats for outOfStateAbsenteeOwner
+  const isOutOfState = listing.outOfStateAbsenteeOwner === true;
+  // Match SmartQueries: 1970-1995 built + out-of-state
+  const result = yearBuilt >= 1970 &&
+    yearBuilt <= 1995 &&
+    isOutOfState;
+  console.log('isValueAdd - yearBuilt:', yearBuilt, 'outOfState:', listing.outOfStateAbsenteeOwner, 'result:', result);
+  return result;
+};
+
+const isComps = (listing: Listing): boolean => {
+  const result = listing.lastSaleArmsLength === true && listing.yearsOwned === 1;
+  console.log('isComps - lastSaleArmsLength:', listing.lastSaleArmsLength, 'yearsOwned:', listing.yearsOwned, 'result:', result);
+  return result;
 };
 
 const isPrivateLender = (listing: Listing): boolean => {
-    const result = !!listing.privateLender;
-    console.log('isPrivateLender - privateLender:', listing.privateLender, 'result:', result);
-    return result;
+  const result = !!listing.privateLender;
+  console.log('isPrivateLender - privateLender:', listing.privateLender, 'result:', result);
+  return result;
 };
 
 const isHighEquity = (listing: Listing): boolean => {
@@ -107,10 +119,10 @@ const isCashFlow = (listing: Listing): boolean => {
 };
 
 const isSellerFinancing = (listing: Listing): boolean => {
-  return !!(listing.assumable || 
-           (listing.estimatedEquity && listing.estimatedValue && 
-            listing.estimatedEquity > (listing.estimatedValue * 0.4) && 
-            (listing.outOfStateAbsenteeOwner || listing.corporate_owned)));
+  return !!(listing.assumable ||
+    (listing.estimatedEquity && listing.estimatedValue &&
+      listing.estimatedEquity > (listing.estimatedValue * 0.4) &&
+      (listing.outOfStateAbsenteeOwner || listing.corporate_owned)));
 };
 
 // Main classification functions
@@ -138,6 +150,13 @@ export const classifyProperty = (listing: Listing): PropertyClassification[] => 
       ...CLASSIFICATIONS['value-add']
     });
   }
+
+if (isComps(listing)) {
+  classifications.push({
+    type: 'comps',
+    ...CLASSIFICATIONS['comps']
+  });
+}
 
   if (isHighEquity(listing)) {
     classifications.push({
@@ -189,6 +208,14 @@ export const getPrimaryClassification = (listing: Listing): PropertyClassificati
       type: 'motivated-seller',
       ...CLASSIFICATIONS['motivated-seller']
     };
+
+    if (isComps(listing)) {
+  return {
+    type: 'comps',
+    ...CLASSIFICATIONS['comps']
+  };
+}
+
   }
   if (isValueAdd(listing)) {
     return {
@@ -196,7 +223,7 @@ export const getPrimaryClassification = (listing: Listing): PropertyClassificati
       ...CLASSIFICATIONS['value-add']
     };
   }
-  
+
   return null;
 };
 

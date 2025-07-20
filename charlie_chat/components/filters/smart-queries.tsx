@@ -1,6 +1,6 @@
 // components/filters/smart-queries.tsx
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { ChevronUp, ChevronDown } from 'lucide-react';
 
 interface SmartQuery {
@@ -11,22 +11,27 @@ interface SmartQuery {
     filters: string[];
     apiFields: {
         out_of_state_owner?: boolean;
-        years_owned_min?: number;
         estimated_equity_min?: number;
         pre_foreclosure?: boolean;
         tax_lien?: boolean;
         reo?: boolean;
         auction?: boolean;
+        years_owned_min?: number;
+        years_owned_max?: number;
+        last_sale_arms_length?: boolean;
         year_built_min?: number;
         year_built_max?: number;
         corporate_owned?: boolean;
         private_lender?: boolean;
         or?: { [key: string]: boolean }[];
     };
-    unitsConfig: { min: number | string; max: number | string };
 }
 
 interface SmartQueriesProps {
+    // Current unit state
+    minUnits: number | string;
+    maxUnits: number | string;
+
     // Unit range setters
     setMinUnits: (value: number | string) => void;
     setMaxUnits: (value: number | string) => void;
@@ -39,6 +44,7 @@ interface SmartQueriesProps {
     setTaxLien: (value: string) => void;
     setReo: (value: string) => void;
     setAuction: (value: string) => void;
+    setArmsLength: (value: string) => void;
     setYearsOwnedRange: (value: [number, number]) => void;
     setEstimatedEquityRange: (value: [number, number]) => void;
     setYearBuiltRange: (value: [number, number]) => void;
@@ -67,8 +73,7 @@ const smartQueries: Record<string, SmartQuery> = {
         apiFields: {
             out_of_state_owner: true,
             years_owned_min: 10
-        },
-        unitsConfig: { min: 0, max: '' }
+        }
     },
     'distressed-assets': {
         id: 'distressed-assets',
@@ -83,8 +88,7 @@ const smartQueries: Record<string, SmartQuery> = {
                 { reo: true },
                 { auction: true }
             ]
-        },
-        unitsConfig: { min: 0, max: '' }
+        }
     },
     'value-add-deals': {
         id: 'value-add-deals',
@@ -96,8 +100,19 @@ const smartQueries: Record<string, SmartQuery> = {
             year_built_min: 1970,
             year_built_max: 1995,
             out_of_state_owner: true
-        },
-        unitsConfig: { min: 0, max: '' }
+        }
+    },
+    'comps': {
+        id: 'comps',
+        icon: '>',
+        title: 'Comps',
+        tooltip: 'Arms-length sale in the past year - good market intel',
+        filters: ['Years owned 1', 'Arms Length'],
+        apiFields: {
+            years_owned_min: 1,
+            years_owned_max: 1,
+            last_sale_arms_length: true
+        }
     },
     'private-lender-deals': {
         id: 'private-lender-deals',
@@ -108,12 +123,13 @@ const smartQueries: Record<string, SmartQuery> = {
         apiFields: {
             private_lender: true,
             out_of_state_owner: true
-        },
-        unitsConfig: { min: 0, max: '' }
+        }
     }
 };
 
 export const SmartQueries: React.FC<SmartQueriesProps> = ({
+    minUnits,
+    maxUnits,
     setMinUnits,
     setMaxUnits,
     setOwnerLocation,
@@ -124,6 +140,7 @@ export const SmartQueries: React.FC<SmartQueriesProps> = ({
     setReo,
     setAuction,
     setYearsOwnedRange,
+    setArmsLength,
     setEstimatedEquityRange,
     setYearBuiltRange,
     yearsOwnedRange,
@@ -134,6 +151,41 @@ export const SmartQueries: React.FC<SmartQueriesProps> = ({
 }) => {
     const [activeSmartQuery, setActiveSmartQuery] = useState<string | null>(null);
     const [showSmartQueries, setShowSmartQueries] = useState(false);
+    const dropdownRef = useRef<HTMLDivElement>(null);
+
+    // Close dropdown when clicking outside
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+                setShowSmartQueries(false);
+            }
+        };
+
+        if (showSmartQueries) {
+            document.addEventListener('mousedown', handleClickOutside);
+        }
+
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+        };
+    }, [showSmartQueries]);
+
+    // Close dropdown on Escape key
+    useEffect(() => {
+        const handleEscape = (event: KeyboardEvent) => {
+            if (event.key === 'Escape') {
+                setShowSmartQueries(false);
+            }
+        };
+
+        if (showSmartQueries) {
+            document.addEventListener('keydown', handleEscape);
+        }
+
+        return () => {
+            document.removeEventListener('keydown', handleEscape);
+        };
+    }, [showSmartQueries]);
 
     const applySmartQuery = (queryId: string) => {
         const query = smartQueries[queryId];
@@ -159,7 +211,7 @@ export const SmartQueries: React.FC<SmartQueriesProps> = ({
                     { auction: true }
                 ],
                 propertyType: "MFR",
-                units_min: query.unitsConfig.min,
+                units_min: minUnits || 0,  // Use user's min units
                 count: false,
                 size: 10,
                 resultIndex: 0,
@@ -167,9 +219,9 @@ export const SmartQueries: React.FC<SmartQueriesProps> = ({
                 summary: false
             };
 
-            // Add units_max only if specified
-            if (query.unitsConfig.max && query.unitsConfig.max !== '') {
-                filterParams.units_max = query.unitsConfig.max;
+            // Add units_max if user has set it
+            if (maxUnits && maxUnits !== '') {
+                filterParams.units_max = maxUnits;
             }
 
             console.log("📦 Distressed Assets filterParams:", filterParams);
@@ -180,7 +232,7 @@ export const SmartQueries: React.FC<SmartQueriesProps> = ({
         // For all other queries, use simple parameter structure
         const filterParams: Record<string, any> = {
             propertyType: "MFR",
-            units_min: query.unitsConfig.min,
+            units_min: minUnits || 0,  // Use user's min units
             count: false,
             size: 10,
             resultIndex: 0,
@@ -195,9 +247,9 @@ export const SmartQueries: React.FC<SmartQueriesProps> = ({
             }
         });
 
-        // Add units_max only if specified
-        if (query.unitsConfig.max && query.unitsConfig.max !== '') {
-            filterParams.units_max = query.unitsConfig.max;
+        // Add units_max if user has set it
+        if (maxUnits && maxUnits !== '') {
+            filterParams.units_max = maxUnits;
         }
 
         console.log(`📦 ${query.title} filterParams:`, filterParams);
@@ -210,7 +262,7 @@ export const SmartQueries: React.FC<SmartQueriesProps> = ({
     };
 
     return (
-        <div className="relative">
+        <div className="relative" ref={dropdownRef}>
             <button
                 onClick={() => setShowSmartQueries(!showSmartQueries)}
                 className="w-40 h-[40px] py-2 px-3 text-white rounded-lg transition text-xs flex items-center justify-between hover:opacity-90 ml-4"

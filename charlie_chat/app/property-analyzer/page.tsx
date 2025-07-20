@@ -226,6 +226,123 @@ export default function PropertyAnalyzerPage() {
   });
   const [year1LoanBalance, setYear1LoanBalance] = useState<number>(0);
   const [actualGradingScore, setActualGradingScore] = useState<number>(0);
+  const [showMoreMenu, setShowMoreMenu] = useState(false);
+  const moreMenuRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Function to save settings as blob
+  const saveSettings = () => {
+    const settingsToSave = {
+      purchasePrice,
+      downPaymentPercentage,
+      interestRate,
+      loanTermYears,
+      closingCostsPercentage,
+      dispositionCapRate,
+      numUnits,
+      avgMonthlyRentPerUnit,
+      vacancyRate,
+      annualRentalGrowthRate,
+      otherIncomeAnnual,
+      incomeReductionsAnnual,
+      propertyTaxes,
+      insurance,
+      propertyManagementFeePercentage,
+      maintenanceRepairsAnnual,
+      utilitiesAnnual,
+      contractServicesAnnual,
+      payrollAnnual,
+      marketingAnnual,
+      gAndAAnnual,
+      otherExpensesAnnual,
+      expenseGrowthRate,
+      capitalReservePerUnitAnnual,
+      deferredCapitalReservePerUnit,
+      holdingPeriodYears,
+      savedAt: new Date().toISOString()
+    };
+
+    const blob = new Blob([JSON.stringify(settingsToSave, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    // Prompt user for filename
+    const defaultFilename = `property-analyzer-${new Date().toISOString().split('T')[0]}.json`;
+    const userFilename = prompt('Enter filename:', defaultFilename);
+
+    if (userFilename) {
+      a.download = userFilename.endsWith('.json') ? userFilename : userFilename + '.json';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    }
+
+    URL.revokeObjectURL(url);
+
+  };
+  // Function to handle file loading
+  const handleFileLoad = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const content = e.target?.result as string;
+        const parsed = JSON.parse(content);
+
+        if (parsed && typeof parsed === "object") {
+          setPurchasePrice(parsed.purchasePrice ?? 0);
+          setDownPaymentPercentage(parsed.downPaymentPercentage ?? 0);
+          setInterestRate(parsed.interestRate ?? 0);
+          setLoanTermYears(parsed.loanTermYears ?? 1);
+          setClosingCostsPercentage(parsed.closingCostsPercentage ?? 0);
+          setDispositionCapRate(parsed.dispositionCapRate ?? 0);
+          setNumUnits(parsed.numUnits ?? 0);
+          setAvgMonthlyRentPerUnit(parsed.avgMonthlyRentPerUnit ?? 0);
+          setVacancyRate(parsed.vacancyRate ?? 0);
+          setAnnualRentalGrowthRate(parsed.annualRentalGrowthRate ?? 0);
+          setOtherIncomeAnnual(parsed.otherIncomeAnnual ?? 0);
+          setIncomeReductionsAnnual(parsed.incomeReductionsAnnual ?? 0);
+          setPropertyTaxes(parsed.propertyTaxes ?? 0);
+          setInsurance(parsed.insurance ?? 0);
+          setPropertyManagementFeePercentage(parsed.propertyManagementFeePercentage ?? 0);
+          setMaintenanceRepairsAnnual(parsed.maintenanceRepairsAnnual ?? 0);
+          setUtilitiesAnnual(parsed.utilitiesAnnual ?? 0);
+          setContractServicesAnnual(parsed.contractServicesAnnual ?? 0);
+          setPayrollAnnual(parsed.payrollAnnual ?? 0);
+          setMarketingAnnual(parsed.marketingAnnual ?? 0);
+          setGAndAAnnual(parsed.gAndAAnnual ?? 0);
+          setOtherExpensesAnnual(parsed.otherExpensesAnnual ?? 0);
+          setExpenseGrowthRate(parsed.expenseGrowthRate ?? 0);
+          setCapitalReservePerUnitAnnual(parsed.capitalReservePerUnitAnnual ?? 0);
+          setDeferredCapitalReservePerUnit(parsed.deferredCapitalReservePerUnit ?? 0);
+          setHoldingPeriodYears(parsed.holdingPeriodYears ?? 1);
+
+          alert('Scenario loaded successfully!');
+        } else {
+          alert('Invalid file format');
+        }
+      } catch (error) {
+        alert('Error loading file: Invalid JSON format');
+      }
+    };
+
+    reader.readAsText(file);
+    // Reset the input so the same file can be loaded again if needed
+    event.target.value = '';
+  };
+
+  // Close dropdown menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (moreMenuRef.current && !moreMenuRef.current.contains(e.target as Node)) {
+        setShowMoreMenu(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   // FIXED: Function to calculate remaining loan balance correctly
   const calculateRemainingLoanBalance = (yearsElapsed: number): number => {
@@ -499,6 +616,14 @@ export default function PropertyAnalyzerPage() {
 
   return (
     <div className="flex flex-col lg:flex-row p-4 md:p-8 bg-white text-gray-800 min-h-screen">
+      {/* Hidden file input for loading settings */}
+      <input
+        type="file"
+        ref={fileInputRef}
+        accept=".json"
+        style={{ display: 'none' }}
+        onChange={handleFileLoad}
+      />
       <div className="lg:w-2/3 pr-0 lg:pr-8 mb-8 lg:mb-0">
 
         <div className="flex justify-between items-end mb-6">
@@ -700,7 +825,7 @@ export default function PropertyAnalyzerPage() {
       <div className="print-assumptions lg:w-1/3 bg-gray-50 p-6 rounded-xl shadow-2xl border border-gray-200 lg:sticky lg:top-8 self-start max-h-[calc(100vh-4rem)] overflow-y-auto">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-2xl font-semibold text-orange-600">Assumptions</h2>
-          <div className="flex space-x-2">
+          <div className="flex space-x-2 relative" style={{ minHeight: '40px', minWidth: '280px' }}>
             <button
               onClick={resetToDefaults}
               className="px-4 py-2 text-white rounded-lg transition text-sm"
@@ -714,6 +839,43 @@ export default function PropertyAnalyzerPage() {
             >
               Clear
             </button>
+            <button
+              onClick={() => setShowMoreMenu(!showMoreMenu)}
+              className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition text-sm"
+            >
+              More...
+            </button>
+            {showMoreMenu && (
+              <div
+                ref={moreMenuRef}
+                className="absolute w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-50"
+                style={{
+                  top: '100%',
+                  right: '0',
+                  marginTop: '4px',
+                  position: 'absolute'
+                }}
+              >
+                <button
+                  onClick={() => {
+                    saveSettings();
+                    setShowMoreMenu(false);
+                  }}
+                  className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900 rounded-t-lg transition-colors cursor-pointer border-b border-gray-100"
+                >
+                  &gt; Save scenario
+                </button>
+                <button
+                  onClick={() => {
+                    fileInputRef.current?.click();
+                    setShowMoreMenu(false);
+                  }}
+                  className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900 rounded-b-lg transition-colors cursor-pointer"
+                >
+                  &gt; Load scenario
+                </button>
+              </div>
+            )}
           </div>
         </div>
 
@@ -1061,6 +1223,6 @@ export default function PropertyAnalyzerPage() {
           </div>
         </div>
       </div>
-    </div>
+    </div >
   );
 }
