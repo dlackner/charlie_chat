@@ -2,6 +2,64 @@ import OpenAI from "openai";
 import { Attachment, AttachmentStatus } from "@assistant-ui/react";
 import { Listing, ChatMessage, FIELD_MAPPINGS, BATCH_SIZE } from './chatTypes';
 
+// Charlie's Analysis Personality Constants
+const CHARLIE_ANALYSIS_STYLES = [
+  {
+    style: "contrarian",
+    intro: "Let me cut through the noise and tell you what everyone else is missing about these properties:",
+    perspective: "I'm looking for the hidden flaws and unexpected opportunities that most investors overlook."
+  },
+  {
+    style: "opportunistic", 
+    intro: "Here's where I see the real money-making potential in this batch:",
+    perspective: "I'm hunting for properties where the numbers tell a story the seller doesn't even know."
+  },
+  {
+    style: "cautious",
+    intro: "Time for some hard truths about these properties - not everything that glitters is gold:",
+    perspective: "I'm scrutinizing these deals like my own money is on the line, because yours should be."
+  },
+  {
+    style: "aggressive",
+    intro: "Let's separate the wheat from the chaff - here's what these properties are really worth:",
+    perspective: "I'm looking for deals that make other investors kick themselves for missing out."
+  }
+];
+
+const CHARLIE_VERDICT_PHRASES: { [key: string]: string[] } = {
+  pursue: [
+    "This one's got my attention - here's why:",
+    "I'd put this on my short list, and here's my game plan:",
+    "This property is speaking my language:",
+    "If I were writing the check, here's what I'd do:",
+    "This one passes the Charlie test:"
+  ],
+  monitor: [
+    "Not quite there yet, but worth keeping an eye on:",
+    "This one's in my 'maybe' pile for these reasons:",
+    "I'm not convinced yet, but here's what could change my mind:",
+    "Sitting on the fence with this one:",
+    "This property is playing hard to get, but:"
+  ],
+  pass: [
+    "I'm walking away from this one, and you should too:",
+    "This deal doesn't pass the smell test:",
+    "Hard pass on this property - here's why:",
+    "This one's a headache waiting to happen:",
+    "I've seen this movie before, and it doesn't end well:"
+  ]
+};
+
+// Helper Functions for Charlie's Personality
+const getRandomAnalysisStyle = () => {
+  return CHARLIE_ANALYSIS_STYLES[Math.floor(Math.random() * CHARLIE_ANALYSIS_STYLES.length)];
+};
+
+const getVerdictPhrase = (verdict: string) => {
+  const phrases = CHARLIE_VERDICT_PHRASES[verdict.toLowerCase()] || CHARLIE_VERDICT_PHRASES.pass;
+  return phrases[Math.floor(Math.random() * phrases.length)];
+};
+
 // PDF Attachment Adapter Class
 export class PDFAttachmentAdapter {
   matches(attachment: Attachment) {
@@ -91,9 +149,25 @@ export const handleDoneWithProperty = async (): Promise<void> => {
   }
 };
 
-// Property Analysis Functions
+// Enhanced Property Analysis Functions
 export const formatPropertyForAnalysis = (listing: Listing, globalIndex: number): string => {
   const mainDisplayAddress = listing.address?.address || "Unknown Address";
+  
+  // Calculate some key metrics upfront to give Charlie context
+  const keyMetrics = [];
+  
+  // Price per unit if it's multifamily (use assessed value instead of list price)
+  if (listing.unitsCount && listing.unitsCount > 1 && listing.assessedValue) {
+    const pricePerUnit = listing.assessedValue / listing.unitsCount;
+    keyMetrics.push(`Assessed Value/Unit: ${pricePerUnit.toLocaleString('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0 })}`);
+  }
+  
+  // Price per square foot if we have both values (use assessed value)
+  if (listing.assessedValue && listing.squareFeet) {
+    const pricePerSqFt = listing.assessedValue / listing.squareFeet;
+    keyMetrics.push(`Assessed Value/Sq Ft: ${pricePerSqFt.toFixed(0)}`);
+  }
+  
   
   // Send ALL available data instead of filtering specific fields
   const propertyDetails = Object.entries(listing)
@@ -164,13 +238,19 @@ export const formatPropertyForAnalysis = (listing: Listing, globalIndex: number)
     addressInfo = `Full Address: ${fullAddress.trim()}\n`;
   }
 
-  const finalPropertyDetails = addressInfo + propertyDetails;
+  // Add market signals and key metrics at the top
+  let marketContext = "";
+  if (keyMetrics.length > 0) {
+    marketContext += `Key Metrics: ${keyMetrics.join(" | ")}\n`;
+  }
+
+  const finalPropertyDetails = addressInfo + marketContext + propertyDetails;
 
   if (finalPropertyDetails.trim() === "") {
     return `**${globalIndex}. ${mainDisplayAddress}**\nNo additional property details available.\n`;
   }
 
-  return `**${globalIndex}. ${mainDisplayAddress}**\n${finalPropertyDetails.trim()}`;
+  return `**Property ${globalIndex}: ${mainDisplayAddress}**\n\n${finalPropertyDetails.trim()}`;
 };
 
 export const generatePropertyAnalysisPrompt = (
@@ -185,9 +265,50 @@ export const generatePropertyAnalysisPrompt = (
     return formatPropertyForAnalysis(listing, globalIndex);
   });
 
-  return `Analyze these ${propertiesForThisBatch.length} properties. Compile a complete description using all available data.  If the data exists, calculate LTV, equity, price/unit, and appreciation for each. Output the complete description for each property, a specific pursuit strategy, and a final  **Verdict: Pursue/Monitor/Pass** with a rationale for each property.
+  // Get Charlie's random analysis style for this batch
+  const analysisStyle = getRandomAnalysisStyle();
+  
+  // Add some specific instructions to make Charlie more opinionated
+  const charlieInstructions = [
+    "Channel your inner real estate contrarian - question conventional wisdom",
+    "Look for red flags that other investors miss",
+    "Identify hidden value that's not obvious from the listing",
+    "Apply hard-earned market lessons from your knowledge base", 
+    "Be specific about what you'd negotiate and why",
+    "Call out when something smells fishy",
+    "Share tactical insights that only come from experience"
+  ];
+  
+  const randomInstruction = charlieInstructions[Math.floor(Math.random() * charlieInstructions.length)];
 
-Do not show calculation steps. Do not repeat properties. Start immediately:
+  return `You are Charlie, an experienced real estate investor with deep market knowledge. ${analysisStyle.intro}
+
+${analysisStyle.perspective} ${randomInstruction}
+
+For each of these ${propertiesForThisBatch.length} properties, provide:
+
+1. **Complete Property Description**: Start with a comprehensive overview including:
+   - Property type, year built, number of units, stories
+   - Building and lot square footage if available
+   - Assessed value, estimated market value, estimated equity
+   - Last sale amount and date if available
+   - Mortgage balance, years owned by current owner
+   - Owner information (names, occupancy status, absentee owner status)
+   - Property flags: flood zone, foreclosure, pre-foreclosure, REO, auction status
+   - Investment indicators: corporate owned, private lender, tax liens
+   - Calculate key metrics from available data: equity percentage, value per unit
+   - Any concerning signals like recent sales matching assessed values
+
+2. **Charlie's Take**: Your unfiltered opinion on what makes this property interesting, concerning, or mediocre. Reference specific market knowledge from your training
+
+3. **Strategy**: Specific pursuit tactics - what would you offer, what would you negotiate, what contingencies would you include
+
+4. **Verdict**: Use one of these exact formats:
+   - **Verdict: PURSUE** - ${getVerdictPhrase('pursue')}
+   - **Verdict: MONITOR** - ${getVerdictPhrase('monitor')}  
+   - **Verdict: PASS** - ${getVerdictPhrase('pass')}
+
+Make each analysis distinct - vary your language, focus on different aspects, and let your personality shine through. Don't just recite numbers; tell the story of why this property does or doesn't make sense.
 
 **BATCH ${batchIndex + 1} ANALYSIS** - Properties ${startIndex + 1}-${endIndex} of ${totalPropertiesToAnalyze}
 

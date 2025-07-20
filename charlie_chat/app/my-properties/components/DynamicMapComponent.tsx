@@ -58,6 +58,28 @@ const DynamicMapComponent: React.FC<DynamicMapComponentProps> = ({
             }).addTo(mapInstanceRef.current);
 
             setIsMapReady(true);
+
+            // Fit bounds to show all properties after map is initialized
+            if (properties.length > 0) {
+                const validProperties = properties.filter(p => p.latitude && p.longitude);
+                
+                if (validProperties.length === 1) {
+                    // Single property - center on it
+                    mapInstanceRef.current.setView(
+                        [validProperties[0].latitude, validProperties[0].longitude], 
+                        13
+                    );
+                } else if (validProperties.length > 1) {
+                    // Multiple properties - fit bounds
+                    const bounds = L.latLngBounds(
+                        validProperties.map(p => [p.latitude, p.longitude])
+                    );
+                    mapInstanceRef.current.fitBounds(bounds, { 
+                        padding: [50, 50],
+                        maxZoom: 15 
+                    });
+                }
+            }
         } catch (error) {
             console.error('Error initializing map:', error);
         }
@@ -123,6 +145,15 @@ const DynamicMapComponent: React.FC<DynamicMapComponentProps> = ({
                     marker.addTo(mapInstanceRef.current);
                     markersRef.current.push(marker);
                 });
+
+                // Fit bounds after adding all markers
+                if (markersRef.current.length > 0) {
+                    const group = L.featureGroup(markersRef.current);
+                    mapInstanceRef.current.fitBounds(group.getBounds(), {
+                        padding: [50, 50],
+                        maxZoom: 15
+                    });
+                }
             } catch (error) {
                 console.error('Error updating markers:', error);
             }
@@ -155,32 +186,32 @@ const DynamicMapComponent: React.FC<DynamicMapComponentProps> = ({
         return flags;
     };
 
-const createPopupContent = (property: SavedProperty, hasSkipTrace: boolean) => {
-    const investmentFlags = getInvestmentFlags(property);
-    
-    return `
-        <div style="padding: 8px;">
-            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
-                <div style="flex: 1;">
-                    <div style="font-size: 14px; font-weight: 500; color: #111827;">
-                        ${property.address_full}
+    const createPopupContent = (property: SavedProperty, hasSkipTrace: boolean) => {
+        const investmentFlags = getInvestmentFlags(property);
+        
+        return `
+            <div style="padding: 8px;">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
+                    <div style="flex: 1;">
+                        <div style="font-size: 14px; font-weight: 500; color: #111827;">
+                            ${property.address_full}
+                        </div>
+                        <div style="font-size: 12px; color: #6B7280;">
+                            ${property.address_city}, ${property.address_state}
+                        </div>
+                        <!-- Add Google Maps link here -->
+                        <div style="margin-top: 4px;">
+                            <a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(property.address_full + ', ' + property.address_city + ', ' + property.address_state)}" 
+                               target="_blank" 
+                               style="display: inline-flex; align-items: center; font-size: 11px; color: #2563EB; text-decoration: none; margin-top: 2px;"
+                               title="Open in Google Maps">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" style="margin-right: 3px;">
+                                    <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
+                                </svg>
+                                Google Maps
+                            </a>
+                        </div>
                     </div>
-                    <div style="font-size: 12px; color: #6B7280;">
-                        ${property.address_city}, ${property.address_state}
-                    </div>
-                    <!-- Add Google Maps link here -->
-                    <div style="margin-top: 4px;">
-                        <a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(property.address_full + ', ' + property.address_city + ', ' + property.address_state)}" 
-                           target="_blank" 
-                           style="display: inline-flex; align-items: center; font-size: 11px; color: #2563EB; text-decoration: none; margin-top: 2px;"
-                           title="Open in Google Maps">
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" style="margin-right: 3px;">
-                                <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
-                            </svg>
-                            Google Maps
-                        </a>
-                    </div>
-                </div>
                     <button onclick="window.hideProperty?.('${property.property_id}')" 
                             style="margin-left: 8px; color: #EF4444; background: none; border: none; cursor: pointer;" 
                             title="Hide from map">
