@@ -102,9 +102,9 @@ function Home() {
     yourEmail: '',
     purchasePrice: '',
     earnestMoney: '',
-    inspectionPeriod: '30',
-    financingPeriod: '45',
-    daysToClose: '30',
+    inspectionPeriod: '',
+    financingPeriod: '',
+    daysToClose: '',
     propertyAddress: '',
     ownerFirst: '',
     ownerLast: '',
@@ -1177,7 +1177,7 @@ function Home() {
         {
           num: "5",
           heading: "FINANCING PERIOD",
-          content: `Purchaser's obligation to purchase shall be subject to Purchaser receiving financing terms and conditions acceptable to Purchaser within ${data.daysToCloseText} days ("Financing Period") after the Effective Date of the Agreement.  Purchaser may cancel the Agreement and receive a full refund of the Deposit at any time prior to the expiration of the Financing Period.`
+          content: `Purchaser's obligation to purchase shall be subject to Purchaser receiving financing terms and conditions acceptable to Purchaser within ${data.financingPeriodText} days ("Financing Period") after the Effective Date of the Agreement.  Purchaser may cancel the Agreement and receive a full refund of the Deposit at any time prior to the expiration of the Financing Period.`
         },
         {
           num: "6",
@@ -1424,23 +1424,23 @@ function Home() {
           <section>
             <h2 className="text-xl font-semibold text-gray-700 mb-4 border-b pb-2">Owner Information</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <FormField label="Owner First Name" name="ownerFirst" value={formData.ownerFirst} onChange={handleChange} placeholder="Jane" />
-              <FormField label="Owner Last Name" name="ownerLast" value={formData.ownerLast} onChange={handleChange} placeholder="Smith" />
-              <FormField label="Owner Street Address" name="ownerStreet" value={formData.ownerStreet} onChange={handleChange} placeholder="789 Pine Ln" />
-              <FormField label="Owner City" name="ownerCity" value={formData.ownerCity} onChange={handleChange} placeholder="Otherville" />
-              <FormField label="Owner State" name="ownerState" value={formData.ownerState} onChange={handleChange} placeholder="NY" />
-              <FormField label="Owner Zip Code" name="ownerZip" value={formData.ownerZip} onChange={handleChange} placeholder="67890" />
+              <FormField label="Owner First Name" name="ownerFirst" value={formData.ownerFirst} onChange={handleChange} placeholder="" />
+              <FormField label="Owner Last Name" name="ownerLast" value={formData.ownerLast} onChange={handleChange} placeholder="" />
+              <FormField label="Owner Street Address" name="ownerStreet" value={formData.ownerStreet} onChange={handleChange} placeholder="" />
+              <FormField label="Owner City" name="ownerCity" value={formData.ownerCity} onChange={handleChange} placeholder="" />
+              <FormField label="Owner State" name="ownerState" value={formData.ownerState} onChange={handleChange} placeholder="" />
+              <FormField label="Owner Zip Code" name="ownerZip" value={formData.ownerZip} onChange={handleChange} placeholder="" />
             </div>
           </section>
 
           <section>
-            <h2 className="text-xl font-semibold text-gray-700 mb-4 border-b pb-2">Financial Terms</h2>
+            <h2 className="text-xl font-semibold text-gray-700 mb-4 border-b pb-2">Offer Terms</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <FormField label="Purchase Price" name="purchasePrice" value={formData.purchasePrice} onChange={handleChange} placeholder="$500,000" />
-              <FormField label="Earnest Money Deposit" name="earnestMoney" value={formData.earnestMoney} onChange={handleChange} placeholder="$10,000" />
-              <FormField label="Inspection Period (in days)" name="inspectionPeriod" value={formData.inspectionPeriod} onChange={handleChange} placeholder="30" />
-              <FormField label="Financing Period (in days)" name="financingPeriod" value={formData.financingPeriod} onChange={handleChange} placeholder="45" />
-              <FormField label="Days to Close (after financing)" name="daysToClose" value={formData.daysToClose} onChange={handleChange} placeholder="30" />
+              <FormField label="Purchase Price" name="purchasePrice" value={formData.purchasePrice} onChange={handleChange} placeholder="" />
+              <FormField label="Earnest Money Deposit" name="earnestMoney" value={formData.earnestMoney} onChange={handleChange} placeholder="" />
+              <FormField label="Inspection Period (in days)" name="inspectionPeriod" value={formData.inspectionPeriod} onChange={handleChange} placeholder="" />
+              <FormField label="Financing Period (in days)" name="financingPeriod" value={formData.financingPeriod} onChange={handleChange} placeholder="" />
+              <FormField label="Days to Close (after financing)" name="daysToClose" value={formData.daysToClose} onChange={handleChange} placeholder="" />
             </div>
           </section>
 
