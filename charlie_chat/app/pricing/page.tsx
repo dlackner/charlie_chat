@@ -143,9 +143,9 @@ export default function PricingPage() {
               <span className="text-lg font-semibold text-orange-500">Everything in Charlie Chat</span>
             </li>
             <li>✔️ Access to my Master Class Training Program</li>
-            <li>✔️ COMING SOON! Upload broker documents and offer memorandums</li>
-            <li>✔️ Access to best practice templates</li>
-            <li>✔️ Includes 100 national property matches every month</li>
+            <li>✔️ AI analysis of broker documents and offer memorandums</li>
+            <li>✔️ Best practice marketing tools & LOI's</li>
+            <li>✔️ Includes 250 national property matches every month</li>
           </ul>
           <button
             onClick={() => handleCheckout(isAnnual ? CHARLIE_CHAT_PRO_ANNUAL : CHARLIE_CHAT_PRO_MONTHLY, isAnnual ? "annual" : "monthly")}

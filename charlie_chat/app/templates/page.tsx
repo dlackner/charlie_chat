@@ -3,7 +3,7 @@
 export const dynamic = 'force-dynamic';
 
 import { useState, useCallback, useEffect, Suspense } from 'react';
-import { Document, Packer, Paragraph, TextRun, AlignmentType, PageBreak } from 'docx';
+import { Document, Packer, Paragraph, TextRun, AlignmentType, PageBreak, ImageRun, HorizontalPositionAlign, VerticalPositionAlign } from 'docx';
 import { saveAs } from 'file-saver';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
@@ -53,7 +53,23 @@ interface UserProfile {
   phone_number: string;
   business_name?: string;
   job_title?: string;
+  logo_base64?: string | null;
 }
+const detectImageType = (base64: string): string => {
+  if (base64.includes('data:image/png') || base64.includes('PNG')) return 'png';
+  if (base64.includes('data:image/jpeg') || base64.includes('data:image/jpg') || base64.includes('JPEG') || base64.includes('JPG')) return 'jpg';
+  if (base64.includes('data:image/gif') || base64.includes('GIF')) return 'gif';
+  // Default fallback - most logos are PNG
+  return 'png';
+};
+
+const base64ToBuffer = (base64: string): Buffer => {
+  // Remove data URL prefix if present (e.g., "data:image/png;base64,")
+  const base64Data = base64.replace(/^data:image\/[a-z]+;base64,/, '');
+  return Buffer.from(base64Data, 'base64');
+};
+
+
 const FormField = ({ label, name, type = "text", value, onChange, placeholder }: {
   label: string;
   name: keyof LOIFormData;
@@ -102,9 +118,9 @@ function Home() {
     yourEmail: '',
     purchasePrice: '',
     earnestMoney: '',
-    inspectionPeriod: '30',
-    financingPeriod: '45',
-    daysToClose: '30',
+    inspectionPeriod: '',
+    financingPeriod: '',
+    daysToClose: '',
     propertyAddress: '',
     ownerFirst: '',
     ownerLast: '',
@@ -142,7 +158,7 @@ function Home() {
       try {
         const { data, error } = await supabase
           .from("profiles")
-          .select("first_name, last_name, street_address, city, state, zipcode, phone_number, business_name, job_title")
+          .select("first_name, last_name, street_address, city, state, zipcode, phone_number, business_name, job_title, logo_base64")
           .eq("user_id", currentUser.id)
           .single();
 
@@ -279,6 +295,7 @@ function Home() {
       yourPhone: userProfile.phone_number?.replace(/(\d{3})(\d{3})(\d{4})/, '$1.$2.$3'),
       yourEmail: currentUser.email,
       businessName: userProfile.business_name || null,
+      logoBase64: userProfile.logo_base64 || null,
       jobTitle: userProfile.job_title || null,
       yourPhoneFormatted: formatPhoneJS(userProfile.phone_number?.replace(/(\d{3})(\d{3})(\d{4})/, '$1.$2.$3') || ''),
       purchasePriceFormatted: formatCurrencyJS(formData.purchasePrice),
@@ -297,6 +314,46 @@ function Home() {
     };
 
     const sections: Paragraph[] = [];
+
+    // — Logo (if present) —
+    if (data.logoBase64) {
+      try {
+        const logoBuffer = base64ToBuffer(data.logoBase64);
+        const imageType = detectImageType(data.logoBase64);
+
+        const logoParagraph = new Paragraph({
+          alignment: AlignmentType.CENTER,
+          spacing: { after: 240 }, // Space after logo
+          children: [
+            new ImageRun({
+              data: logoBuffer,
+              transformation: {
+                width: 200, // Back to original working width
+                height: 60, // Let it auto scale height
+              },
+              // Keep the image type detection that was working
+              type: imageType as any,
+              floating: {
+                horizontalPosition: {
+                  align: HorizontalPositionAlign.CENTER,
+                },
+                verticalPosition: {
+                  align: VerticalPositionAlign.TOP,
+                },
+                margins: {
+                  top: 480,
+                  bottom: 240, // Space below logo
+                },
+              },
+            }),
+          ],
+        });
+        sections.push(logoParagraph);
+      } catch (error) {
+        console.error('Error processing logo:', error);
+        // Continue without logo if there's an error
+      }
+    }
 
     // Common introductory sections (always included)
     sections.push(new Paragraph({ children: [new TextRun(data.yourName)], ...tightParagraphConfig }));
@@ -1177,7 +1234,7 @@ function Home() {
         {
           num: "5",
           heading: "FINANCING PERIOD",
-          content: `Purchaser's obligation to purchase shall be subject to Purchaser receiving financing terms and conditions acceptable to Purchaser within ${data.daysToCloseText} days ("Financing Period") after the Effective Date of the Agreement.  Purchaser may cancel the Agreement and receive a full refund of the Deposit at any time prior to the expiration of the Financing Period.`
+          content: `Purchaser's obligation to purchase shall be subject to Purchaser receiving financing terms and conditions acceptable to Purchaser within ${data.financingPeriodText} days ("Financing Period") after the Effective Date of the Agreement.  Purchaser may cancel the Agreement and receive a full refund of the Deposit at any time prior to the expiration of the Financing Period.`
         },
         {
           num: "6",
@@ -1424,23 +1481,23 @@ function Home() {
           <section>
             <h2 className="text-xl font-semibold text-gray-700 mb-4 border-b pb-2">Owner Information</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <FormField label="Owner First Name" name="ownerFirst" value={formData.ownerFirst} onChange={handleChange} placeholder="Jane" />
-              <FormField label="Owner Last Name" name="ownerLast" value={formData.ownerLast} onChange={handleChange} placeholder="Smith" />
-              <FormField label="Owner Street Address" name="ownerStreet" value={formData.ownerStreet} onChange={handleChange} placeholder="789 Pine Ln" />
-              <FormField label="Owner City" name="ownerCity" value={formData.ownerCity} onChange={handleChange} placeholder="Otherville" />
-              <FormField label="Owner State" name="ownerState" value={formData.ownerState} onChange={handleChange} placeholder="NY" />
-              <FormField label="Owner Zip Code" name="ownerZip" value={formData.ownerZip} onChange={handleChange} placeholder="67890" />
+              <FormField label="Owner First Name" name="ownerFirst" value={formData.ownerFirst} onChange={handleChange} placeholder="" />
+              <FormField label="Owner Last Name" name="ownerLast" value={formData.ownerLast} onChange={handleChange} placeholder="" />
+              <FormField label="Owner Street Address" name="ownerStreet" value={formData.ownerStreet} onChange={handleChange} placeholder="" />
+              <FormField label="Owner City" name="ownerCity" value={formData.ownerCity} onChange={handleChange} placeholder="" />
+              <FormField label="Owner State" name="ownerState" value={formData.ownerState} onChange={handleChange} placeholder="" />
+              <FormField label="Owner Zip Code" name="ownerZip" value={formData.ownerZip} onChange={handleChange} placeholder="" />
             </div>
           </section>
 
           <section>
-            <h2 className="text-xl font-semibold text-gray-700 mb-4 border-b pb-2">Financial Terms</h2>
+            <h2 className="text-xl font-semibold text-gray-700 mb-4 border-b pb-2">Offer Terms</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <FormField label="Purchase Price" name="purchasePrice" value={formData.purchasePrice} onChange={handleChange} placeholder="$500,000" />
-              <FormField label="Earnest Money Deposit" name="earnestMoney" value={formData.earnestMoney} onChange={handleChange} placeholder="$10,000" />
-              <FormField label="Inspection Period (in days)" name="inspectionPeriod" value={formData.inspectionPeriod} onChange={handleChange} placeholder="30" />
-              <FormField label="Financing Period (in days)" name="financingPeriod" value={formData.financingPeriod} onChange={handleChange} placeholder="45" />
-              <FormField label="Days to Close (after financing)" name="daysToClose" value={formData.daysToClose} onChange={handleChange} placeholder="30" />
+              <FormField label="Purchase Price" name="purchasePrice" value={formData.purchasePrice} onChange={handleChange} placeholder="" />
+              <FormField label="Earnest Money Deposit" name="earnestMoney" value={formData.earnestMoney} onChange={handleChange} placeholder="" />
+              <FormField label="Inspection Period (in days)" name="inspectionPeriod" value={formData.inspectionPeriod} onChange={handleChange} placeholder="" />
+              <FormField label="Financing Period (in days)" name="financingPeriod" value={formData.financingPeriod} onChange={handleChange} placeholder="" />
+              <FormField label="Days to Close (after financing)" name="daysToClose" value={formData.daysToClose} onChange={handleChange} placeholder="" />
             </div>
           </section>
 

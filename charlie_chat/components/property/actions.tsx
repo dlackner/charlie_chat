@@ -129,7 +129,10 @@ export const PropertyActions = ({ listing }: PropertyActionsProps) => {
 
     addSection("OWNERSHIP DETAILS", [
       ["Owner Name:", `${listing.owner1FirstName ?? ""} ${listing.owner1LastName ?? ""}`],
-      ["Owner Address:", listing.mailAddress ?? "N/A"],
+      ["Owner Address:", listing.mailAddress
+        ? `${listing.mailAddress.street ?? ""}, ${listing.mailAddress.city ?? ""}, ${listing.mailAddress.state ?? ""} ${listing.mailAddress.zip ?? ""}`
+        : "N/A"],
+
       ["In-State Absentee Owner:", listing.inStateAbsenteeOwner ? "Yes" : "No"],
       ["Out-of-State Absentee Owner:", listing.outOfStateAbsenteeOwner ? "Yes" : "No"],
     ], rightX, startY + 60);
