@@ -145,7 +145,7 @@ export default function PricingPage() {
             <li>✔️ Access to my Master Class Training Program</li>
             <li>✔️ AI analysis of broker documents and offer memorandums</li>
             <li>✔️ Best practice marketing tools & LOI's</li>
-            <li>✔️ Includes 100 national property matches every month</li>
+            <li>✔️ Includes 250 national property matches every month</li>
           </ul>
           <button
             onClick={() => handleCheckout(isAnnual ? CHARLIE_CHAT_PRO_ANNUAL : CHARLIE_CHAT_PRO_MONTHLY, isAnnual ? "annual" : "monthly")}
