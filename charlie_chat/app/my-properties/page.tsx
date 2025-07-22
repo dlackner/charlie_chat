@@ -12,7 +12,7 @@ import { exportPropertiesToCSV } from './components/csvExport';
 import { handleSkipTraceForProperty } from './components/skipTraceIntegration';
 import { PropertyMapView } from './components/PropertyMapView';
 import { PageSavedProperty as SavedProperty } from './types';
-
+import { RentDataProcessor } from './components/rentDataProcessor';
 
 import {
     Star,
@@ -48,6 +48,8 @@ export default function MyPropertiesPage() {
     const [skipTraceLoading, setSkipTraceLoading] = useState<Set<string>>(new Set());
     const [skipTraceErrors, setSkipTraceErrors] = useState<{ [key: string]: string }>({});
     const [matrixSelectionMode, setMatrixSelectionMode] = useState<'analysis' | 'selection'>('analysis');
+    const [rentData, setRentData] = useState<any[]>([]);
+    const [isLoadingRentData, setIsLoadingRentData] = useState(true);
 
     const dropdownRef = useRef<HTMLDivElement>(null);
     // Close dropdown when clicking outside for More button on Document Generation
@@ -66,6 +68,46 @@ export default function MyPropertiesPage() {
             document.removeEventListener('mousedown', handleClickOutside);
         };
     }, [showDocumentDropdown]);
+
+    // Load and process rent data
+    useEffect(() => {
+        const loadRentData = async () => {
+            try {
+                console.log('=== STARTING RENT DATA LOAD ===');
+                setIsLoadingRentData(true);
+
+                const response = await fetch('/Monthly Rental Rates.csv?v=3');
+                console.log('CSV fetch response:', response.ok, response.status);
+
+                if (!response.ok) {
+                    throw new Error(`Failed to fetch CSV: ${response.status}`);
+                }
+
+                const csvText = await response.text();
+                console.log('CSV loaded, length:', csvText.length);
+                console.log('First 300 chars:', csvText.substring(0, 300));
+
+                const processor = new RentDataProcessor(csvText);
+                const processedData = processor.processRentData();
+
+                console.log('Final processed data:', processedData.length, 'entries');
+                console.log('Sample:', processedData.slice(0, 2));
+
+                setRentData(processedData);
+                console.log('=== RENT DATA SET SUCCESSFULLY ===');
+                console.log('Metros with coordinates:', processedData.filter(d => d.latitude && d.longitude).map(d => d.RegionName));
+                console.log('First few metros without coordinates:', processedData.filter(d => !d.latitude || !d.longitude).slice(0, 5).map(d => d.RegionName));
+            } catch (error) {
+                console.error('=== RENT DATA LOAD FAILED ===', error);
+                setRentData([]);
+            } finally {
+                setIsLoadingRentData(false);
+                console.log('=== RENT DATA LOADING FINISHED ===');
+            }
+        };
+
+        loadRentData();
+    }, []);
 
     // Close dropdown on Escape key
     useEffect(() => {
@@ -404,6 +446,13 @@ export default function MyPropertiesPage() {
     const handleStartSearching = () => {
         router.push("/");
     };
+    console.log('About to render PropertyMapView:', {
+        propertiesLength: filteredProperties.length,
+        rentDataLength: Array.isArray(rentData) ? rentData.length : 'not array',
+        isLoadingProperties,
+        isLoadingRentData,
+        rentDataType: typeof rentData
+    });
 
     // Redirect if not authenticated
     if (!isAuthLoading && !user) {
@@ -443,6 +492,14 @@ export default function MyPropertiesPage() {
                 </div>
             </div>
         );
+    }
+
+    if (viewMode === 'map') {
+        console.log('RENDERING MAP VIEW:', {
+            rentDataLength: rentData.length,
+            isLoadingRentData,
+            hasProperties: filteredProperties.length
+        });
     }
 
     return (
@@ -700,6 +757,7 @@ export default function MyPropertiesPage() {
                     />
                 ) : viewMode === 'map' ? (
                     /* Map View */
+
                     <PropertyMapView
                         properties={savedProperties.length === 0 ? [] : filteredProperties}
                         selectedProperties={selectedProperties}
@@ -708,7 +766,8 @@ export default function MyPropertiesPage() {
                         onStartSearching={handleStartSearching}
                         onUpdateNotes={handleUpdateNotes}
                         onSkipTrace={handleSkipTrace}
-                        isLoading={isLoadingProperties}
+                        isLoading={isLoadingProperties || isLoadingRentData}
+                        rentData={Array.isArray(rentData) ? rentData : []} // Ensure it's always an array
                     />
                 ) : (
                     /* Matrix View */
