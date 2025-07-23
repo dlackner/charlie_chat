@@ -29,6 +29,11 @@ export default function SignUpPage() {
       setError(signUpError.message);
     } else {
       setLinkSent(true); // Show success message
+      
+      // Add affiliate tracking
+      if (typeof window !== 'undefined' && (window as any).gr) {
+        (window as any).gr('track', 'conversion', { email: email });
+      }
     }
   };
 

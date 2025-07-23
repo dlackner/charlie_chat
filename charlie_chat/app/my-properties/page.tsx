@@ -551,7 +551,7 @@ export default function MyPropertiesPage() {
                                                 onClick={handleRemoveSelectedProperties}
                                                 className="px-3 py-1 bg-orange-600 text-white rounded-lg text-sm hover:bg-red-700 transition-colors"
                                             >
-                                                Remove Selected
+                                                Delete Favorites?
                                             </button>
                                         </>
                                     )}
