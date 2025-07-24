@@ -3,22 +3,30 @@ import { CheckSquare, Square } from "lucide-react";
 import 'leaflet/dist/leaflet.css';
 import { MappableSavedProperty as SavedProperty } from '../types';
 
+
 interface DynamicMapComponentProps {
-    properties: SavedProperty[];
+    properties: any[];
     selectedProperties: Set<string>;
     onToggleSelection: (propertyId: string) => void;
     hideProperty: (propertyId: string) => void;
+    showRentOverlay?: boolean;
+    rentData?: any[];
+    getRentColor?: (rent: number) => string;
 }
 
 const DynamicMapComponent: React.FC<DynamicMapComponentProps> = ({
     properties,
     selectedProperties,
     onToggleSelection,
-    hideProperty
+    hideProperty,
+    showRentOverlay = false,
+    rentData = [],
+    getRentColor
 }) => {
     const mapRef = useRef<HTMLDivElement>(null);
     const mapInstanceRef = useRef<any>(null);
     const markersRef = useRef<any[]>([]);
+    const rentMarkersRef = useRef<any[]>([]);
     const [isMapReady, setIsMapReady] = useState(false);
     const [mapId] = useState(() => `map-${Date.now()}-${Math.random().toString(36)}`);
 
@@ -62,21 +70,19 @@ const DynamicMapComponent: React.FC<DynamicMapComponentProps> = ({
             // Fit bounds to show all properties after map is initialized
             if (properties.length > 0) {
                 const validProperties = properties.filter(p => p.latitude && p.longitude);
-                
+
                 if (validProperties.length === 1) {
-                    // Single property - center on it
                     mapInstanceRef.current.setView(
-                        [validProperties[0].latitude, validProperties[0].longitude], 
+                        [validProperties[0].latitude, validProperties[0].longitude],
                         13
                     );
                 } else if (validProperties.length > 1) {
-                    // Multiple properties - fit bounds
                     const bounds = L.latLngBounds(
                         validProperties.map(p => [p.latitude, p.longitude])
                     );
-                    mapInstanceRef.current.fitBounds(bounds, { 
+                    mapInstanceRef.current.fitBounds(bounds, {
                         padding: [50, 50],
-                        maxZoom: 15 
+                        maxZoom: 15
                     });
                 }
             }
@@ -84,6 +90,84 @@ const DynamicMapComponent: React.FC<DynamicMapComponentProps> = ({
             console.error('Error initializing map:', error);
         }
     }, [properties]);
+
+    // Update rent overlay when showRentOverlay or rentData changes
+    useEffect(() => {
+        if (!isMapReady || !mapInstanceRef.current) return;
+
+        const updateRentOverlay = async () => {
+            try {
+                const L = (await import('leaflet')).default;
+
+                // Clear existing rent overlay markers
+                rentMarkersRef.current.forEach(marker => {
+                    if (marker && mapInstanceRef.current) {
+                        mapInstanceRef.current.removeLayer(marker);
+                    }
+                });
+                rentMarkersRef.current = [];
+
+                // Add rent overlay if enabled
+                if (showRentOverlay && rentData.length > 0) {
+                    console.log('Adding rent overlay with', rentData.length, 'metro areas');
+
+                    rentData.forEach(metro => {
+                        if (!metro.latitude || !metro.longitude || !metro.averageRent) return;
+
+                        console.log('Adding circle for:', metro.RegionName, 'at', metro.latitude, metro.longitude);
+
+                        // Convert miles to meters (1 mile = 1609.34 meters)
+                        const msaRadiusMiles = metro.radius || 25;
+                        const msaRadiusMeters = msaRadiusMiles * 1609.34;
+
+                        // Create colored circle for each metro area with geographic radius
+                        const color = getRentColor ? getRentColor(metro.averageRent) : '#3B82F6';
+
+                        const circle = L.circle([metro.latitude, metro.longitude], {
+                            radius: msaRadiusMeters,
+                            fillColor: color,
+                            color: '#ffffff',
+                            weight: 3,
+                            opacity: 1,
+                            fillOpacity: 0.3
+                        });
+
+                        // Add popup with rent information
+                        circle.bindPopup(`
+                            <div style="padding: 8px;">
+                                <div style="font-weight: 600; margin-bottom: 4px;">
+                                    ${metro.RegionName}
+                                </div>
+                                <div style="font-size: 14px; color: #059669; font-weight: 500;">
+                                    Average Rent: $${Math.round(metro.averageRent)}/month
+                                </div>
+                                ${metro.yoyPercent ? `
+                                    <div style="font-size: 12px; color: ${metro.yoyPercent >= 0 ? '#059669' : '#DC2626'}; font-weight: 500;">
+                                        YoY Change: ${metro.yoyPercent > 0 ? '+' : ''}${metro.yoyPercent.toFixed(1)}%
+                                    </div>
+                                ` : ''}
+                                <div style="font-size: 12px; color: #6B7280; margin-top: 4px;">
+                                    Market Rank: #${metro.sizeRank}
+                                </div>
+                                <div style="font-size: 12px; color: #6B7280;">
+                                    MSA Radius: ${metro.radius || 25} miles
+                                </div>
+                            </div>
+                        `);
+
+                        if (mapInstanceRef.current) {
+                            circle.addTo(mapInstanceRef.current);
+                        }
+                        rentMarkersRef.current.push(circle);
+                    });
+                }
+            } catch (error) {
+                console.error('Error updating rent overlay:', error);
+            }
+        };
+
+        updateRentOverlay();
+    }, [isMapReady, showRentOverlay, rentData, getRentColor]);
 
     // Initialize map only once when component mounts
     useEffect(() => {
@@ -101,7 +185,7 @@ const DynamicMapComponent: React.FC<DynamicMapComponentProps> = ({
                 mapInstanceRef.current = null;
             }
         };
-    }, []); // Empty dependency array - only run once
+    }, []);
 
     // Update markers when properties change
     useEffect(() => {
@@ -129,15 +213,15 @@ const DynamicMapComponent: React.FC<DynamicMapComponentProps> = ({
 
                     const marker = L.marker([property.latitude, property.longitude]);
 
-                    // Add tooltip
+                    // Add tooltip (hover)
                     marker.bindTooltip(`
-                        <div style="font-size: 14px;">
-                            ${property.address_full}<br>
-                            ${property.address_city}, ${property.address_state}
-                        </div>
-                    `, { permanent: false, direction: 'top' });
+    <div style="font-size: 14px;">
+        ${property.address_full}<br>
+        ${property.address_city}, ${property.address_state}
+    </div>
+`, { permanent: false, direction: 'top' });
 
-                    // Add popup
+                    // Add popup (click) - restored to original styling with market rent data
                     const hasSkipTrace = !!property.skipTraceData;
                     const popupContent = createPopupContent(property, hasSkipTrace);
                     marker.bindPopup(popupContent, { maxWidth: 320, minWidth: 300 });
@@ -188,7 +272,7 @@ const DynamicMapComponent: React.FC<DynamicMapComponentProps> = ({
 
     const createPopupContent = (property: SavedProperty, hasSkipTrace: boolean) => {
         const investmentFlags = getInvestmentFlags(property);
-        
+
         return `
             <div style="padding: 8px;">
                 <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
@@ -199,9 +283,8 @@ const DynamicMapComponent: React.FC<DynamicMapComponentProps> = ({
                         <div style="font-size: 12px; color: #6B7280;">
                             ${property.address_city}, ${property.address_state}
                         </div>
-                        <!-- Add Google Maps link here -->
                         <div style="margin-top: 4px;">
-                            <a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(property.address_full + ', ' + property.address_city + ', ' + property.address_state)}" 
+                           <a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(property.address_full + ', ' + property.address_city + ', ' + property.address_state)}"
                                target="_blank" 
                                style="display: inline-flex; align-items: center; font-size: 11px; color: #2563EB; text-decoration: none; margin-top: 2px;"
                                title="Open in Google Maps">
@@ -218,6 +301,7 @@ const DynamicMapComponent: React.FC<DynamicMapComponentProps> = ({
                         ✕
                     </button>
                 </div>
+                
                 
                 <div style="font-size: 12px; color: #6B7280; margin-bottom: 12px;">
                     <div>Units: <span style="font-weight: 500;">${property.units_count}</span></div>
@@ -252,8 +336,8 @@ const DynamicMapComponent: React.FC<DynamicMapComponentProps> = ({
     }, [hideProperty]);
 
     return (
-        <div 
-            ref={mapRef} 
+        <div
+            ref={mapRef}
             key={mapId}
             style={{ height: '100%', width: '100%' }}
         />

@@ -12,7 +12,7 @@ import { exportPropertiesToCSV } from './components/csvExport';
 import { handleSkipTraceForProperty } from './components/skipTraceIntegration';
 import { PropertyMapView } from './components/PropertyMapView';
 import { PageSavedProperty as SavedProperty } from './types';
-
+import { RentDataProcessor } from './components/rentDataProcessor';
 
 import {
     Star,
@@ -48,8 +48,12 @@ export default function MyPropertiesPage() {
     const [skipTraceLoading, setSkipTraceLoading] = useState<Set<string>>(new Set());
     const [skipTraceErrors, setSkipTraceErrors] = useState<{ [key: string]: string }>({});
     const [matrixSelectionMode, setMatrixSelectionMode] = useState<'analysis' | 'selection'>('analysis');
+    const [rentData, setRentData] = useState<any[]>([]);
+    const [isLoadingRentData, setIsLoadingRentData] = useState(true);
+    const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
 
     const dropdownRef = useRef<HTMLDivElement>(null);
+
     // Close dropdown when clicking outside for More button on Document Generation
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
@@ -67,6 +71,46 @@ export default function MyPropertiesPage() {
         };
     }, [showDocumentDropdown]);
 
+    // Load and process rent data
+    useEffect(() => {
+        const loadRentData = async () => {
+            try {
+                console.log('=== STARTING RENT DATA LOAD ===');
+                setIsLoadingRentData(true);
+
+                const response = await fetch('/Monthly Rental Rates.csv?v=3');
+                console.log('CSV fetch response:', response.ok, response.status);
+
+                if (!response.ok) {
+                    throw new Error(`Failed to fetch CSV: ${response.status}`);
+                }
+
+                const csvText = await response.text();
+                console.log('CSV loaded, length:', csvText.length);
+                console.log('First 300 chars:', csvText.substring(0, 300));
+
+                const processor = new RentDataProcessor(csvText);
+                const processedData = processor.processRentData();
+
+                console.log('Final processed data:', processedData.length, 'entries');
+                console.log('Sample:', processedData.slice(0, 2));
+
+                setRentData(processedData);
+                console.log('=== RENT DATA SET SUCCESSFULLY ===');
+                console.log('Metros with coordinates:', processedData.filter(d => d.latitude && d.longitude).map(d => d.RegionName));
+                console.log('First few metros without coordinates:', processedData.filter(d => !d.latitude || !d.longitude).slice(0, 5).map(d => d.RegionName));
+            } catch (error) {
+                console.error('=== RENT DATA LOAD FAILED ===', error);
+                setRentData([]);
+            } finally {
+                setIsLoadingRentData(false);
+                console.log('=== RENT DATA LOADING FINISHED ===');
+            }
+        };
+
+        loadRentData();
+    }, []);
+
     // Close dropdown on Escape key
     useEffect(() => {
         const handleEscape = (event: KeyboardEvent) => {
@@ -83,6 +127,20 @@ export default function MyPropertiesPage() {
             document.removeEventListener('keydown', handleEscape);
         };
     }, [showDocumentDropdown]);
+
+    // Close delete confirmation modal on Escape key
+    useEffect(() => {
+        const handleEscape = (event: KeyboardEvent) => {
+            if (event.key === 'Escape' && showDeleteConfirmation) {
+                setShowDeleteConfirmation(false);
+            }
+        };
+
+        document.addEventListener('keydown', handleEscape);
+        return () => {
+            document.removeEventListener('keydown', handleEscape);
+        };
+    }, [showDeleteConfirmation]);
 
     // Load saved properties
     useEffect(() => {
@@ -137,9 +195,6 @@ export default function MyPropertiesPage() {
             setIsLoadingProperties(false);
         }
     }, [user, supabase, hasAccess, isLoadingAccess]);
-
-    // Handle property selection
-    //const togglePropertySelection = (propertyId: string) => {
 
     // Handle property selection
     const togglePropertySelection = (propertyId: string) => {
@@ -219,12 +274,14 @@ export default function MyPropertiesPage() {
     // Bulk actions
     const handleRemoveSelectedProperties = async () => {
         if (selectedProperties.size === 0) return;
+        setShowDeleteConfirmation(true);
+    };
 
-        const confirmed = window.confirm(
-            `Remove ${selectedProperties.size} selected ${selectedProperties.size === 1 ? 'property' : 'properties'} from My Properties?\n\nThis action cannot be undone.`
-        );
+    // Confirm deletion of selected properties
+    const confirmDeleteSelectedProperties = async () => {
+        if (selectedProperties.size === 0) return;
 
-        if (confirmed && user && supabase) {
+        if (user && supabase) {
             try {
                 // Remove each selected property
                 for (const propertyId of selectedProperties) {
@@ -252,6 +309,8 @@ export default function MyPropertiesPage() {
                 console.error("Unexpected error removing properties:", error);
             }
         }
+
+        setShowDeleteConfirmation(false);
     };
 
     const handleCSVDownload = () => {
@@ -375,7 +434,6 @@ export default function MyPropertiesPage() {
         }
     };
 
-
     const handleRemoveFromFavorites = async (propertyId: string) => {
         if (!user || !supabase) return;
 
@@ -404,6 +462,14 @@ export default function MyPropertiesPage() {
     const handleStartSearching = () => {
         router.push("/");
     };
+
+    console.log('About to render PropertyMapView:', {
+        propertiesLength: filteredProperties.length,
+        rentDataLength: Array.isArray(rentData) ? rentData.length : 'not array',
+        isLoadingProperties,
+        isLoadingRentData,
+        rentDataType: typeof rentData
+    });
 
     // Redirect if not authenticated
     if (!isAuthLoading && !user) {
@@ -443,6 +509,14 @@ export default function MyPropertiesPage() {
                 </div>
             </div>
         );
+    }
+
+    if (viewMode === 'map') {
+        console.log('RENDERING MAP VIEW:', {
+            rentDataLength: rentData.length,
+            isLoadingRentData,
+            hasProperties: filteredProperties.length
+        });
     }
 
     return (
@@ -494,7 +568,7 @@ export default function MyPropertiesPage() {
                                                 onClick={handleRemoveSelectedProperties}
                                                 className="px-3 py-1 bg-orange-600 text-white rounded-lg text-sm hover:bg-red-700 transition-colors"
                                             >
-                                                Remove Selected
+                                                Delete Favorites?
                                             </button>
                                         </>
                                     )}
@@ -631,49 +705,6 @@ export default function MyPropertiesPage() {
                     </button>
                 </div>
 
-                {/* Selection Mode Toggle - Only show for Matrix view */}
-                {/*{viewMode === 'matrix' && (
-                    <div className="flex items-center justify-between mb-4">
-                        <div className="flex items-center space-x-3">
-                            <span className="text-sm font-medium text-gray-700">Matrix Mode:</span>
-                            <div className="flex rounded-lg border border-gray-300 overflow-hidden">
-                                <button
-                                    onClick={() => setMatrixSelectionMode('analysis')}
-                                    className={`px-3 py-1 text-sm font-medium transition-colors ${matrixSelectionMode === 'analysis'
-                                        ? 'bg-blue-600 text-white'
-                                        : 'bg-white text-gray-700 hover:bg-gray-50'
-                                        }`}
-                                >
-                                    📊 Analysis
-                                </button>
-                                <button
-                                    onClick={() => setMatrixSelectionMode('selection')}
-                                    className={`px-3 py-1 text-sm font-medium transition-colors ${matrixSelectionMode === 'selection'
-                                        ? 'bg-blue-600 text-white'
-                                        : 'bg-white text-gray-700 hover:bg-gray-50'
-                                        }`}
-                                >
-                                    ✓ Selection
-                                </button>
-                            </div>
-                        </div>
-
-                        {matrixSelectionMode === 'selection' && selectedProperties.size > 0 && (
-                            <div className="flex items-center space-x-3">
-                                <span className="text-sm text-gray-600">
-                                    {selectedProperties.size} selected (hidden from matrix)
-                                </span>
-                                <button
-                                    onClick={() => setSelectedProperties(new Set())}
-                                    className="px-3 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700"
-                                >
-                                    Show All
-                                </button>
-                            </div>
-                        )}
-                    </div>
-                )}*/}
-
                 {/* Error Message */}
                 {errorMessage && (
                     <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-red-800">
@@ -708,7 +739,8 @@ export default function MyPropertiesPage() {
                         onStartSearching={handleStartSearching}
                         onUpdateNotes={handleUpdateNotes}
                         onSkipTrace={handleSkipTrace}
-                        isLoading={isLoadingProperties}
+                        isLoading={isLoadingProperties || isLoadingRentData}
+                        rentData={Array.isArray(rentData) ? rentData : []} // Ensure it's always an array
                     />
                 ) : (
                     /* Matrix View */
@@ -723,6 +755,45 @@ export default function MyPropertiesPage() {
                     />
                 )}
             </div>
+
+            {/* Delete Confirmation Modal */}
+            {showDeleteConfirmation && (
+                <div className="fixed inset-0 backdrop-blur-sm flex items-center justify-center z-50">
+                    <div className="bg-white rounded-lg p-6 max-w-md w-mx-4 border-1" style={{ borderColor: '#1C599F' }}>
+                        <div className="flex items-center mb-4">
+                            <div className="flex-shrink-0 w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center mr-3">
+                                <svg className="w-6 h-6 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                                </svg>
+                            </div>
+                            <h3 className="text-lg font-semibold text-gray-900">Delete Favorites</h3>
+                        </div>
+
+                        <p className="text-gray-600 mb-6">
+                            {selectedProperties.size > 0 && (
+                                <span>
+                                    Careful! You are about to remove {selectedProperties.size} selected {selectedProperties.size === 1 ? 'property' : 'properties'} from your favorites.
+                                </span>
+                            )}
+                        </p>
+
+                        <div className="flex space-x-3">
+                            <button
+                                onClick={() => setShowDeleteConfirmation(false)}
+                                className="flex-1 px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={confirmDeleteSelectedProperties}
+                                className="flex-1 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                            >
+                                Delete Favorites
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
