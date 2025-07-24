@@ -139,7 +139,7 @@ const DynamicMapComponent: React.FC<DynamicMapComponentProps> = ({
                                     ${metro.RegionName}
                                 </div>
                                 <div style="font-size: 14px; color: #059669; font-weight: 500;">
-                                    Average Rent: $${Math.round(metro.averageRent)}/month
+                                    Average Rent: $${Math.round(metro.averageRent).toLocaleString()}/month
                                 </div>
                                 ${metro.yoyPercent ? `
                                     <div style="font-size: 12px; color: ${metro.yoyPercent >= 0 ? '#059669' : '#DC2626'}; font-weight: 500;">
@@ -308,6 +308,7 @@ const DynamicMapComponent: React.FC<DynamicMapComponentProps> = ({
                     <div>Built: <span style="font-weight: 500;">${property.year_built} (${calculateAge(property.year_built)} years old)</span></div>
                     <div>Assessed: <span style="font-weight: 500; color: #059669;">${formatCurrency(property.assessed_value)}</span></div>
                     <div>Est. Equity: <span style="font-weight: 500; color: #2563EB;">${formatCurrency(property.estimated_equity)}</span></div>
+                    ${(property as any).marketRent ? `<div>Market Rent: <span style="font-weight: 500; color: #059669;">$${Math.round((property as any).marketRent).toLocaleString()}/month</span></div>` : ''}
                 </div>
                 
                 ${investmentFlags.length > 0 ? `

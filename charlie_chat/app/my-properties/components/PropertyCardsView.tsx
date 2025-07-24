@@ -436,9 +436,6 @@ export const PropertyCardsView: React.FC<PropertyCardsViewProps> = ({
                                         </div>
                                     </div>
 
-                                    <div className="flex items-center justify-between pt-2 border-t border-gray-100">
-                                        <span className="text-xs text-gray-500">Saved: {formatDate(property.saved_at)}</span>
-                                    </div>
                                 </div>
                             )}
 
@@ -487,11 +484,6 @@ export const PropertyCardsView: React.FC<PropertyCardsViewProps> = ({
                                         </div>
                                     )}
 
-                                    <div className="flex items-center justify-between pt-2 border-t border-gray-100 mt-2">
-                                        <span className="text-xs text-gray-500">
-                                            Skip Traced: {property.skipTraceData?.skipTracedAt || formatDate(new Date().toISOString())}
-                                        </span>
-                                    </div>
                                 </div>
                             )}
                         </div>

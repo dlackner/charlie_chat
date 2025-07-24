@@ -6,7 +6,6 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useMyPropertiesAccess } from "./components/useMyPropertiesAccess";
 import { PropertyCardsView } from './components/PropertyCardsView';
 import { MatrixView } from './components/MatrixView';
-import { getContactSummaryForPdf } from '../../components/skiptrace/skipTraceService';
 import { generateMarketingLetter } from '@/app/templates/generateMarketingLetter';
 import { exportPropertiesToCSV } from './components/csvExport';
 import { handleSkipTraceForProperty } from './components/skipTraceIntegration';

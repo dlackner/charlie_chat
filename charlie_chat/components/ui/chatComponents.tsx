@@ -73,6 +73,18 @@ return (
 
 // Charlie Thinking Loader Component
 export const CharlieThinkingLoader = () => {
+    const thinkingWords = [
+        'thinking', 'manifesting', 'incubating', 'calculating', 'unfurling',
+        'marinating', 'channeling', 'synthesizing', 'musing', 'actualizing',
+        'finagling', 'pontificating', 'philosophizing', 'coalescing', 'forming',
+        'stewing', 'working', 'inferring', 'vibing', 'generating'
+    ];
+    
+    const [currentWord] = useState(() => {
+        const randomIndex = Math.floor(Math.random() * thinkingWords.length);
+        return thinkingWords[randomIndex] || 'thinking';
+    });
+    
     return (
         <div className="flex justify-start mb-4">
             <div className="inline-block max-w-[75%] px-4 py-3 bg-gray-100 text-gray-800 rounded-xl rounded-bl-none shadow-sm">
@@ -80,7 +92,7 @@ export const CharlieThinkingLoader = () => {
                     <div className="w-5 h-5 border-2 border-gray-300 border-t-orange-500 rounded-full animate-spin"></div>
                     <div className="leading-relaxed">
                         <div className="font-medium text-gray-700">
-                            Charlie is thinking...
+                            Charlie is {currentWord}...
                         </div>
                     </div>
                 </div>
