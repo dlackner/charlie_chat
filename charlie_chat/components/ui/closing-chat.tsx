@@ -251,7 +251,18 @@ export function ClosingChat() {
     setCurrentBatch(0);
     setTotalPropertiesToAnalyze(0);
     setIsWaitingForContinuation(false);
-    localStorage.removeItem("threadId");
+    
+    // Clear chat and batch state when uploading a new document, but preserve sidebar listings
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem("threadId");
+      localStorage.removeItem("chatMessages");
+      // Keep listings and selectedListings for sidebar persistence
+      localStorage.removeItem("batchSelectedListings");
+      localStorage.removeItem("currentBatch");
+      localStorage.removeItem("totalPropertiesToAnalyze");
+      localStorage.removeItem("isWaitingForContinuation");
+    }
+    
     delete (window as any).__CURRENT_THREAD_ID__;
     setMessages(prev => [
       ...prev,

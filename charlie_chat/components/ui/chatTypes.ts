@@ -75,6 +75,7 @@ export interface ChatMessage {
   isPropertyDump?: boolean;
   isLoading?: boolean;
   propertyCount?: number;
+  timestamp?: number;
 }
 
 // Attachment Types
