@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Charlie Chat AI is a Next.js 15.3.0 application that provides AI-powered chat functionality with a focus on real estate analysis. The application uses TypeScript with strict mode enabled, Tailwind CSS v4 for styling, and integrates with OpenAI for AI capabilities, Supabase for authentication and database, and Stripe for payment processing.
+Charlie Chat AI is a Next.js 15.3.0 application that provides AI-powered chat functionality with a focus on real estate analysis. Built as an assistant-ui starter project, it uses TypeScript with strict mode enabled, Tailwind CSS v4 for styling, and integrates with OpenAI for AI capabilities, Supabase for authentication and database, and Stripe for payment processing. The app includes specialized real estate tools, skip trace functionality, and property analysis features.
 
 ## Key Commands
 
@@ -61,8 +61,12 @@ Required in `.env.local`:
 OPENAI_API_KEY=your_openai_api_key
 NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+SUPABASE_URL=your_supabase_url
+SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
 STRIPE_SECRET_KEY=your_stripe_secret_key
 STRIPE_WEBHOOK_SECRET=your_stripe_webhook_secret
+NEXTAUTH_SECRET=your_nextauth_secret
+NEXTAUTH_URL=http://localhost:3000
 ```
 
 ### Component Structure
@@ -76,9 +80,11 @@ STRIPE_WEBHOOK_SECRET=your_stripe_webhook_secret
 - Authenticate requests using NextAuth session
 
 ### State Management
-- Use React Context for global state (Auth, Listings)
+- Supabase Auth handled through custom AuthContext provider (`/contexts/AuthContext.tsx`)
+- Chat state managed through ChatContext (`/contexts/ChatContext.tsx`)
+- Listing data through ListingContext (`/contexts/ListingContext.tsx`)
 - Local state with React hooks for component-specific data
-- No external state management library
+- Zustand available for complex state needs
 
 ## Common Tasks
 
@@ -93,11 +99,24 @@ STRIPE_WEBHOOK_SECRET=your_stripe_webhook_secret
 3. Export functionality uses docx and jsPDF libraries
 
 ### Database Operations
-- Use Supabase client from `/lib/supabase/`
+- Use Supabase browser client from `/lib/supabase/client.ts` for client-side operations
+- Use Supabase admin client for server-side operations requiring elevated privileges
 - Follow existing patterns for CRUD operations
 - Handle errors consistently
 
 ### Adding New Pages
 1. Create directory in `/app/` with `page.tsx`
-2. Add authentication check if needed
+2. Add authentication check if needed using `useAuth()` hook
 3. Include proper metadata exports
+4. Wrap with appropriate context providers if needed
+
+### Skip Trace Integration
+- Skip trace functionality in `/components/skiptrace/`
+- Service handles property data enrichment
+- PDF generation for skip trace reports
+- API endpoint at `/api/skiptrace/`
+
+### Real Estate API Integration
+- External real estate data through `/api/realestateapi/`
+- Property classification and badge system
+- Advanced filtering capabilities

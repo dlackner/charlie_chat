@@ -11,7 +11,7 @@ interface PropertyModalProps {
   onRemoveFromFavorites: (propertyId: string) => void;
   onUpdateNotes?: (propertyId: string, notes: string) => void;
   onSkipTrace?: (propertyId: string, property: SavedProperty) => void;
-  hideActions?: boolean; // Add this prop to hide action buttons
+  hideActions?: boolean;
 }
 
 export const PropertyModal: React.FC<PropertyModalProps> = ({
@@ -23,16 +23,12 @@ export const PropertyModal: React.FC<PropertyModalProps> = ({
   onRemoveFromFavorites,
   onUpdateNotes,
   onSkipTrace,
-  hideActions = false // Default to false to preserve existing behavior
+  hideActions = false
 }) => {
-  
-  const [flippedCards, setFlippedCards] = useState<Set<string>>(new Set());
+  const [isFlipped, setIsFlipped] = useState(false);
   const [notesModalOpen, setNotesModalOpen] = useState<string | null>(null);
   const [localNotes, setLocalNotes] = useState<{ [key: string]: string }>({});
   const [selectedAction, setSelectedAction] = useState<{ [key: string]: 'select' | 'skiptrace' | null }>({});
-
-  // DEBUG: Add this console log to verify the prop is being received
-  console.log('PropertyModal hideActions prop:', hideActions);
 
   if (!isOpen || !property) return null;
 
@@ -42,7 +38,6 @@ export const PropertyModal: React.FC<PropertyModalProps> = ({
     }
   };
 
-  // All the helper functions from PropertyCardsView
   const calculateAge = (yearBuilt: number) => {
     return new Date().getFullYear() - yearBuilt;
   };
@@ -65,21 +60,12 @@ export const PropertyModal: React.FC<PropertyModalProps> = ({
     }).format(amount);
   };
 
-  const handleCardFlip = (propertyId: string, event: React.MouseEvent) => {
+  const handleCardFlip = (event: React.MouseEvent) => {
     const target = event.target as HTMLElement;
     if (target.closest('button')) {
       return;
     }
-
-    setFlippedCards(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(propertyId)) {
-        newSet.delete(propertyId);
-      } else {
-        newSet.add(propertyId);
-      }
-      return newSet;
-    });
+    setIsFlipped(prev => !prev);
   };
 
   const getInvestmentFlags = (property: SavedProperty) => {
@@ -131,9 +117,8 @@ export const PropertyModal: React.FC<PropertyModalProps> = ({
     }
   };
 
-  // Extract the exact card layout
-  const isFlipped = flippedCards.has(property.property_id);
   const investmentFlags = getInvestmentFlags(property);
+  const hasSkipTrace = !!(property as any).skipTraceData;
 
   return (
     <div 
@@ -154,230 +139,204 @@ export const PropertyModal: React.FC<PropertyModalProps> = ({
           </button>
         </div>
 
-        {/* Modal Content - EXACT CARD LAYOUT */}
+        {/* Modal Content */}
         <div className="p-4 overflow-y-auto">
-          
-          {/* Single Property Card - Exact same structure as PropertyCardsView */}
           <div
-            className={`relative bg-white rounded-lg border shadow-sm cursor-pointer ${selectedProperties.has(property.property_id)
-              ? 'border-blue-500 bg-blue-50'
-              : 'border-gray-200 hover:border-gray-300'
+            className={`relative bg-white rounded-lg border shadow-sm cursor-pointer ${
+              selectedProperties.has(property.property_id)
+                ? 'border-blue-500 bg-blue-50'
+                : hasSkipTrace
+                  ? 'border-3 border-blue-400'
+                  : 'border-gray-200 hover:border-gray-300'
             }`}
-            style={{
-              transformStyle: 'preserve-3d',
-              transform: isFlipped ? 'rotateY(180deg)' : 'rotateY(0deg)',
-              transition: 'transform 0.6s',
-              minHeight: '160px'
-            }}
-            onClick={(e) => handleCardFlip(property.property_id, e)}
+            style={{ minHeight: '160px' }}
+            onClick={handleCardFlip}
           >
             {/* FRONT SIDE */}
-            <div
-              className="p-3"
-              style={{
-                backfaceVisibility: 'hidden',
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                right: 0,
-                zIndex: 2
-              }}
-            >
-              <div className="flex gap-3">
-                {/* Left side - Property details */}
-                <div className="flex-1">
-                  <div className="flex items-start justify-between mb-2">
-                    <div className="flex-1 min-w-0">
-                      <h3 className="text-sm font-medium text-gray-900 truncate">
-                        {property.address_full}, {property.address_city}, {property.address_state}
-                      </h3>
-                    </div>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onRemoveFromFavorites(property.property_id);
-                        onClose(); // Close modal after removing
-                      }}
-                      className="ml-2 p-1 flex-shrink-0"
-                      title="Remove from favorites"
-                    >
-                      <Heart size={14} className="text-red-500 fill-current" />
-                    </button>
-                  </div>
-
-                  <div className="space-y-1 text-xs text-gray-600 mb-3">
-                    <div className="flex">
-                      <span>Units:&nbsp;</span>
-                      <span className="font-medium">{property.units_count}</span>
-                    </div>
-                    <div className="flex">
-                      <span>Built:&nbsp;</span>
-                      <span className="font-medium">{property.year_built} ({calculateAge(property.year_built)} years old)</span>
-                    </div>
-                    <div className="flex">
-                      <span>Assessed:&nbsp;</span>
-                      <span className="font-medium text-green-600">{formatCurrency(property.assessed_value)}</span>
-                    </div>
-                    <div className="flex">
-                      <span>Est. Equity:&nbsp;</span>
-                      <span className="font-medium text-blue-600">{formatCurrency(property.estimated_equity)}</span>
-                    </div>
-                  </div>
-
-                  {investmentFlags.length > 0 && (
-                    <div className="mb-2">
-                      <div className="flex flex-wrap gap-1">
-                        {investmentFlags.map(flag => (
-                          <span
-                            key={flag}
-                            className="inline-block px-1 py-0.5 text-xs rounded bg-orange-100 text-orange-800"
-                          >
-                            {flag}
-                          </span>
-                        ))}
+            {!isFlipped && (
+              <div className="p-3">
+                <div className="flex gap-3">
+                  <div className="flex-1">
+                    <div className="flex items-start justify-between mb-2">
+                      <div className="flex-1 min-w-0">
+                        <h3 className="text-sm font-medium text-gray-900 truncate">
+                          {property.address_full}, {property.address_city}, {property.address_state}
+                        </h3>
                       </div>
-                    </div>
-                  )}
-
-                  {!hideActions && (
-                    <div className="flex items-center justify-between pt-2 border-t border-gray-100">
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          handleActionChange(property.property_id, 'select');
+                          onRemoveFromFavorites(property.property_id);
+                          onClose();
                         }}
-                        className="flex items-center space-x-1"
-                        title="Select"
+                        className="ml-2 p-1 flex-shrink-0"
+                        title="Remove from favorites"
                       >
-                        {selectedAction[property.property_id] === 'select' ?
-                          <CheckSquare size={14} className="text-blue-600" /> :
-                          <Square size={14} className="text-gray-400" />
-                        }
-                        <span className="text-xs text-gray-600">Select</span>
+                        <Heart size={14} className="text-red-500 fill-current" />
                       </button>
                     </div>
-                  )}
-                </div>
 
-                {/* Right side - Notes */}
-                <div className="w-32 flex-shrink-0">
-                  <div className="bg-gray-50 rounded border p-2 h-[120px]">
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-xs font-medium text-gray-700">Notes</span>
-                      <button
+                    <div className="space-y-1 text-xs text-gray-600 mb-3">
+                      <div className="flex">
+                        <span>Units:&nbsp;</span>
+                        <span className="font-medium">{property.units_count}</span>
+                      </div>
+                      <div className="flex">
+                        <span>Built:&nbsp;</span>
+                        <span className="font-medium">{property.year_built} ({calculateAge(property.year_built)} years old)</span>
+                      </div>
+                      <div className="flex">
+                        <span>Assessed:&nbsp;</span>
+                        <span className="font-medium text-green-600">{formatCurrency(property.assessed_value)}</span>
+                      </div>
+                      <div className="flex">
+                        <span>Est. Equity:&nbsp;</span>
+                        <span className="font-medium text-blue-600">{formatCurrency(property.estimated_equity)}</span>
+                      </div>
+                    </div>
+
+                    {investmentFlags.length > 0 && (
+                      <div className="mb-2">
+                        <div className="flex flex-wrap gap-1">
+                          {investmentFlags.map(flag => (
+                            <span
+                              key={flag}
+                              className="inline-block px-1 py-0.5 text-xs rounded bg-orange-100 text-orange-800"
+                            >
+                              {flag}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {!hideActions && (
+                      <div className="flex items-center justify-between pt-2 border-t border-gray-100">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleActionChange(property.property_id, 'select');
+                          }}
+                          className="flex items-center space-x-1"
+                          title="Select"
+                        >
+                          {selectedAction[property.property_id] === 'select' ?
+                            <CheckSquare size={14} className="text-blue-600" /> :
+                            <Square size={14} className="text-gray-400" />
+                          }
+                          <span className="text-xs text-gray-600">Select</span>
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="w-32 flex-shrink-0">
+                    <div className="bg-gray-50 rounded border p-2 h-[120px]">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-xs font-medium text-gray-700">Notes</span>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setNotesModalOpen(property.property_id);
+                          }}
+                          className="text-gray-400 hover:text-gray-600"
+                          title="Open notes editor"
+                        >
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <path d="M15 3h6v6M14 10l6.1-6.1M9 21H3v-6M10 14l-6.1 6.1" />
+                          </svg>
+                        </button>
+                      </div>
+                      <div
                         onClick={(e) => {
                           e.stopPropagation();
                           setNotesModalOpen(property.property_id);
                         }}
-                        className="text-gray-400 hover:text-gray-600"
-                        title="Open notes editor"
+                        className="text-xs text-gray-600 cursor-pointer h-20 overflow-hidden"
                       >
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                          <path d="M15 3h6v6M14 10l6.1-6.1M9 21H3v-6M10 14l-6.1 6.1" />
-                        </svg>
-                      </button>
-                    </div>
-                    <div
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setNotesModalOpen(property.property_id);
-                      }}
-                      className="text-xs text-gray-600 cursor-pointer h-20 overflow-hidden"
-                    >
-                      {getCurrentNotes(property) ? (
-                        <span>{truncateNotes(getCurrentNotes(property))}</span>
-                      ) : (
-                        <span className="text-gray-400 italic">Click to add notes...</span>
-                      )}
+                        {getCurrentNotes(property) ? (
+                          <span>{truncateNotes(getCurrentNotes(property))}</span>
+                        ) : (
+                          <span className="text-gray-400 italic">Click to add notes...</span>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>
               </div>
-            </div>
+            )}
 
             {/* BACK SIDE */}
-            <div
-              className="p-3"
-              style={{
-                backfaceVisibility: 'hidden',
-                transform: 'rotateY(180deg)',
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                right: 0,
-                zIndex: 1
-              }}
-            >
-              <div className="mb-3">
-                <h4 className="text-xs font-medium text-gray-800 mb-1">Current Ownership</h4>
-                <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs text-gray-600">
-                  <div className="flex">
-                    <span>Last Sale:&nbsp;</span>
-                    <span className="font-medium">{formatDate(property.last_sale_date)}</span>
-                  </div>
-                  <div className="flex">
-                    <span>Years Owned:&nbsp;</span>
-                    <span className="font-medium">{property.years_owned}</span>
-                  </div>
-                  <div className="flex">
-                    <span>Out-of-State Owner:&nbsp;</span>
-                    <span className="font-medium">{property.out_of_state_absentee_owner ? 'Yes' : 'No'}</span>
-                  </div>
-                  <div className="flex">
-                    <span>Last Sale Amount:&nbsp;</span>
-                    <span className="font-medium">{formatCurrency(property.assessed_value)}</span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="mb-3">
-                <h4 className="text-xs font-medium text-gray-800 mb-1">Property Flags</h4>
-                <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs text-gray-600">
-                  <div className="flex">
-                    <span>Assumable:&nbsp;</span>
-                    <span className="font-medium">No</span>
-                  </div>
-                  <div className="flex">
-                    <span>REO:&nbsp;</span>
-                    <span className="font-medium">{property.reo ? 'Yes' : 'No'}</span>
-                  </div>
-                  <div className="flex">
-                    <span>Auction:&nbsp;</span>
-                    <span className="font-medium">{property.auction ? 'Yes' : 'No'}</span>
-                  </div>
-                  <div className="flex">
-                    <span>Tax Lien:&nbsp;</span>
-                    <span className="font-medium">{property.tax_lien ? 'Yes' : 'No'}</span>
-                  </div>
-                  <div className="flex">
-                    <span>Pre-Foreclosure:&nbsp;</span>
-                    <span className="font-medium">{property.pre_foreclosure ? 'Yes' : 'No'}</span>
-                  </div>
-                  {!hideActions && (
-                    <div className="flex items-center">
-                      <span>Skip Trace:&nbsp;</span>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleActionChange(property.property_id, 'skiptrace');
-                        }}
-                        className="ml-1"
-                        title="Skip Trace"
-                      >
-                        {selectedAction[property.property_id] === 'skiptrace' ?
-                          <div className="w-3 h-3 rounded-full bg-blue-600 border-2 border-blue-600"></div> :
-                          <div className="w-3 h-3 rounded-full border-2 border-gray-400"></div>
-                        }
-                      </button>
+            {isFlipped && (
+              <div className="p-3">
+                <div className="mb-3">
+                  <h4 className="text-xs font-medium text-gray-800 mb-1">Current Ownership</h4>
+                  <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs text-gray-600">
+                    <div className="flex">
+                      <span>Last Sale:&nbsp;</span>
+                      <span className="font-medium">{formatDate(property.last_sale_date)}</span>
                     </div>
-                  )}
+                    <div className="flex">
+                      <span>Years Owned:&nbsp;</span>
+                      <span className="font-medium">{property.years_owned}</span>
+                    </div>
+                    <div className="flex">
+                      <span>Out-of-State Owner:&nbsp;</span>
+                      <span className="font-medium">{property.out_of_state_absentee_owner ? 'Yes' : 'No'}</span>
+                    </div>
+                    <div className="flex">
+                      <span>Last Sale Amount:&nbsp;</span>
+                      <span className="font-medium">{formatCurrency(property.assessed_value)}</span>
+                    </div>
+                  </div>
                 </div>
-              </div>
 
-              <div className="flex items-center justify-between pt-2 border-t border-gray-100">
-                <span className="text-xs text-gray-500">Saved: {formatDate(property.saved_at)}</span>
+                <div className="mb-3">
+                  <h4 className="text-xs font-medium text-gray-800 mb-1">Property Flags</h4>
+                  <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs text-gray-600">
+                    <div className="flex">
+                      <span>Assumable:&nbsp;</span>
+                      <span className="font-medium">No</span>
+                    </div>
+                    <div className="flex">
+                      <span>REO:&nbsp;</span>
+                      <span className="font-medium">{property.reo ? 'Yes' : 'No'}</span>
+                    </div>
+                    <div className="flex">
+                      <span>Auction:&nbsp;</span>
+                      <span className="font-medium">{property.auction ? 'Yes' : 'No'}</span>
+                    </div>
+                    <div className="flex">
+                      <span>Tax Lien:&nbsp;</span>
+                      <span className="font-medium">{property.tax_lien ? 'Yes' : 'No'}</span>
+                    </div>
+                    <div className="flex">
+                      <span>Pre-Foreclosure:&nbsp;</span>
+                      <span className="font-medium">{property.pre_foreclosure ? 'Yes' : 'No'}</span>
+                    </div>
+                    {!hideActions && (
+                      <div className="flex items-center">
+                        <span>Skip Trace:&nbsp;</span>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleActionChange(property.property_id, 'skiptrace');
+                          }}
+                          className="ml-1"
+                          title="Skip Trace"
+                        >
+                          {selectedAction[property.property_id] === 'skiptrace' ?
+                            <div className="w-3 h-3 rounded-full bg-blue-600 border-2 border-blue-600"></div> :
+                            <div className="w-3 h-3 rounded-full border-2 border-gray-400"></div>
+                          }
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
               </div>
-            </div>
+            )}
           </div>
         </div>
 

@@ -59,6 +59,20 @@ export const SupabaseAuthProvider = ({ children }: { children: React.ReactNode }
       (event, currentSession) => {
         if (!isMounted) return;
         console.log(`[AuthContext] onAuthStateChange event: ${event}, User ID: ${currentSession?.user?.id || 'null'}`);
+        
+        // Clear localStorage on sign out for privacy/security
+        if (event === 'SIGNED_OUT' && typeof window !== 'undefined') {
+          console.log('[AuthContext] Clearing localStorage on sign out');
+          localStorage.removeItem("threadId");
+          localStorage.removeItem("chatMessages");
+          localStorage.removeItem("listings");
+          localStorage.removeItem("selectedListings");
+          localStorage.removeItem("batchSelectedListings");
+          localStorage.removeItem("currentBatch");
+          localStorage.removeItem("totalPropertiesToAnalyze");
+          localStorage.removeItem("isWaitingForContinuation");
+        }
+        
         setUser(currentSession?.user ?? null);
         setSession(currentSession ?? null);
         

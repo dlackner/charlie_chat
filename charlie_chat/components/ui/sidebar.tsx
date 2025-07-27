@@ -978,15 +978,36 @@ export const Sidebar = ({
                     </div>
                 </div>
 
-                <div className="flex justify-center">
+                <div className="flex justify-center gap-2">
                     <button
                         onClick={() => handleSearch({})}
                         id="sidebar-search"
                         disabled={isSearching}
-                        className="w-60 bg-orange-500 text-white py-2 px-4 rounded-lg font-semibold transition duration-200 ease-in-out transform hover:scale-105 hover:bg-orange-600 focus:outline-none focus:ring-2 focus:ring-orange-400 focus:ring-opacity-75 hover:shadow-lg active:scale-95 disabled:opacity-75 disabled:cursor-not-allowed"
+                        className="flex-1 bg-orange-500 text-white py-2 px-4 rounded-lg font-semibold transition duration-200 ease-in-out transform hover:scale-105 hover:bg-orange-600 focus:outline-none focus:ring-2 focus:ring-orange-400 focus:ring-opacity-75 hover:shadow-lg active:scale-95 disabled:opacity-75 disabled:cursor-not-allowed"
                     >
                         {isSearching ? "Searching..." : "Search"}
                     </button>
+                    {listings.length > 0 && (
+                        <button
+                            onClick={() => {
+                                // Clear all listings and selected listings from localStorage
+                                if (typeof window !== 'undefined') {
+                                    localStorage.removeItem("listings");
+                                    localStorage.removeItem("selectedListings");
+                                }
+                                // Clear from state
+                                if (clearSelectedListings) {
+                                    clearSelectedListings();
+                                }
+                                // Clear from listings display
+                                onSearch({ clearResults: true });
+                            }}
+                            className="py-2 px-3 text-gray-600 bg-gray-100 rounded-lg transition text-sm hover:bg-gray-200 whitespace-nowrap"
+                            title="Clear all search results"
+                        >
+                            Clear All
+                        </button>
+                    )}
                 </div>
 
                 {creditsError && (
@@ -1173,16 +1194,29 @@ export const Sidebar = ({
                     <div className="fixed bottom-4 left-4 w-[320px] z-40">
                         <div className="p-4 border rounded-lg bg-orange-500 text-sm shadow text-white">
                             <p className="mb-2 font-medium">Add {selectedListings.length} {selectedListings.length === 1 ? "property" : "properties"} to Charlie Chat</p>
-                            <button
-                                onClick={() => {
-                                    const filteredListings = selectedListings.map(listing => filterRelevantFields(listing));
-                                    onSendToGPT(filteredListings);
-                                }}
-                                className="text-white font-medium px-4 py-2 rounded-lg hover:opacity-90 transition w-full cursor-pointer"
-                                style={{ backgroundColor: '#1C599F' }}
-                            >
-                                Begin Analysis
-                            </button>
+                            <div className="flex gap-2">
+                                <button
+                                    onClick={() => {
+                                        const filteredListings = selectedListings.map(listing => filterRelevantFields(listing));
+                                        onSendToGPT(filteredListings);
+                                    }}
+                                    className="text-white font-medium px-4 py-2 rounded-lg hover:opacity-90 transition flex-1 cursor-pointer"
+                                    style={{ backgroundColor: '#1C599F' }}
+                                >
+                                    Begin Analysis
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        if (clearSelectedListings) {
+                                            clearSelectedListings();
+                                        }
+                                    }}
+                                    className="text-orange-500 bg-white font-medium px-3 py-2 rounded-lg hover:bg-gray-100 transition cursor-pointer text-xs"
+                                    title="Clear selected properties"
+                                >
+                                    Clear
+                                </button>
+                            </div>
                         </div>
                     </div>
                 )
