@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { X, Heart, CheckSquare, Square } from 'lucide-react';
-import { CoreSavedProperty as SavedProperty } from '../types';
+import { PageSavedProperty as SavedProperty } from '../types';
 
 interface PropertyModalProps {
   isOpen: boolean;

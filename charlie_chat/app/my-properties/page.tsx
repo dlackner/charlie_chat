@@ -15,7 +15,6 @@ import { RentDataProcessor } from './components/rentDataProcessor';
 
 import {
     Star,
-    Download,
     FileText,
     ChevronDown,
     Grid3X3,
@@ -30,6 +29,9 @@ import {
 
 type ViewMode = 'cards' | 'map' | 'matrix';
 type DocumentTemplate = 'marketing-letter' | 'loi-1' | 'loi-2' | 'loi-3' | 'loi-4' | 'loi-5';
+
+// Skip trace re-run cutoff - easily changeable
+const SKIP_TRACE_REFRESH_MONTHS = 6;
 
 export default function MyPropertiesPage() {
     const { user, supabase, isLoading: isAuthLoading } = useAuth();
@@ -46,12 +48,25 @@ export default function MyPropertiesPage() {
     const [errorMessage, setErrorMessage] = useState('');
     const [skipTraceLoading, setSkipTraceLoading] = useState<Set<string>>(new Set());
     const [skipTraceErrors, setSkipTraceErrors] = useState<{ [key: string]: string }>({});
+    const [bulkSkipTraceLoading, setBulkSkipTraceLoading] = useState(false);
+    const [bulkSkipTraceProgress, setBulkSkipTraceProgress] = useState({ completed: 0, total: 0 });
     const [matrixSelectionMode, setMatrixSelectionMode] = useState<'analysis' | 'selection'>('analysis');
     const [rentData, setRentData] = useState<any[]>([]);
     const [isLoadingRentData, setIsLoadingRentData] = useState(true);
     const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
 
     const dropdownRef = useRef<HTMLDivElement>(null);
+
+    // Helper function to check if a property can be skip traced
+    const canSkipTrace = (property: SavedProperty): boolean => {
+        if (!property.last_skip_trace) return true; // Never attempted
+        
+        const lastAttempt = new Date(property.last_skip_trace);
+        const cutoffDate = new Date();
+        cutoffDate.setMonth(cutoffDate.getMonth() - SKIP_TRACE_REFRESH_MONTHS);
+        
+        return lastAttempt < cutoffDate; // Can re-run if older than cutoff
+    };
 
     // Close dropdown when clicking outside for More button on Document Generation
     useEffect(() => {
@@ -207,9 +222,12 @@ export default function MyPropertiesPage() {
     };
 
     const selectAllProperties = () => {
-        if (selectedProperties.size === filteredProperties.length) {
+        if (selectedProperties.size > 0) {
+            // If any properties are selected, deselect all and clear search
             setSelectedProperties(new Set());
+            setSearchTerm('');
         } else {
+            // If no properties are selected, select all
             setSelectedProperties(new Set(filteredProperties.map(p => p.property_id)));
         }
     };
@@ -358,8 +376,44 @@ export default function MyPropertiesPage() {
         console.log(`Skip trace completed for ${skipTraceData.name}`);
     };
 
-    const handleSkipTraceError = (propertyId: string, error: string) => {
-        console.error('Skip trace error for:', propertyId, error);
+    const handleSkipTraceError = async (propertyId: string, error: string) => {
+        console.log('Skip trace failed for property:', propertyId, '-', error);
+
+        // Update last_skip_trace in database even when it fails
+        if (user && supabase) {
+            try {
+                console.log(`Attempting to update last_skip_trace for property ${propertyId}`);
+                const { error: updateError, data: updateData } = await supabase
+                    .from('saved_properties')
+                    .update({ 
+                        last_skip_trace: new Date().toISOString()
+                    })
+                    .eq('property_id', propertyId)
+                    .select();
+
+                console.log('Update result:', { updateError, updateData });
+
+                if (updateError) {
+                    console.error('Error updating last_skip_trace for failed attempt:', updateError);
+                } else {
+                    console.log(`Database updated successfully. Rows affected:`, updateData?.length || 0);
+                    // Update local state to reflect the attempt - force new object reference
+                    setSavedProperties(prev =>
+                        prev.map(p =>
+                            p.property_id === propertyId
+                                ? { 
+                                    ...p, 
+                                    last_skip_trace: new Date().toISOString()
+                                }
+                                : p
+                        )
+                    );
+                    console.log(`Updated last_skip_trace for property ${propertyId} after failed skip trace`);
+                }
+            } catch (err) {
+                console.error('Unexpected error updating last_skip_trace:', err);
+            }
+        }
 
         // Add error to state
         setSkipTraceErrors(prev => ({
@@ -375,6 +429,57 @@ export default function MyPropertiesPage() {
         });
 
         alert(`Skip trace failed: ${error}`);
+    };
+
+    const handleBulkSkipTrace = async () => {
+        if (filteredProperties.length === 0) return;
+        
+        setBulkSkipTraceLoading(true);
+        setBulkSkipTraceProgress({ completed: 0, total: filteredProperties.length });
+
+        // Get properties that can be skip traced (never attempted or >6 months old)
+        const propertiesToTrace = filteredProperties.filter(property => canSkipTrace(property));
+        
+        if (propertiesToTrace.length === 0) {
+            alert('All properties have been recently skip traced.');
+            setBulkSkipTraceLoading(false);
+            return;
+        }
+
+        console.log(`Starting bulk skip trace for ${propertiesToTrace.length} properties...`);
+
+        let completed = 0;
+        const errors: string[] = [];
+
+        // Process properties sequentially to avoid overwhelming the API
+        for (const property of propertiesToTrace) {
+            try {
+                await new Promise(resolve => setTimeout(resolve, 500)); // Rate limiting
+                
+                await handleSkipTraceForProperty(
+                    property.property_id,
+                    property,
+                    (propertyId: string, skipTraceData: any) => {
+                        handleSkipTraceSuccess(propertyId, skipTraceData);
+                        completed++;
+                        setBulkSkipTraceProgress({ completed, total: propertiesToTrace.length });
+                    },
+                    (propertyId: string, error: string) => {
+                        errors.push(`${property.address_full}: ${error}`);
+                        completed++;
+                        setBulkSkipTraceProgress({ completed, total: propertiesToTrace.length });
+                    }
+                );
+            } catch (error) {
+                errors.push(`${property.address_full}: ${error}`);
+                completed++;
+                setBulkSkipTraceProgress({ completed, total: propertiesToTrace.length });
+            }
+        }
+
+        setBulkSkipTraceLoading(false);
+        
+        alert('Skip trace complete.');
     };
 
     const handleDocumentGeneration = async (template: DocumentTemplate) => {
@@ -547,11 +652,11 @@ export default function MyPropertiesPage() {
                                         disabled={filteredProperties.length === 0}
                                         className="flex items-center space-x-2 text-sm text-gray-700 hover:text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed"
                                     >
-                                        {selectedProperties.size === filteredProperties.length && filteredProperties.length > 0 ?
+                                        {selectedProperties.size > 0 ?
                                             <CheckSquare size={16} /> : <Square size={16} />
                                         }
                                         <span>
-                                            {selectedProperties.size === filteredProperties.length && filteredProperties.length > 0
+                                            {selectedProperties.size > 0
                                                 ? 'Deselect All'
                                                 : 'Select All'
                                             }
@@ -587,14 +692,19 @@ export default function MyPropertiesPage() {
                                         />
                                     </div>
 
-                                    {/* CSV Download */}
+                                    {/* Skip Trace All */}
                                     <button
-                                        onClick={handleCSVDownload}
-                                        disabled={selectedProperties.size === 0}
-                                        className="flex items-center space-x-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm transition-colors"
+                                        onClick={handleBulkSkipTrace}
+                                        disabled={filteredProperties.length === 0 || bulkSkipTraceLoading}
+                                        className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm transition-colors"
                                     >
-                                        <Download size={16} />
-                                        <span>Download CSV</span>
+                                        <Search size={16} />
+                                        <span>
+                                            {bulkSkipTraceLoading 
+                                                ? `Skip Tracing... (${bulkSkipTraceProgress.completed}/${bulkSkipTraceProgress.total})`
+                                                : `Skip Trace All (${filteredProperties.length})`
+                                            }
+                                        </span>
                                     </button>
 
                                     {/* Document Generation Dropdown */}
@@ -652,6 +762,19 @@ export default function MyPropertiesPage() {
                                                         className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                                                     >
                                                         &gt; Letter of Intent
+                                                    </button>
+
+                                                    <div className="border-t border-gray-200 my-1"></div>
+
+                                                    {/* ── Download CSV ─────────────────────────────── */}
+                                                    <button
+                                                        onClick={() => {
+                                                            handleCSVDownload();
+                                                            setShowDocumentDropdown(false);
+                                                        }}
+                                                        className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                                    >
+                                                        &gt; Download CSV
                                                     </button>
                                                 </div>
                                             </div>
@@ -726,6 +849,8 @@ export default function MyPropertiesPage() {
                         onStartSearching={handleStartSearching}
                         onUpdateNotes={handleUpdateNotes}
                         onSkipTrace={handleSkipTrace}
+                        onSkipTraceError={handleSkipTraceError}
+                        canSkipTrace={canSkipTrace}
                         isLoading={isLoadingProperties}
                     />
                 ) : viewMode === 'map' ? (

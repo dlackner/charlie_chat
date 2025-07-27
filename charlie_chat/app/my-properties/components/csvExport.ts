@@ -127,7 +127,7 @@ export const exportPropertiesToCSV = (
 
   const formatCurrency = (amount: number | null | undefined) => {
     if (!amount || amount === 0) return '';
-    return `$${amount.toLocaleString()}`;
+    return `${amount.toLocaleString()}`;
   };
 
   const formatBoolean = (value: boolean | null | undefined) => {
@@ -237,17 +237,16 @@ export const exportPropertiesToCSV = (
       escapeCSV(property.notes || ''),
       escapeCSV(formatDate(property.saved_at)),
 
-      // Skip Trace (handle optional skipTraceData blob)
-      // Skip Trace (handle optional skipTraceData blob)
-      escapeCSV(property.mailAddress?.skipTraceData?.name || ''),
-      escapeCSV(property.mailAddress?.skipTraceData?.age || ''),
-      escapeCSV(property.mailAddress?.skipTraceData?.gender || ''),
-      escapeCSV(property.mailAddress?.skipTraceData?.occupation || ''),
-      escapeCSV(property.mailAddress?.skipTraceData?.phone1 || ''),
-      escapeCSV(property.mailAddress?.skipTraceData?.phone2 || ''),
-      escapeCSV(property.mailAddress?.skipTraceData?.email || ''),
-      escapeCSV(property.mailAddress?.skipTraceData?.currentAddress || ''),
-      escapeCSV(formatDate(property.mailAddress?.skipTraceData?.skipTracedAt)),
+      // Skip Trace - FIXED: Access from property.skipTraceData instead of property.mailAddress.skipTraceData
+      escapeCSV(property.skipTraceData?.name || ''),
+      escapeCSV(property.skipTraceData?.age || ''),
+      escapeCSV(property.skipTraceData?.gender || ''),
+      escapeCSV(property.skipTraceData?.occupation || ''),
+      escapeCSV(property.skipTraceData?.phone1Label || property.skipTraceData?.phone1 || ''),
+      escapeCSV(property.skipTraceData?.phone2Label || property.skipTraceData?.phone2 || ''),
+      escapeCSV(property.skipTraceData?.email || ''),
+      escapeCSV(property.skipTraceData?.currentAddress || ''),
+      escapeCSV(formatDate(property.skipTraceData?.skipTracedAt)),
 
     ].join(',');
   });

@@ -76,7 +76,7 @@ export const CharlieThinkingLoader = () => {
     const thinkingWords = [
         'thinking', 'manifesting', 'incubating', 'calculating', 'unfurling',
         'marinating', 'channeling', 'synthesizing', 'musing', 'actualizing',
-        'finagling', 'pontificating', 'philosophizing', 'coalescing', 'forming',
+        'pontificating', 'philosophizing', 'coalescing', 'forming',
         'stewing', 'working', 'inferring', 'vibing', 'generating'
     ];
     

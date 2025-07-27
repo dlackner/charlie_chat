@@ -10,7 +10,7 @@ import {
     formatCurrency
 } from './matrixCalculations';
 import { PropertyModal } from './PropertyModal';
-import { CoreSavedProperty as SavedProperty } from '../types';
+import { PageSavedProperty as SavedProperty } from '../types';
 
 interface MatrixViewProps {
     properties: SavedProperty[];
@@ -37,6 +37,9 @@ export const MatrixView: React.FC<MatrixViewProps> = ({
     // Modal state management
     const [selectedProperty, setSelectedProperty] = useState<SavedProperty | null>(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
+    
+    // Track properties hidden from matrix view via right-click
+    const [hiddenFromMatrix, setHiddenFromMatrix] = useState<Set<string>>(new Set());
 
     // Use real properties data
     const testProperties = properties;
@@ -45,7 +48,14 @@ export const MatrixView: React.FC<MatrixViewProps> = ({
         totalProperties: testProperties.length,
         sampleProperty: testProperties[0],
         hasAssessedValue: testProperties.filter(p => p.assessed_value && p.assessed_value > 0).length,
-        hasYearBuilt: testProperties.filter(p => p.year_built).length
+        hasEstimatedValue: testProperties.filter(p => p.estimated_value && p.estimated_value > 0).length,
+        hasYearBuilt: testProperties.filter(p => p.year_built && p.year_built > 0).length,
+        hasUnitsCount: testProperties.filter(p => p.units_count && p.units_count > 0).length,
+        completePropertiesCount: testProperties.filter(p =>
+            (p.assessed_value > 0 || p.estimated_value > 0) &&
+            p.year_built && p.year_built > 0 &&
+            p.units_count && p.units_count > 0
+        ).length
     });
 
     // Filter properties with complete required data (value and year_built)
@@ -57,45 +67,46 @@ export const MatrixView: React.FC<MatrixViewProps> = ({
         p.units_count > 0
     );
 
-    // Properties missing required data
+    // Properties missing required data (exact inverse of completeProperties filter)
     const incompleteProperties = testProperties.filter(p =>
-        (!p.assessed_value && !p.estimated_value) ||
-        (p.assessed_value === 0 && p.estimated_value === 0) ||
-        !p.year_built ||
-        p.year_built === 0 ||
-        !p.units_count ||
-        p.units_count === 0
+        !((p.assessed_value > 0 || p.estimated_value > 0) &&
+          p.year_built &&
+          p.year_built > 0 &&
+          p.units_count &&
+          p.units_count > 0)
     );
 
-    // DYNAMIC Y-AXIS: Filter out selected properties in selection mode for axis calculation
-    const propertiesForAxisCalculation = completeProperties.filter(p => !selectedProperties.has(p.property_id));
-
-    // Calculate value range for Y-axis labels based on VISIBLE properties only
-    const propertyValues = propertiesForAxisCalculation.map(p => getPropertyValue(p)).filter(v => v > 0).sort((a, b) => a - b);
-    const minValue = propertyValues.length > 0 ? propertyValues[0] : 0;
-    const actualMaxValue = propertyValues.length > 0 ? Math.max(...propertyValues) : 1000000;
-    const maxValue = actualMaxValue * 1.1;
-    const valueRange = maxValue - minValue;
-
-    // Calculate positions for complete properties (SIMPLIFIED - no quadrant determination needed)
+    // Calculate positions for complete properties (filter out right-click hidden ones)
     const matrixProperties = completeProperties
-        .filter(property => !selectedProperties.has(property.property_id))
+        .filter(property => !hiddenFromMatrix.has(property.property_id))
         .map(property => ({
             ...property,
-            // Use the VISIBLE properties for position calculation to get accurate scaling
-            position: calculateMatrixPosition(property, propertiesForAxisCalculation),
             propertyValue: getPropertyValue(property),
             valuePerUnit: calculateValuePerUnit(property),
             propertyAge: calculatePropertyAge(property.year_built)
         }));
 
+    // Calculate value range for Y-axis labels based on visible matrix properties only
+    const propertyValues = matrixProperties.map(p => p.propertyValue).filter(v => v > 0).sort((a, b) => a - b);
+    const minValue = propertyValues.length > 0 ? propertyValues[0] : 0;
+    const actualMaxValue = propertyValues.length > 0 ? Math.max(...propertyValues) : 1000000;
+    const maxValue = actualMaxValue * 1.1;
+    const valueRange = maxValue - minValue;
+
+    // Add position calculation using visible properties for scaling
+    const matrixPropertiesWithPositions = matrixProperties.map(property => ({
+        ...property,
+        // Use visible matrix properties for position calculation to get accurate scaling
+        position: calculateMatrixPosition(property, matrixProperties),
+    }));
+
     // Count properties by visual position in quadrants (simplified)
     const quadrantCounts = {
-        GOLDMINES: matrixProperties.filter(p => p.position.x >= 50 && p.position.y >= 67).length,
-        FIXERS: matrixProperties.filter(p => p.position.x >= 50 && p.position.y <= 33).length,
-        SLEEPERS: matrixProperties.filter(p => p.position.x <= 50 && p.position.y >= 67).length,
-        AVOID: matrixProperties.filter(p => p.position.x <= 50 && p.position.y <= 33).length,
-        MIDDLE: matrixProperties.filter(p => p.position.y > 33 && p.position.y < 67).length,
+        GOLDMINES: matrixPropertiesWithPositions.filter(p => p.position.x >= 50 && p.position.y >= 67).length,
+        FIXERS: matrixPropertiesWithPositions.filter(p => p.position.x >= 50 && p.position.y <= 33).length,
+        SLEEPERS: matrixPropertiesWithPositions.filter(p => p.position.x <= 50 && p.position.y >= 67).length,
+        AVOID: matrixPropertiesWithPositions.filter(p => p.position.x <= 50 && p.position.y <= 33).length,
+        MIDDLE: matrixPropertiesWithPositions.filter(p => p.position.y > 33 && p.position.y < 67).length,
     };
 
     // Calculate clean axis values for Y-axis labels - MOVED HERE!
@@ -148,10 +159,7 @@ export const MatrixView: React.FC<MatrixViewProps> = ({
                     <div className="mb-6">
                         <h2 className="text-2xl font-bold text-gray-900 mb-2">Deal Quality Matrix</h2>
                         <p className="text-gray-600">
-                            Properties positioned by Property Age vs Assessed Value ({matrixProperties.length} plotted)
-                            {selectionMode === 'selection' && selectedProperties.size > 0 && (
-                                <span className="text-blue-600"> • {selectedProperties.size} hidden for analysis</span>
-                            )}
+                            Properties positioned by Property Age vs Assessed Value ({matrixPropertiesWithPositions.length} plotted)
                         </p>
                     </div>
 
@@ -256,7 +264,7 @@ export const MatrixView: React.FC<MatrixViewProps> = ({
                                 <div className="absolute inset-0">
                                     {(() => {
                                         // Calculate dynamic dot sizing based on visible properties
-                                        const valuePerUnits = matrixProperties
+                                        const valuePerUnits = matrixPropertiesWithPositions
                                             .map(p => p.valuePerUnit)
                                             .filter(v => v > 0)
                                             .sort((a, b) => a - b);
@@ -278,7 +286,7 @@ export const MatrixView: React.FC<MatrixViewProps> = ({
                                             return Math.round(minDotSize + (ratio * (maxDotSize - minDotSize)));
                                         };
 
-                                        return matrixProperties.map(property => {
+                                        return matrixPropertiesWithPositions.map(property => {
                                             const dotSize = calculateDynamicDotSize(property.valuePerUnit);
 
                                             return (
@@ -300,7 +308,15 @@ export const MatrixView: React.FC<MatrixViewProps> = ({
                                                     }}
                                                     onContextMenu={(e) => {
                                                         e.preventDefault();
-                                                        onToggleSelection(property.property_id);
+                                                        setHiddenFromMatrix(prev => {
+                                                            const newSet = new Set(prev);
+                                                            if (newSet.has(property.property_id)) {
+                                                                newSet.delete(property.property_id);
+                                                            } else {
+                                                                newSet.add(property.property_id);
+                                                            }
+                                                            return newSet;
+                                                        });
                                                     }}
                                                     title={`${property.address_full} - ${formatCurrency(property.propertyValue)}, ${property.propertyAge} years old, ${formatCurrency(property.valuePerUnit)}/unit • Right-click to remove`}
                                                 />
