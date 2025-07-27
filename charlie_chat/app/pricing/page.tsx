@@ -111,7 +111,7 @@ export default function PricingPage() {
             <li>✔️ Deal tactics</li>
             <li>✔️ Closing strategies</li>
           </ul>
-          <p className="text-sm italic text-gray-600 mb-3">Try for free! Unlimited searches for 3 days</p>
+          <p className="text-sm italic text-gray-600 mb-3">Try for free! No credit card required. Includes 250 free property matches.</p>
           <button
             onClick={() => handleCheckout(isAnnual ? CHARLIE_CHAT_ANNUAL : CHARLIE_CHAT_MONTHLY, isAnnual ? "annual" : "monthly")}
             className="mt-auto w-full bg-black text-white py-2 rounded font-semibold transition duration-200 transform hover:scale-105 hover:bg-orange-600 hover:shadow-xl"

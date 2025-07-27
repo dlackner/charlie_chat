@@ -148,8 +148,6 @@ export const Sidebar = ({
     const [house, setNumber] = useState("");
     const [city, setCity] = useState("");
     const [stateCode, setStateCode] = useState("");
-    const [showToast, setShowToast] = useState(false);
-    const [toastMessage, setToastMessage] = useState('');
     const [armsLength, setArmsLength] = useState<string>('any');
 
 
@@ -261,14 +259,6 @@ export const Sidebar = ({
                 }
             }
 
-            setToastMessage(`Successfully added ${propertiesToSave.length} ${propertiesToSave.length === 1 ? 'property' : 'properties'} to My Properties!`);
-            setShowToast(true);
-
-            // Clear the red hearts after successful save
-            setSavedPropertyIds(new Set());
-
-            // Hide toast after 3 seconds
-            setTimeout(() => setShowToast(false), 3000);
 
         } catch (error) {
             console.error('Unexpected error saving to favorites:', error);
@@ -1030,7 +1020,7 @@ export const Sidebar = ({
 
                     {listings.length > 0 && (
                         <div className="flex items-center justify-between mb-2 px-1">
-                            {/* Left side - Select All */}
+                            {/* Left side - Analyze All */}
                             <div className="flex items-center space-x-2">
                                 <input
                                     type="checkbox"
@@ -1042,45 +1032,53 @@ export const Sidebar = ({
                                     className="h-4 w-4 accent-blue-600"
                                 />
                                 <label className="text-sm text-gray-600">
-                                    Select All ({currentSearchListings.length})
+                                    Analyze All ({currentSearchListings.length})
                                 </label>
                             </div>
 
-                            {/* Right side - Add to My Properties with notification */}
-                            {listings.length > 0 && (
-                                <div className="relative">
-                                    <button
-                                        onClick={() => {
-                                            const propertiesToSave = currentSearchListings.filter(listing =>
-                                                savedPropertyIds.has(listing.id)
-                                            );
-                                            if (propertiesToSave.length > 0) {
-                                                handleSaveToFavorites(propertiesToSave);
-                                            }
-                                        }}
-                                        disabled={savedPropertyIds.size === 0}
-                                        className={`flex items-center space-x-1 text-sm transition-colors ${savedPropertyIds.size > 0 ? 'text-red-600 hover:text-red-700 cursor-pointer' : 'text-gray-400 cursor-not-allowed'
-                                            }`}
-                                    >
-                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" className={savedPropertyIds.size > 0 ? 'text-red-500' : 'text-gray-400'}>
-                                            <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
-                                        </svg>
-                                        <span>Add to My Properties{savedPropertyIds.size > 0 && ` (${savedPropertyIds.size})`}</span>
-                                    </button>
+                            {/* Right side - Favorite All Toggle with Auto-Save */}
+                            <div className="relative">
+                                <button
+                                    onClick={async () => {
+                                        // Check if all current listings are already favorited
+                                        const allCurrentlyFavorited = currentSearchListings.every(listing => 
+                                            savedPropertyIds.has(listing.id)
+                                        );
+                                        
+                                        if (allCurrentlyFavorited) {
+                                            // Unfavorite: Just remove from UI state (don't remove from database)
+                                            setSavedPropertyIds(prev => {
+                                                const newSet = new Set(prev);
+                                                currentSearchListings.forEach(listing => {
+                                                    newSet.delete(listing.id);
+                                                });
+                                                return newSet;
+                                            });
+                                        } else {
+                                            // Favorite: Add to UI state AND save to database
+                                            setSavedPropertyIds(prev => {
+                                                const newSet = new Set(prev);
+                                                currentSearchListings.forEach(listing => {
+                                                    newSet.add(listing.id);
+                                                });
+                                                return newSet;
+                                            });
+                                            
+                                            // Auto-save all properties to database
+                                            await handleSaveToFavorites(currentSearchListings);
+                                        }
+                                    }}
+                                    className="flex items-center space-x-1 text-sm text-gray-600 hover:text-red-600 transition-colors"
+                                >
+                                    <span>
+                                        {currentSearchListings.every(listing => savedPropertyIds.has(listing.id)) 
+                                            ? '💔 Unfavorite All' 
+                                            : '❤️ Favorite All'
+                                        }
+                                    </span>
+                                </button>
 
-                                    {/* Notification */}
-                                    {showToast && (
-                                        <div className="absolute top-full right-0 mt-1 z-50">
-                                            <div className="px-6 py-2 rounded-md shadow-md flex items-center space-x-2 text-xs whitespace-nowrap" style={{ backgroundColor: '#1C599F', minWidth: '200px' }}>
-                                                <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" className="text-white">
-                                                    <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
-                                                </svg>
-                                                <span className="font-medium text-white">Added to My Properties!</span>
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
-                            )}
+                            </div>
                         </div>
                     )}
                     {Array.isArray(listings) &&
@@ -1230,23 +1228,6 @@ export const Sidebar = ({
                 )
             }
 
-            {/* Small Success Notification - positioned to the right with more space */}
-            {/*}  {showToast && (
-                <div className="absolute top-full right-0 mt-1 z-50">
-                    <div className="px-3 py-1.5 rounded-md shadow-md flex items-center space-x-1.5 text-xs" style={{ backgroundColor: '#1C599F' }}>
-                        <svg
-                            width="12"
-                            height="12"
-                            viewBox="0 0 24 24"
-                            fill="currentColor"
-                            className="text-white"
-                        >
-                            <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
-                        </svg>
-                        <span className="font-medium text-white">Added to My Properties!</span>
-                    </div>
-                </div>
-            )}*/}
         </div >
     );
 };

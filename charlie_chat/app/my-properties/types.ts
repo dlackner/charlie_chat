@@ -48,6 +48,7 @@ export interface MappableSavedProperty extends BaseSavedProperty {
 // For Property Cards (with detailed skip trace)
 export interface CardSavedProperty extends BaseSavedProperty {
   address_zip?: string;
+  last_skip_trace?: string;
   skipTraceData?: {
     name: string;
     age?: number;
@@ -73,6 +74,8 @@ export interface CardSavedProperty extends BaseSavedProperty {
 export interface PageSavedProperty extends BaseSavedProperty {
   latitude?: number;
   longitude?: number;
+  last_skip_trace?: string;
+  skipTraceData?: any;
   mailAddress?: {
     street?: string;
     city?: string;
@@ -139,6 +142,25 @@ export interface CompleteSavedProperty extends BaseSavedProperty {
   total_properties_owned?: number;
   created_at?: string;
   updated_at?: string;
+  skipTraceData?: {
+    name?: string;
+    age?: number;
+    gender?: string;
+    occupation?: string;
+    phone1?: string;
+    phone1Type?: string;
+    phone1DNC?: boolean;
+    phone2?: string;
+    phone2Type?: string;
+    phone2DNC?: boolean;
+    phone1Label?: string;
+    phone2Label?: string;
+    phoneSummary?: string;
+    email?: string;
+    currentAddress?: string;
+    addressHistory?: Array<{ formattedAddress: string; lastSeen: string }>;
+    skipTracedAt?: string;
+  };
   mailAddress?: {
     street?: string;
     city?: string;

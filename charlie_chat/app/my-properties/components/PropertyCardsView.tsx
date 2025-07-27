@@ -3,7 +3,7 @@
 import { Heart, CheckSquare, Square } from "lucide-react";
 import { useState } from "react";
 import { performSkipTrace } from './skipTraceIntegration';
-import { CardSavedProperty as SavedProperty } from '../types';
+import { PageSavedProperty as SavedProperty } from '../types';
 
 
 interface PropertyCardsViewProps {
@@ -14,6 +14,8 @@ interface PropertyCardsViewProps {
     onStartSearching: () => void;
     onUpdateNotes?: (propertyId: string, notes: string) => void;
     onSkipTrace?: (propertyId: string, property: SavedProperty) => void;
+    onSkipTraceError?: (propertyId: string, error: string) => void;
+    canSkipTrace?: (property: SavedProperty) => boolean;
     isLoading: boolean;
 }
 
@@ -25,6 +27,8 @@ export const PropertyCardsView: React.FC<PropertyCardsViewProps> = ({
     onStartSearching,
     onUpdateNotes,
     onSkipTrace,
+    onSkipTraceError,
+    canSkipTrace,
     isLoading
 }) => {
     const [flippedCards, setFlippedCards] = useState<Set<string>>(new Set());
@@ -32,6 +36,37 @@ export const PropertyCardsView: React.FC<PropertyCardsViewProps> = ({
     const [notesModalOpen, setNotesModalOpen] = useState<string | null>(null);
     const [localNotes, setLocalNotes] = useState<{ [key: string]: string }>({});
     const [confirmRemove, setConfirmRemove] = useState<string | null>(null);
+
+    // Helper function to get skip trace button state
+    const getSkipTraceButtonState = (property: SavedProperty) => {
+        const hasData = !!property.skipTraceData;
+        const hasBeenAttempted = !!property.last_skip_trace;
+        const canTrace = canSkipTrace ? canSkipTrace(property) : true;
+        
+        
+        if (hasData) {
+            // Has data - show "Skip Traced", allow re-run if >6 months
+            return { 
+                text: 'Skip Traced', 
+                disabled: !canTrace,
+                icon: 'checked'
+            };
+        } else if (hasBeenAttempted && !canTrace) {
+            // Was attempted but no data found, and within 6 months
+            return { 
+                text: 'No Skip Trace Data Found', 
+                disabled: true,
+                icon: 'disabled'
+            };
+        } else {
+            // Never attempted OR >6 months old attempt
+            return { 
+                text: 'Skip Trace', 
+                disabled: false,
+                icon: 'unchecked'
+            };
+        }
+    };
 
     const calculateAge = (yearBuilt: number) => {
         return new Date().getFullYear() - yearBuilt;
@@ -177,9 +212,14 @@ export const PropertyCardsView: React.FC<PropertyCardsViewProps> = ({
         }
     }
     
-    //console.error('Skip trace failed:', friendlyMessage);
-    // Show friendly message to user (you might want to add a toast/alert here)
-    alert(friendlyMessage); // or however you show error messages to users
+    // Call parent's error handler to update database and state
+    if (onSkipTraceError) {
+        onSkipTraceError(propertyId, friendlyMessage);
+    } else {
+        // Fallback if no error handler provided
+        console.error('Skip trace failed:', friendlyMessage);
+        alert(friendlyMessage);
+    }
 }
     };
 
@@ -334,16 +374,29 @@ export const PropertyCardsView: React.FC<PropertyCardsViewProps> = ({
                                                 </button>
 
                                                 <button
-                                                    onClick={(e) => handleSkipTrace(property.property_id, property, e)}
-                                                    className="flex items-center space-x-1"
+                                                    onClick={(e) => {
+                                                        const buttonState = getSkipTraceButtonState(property);
+                                                        if (!buttonState.disabled) {
+                                                            handleSkipTrace(property.property_id, property, e);
+                                                        }
+                                                    }}
+                                                    className={`flex items-center space-x-1 ${getSkipTraceButtonState(property).disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
                                                     title="Skip Trace"
+                                                    disabled={getSkipTraceButtonState(property).disabled}
                                                 >
-                                                    {hasSkipTrace ? (
-                                                        <CheckSquare size={14} className="text-blue-600" />
-                                                    ) : (
-                                                        <Square size={14} className="text-gray-400" />
-                                                    )}
-                                                    <span className="text-xs text-gray-600">Skip Trace</span>
+                                                    {(() => {
+                                                        const buttonState = getSkipTraceButtonState(property);
+                                                        switch (buttonState.icon) {
+                                                            case 'checked':
+                                                                return <CheckSquare size={14} className="text-blue-600" />;
+                                                            case 'disabled':
+                                                                return null; // No icon for "No Skip Trace Data Found"
+                                                            case 'unchecked':
+                                                            default:
+                                                                return <Square size={14} className="text-gray-400" />;
+                                                        }
+                                                    })()}
+                                                    <span className="text-xs text-gray-600">{getSkipTraceButtonState(property).text}</span>
                                                 </button>
                                             </div>
                                         </div>

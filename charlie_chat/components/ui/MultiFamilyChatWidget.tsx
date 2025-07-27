@@ -1,12 +1,38 @@
 'use client';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { MessageCircle, X, Send } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
 
 const MultiFamilyChatWidget = () => {
+  const { user, supabase } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const [message, setMessage] = useState('');
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [userProfile, setUserProfile] = useState<{first_name?: string, last_name?: string} | null>(null);
+
+  // Fetch user profile when user is available
+  useEffect(() => {
+    const fetchUserProfile = async () => {
+      if (user && supabase) {
+        try {
+          const { data, error } = await supabase
+            .from("profiles")
+            .select("first_name, last_name")
+            .eq("user_id", user.id)
+            .single();
+
+          if (!error && data) {
+            setUserProfile(data);
+          }
+        } catch (error) {
+          console.log('Could not fetch user profile for chat widget:', error);
+        }
+      }
+    };
+
+    fetchUserProfile();
+  }, [user, supabase]);
 
   const handleSendMessage = async () => {
     if (message.trim()) {
@@ -21,7 +47,10 @@ const MultiFamilyChatWidget = () => {
           },
           body: JSON.stringify({ 
             message: message.trim(),
-            userEmail: 'dlackner@hotmail.com'
+            userEmail: user?.email || 'anonymous@charlieus.ai',
+            userName: userProfile?.first_name && userProfile?.last_name 
+              ? `${userProfile.first_name} ${userProfile.last_name}` 
+              : null
           })
         });
 

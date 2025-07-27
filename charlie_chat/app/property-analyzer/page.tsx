@@ -72,7 +72,10 @@ export default function PropertyAnalyzerPage() {
   const [purchasePrice, setPurchasePrice] = useState<number>(7000000);
   const [downPaymentPercentage, setDownPaymentPercentage] = useState<number>(20); // Percentage
   const [interestRate, setInterestRate] = useState<number>(7.0); // Percentage
-  const [loanTermYears, setLoanTermYears] = useState<number>(24); // Years
+  const [loanStructure, setLoanStructure] = useState<'amortizing' | 'interest-only'>('amortizing'); // New loan structure selection
+  const [amortizationPeriodYears, setAmortizationPeriodYears] = useState<number>(30); // Years (updated from 24 to 30)
+  const [interestOnlyPeriodYears, setInterestOnlyPeriodYears] = useState<number>(10); // Years for IO period
+  const [refinanceTermYears, setRefinanceTermYears] = useState<number>(25); // Years (0 means sale)
   const [closingCostsPercentage, setClosingCostsPercentage] = useState<number>(3); // Percentage of Purchase Price
   const [dispositionCapRate, setDispositionCapRate] = useState<number>(6); // Target cap rate at sale
 
@@ -132,10 +135,16 @@ export default function PropertyAnalyzerPage() {
   }, [interestRate]);
 
   const numberOfPayments = useMemo(() => {
-    return loanTermYears * 12;
-  }, [loanTermYears]);
+    return amortizationPeriodYears * 12;
+  }, [amortizationPeriodYears]);
 
   const monthlyMortgagePayment = useMemo(() => {
+    if (loanStructure === 'interest-only') {
+      // For interest-only loans, payment is just the interest
+      return loanAmount * monthlyInterestRate;
+    }
+    
+    // For amortizing loans, use standard amortization formula
     if (monthlyInterestRate === 0) { // Handle 0% interest rate to avoid division by zero
       if (numberOfPayments === 0) return 0;
       return loanAmount / numberOfPayments;
@@ -145,7 +154,7 @@ export default function PropertyAnalyzerPage() {
 
     if (denominator === 0) return loanAmount;
     return loanAmount * (numerator / denominator);
-  }, [loanAmount, monthlyInterestRate, numberOfPayments]);
+  }, [loanAmount, monthlyInterestRate, numberOfPayments, loanStructure]);
 
   const annualDebtService = useMemo(() => {
     return monthlyMortgagePayment * 12;
@@ -236,7 +245,10 @@ export default function PropertyAnalyzerPage() {
       purchasePrice,
       downPaymentPercentage,
       interestRate,
-      loanTermYears,
+      loanStructure,
+      amortizationPeriodYears,
+      interestOnlyPeriodYears,
+      refinanceTermYears,
       closingCostsPercentage,
       dispositionCapRate,
       numUnits,
@@ -295,7 +307,10 @@ export default function PropertyAnalyzerPage() {
           setPurchasePrice(parsed.purchasePrice ?? 0);
           setDownPaymentPercentage(parsed.downPaymentPercentage ?? 0);
           setInterestRate(parsed.interestRate ?? 0);
-          setLoanTermYears(parsed.loanTermYears ?? 1);
+          setLoanStructure(parsed.loanStructure ?? 'amortizing');
+          setAmortizationPeriodYears(parsed.amortizationPeriodYears ?? 30);
+          setInterestOnlyPeriodYears(parsed.interestOnlyPeriodYears ?? 10);
+          setRefinanceTermYears(parsed.refinanceTermYears ?? 25);
           setClosingCostsPercentage(parsed.closingCostsPercentage ?? 0);
           setDispositionCapRate(parsed.dispositionCapRate ?? 0);
           setNumUnits(parsed.numUnits ?? 0);
@@ -347,6 +362,45 @@ export default function PropertyAnalyzerPage() {
   // FIXED: Function to calculate remaining loan balance correctly
   const calculateRemainingLoanBalance = (yearsElapsed: number): number => {
     const monthsPaid = yearsElapsed * 12;
+    
+    if (loanStructure === 'interest-only') {
+      // For interest-only loans, balance stays the same during IO period
+      if (yearsElapsed <= interestOnlyPeriodYears) {
+        return loanAmount; // Full balance remains during IO period
+      } else if (refinanceTermYears === 0) {
+        // Sale scenario - full balance due at end of IO period
+        return 0; // Assume sale pays off loan
+      } else {
+        // Refinance scenario - loan continues amortizing after IO period
+        const monthsIntoAmortization = (yearsElapsed - interestOnlyPeriodYears) * 12;
+        const amortizationMonths = refinanceTermYears * 12;
+        
+        if (monthsIntoAmortization >= amortizationMonths) return 0; // Loan is paid off
+        
+        // Calculate amortizing payment for refinance period
+        let amortizingPayment = 0;
+        if (monthlyInterestRate === 0) {
+          amortizingPayment = loanAmount / amortizationMonths;
+        } else {
+          const numerator = monthlyInterestRate * Math.pow(1 + monthlyInterestRate, amortizationMonths);
+          const denominator = Math.pow(1 + monthlyInterestRate, amortizationMonths) - 1;
+          amortizingPayment = loanAmount * (numerator / denominator);
+        }
+        
+        // Calculate remaining balance using amortization formula
+        if (monthlyInterestRate === 0) {
+          return loanAmount - (amortizingPayment * monthsIntoAmortization);
+        } else {
+          const A = loanAmount;
+          const r = monthlyInterestRate;
+          const n = amortizationMonths;
+          const remainingBalance = A * (Math.pow(1 + r, n) - Math.pow(1 + r, monthsIntoAmortization)) / (Math.pow(1 + r, n) - 1);
+          return Math.max(0, remainingBalance);
+        }
+      }
+    }
+    
+    // For standard amortizing loans
     if (monthsPaid >= numberOfPayments) return 0; // Loan is paid off
 
     if (monthlyInterestRate === 0) {
@@ -506,7 +560,7 @@ export default function PropertyAnalyzerPage() {
     contractServicesAnnual, payrollAnnual, marketingAnnual, gAndAAnnual,
     otherExpensesAnnual, expenseGrowthRate,
     capitalReservePerUnitAnnual, deferredCapitalReservePerUnit, holdingPeriodYears,
-    purchasePrice, downPaymentPercentage, interestRate, loanTermYears, closingCostsPercentage,
+    purchasePrice, downPaymentPercentage, interestRate, loanStructure, amortizationPeriodYears, interestOnlyPeriodYears, refinanceTermYears, closingCostsPercentage,
     dispositionCapRate, // Target cap rate at sale
     grossPotentialRent, effectiveGrossIncome, propertyManagementFeeAmount, totalOperatingExpenses, netOperatingIncome,
     downPaymentAmount, loanAmount, totalInitialInvestment, monthlyInterestRate, numberOfPayments, monthlyMortgagePayment, annualDebtService,
@@ -530,7 +584,10 @@ export default function PropertyAnalyzerPage() {
     setPurchasePrice(0);
     setDownPaymentPercentage(0);
     setInterestRate(0);
-    setLoanTermYears(1); // Keep at 1 minimum for calculations
+    setLoanStructure('amortizing');
+    setAmortizationPeriodYears(30);
+    setInterestOnlyPeriodYears(10);
+    setRefinanceTermYears(25);
     setClosingCostsPercentage(0);
     setDispositionCapRate(0);
 
@@ -567,7 +624,8 @@ export default function PropertyAnalyzerPage() {
     setPurchasePrice(7000000);
     setDownPaymentPercentage(20);
     setInterestRate(7.0);
-    setLoanTermYears(24);
+    setLoanStructure('amortizing');
+    setAmortizationPeriodYears(30);
     setClosingCostsPercentage(3);
     setDispositionCapRate(6);
 
@@ -792,8 +850,20 @@ export default function PropertyAnalyzerPage() {
 
           {/* Row 4 Metrics */}
           <div className="bg-white p-5 rounded-xl shadow-lg border border-gray-200">
-            <h3 className="text-md font-semibold text-orange-600 mb-1">Annual Debt Service</h3>
+            <h3 className="text-md font-semibold text-orange-600 mb-1">
+              {loanStructure === 'interest-only' ? 'Annual IO Payment' : 'Annual Debt Service'}
+            </h3>
             <p className="text-2xl font-bold text-gray-900">{formatCurrency(annualDebtService)}</p>
+            {loanStructure === 'interest-only' && refinanceTermYears === 0 && (
+              <p className="text-xs text-gray-500 mt-1">
+                Sale required by Year {interestOnlyPeriodYears}
+              </p>
+            )}
+            {loanStructure === 'interest-only' && refinanceTermYears > 0 && (
+              <p className="text-xs text-gray-500 mt-1">
+                Refinance required by Year {interestOnlyPeriodYears}
+              </p>
+            )}
           </div>
 
           <div className="bg-white p-5 rounded-xl shadow-lg border border-gray-200">
@@ -919,20 +989,80 @@ export default function PropertyAnalyzerPage() {
           />
         </div>
 
+        {/* Loan Structure Selection */}
         <div className="mb-5">
-          <label htmlFor="loanTermYears" className="block text-sm font-medium text-gray-700 mb-1">Loan Term (Years)</label>
-          <input
-            type="number"
-            id="loanTermYears"
-            value={loanTermYears ?? 0}
-            onChange={(e) => setLoanTermYears(Math.max(1, parseInt(e.target.value) || 1))}
-            className="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-shadow duration-150 ease-in-out shadow-sm"
-            step="1"
-            min="1"
-          />
+          <label className="block text-sm font-medium text-gray-700 mb-3">Loan Structure</label>
+          <div className="flex space-x-4">
+            <label className="flex items-center">
+              <input
+                type="radio"
+                name="loanStructure"
+                value="amortizing"
+                checked={loanStructure === 'amortizing'}
+                onChange={(e) => setLoanStructure(e.target.value as 'amortizing' | 'interest-only')}
+                className="mr-2 text-orange-500 focus:ring-orange-500"
+              />
+              <span className="text-sm text-gray-700">Amortizing Loan</span>
+            </label>
+            <label className="flex items-center">
+              <input
+                type="radio"
+                name="loanStructure"
+                value="interest-only"
+                checked={loanStructure === 'interest-only'}
+                onChange={(e) => setLoanStructure(e.target.value as 'amortizing' | 'interest-only')}
+                className="mr-2 text-orange-500 focus:ring-orange-500"
+              />
+              <span className="text-sm text-gray-700">Interest-Only Loan</span>
+            </label>
+          </div>
         </div>
 
-        <div className="mb-5">
+        {/* Conditional Fields Based on Loan Structure */}
+        {loanStructure === 'amortizing' ? (
+          <div className="mb-5">
+            <label htmlFor="amortizationPeriodYears" className="block text-sm font-medium text-gray-700 mb-1">Amortization Period (Years)</label>
+            <input
+              type="number"
+              id="amortizationPeriodYears"
+              value={amortizationPeriodYears ?? 0}
+              onChange={(e) => setAmortizationPeriodYears(Math.max(1, parseInt(e.target.value) || 1))}
+              className="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-shadow duration-150 ease-in-out shadow-sm"
+              step="1"
+              min="1"
+            />
+          </div>
+        ) : (
+          <div className="space-y-5">
+            <div>
+              <label htmlFor="interestOnlyPeriodYears" className="block text-sm font-medium text-gray-700 mb-1">Interest-Only Period (Years)</label>
+              <input
+                type="number"
+                id="interestOnlyPeriodYears"
+                value={interestOnlyPeriodYears ?? 0}
+                onChange={(e) => setInterestOnlyPeriodYears(Math.max(1, parseInt(e.target.value) || 1))}
+                className="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-shadow duration-150 ease-in-out shadow-sm"
+                step="1"
+                min="1"
+              />
+            </div>
+            <div>
+              <label htmlFor="refinanceTermYears" className="block text-sm font-medium text-gray-700 mb-1">Refinance Term (Years)</label>
+              <input
+                type="number"
+                id="refinanceTermYears"
+                value={refinanceTermYears ?? 0}
+                onChange={(e) => setRefinanceTermYears(Math.max(0, parseInt(e.target.value) || 0))}
+                className="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-shadow duration-150 ease-in-out shadow-sm"
+                step="1"
+                min="0"
+              />
+              <p className="text-xs text-gray-500 mt-1">Enter 0 if planning to sell at end of interest-only period</p>
+            </div>
+          </div>
+        )}
+
+        <div className="mb-5 mt-3">
           <label htmlFor="closingCostsPercentage" className="block text-sm font-medium text-gray-700 mb-1">Closing Costs (%)</label>
           <input
             type="number"
