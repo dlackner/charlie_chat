@@ -898,20 +898,20 @@ export default function PropertyAnalyzerPage() {
           <div className="flex space-x-2 relative" style={{ minHeight: '40px', minWidth: '280px' }}>
             <button
               onClick={resetToDefaults}
-              className="px-4 py-2 text-white rounded-lg transition text-sm"
+              className="px-4 py-2 text-white rounded-lg transform transition-all duration-150 text-sm hover:scale-105 active:scale-95 active:bg-blue-700"
               style={{ backgroundColor: '#1C599F' }}
             >
               Defaults
             </button>
             <button
               onClick={resetAllValues}
-              className="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition text-sm"
+              className="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transform transition-all duration-150 text-sm hover:scale-105 active:scale-95 active:bg-gray-700"
             >
               Clear
             </button>
             <button
               onClick={() => setShowMoreMenu(!showMoreMenu)}
-              className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition text-sm"
+              className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transform transition-all duration-150 text-sm hover:scale-105 active:scale-95 active:bg-blue-700"
             >
               More...
             </button>

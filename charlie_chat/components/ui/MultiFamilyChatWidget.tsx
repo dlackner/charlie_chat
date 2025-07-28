@@ -1,5 +1,5 @@
 'use client';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { MessageCircle, X, Send } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -10,6 +10,7 @@ const MultiFamilyChatWidget = () => {
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [userProfile, setUserProfile] = useState<{first_name?: string, last_name?: string} | null>(null);
+  const widgetRef = useRef<HTMLDivElement>(null);
 
   // Fetch user profile when user is available
   useEffect(() => {
@@ -33,6 +34,23 @@ const MultiFamilyChatWidget = () => {
 
     fetchUserProfile();
   }, [user, supabase]);
+
+  // Handle click outside to close widget
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (widgetRef.current && !widgetRef.current.contains(event.target as Node) && isOpen) {
+        setIsOpen(false);
+      }
+    };
+
+    if (isOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isOpen]);
 
   const handleSendMessage = async () => {
     if (message.trim()) {
@@ -89,7 +107,7 @@ const MultiFamilyChatWidget = () => {
     }
   };
 
-  const handleKeyPress = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSendMessage();
@@ -107,7 +125,7 @@ const MultiFamilyChatWidget = () => {
   return (
     <>
       {/* Chat Toggle Button */}
-      <div className="fixed bottom-20 right-6 z-50">
+      <div className="fixed bottom-20 right-6 z-50" ref={widgetRef}>
         <button
           onClick={() => setIsOpen(!isOpen)}
           className="shadow-2xl text-white p-4 rounded-full hover:shadow-xl transition-all duration-300 hover:scale-105"
@@ -115,13 +133,19 @@ const MultiFamilyChatWidget = () => {
             backgroundColor: '#1C599F'
           }}
         >
-          {isOpen ? <X size={24} /> : <MessageCircle size={24} />}
+          <MessageCircle size={24} />
         </button>
-      </div>
 
-      {/* Chat Widget */}
-      {isOpen && (
-        <div className="fixed bottom-28 right-6 w-80 bg-white rounded-2xl shadow-2xl z-50 overflow-hidden border border-gray-200">
+        {/* Chat Widget */}
+        {isOpen && (
+          <div className="absolute bottom-16 right-0 w-80 bg-white rounded-2xl shadow-2xl overflow-hidden border border-gray-200">
+          {/* Close Button */}
+          <button
+            onClick={() => setIsOpen(false)}
+            className="absolute top-3 right-3 text-gray-400 hover:text-gray-600 transition-colors duration-200 z-10"
+          >
+            <X size={20} />
+          </button>
           {/* Header */}
           <div className="p-6 text-white" style={{ 
             backgroundColor: '#1C599F'
@@ -181,7 +205,7 @@ const MultiFamilyChatWidget = () => {
                   <textarea
                     value={message}
                     onChange={(e) => setMessage(e.target.value)}
-                    onKeyPress={handleKeyPress}
+                    onKeyDown={handleKeyDown}
                     placeholder="Pass along your questions and input."
                     className="w-full px-3 py-3 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 resize-none"
                     style={{
@@ -245,8 +269,9 @@ const MultiFamilyChatWidget = () => {
               </div>
             </div>
           </div>
-        </div>
-      )}
+          </div>
+        )}
+      </div>
     </>
   );
 };
