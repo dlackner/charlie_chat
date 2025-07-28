@@ -165,7 +165,7 @@ const propertiesWithRentData = useMemo(() => {
     return (
         <div className="h-[600px] relative">
             {/* Map Controls */}
-            <div className="absolute top-4 left-4 z-[1000] space-y-2">
+            <div className="absolute top-4 left-16 z-[1000] space-y-2">
                 {hiddenProperties.size > 0 && (
                     <button
                         onClick={showAllProperties}
@@ -178,12 +178,11 @@ const propertiesWithRentData = useMemo(() => {
                 {props.rentData && props.rentData.length > 0 && (
                     <button
                         onClick={() => setShowRentOverlay(!showRentOverlay)}
-                        className={`px-3 py-2 rounded-lg shadow-lg border text-sm font-medium flex items-center gap-2 transition-colors ${showRentOverlay
-                            ? 'bg-blue-600 text-white border-blue-600'
-                            : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'
+                        className={`px-4 py-2 rounded-lg shadow-lg border text-sm font-medium flex items-center gap-2 transition-all duration-300 ${showRentOverlay
+                            ? 'bg-orange-600 text-white border-orange-600'
+                            : 'bg-orange-500 text-white border-orange-500 hover:bg-orange-600'
                             }`}
                     >
-                        <DollarSign size={14} />
                         {showRentOverlay ? 'Hide' : 'Show'} Rent Data
                     </button>
                 )}

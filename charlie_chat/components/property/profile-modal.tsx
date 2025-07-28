@@ -114,9 +114,19 @@ export const PropertyProfileModal = ({
         />
 
         {/* Header */}
-        <h2 className="text-2xl font-semibold mb-4 text-gray-800">
-          {listing.address?.address || "No Address"}
-        </h2>
+        <div className="mb-4">
+          <h2 className="text-2xl font-semibold text-gray-800 inline">
+            {listing.address?.address || "No Address"}
+          </h2>
+          <a
+            href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(listing.address?.address || "")}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="ml-2 text-sm text-blue-600 hover:text-blue-800 underline"
+          >
+            View Map
+          </a>
+        </div>
 
         {/* Property Details */}
         <PropertyDetails listing={listing} />

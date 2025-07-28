@@ -510,14 +510,14 @@ export function ClosingChat() {
         {/* Credit Options Modal */}
         {showCreditOptionsModal && (
           <div
-            className="fixed inset-0 bg-black opacity-75 z-40"
+            className="fixed inset-0 bg-black opacity-75 z-50"
             aria-hidden="true"
           />
         )}
         <Dialog
           open={showCreditOptionsModal}
           onClose={() => setShowCreditOptionsModal(false)}
-          className="fixed inset-0 z-50 flex items-center justify-center"
+          className="fixed inset-0 z-60 flex items-center justify-center"
         >
           <Dialog.Panel className="relative bg-white rounded-lg shadow-xl max-w-md w-full mx-4 p-6">
             {userClass === 'trial' ? (

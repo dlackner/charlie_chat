@@ -68,7 +68,7 @@ export const PropertyActions = ({ listing }: PropertyActionsProps) => {
     const textWidth = doc.getTextWidth(address);
     const linkX = centerX + textWidth / 2 + 5;
     doc.setFontSize(10);
-    doc.setTextColor(0, 0, 238);
+    doc.setTextColor(37, 99, 235);
     doc.textWithLink("View Map", linkX, startY, { url: googleMapsUrl });
     doc.setTextColor(0, 0, 0);
     doc.setFontSize(18);
