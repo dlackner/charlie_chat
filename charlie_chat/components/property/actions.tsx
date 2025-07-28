@@ -5,7 +5,7 @@
 import { useState, useEffect } from 'react';
 import jsPDF from "jspdf";
 import { saveAs } from 'file-saver';
-import type { Listing } from '../ui/sidebar';
+import type { Listing } from '../ui/listingTypes';
 import { classifyProperty } from '../property/property-classifier';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -95,55 +95,55 @@ export const PropertyActions = ({ listing }: PropertyActionsProps) => {
     addSection("PROPERTY OVERVIEW", [
       ["Property ID:", listing.id],
       ["Classification:", classificationText],
-      ["Units:", listing.unitsCount ?? "N/A"],
+      ["Units:", listing.units_count ?? "N/A"],
       ["Stories:", listing.stories ?? "N/A"],
-      ["Year Built:", listing.yearBuilt ?? "N/A"],
-      ["Lot Size:", `${listing.lotSquareFeet?.toLocaleString()} sq ft`],
-      ["Years Owned:", listing.yearsOwned ?? "N/A"],
+      ["Year Built:", listing.year_built ?? "N/A"],
+      ["Lot Size:", `${listing.lot_square_feet?.toLocaleString()} sq ft`],
+      ["Years Owned:", listing.years_owned ?? "N/A"],
     ], leftX, startY);
 
     addSection("VALUATION & EQUITY", [
-      ["Assessed Value:", formatCurrency(listing.assessedValue)],
-      ["Estimated Market Value:", formatCurrency(listing.estimatedValue)],
-      ["Estimated Equity:", formatCurrency(listing.estimatedValue)],
+      ["Assessed Value:", formatCurrency(listing.assessed_value)],
+      ["Estimated Market Value:", formatCurrency(listing.estimated_value)],
+      ["Estimated Equity:", formatCurrency(listing.estimated_equity)],
       ["Listing Price:", "Not listed"],
     ], leftX, startY + 54);
 
     addSection("MORTGAGE & FINANCING", [
-      ["Mortgage Balance:", formatCurrency(listing.mortgageBalance)],
-      ["Lender:", listing.lenderName ?? "N/A"],
-      ["Mortgage Maturity Date:", listing.mortgageMaturingDate ?? "N/A"],
+      ["Mortgage Balance:", formatCurrency(listing.mortgage_balance)],
+      ["Lender:", listing.lender_name ?? "N/A"],
+      ["Mortgage Maturity Date:", listing.mortgage_maturing_date ?? "N/A"],
     ], leftX, startY + 89);
 
     addSection("SALES & TRANSACTION HISTORY", [
-      ["Last Sale Date:", listing.lastSaleDate ?? "N/A"],
-      ["Last Sale Amount:", formatCurrency(listing.lastSaleAmount)],
-      ["Arms-Length Sale:", listing.lastSaleArmsLength ? "Yes" : "No"],
-      ["MLS Active:", listing.mlsActive ? "Yes" : "No"],
+      ["Last Sale Date:", listing.last_sale_date ?? "N/A"],
+      ["Last Sale Amount:", formatCurrency(listing.last_sale_amount)],
+      ["Arms-Length Sale:", listing.last_sale_arms_length ? "Yes" : "No"],
+      ["MLS Active:", listing.mls_active ? "Yes" : "No"],
     ], rightX, startY);
 
     addSection("FLOOD ZONE INFORMATION", [
-      ["Flood Zone:", listing.floodZone ? "Yes" : "No"],
-      ["Flood Zone Description:", listing.floodZoneDescription ?? "N/A"],
+      ["Flood Zone:", listing.flood_zone ? "Yes" : "No"],
+      ["Flood Zone Description:", listing.flood_zone_description ?? "N/A"],
     ], rightX, startY + 35);
 
     addSection("OWNERSHIP DETAILS", [
-      ["Owner Name:", `${listing.owner1FirstName ?? ""} ${listing.owner1LastName ?? ""}`],
-      ["Owner Address:", listing.mailAddress
-        ? `${listing.mailAddress.street ?? ""}, ${listing.mailAddress.city ?? ""}, ${listing.mailAddress.state ?? ""} ${listing.mailAddress.zip ?? ""}`
+      ["Owner Name:", `${listing.owner_first_name ?? ""} ${listing.owner_last_name ?? ""}`],
+      ["Owner Address:", listing.mail_address
+        ? `${listing.mail_address.street ?? ""}, ${listing.mail_address.city ?? ""}, ${listing.mail_address.state ?? ""} ${listing.mail_address.zip ?? ""}`
         : "N/A"],
 
-      ["In-State Absentee Owner:", listing.inStateAbsenteeOwner ? "Yes" : "No"],
-      ["Out-of-State Absentee Owner:", listing.outOfStateAbsenteeOwner ? "Yes" : "No"],
+      ["In-State Absentee Owner:", listing.in_state_absentee_owner ? "Yes" : "No"],
+      ["Out-of-State Absentee Owner:", listing.out_of_state_absentee_owner ? "Yes" : "No"],
     ], rightX, startY + 60);
 
     addSection("OTHER INFORMATION", [
       ["Assumable:", listing.assumable ? "Yes" : "No"],
       ["REO:", listing.reo ? "Yes" : "No"],
       ["Auction:", listing.auction ? "Yes" : "No"],
-      ["Tax Lien:", listing.taxLien ? "Yes" : "No"],
-      ["Pre Foreclosure:", listing.preForeclosure ? "Yes" : "No"],
-      ["Private Lender:", listing.privateLender ? "Yes" : "No"],
+      ["Tax Lien:", listing.tax_lien ? "Yes" : "No"],
+      ["Pre Foreclosure:", listing.pre_foreclosure ? "Yes" : "No"],
+      ["Private Lender:", listing.private_lender ? "Yes" : "No"],
     ], rightX, startY + 95);
 
     const safeAddress = (listing.address?.address || "property").replace(/[^a-zA-Z0-9]/g, "_");
@@ -154,12 +154,10 @@ export const PropertyActions = ({ listing }: PropertyActionsProps) => {
     <div className="mt-6 flex gap-4">
       <button
         onClick={() => downloadProfile(listing)}
-        className="bg-black text-white px-4 py-2 rounded hover:bg-gray-900
-                   transform transition-all duration-150 ease-in-out
-                   hover:scale-105 active:scale-90
-                   focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500"
+        className="text-white px-4 py-2 rounded-lg font-medium hover:opacity-80 transition"
+        style={{ backgroundColor: '#1C599F' }}
       >
-        Download Profile 📄
+        Download Profile
       </button>
     </div>
   );

@@ -13,69 +13,10 @@ import { SmartQueries } from '../filters/smart-queries';
 import { ChevronRight } from 'lucide-react';
 import { getPrimaryClassification, getClassificationCount } from '../property/property-classifier';
 import { PropertyBadge } from '../property/property-badge';
+import { Listing } from './listingTypes';
 
-
-export type Listing = {
-    id: string;
-    address: {
-        street?: string;
-        address: string;
-        city?: string;
-        state?: string;
-        zip?: string;
-    };
-    mailAddress?: {
-        address?: string;
-        city?: string;
-        county?: string;
-        state?: string;
-        street?: string;
-        zip?: string;
-    };
-    lastSaleArmsLength?: boolean;
-    mlsActive?: boolean;
-    lastSaleAmount?: number;
-    lotSquareFeet?: number;
-    yearsOwned?: number;
-    outOfStateAbsenteeOwner?: boolean;
-    property_type?: string;
-    squareFeet?: number;
-    rentEstimate?: number;
-    assessedLandValue?: number;
-    assessedValue?: number;
-    assumable?: boolean;
-    auction?: boolean;
-    corporate_owned?: boolean;
-    estimatedEquity?: number;
-    estimatedValue?: number;
-    floodZone?: boolean;
-    foreclosure?: boolean;
-    forSale?: boolean;
-    privateLender?: boolean;
-    inStateAbsenteeOwner?: boolean;
-    investorBuyer?: boolean;
-    lastSaleDate?: string;
-    lenderName?: string;
-    listingPrice?: number;
-    mortgageBalance?: number;
-    mortgageMaturingDate?: string;
-    yearBuilt?: number;
-    ownerOccupied?: boolean;
-    preForeclosure?: boolean;
-    reo?: boolean;
-    taxLien?: boolean;
-    totalPortfolioEquity?: number;
-    totalPortfolioMortgageBalance?: number;
-    totalPropertiesOwned?: number;
-    floodZoneDescription?: string;
-    unitsCount?: number;
-    owner1FirstName?: string;
-    owner1LastName?: string;
-    stories?: number;
-    freeClear?: boolean;
-    latitude?: number;
-    longitude?: number;
-};
+// Re-export Listing for backward compatibility
+export type { Listing };
 
 type Props = {
     onSearch: (filters: Record<string, any>) => Promise<void>;
@@ -173,57 +114,57 @@ export const Sidebar = ({
                     .from('saved_properties')
                     .upsert({
                         property_id: listing.id,
-                        address_full: listing.address?.street || listing.address?.address || '',
-                        address_city: listing.address?.city || '',
-                        address_state: listing.address?.state || '',
-                        address_zip: listing.address?.zip || null,
-                        units_count: listing.unitsCount || 0,
-                        year_built: listing.yearBuilt || null,
-                        last_sale_date: listing.lastSaleDate || null,
-                        assessed_value: listing.assessedValue || 0,
-                        assessed_land_value: listing.assessedLandValue ?? null,
-                        estimated_value: listing.estimatedValue || 0,
-                        estimated_equity: listing.estimatedEquity || 0,
-                        years_owned: listing.yearsOwned || 0,
-                        out_of_state_absentee_owner: listing.outOfStateAbsenteeOwner || false,
+                        address_full: listing.address_full || listing.address_street || '',
+                        address_city: listing.address_city || '',
+                        address_state: listing.address_state || '',
+                        address_zip: listing.address_zip || null,
+                        units_count: listing.units_count || 0,
+                        year_built: listing.year_built || null,
+                        last_sale_date: listing.last_sale_date || null,
+                        assessed_value: listing.assessed_value || 0,
+                        assessed_land_value: listing.assessed_land_value ?? null,
+                        estimated_value: listing.estimated_value || 0,
+                        estimated_equity: listing.estimated_equity || 0,
+                        years_owned: listing.years_owned || 0,
+                        out_of_state_absentee_owner: listing.out_of_state_absentee_owner || false,
                         auction: listing.auction || false,
                         reo: listing.reo || false,
-                        tax_lien: listing.taxLien || false,
-                        pre_foreclosure: listing.preForeclosure || false,
-                        private_lender: listing.privateLender || false,
-                        owner_first_name: listing.owner1FirstName || null,
-                        owner_last_name: listing.owner1LastName || null,
-                        mail_address_full: listing.mailAddress?.address || null,
-                        mail_address_street: listing.mailAddress?.street || null,
-                        mail_address_city: listing.mailAddress?.city || null,
-                        mail_address_state: listing.mailAddress?.state || null,
-                        mail_address_zip: listing.mailAddress?.zip || null,
-                        mail_address_county: listing.mailAddress?.county || null,
+                        tax_lien: listing.tax_lien || false,
+                        pre_foreclosure: listing.pre_foreclosure || false,
+                        private_lender: listing.private_lender || false,
+                        owner_first_name: listing.owner_first_name || null,
+                        owner_last_name: listing.owner_last_name || null,
+                        mail_address_full: listing.mail_address_full || null,
+                        mail_address_street: listing.mail_address_street || null,
+                        mail_address_city: listing.mail_address_city || null,
+                        mail_address_state: listing.mail_address_state || null,
+                        mail_address_zip: listing.mail_address_zip || null,
+                        mail_address_county: listing.mail_address_county || null,
                         latitude: listing.latitude ?? null,
                         longitude: listing.longitude ?? null,
                         property_type: listing.property_type || null,
-                        square_feet: listing.squareFeet ?? null,
-                        lot_square_feet: listing.lotSquareFeet ?? null,
+                        square_feet: listing.square_feet ?? null,
+                        lot_square_feet: listing.lot_square_feet ?? null,
                         stories: listing.stories ?? null,
-                        flood_zone: listing.floodZone ?? null,
-                        flood_zone_description: listing.floodZoneDescription || null,
-                        rent_estimate: listing.rentEstimate ?? null,
-                        listing_price: listing.listingPrice ?? null,
-                        mortgage_balance: listing.mortgageBalance ?? null,
+                        flood_zone: listing.flood_zone ?? null,
+                        flood_zone_description: listing.flood_zone_description || null,
+                        rent_estimate: listing.rent_estimate ?? null,
+                        listing_price: listing.listing_price ?? null,
+                        mortgage_balance: listing.mortgage_balance ?? null,
                         mortgage_maturing_date: null, // fill when your API provides a date
-                        last_sale_arms_length: listing.lastSaleArmsLength ?? null,
-                        mls_active: listing.mlsActive ?? null,
-                        for_sale: listing.forSale ?? null,
+                        last_sale_arms_length: listing.last_sale_arms_length ?? null,
+                        mls_active: listing.mls_active ?? null,
+                        for_sale: listing.for_sale ?? null,
                         assumable: listing.assumable ?? null,
                         foreclosure: listing.foreclosure ?? null,
-                        in_state_absentee_owner: listing.inStateAbsenteeOwner ?? null,
-                        owner_occupied: listing.ownerOccupied ?? null,
+                        in_state_absentee_owner: listing.in_state_absentee_owner ?? null,
+                        owner_occupied: listing.owner_occupied ?? null,
                         corporate_owned: listing.corporate_owned ?? null,
-                        investor_buyer: listing.investorBuyer ?? null,
-                        lender_name: listing.lenderName || null,
-                        total_portfolio_equity: listing.totalPortfolioEquity ?? null,
-                        total_portfolio_mortgage_balance: listing.totalPortfolioMortgageBalance ?? null,
-                        total_properties_owned: listing.totalPropertiesOwned ?? null,
+                        investor_buyer: listing.investor_buyer ?? null,
+                        lender_name: listing.lender_name || null,
+                        total_portfolio_equity: listing.total_portfolio_equity ?? null,
+                        total_portfolio_mortgage_balance: listing.total_portfolio_mortgage_balance ?? null,
+                        total_properties_owned: listing.total_properties_owned ?? null,
                         saved_at: new Date().toISOString()
                     }, {
                         onConflict: 'property_id'
@@ -968,36 +909,15 @@ export const Sidebar = ({
                     </div>
                 </div>
 
-                <div className="flex justify-center gap-2">
+                <div className="flex justify-center">
                     <button
                         onClick={() => handleSearch({})}
                         id="sidebar-search"
                         disabled={isSearching}
-                        className="flex-1 bg-orange-500 text-white py-2 px-4 rounded-lg font-semibold transition duration-200 ease-in-out transform hover:scale-105 hover:bg-orange-600 focus:outline-none focus:ring-2 focus:ring-orange-400 focus:ring-opacity-75 hover:shadow-lg active:scale-95 disabled:opacity-75 disabled:cursor-not-allowed"
+                        className="w-full bg-orange-500 text-white py-2 px-4 rounded-lg font-semibold transition duration-200 ease-in-out transform hover:scale-105 hover:bg-orange-600 focus:outline-none focus:ring-2 focus:ring-orange-400 focus:ring-opacity-75 hover:shadow-lg active:scale-95 disabled:opacity-75 disabled:cursor-not-allowed"
                     >
                         {isSearching ? "Searching..." : "Search"}
                     </button>
-                    {listings.length > 0 && (
-                        <button
-                            onClick={() => {
-                                // Clear all listings and selected listings from localStorage
-                                if (typeof window !== 'undefined') {
-                                    localStorage.removeItem("listings");
-                                    localStorage.removeItem("selectedListings");
-                                }
-                                // Clear from state
-                                if (clearSelectedListings) {
-                                    clearSelectedListings();
-                                }
-                                // Clear from listings display
-                                onSearch({ clearResults: true });
-                            }}
-                            className="py-2 px-3 text-gray-600 bg-gray-100 rounded-lg transition text-sm hover:bg-gray-200 whitespace-nowrap"
-                            title="Clear all search results"
-                        >
-                            Clear All
-                        </button>
-                    )}
                 </div>
 
                 {creditsError && (
@@ -1016,7 +936,7 @@ export const Sidebar = ({
                         to continue your analysis and find your next investment.
                     </div>
                 )}
-                <div className="flex-1 space-y-2 relative pb-26" style={{ overflow: 'visible' }}>
+                <div className="flex-1 space-y-2 relative" style={{ overflow: 'visible', paddingBottom: selectedListings.length > 0 ? '120px' : '20px' }}>
 
                     {listings.length > 0 && (
                         <div className="flex items-center justify-between mb-2 px-1">
@@ -1083,7 +1003,7 @@ export const Sidebar = ({
                     )}
                     {Array.isArray(listings) &&
                         listings
-                            .sort((a, b) => (b.rentEstimate ?? 0) - (a.rentEstimate ?? 0))
+                            .sort((a, b) => (b.rent_estimate ?? 0) - (a.rent_estimate ?? 0))
                             .map((listing, i) => {
                                 const isSelected = selectedListings.some((l: Listing) => l.id === listing.id);
                                 return (
@@ -1099,28 +1019,59 @@ export const Sidebar = ({
                                             <div onClick={() => setActiveListingIndex(i)} className="flex-1 cursor-pointer mr-3">
                                                 <div className="flex items-center justify-between">
                                                     <p className="font-medium text-gray-800">
-                                                        {listing.address?.street || "No street info"}
+                                                        {listing.address_street || listing.address_full || "No street info"}
                                                     </p>
                                                 </div>
                                                 <div className="text-xs text-gray-500 mt-1 font-mono leading-relaxed">
-                                                    <div>Assessed: ${listing.assessedValue?.toLocaleString() ?? "N/A"}</div>
+                                                    <div>Assessed: ${listing.assessed_value?.toLocaleString() ?? "N/A"}</div>
                                                     <div className="flex items-center justify-between">
-                                                        <span>Units: {listing.unitsCount ?? "?"} • Year: {listing.yearBuilt ?? "?"}</span>
+                                                        <span>Units: {listing.units_count ?? "?"} • Year: {listing.year_built ?? "?"}</span>
 
                                                         {/* Individual Heart Icon - visual selection only */}
                                                         <button
-                                                            onClick={(e) => {
+                                                            onClick={async (e) => {
                                                                 e.stopPropagation();
-                                                                // Toggle visual state only (no database save)
-                                                                setSavedPropertyIds(prev => {
-                                                                    const newSet = new Set(prev);
-                                                                    if (newSet.has(listing.id)) {
+                                                                
+                                                                const isCurrentlyFavorited = savedPropertyIds.has(listing.id);
+                                                                
+                                                                if (isCurrentlyFavorited) {
+                                                                    // Unfavorite: Remove from current session and set database to inactive
+                                                                    setSavedPropertyIds(prev => {
+                                                                        const newSet = new Set(prev);
                                                                         newSet.delete(listing.id);
-                                                                    } else {
-                                                                        newSet.add(listing.id);
+                                                                        return newSet;
+                                                                    });
+                                                                    
+                                                                    // Update database in background
+                                                                    try {
+                                                                        const { data: { user } } = await supabase.auth.getUser();
+                                                                        if (user) {
+                                                                            await supabase
+                                                                                .from('saved_properties')
+                                                                                .update({ is_active: false })
+                                                                                .eq('user_id', user.id)
+                                                                                .eq('property_id', listing.id);
+                                                                        }
+                                                                    } catch (error) {
+                                                                        console.error('Background unfavorite failed:', error);
                                                                     }
-                                                                    return newSet;
-                                                                });
+                                                                } else {
+                                                                    // Favorite: Add to current session and save to database
+                                                                    setSavedPropertyIds(prev => new Set(prev).add(listing.id));
+                                                                    
+                                                                    // Save to database using the existing handleSaveToFavorites logic
+                                                                    try {
+                                                                        await handleSaveToFavorites([listing]);
+                                                                    } catch (error) {
+                                                                        console.error('Background favorite failed:', error);
+                                                                        // Rollback visual state if database save fails
+                                                                        setSavedPropertyIds(prev => {
+                                                                            const newSet = new Set(prev);
+                                                                            newSet.delete(listing.id);
+                                                                            return newSet;
+                                                                        });
+                                                                    }
+                                                                }
                                                             }}
                                                             className="p-1 hover:scale-110 transition-transform"
                                                         >

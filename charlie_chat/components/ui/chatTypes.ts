@@ -9,64 +9,8 @@ export type ExtendedUser = User & {
 };
 
 // Property/Listing Types
-export type Listing = {
-  id: string;
-  address: {
-    street?: string;
-    address: string;
-    city?: string;
-    state?: string;
-    zip?: string;
-  };
-  mailAddress?: {
-    address?: string;
-    city?: string;
-    county?: string;
-    state?: string;
-    street?: string;
-    zip?: string;
-  };
-  lastSaleArmsLength?: boolean;
-  mlsActive?: boolean;
-  lastSaleAmount?: number;
-  lotSquareFeet?: number;
-  yearsOwned?: number;
-  outOfStateAbsenteeOwner?: boolean;
-  property_type?: string;
-  squareFeet?: number;
-  rentEstimate?: number;
-  assessedLandValue?: number;
-  assessedValue?: number;
-  assumable?: boolean;
-  auction?: boolean;
-  corporate_owned?: boolean;
-  estimatedEquity?: number;
-  estimatedValue?: number;
-  floodZone?: boolean;
-  foreclosure?: boolean;
-  forSale?: boolean;
-  privateLender?: boolean;
-  inStateAbsenteeOwner?: boolean;
-  investorBuyer?: boolean;
-  lastSaleDate?: string;
-  lenderName?: string;
-  listingPrice?: number;
-  mortgageBalance?: number;
-  mortgageMaturingDate?: string;
-  yearBuilt?: number;
-  ownerOccupied?: boolean;
-  preForeclosure?: boolean;
-  reo?: boolean;
-  taxLien?: boolean;
-  totalPortfolioEquity?: number;
-  totalPortfolioMortgageBalance?: number;
-  totalPropertiesOwned?: number;
-  floodZoneDescription?: string;
-  unitsCount?: number;
-  owner1FirstName?: string;
-  owner1LastName?: string;
-  stories?: number;
-};
+import type { Listing } from './listingTypes';
+export type { Listing };
 
 // Message Types
 export interface ChatMessage {
@@ -108,38 +52,38 @@ export const EXAMPLES = [
 // Field mappings for better clarity in property analysis
 export const FIELD_MAPPINGS: { [key: string]: string } = {
   'reo': 'Bank Owned (REO)',
-  'lastSaleArmsLength': 'Arms Length Sale',
-  'absenteeOwner': 'Absentee Owner',
-  'inStateAbsenteeOwner': 'In-State Absentee Owner',
-  'outOfStateAbsenteeOwner': 'Out-of-State Absentee Owner',
-  'mlsActive': 'Currently Listed on MLS',
-  'mlsLastSaleDate': 'MLS Last Sale Date',
-  'adjustableRate': 'Adjustable Rate Mortgage',
-  'maturityDateFirst': 'First Mortgage Maturity Date',
-  'maturingDate': 'Mortgage Maturity Date',
-  'openMortgageBalance': 'Outstanding Mortgage Balance',
-  'preForeclosure': 'Pre-Foreclosure Status',
-  'taxLien': 'Tax Lien Status',
-  'privateLender': 'Private Lender Financing',
-  'unitsCount': 'Number of Units',
-  'yearBuilt': 'Year Built',
-  'yearsOwned': 'Years Owned by Current Owner',
-  'squareFeet': 'Building Square Footage',
-  'lotSquareFeet': 'Lot Size (sq ft)',
-  'assessedValue': 'Tax Assessed Value',
-  'estimatedValue': 'Estimated Market Value',
-  'estimatedEquity': 'Estimated Owner Equity',
-  'lastSaleAmount': 'Last Sale Price',
-  'lastSaleDate': 'Last Sale Date',
-  'rentEstimate': 'Estimated Monthly Rent',
-  'floodZone': 'In Flood Zone',
-  'floodZoneDescription': 'Flood Zone Details',
-  'corporateOwned': 'Corporate Owned',
-  'ownerOccupied': 'Owner Occupied',
-  'owner1FirstName': 'Owner First Name',
-  'owner1LastName': 'Owner Last Name',
-  'ownerAddress': 'Owner Mailing Address',
-  'mailAddress': 'Owner Mailing Address Details'
+  'last_sale_arms_length': 'Arms Length Sale',
+  'absentee_owner': 'Absentee Owner',
+  'in_state_absentee_owner': 'In-State Absentee Owner',
+  'out_of_state_absentee_owner': 'Out-of-State Absentee Owner',
+  'mls_active': 'Currently Listed on MLS',
+  'mls_last_sale_date': 'MLS Last Sale Date',
+  'adjustable_rate': 'Adjustable Rate Mortgage',
+  'maturity_date_first': 'First Mortgage Maturity Date',
+  'mortgage_maturing_date': 'Mortgage Maturity Date',
+  'mortgage_balance': 'Outstanding Mortgage Balance',
+  'pre_foreclosure': 'Pre-Foreclosure Status',
+  'tax_lien': 'Tax Lien Status',
+  'private_lender': 'Private Lender Financing',
+  'units_count': 'Number of Units',
+  'year_built': 'Year Built',
+  'years_owned': 'Years Owned by Current Owner',
+  'square_feet': 'Building Square Footage',
+  'lot_square_feet': 'Lot Size (sq ft)',
+  'assessed_value': 'Tax Assessed Value',
+  'estimated_value': 'Estimated Market Value',
+  'estimated_equity': 'Estimated Owner Equity',
+  'last_sale_amount': 'Last Sale Price',
+  'last_sale_date': 'Last Sale Date',
+  'rent_estimate': 'Estimated Monthly Rent',
+  'flood_zone': 'In Flood Zone',
+  'flood_zone_description': 'Flood Zone Details',
+  'corporate_owned': 'Corporate Owned',
+  'owner_occupied': 'Owner Occupied',
+  'owner_first_name': 'Owner First Name',
+  'owner_last_name': 'Owner Last Name',
+  'owner_address': 'Owner Mailing Address',
+  'mail_address': 'Owner Mailing Address Details'
 };
 
 // Component Props Types (for future components)

@@ -147,12 +147,15 @@ export const exportPropertiesToCSV = (
 
   // Convert properties to CSV rows
   const csvRows = selectedProps.map(property => {
-    // Access nested mailAddress properties safely
+    // Access mail address properties from flat fields
     const getMailAddress = (field: string) => {
-      if (!property.mailAddress) return '';
-      if (!(field in property.mailAddress)) return '';
-
-      return (property.mailAddress as any)[field] || '';
+      const fieldMap: { [key: string]: string | undefined } = {
+        street: property.mail_address_street,
+        city: property.mail_address_city,
+        state: property.mail_address_state,
+        zip: property.mail_address_zip
+      };
+      return fieldMap[field] || '';
     };
 
     return [

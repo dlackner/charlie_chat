@@ -5,21 +5,7 @@
 
 import { Document, Packer, Paragraph, TextRun, ISpacingProperties, LineRuleType, ImageRun, AlignmentType, HorizontalPositionAlign, VerticalPositionAlign } from 'docx';
 import { saveAs } from 'file-saver';
-//import type { Listing } from '../../components/ui/sidebar';
-import type { Listing as BaseListing } from '../../components/ui/sidebar';
-
-interface Listing extends BaseListing {
-  owner_first_name?: string | null;
-  owner_last_name?: string | null;
-  mail_address_street?: string | null;
-  mail_address_city?: string | null;
-  mail_address_state?: string | null;
-  mail_address_zip?: string | null;
-  mail_address_full?: string | null;
-  address_full?: string | null;
-  address_city?: string | null;
-  address_state?: string | null;
-}
+import type { Listing } from '../../components/ui/listingTypes';
 
 interface SenderInfo {
   name: string;
@@ -89,9 +75,9 @@ export async function generateMarketingLetter(
      *  1️⃣  Owner name & salutation
      * ──────────────────────────────────────────────────────────────── */
     const rawOwnerFirstName =
-      (listing.owner_first_name ?? listing.owner1FirstName ?? '').trim();
+      (listing.owner_first_name ?? '').trim();
     const rawOwnerLastName =
-      (listing.owner_last_name  ?? listing.owner1LastName  ?? '').trim();
+      (listing.owner_last_name ?? '').trim();
 
     let displayOwnerFullName: string | null = null;
     let salutationName = 'Property Owner';
@@ -113,13 +99,13 @@ export async function generateMarketingLetter(
     let finalOwnerMailCityStateZip = '';
 
     const street =
-      listing.mailAddress?.street  ?? listing.mail_address_street  ?? '';
+      listing.mail_address?.street  ?? '';
     const city   =
-      listing.mailAddress?.city    ?? listing.mail_address_city    ?? '';
+      listing.mail_address?.city    ?? '';
     const state  =
-      listing.mailAddress?.state   ?? listing.mail_address_state   ?? '';
+      listing.mail_address?.state   ?? '';
     const zip    =
-      listing.mailAddress?.zip     ?? listing.mail_address_zip     ?? '';
+      listing.mail_address?.zip     ?? '';
 
     finalOwnerMailStreet = street.trim();
 

@@ -157,14 +157,14 @@ export const formatPropertyForAnalysis = (listing: Listing, globalIndex: number)
   const keyMetrics = [];
   
   // Price per unit if it's multifamily (use assessed value instead of list price)
-  if (listing.unitsCount && listing.unitsCount > 1 && listing.assessedValue) {
-    const pricePerUnit = listing.assessedValue / listing.unitsCount;
+  if (listing.units_count && listing.units_count > 1 && listing.assessed_value) {
+    const pricePerUnit = listing.assessed_value / listing.units_count;
     keyMetrics.push(`Assessed Value/Unit: ${pricePerUnit.toLocaleString('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0 })}`);
   }
   
   // Price per square foot if we have both values (use assessed value)
-  if (listing.assessedValue && listing.squareFeet) {
-    const pricePerSqFt = listing.assessedValue / listing.squareFeet;
+  if (listing.assessed_value && listing.square_feet) {
+    const pricePerSqFt = listing.assessed_value / listing.square_feet;
     keyMetrics.push(`Assessed Value/Sq Ft: ${pricePerSqFt.toFixed(0)}`);
   }
   
@@ -184,7 +184,7 @@ export const formatPropertyForAnalysis = (listing: Listing, globalIndex: number)
       if (typeof value === 'boolean') {
         value = value ? "Yes" : "No";
       } else if (typeof value === 'object' && value !== null) {
-        if (key === "mailAddress") {
+        if (key === "mail_address") {
           const mailAddr = value as any;
           let formattedMailAddress = "";
           if (mailAddr.street || mailAddr.address) {
