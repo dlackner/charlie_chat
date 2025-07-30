@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { GradeMetrics, MultifamilyMarketBenchmarks, PropertyCharacteristics, MultifamilyGradeMetrics, MULTIFAMILY_BENCHMARKS, detectAssetClass, detectMarketTier, calculateMultifamilyGrade } from './grading-system';
 import { generatePropertySummary, PropertySummaryButton } from './summary-generator';
+import { useAuth } from '@/contexts/AuthContext';
 import {
   LineChart,
   Line,
@@ -68,6 +69,19 @@ const calculateIRR = (cashFlows: number[], guess: number = 0.1): number => {
 
 
 export default function PropertyAnalyzerPage() {
+  // Get user authentication and class
+  const { user: currentUser } = useAuth();
+  
+  // Determine user class based on profile data
+  const userClass = useMemo(() => {
+    if (!currentUser) return 'trial';
+    
+    // Check if user has subscription info - this would need to be added to your user profile
+    // For now, defaulting to trial, but this should check actual subscription status
+    const userProfile = currentUser as any;
+    return userProfile?.user_class || 'trial';
+  }, [currentUser]);
+
   // --- Input States: FINANCING ---
   const [purchasePrice, setPurchasePrice] = useState<number>(7000000);
   const [downPaymentPercentage, setDownPaymentPercentage] = useState<number>(20); // Percentage
@@ -292,6 +306,45 @@ export default function PropertyAnalyzerPage() {
     URL.revokeObjectURL(url);
 
   };
+
+  // Property data for 10-year cash flow report (moved into Charlie's Analysis)
+  const propertyData = useMemo(() => ({
+    purchasePrice,
+    downPaymentPercentage,
+    closingCostsPercentage,
+    interestRate,
+    amortizationPeriodYears,
+    loanStructure,
+    interestOnlyPeriodYears,
+    numUnits,
+    avgMonthlyRentPerUnit,
+    vacancyRate,
+    annualRentalGrowthRate,
+    otherIncomeAnnual,
+    incomeReductionsAnnual,
+    propertyTaxes,
+    insurance,
+    propertyManagementFeePercentage,
+    maintenanceRepairsAnnual,
+    utilitiesAnnual,
+    contractServicesAnnual,
+    payrollAnnual,
+    marketingAnnual,
+    gAndAAnnual,
+    otherExpensesAnnual,
+    expenseGrowthRate,
+    capitalReservePerUnitAnnual,
+    holdingPeriodYears
+  }), [
+    purchasePrice, downPaymentPercentage, closingCostsPercentage, interestRate,
+    amortizationPeriodYears, loanStructure, interestOnlyPeriodYears, numUnits,
+    avgMonthlyRentPerUnit, vacancyRate, annualRentalGrowthRate, otherIncomeAnnual,
+    incomeReductionsAnnual, propertyTaxes, insurance, propertyManagementFeePercentage,
+    maintenanceRepairsAnnual, utilitiesAnnual, contractServicesAnnual, payrollAnnual,
+    marketingAnnual, gAndAAnnual, otherExpensesAnnual, expenseGrowthRate,
+    capitalReservePerUnitAnnual, holdingPeriodYears
+  ]);
+
   // Function to handle file loading
   const handleFileLoad = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -695,7 +748,7 @@ export default function PropertyAnalyzerPage() {
               <p className="text-2xl font-bold">Investment Grade: <span className="text-2xl font-extrabold">{overallGrade}</span></p>
             </div>
           </div>
-          <div className="flex space-x-3">
+          <div className="flex justify-end">
             <PropertySummaryButton
               gradeResult={{
                 grade: overallGrade,
@@ -714,6 +767,8 @@ export default function PropertyAnalyzerPage() {
                 expenseRatio,
                 breakEvenYear
               }}
+              userClass={userClass}
+              propertyData={propertyData}
             />
           </div>
         </div>
@@ -812,13 +867,13 @@ export default function PropertyAnalyzerPage() {
           </div>
 
           <div className="bg-white p-5 rounded-xl shadow-lg border border-gray-200">
-            <h3 className="text-md font-semibold text-orange-600 mb-1">Expense Ratio</h3>
+            <h3 className="text-md font-semibold text-orange-600 mb-1">Expense Ratio (Year 1)</h3>
             <p className="text-2xl font-bold text-gray-900">{formatPercentage(expenseRatio)}</p>
           </div>
 
           {/* Row 2 Metrics: Cap Rate, DSCR, IRR */}
           <div className="bg-white p-5 rounded-xl shadow-lg border border-gray-200">
-            <h3 className="text-md font-semibold text-orange-600 mb-1">Cap Rate</h3>
+            <h3 className="text-md font-semibold text-orange-600 mb-1">Cap Rate (Year 1)</h3>
             <p className="text-2xl font-bold text-gray-900">{formatPercentage(capRate)}</p>
           </div>
 
@@ -828,7 +883,7 @@ export default function PropertyAnalyzerPage() {
           </div>
 
           <div className="bg-white p-5 rounded-xl shadow-lg border border-gray-200">
-            <h3 className="text-md font-semibold text-orange-600 mb-1">IRR at End of Holding Period</h3>
+            <h3 className="text-md font-semibold text-orange-600 mb-1">Annualized Return ({holdingPeriodYears} Year)</h3>
             <p className="text-2xl font-bold text-gray-900">{formatPercentage(irr)}</p>
           </div>
 
@@ -844,7 +899,7 @@ export default function PropertyAnalyzerPage() {
           </div>
 
           <div className="bg-white p-5 rounded-xl shadow-lg border border-gray-200">
-            <h3 className="text-md font-semibold text-orange-600 mb-1">Return on Investment (at Year {holdingPeriodYears})</h3>
+            <h3 className="text-md font-semibold text-orange-600 mb-1">Total ROI ({holdingPeriodYears} Year)</h3>
             <p className="text-2xl font-bold text-gray-900">{formatPercentage(roiAtHorizon)}</p>
           </div>
 
@@ -880,7 +935,7 @@ export default function PropertyAnalyzerPage() {
 
           {/* Row 5 Metrics */}
           <div className="bg-white p-5 rounded-xl shadow-lg border border-gray-200">
-            <h3 className="text-md font-semibold text-orange-600 mb-1">Cash-on-Cash Return</h3>
+            <h3 className="text-md font-semibold text-orange-600 mb-1">Cash-on-Cash Return (Year 1)</h3>
             <p className="text-2xl font-bold text-gray-900">{formatPercentage(cashOnCashReturn)}</p>
           </div>
 
