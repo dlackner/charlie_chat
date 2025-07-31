@@ -1,9 +1,12 @@
 'use client';
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import { GradeMetrics, MultifamilyMarketBenchmarks, PropertyCharacteristics, MultifamilyGradeMetrics, MULTIFAMILY_BENCHMARKS, detectAssetClass, detectMarketTier, calculateMultifamilyGrade } from './grading-system';
 import { generatePropertySummary, PropertySummaryButton } from './summary-generator';
 import { useAuth } from '@/contexts/AuthContext';
+import { usePropertyAnalyzerAccess } from './usePropertyAnalyzerAccess';
+import { UnsavedChangesModal } from './UnsavedChangesModal';
 import {
   LineChart,
   Line,
@@ -69,18 +72,15 @@ const calculateIRR = (cashFlows: number[], guess: number = 0.1): number => {
 
 
 export default function PropertyAnalyzerPage() {
-  // Get user authentication and class
+  // Get user authentication and access control
   const { user: currentUser } = useAuth();
-  
-  // Determine user class based on profile data
-  const userClass = useMemo(() => {
-    if (!currentUser) return 'trial';
-    
-    // Check if user has subscription info - this would need to be added to your user profile
-    // For now, defaulting to trial, but this should check actual subscription status
-    const userProfile = currentUser as any;
-    return userProfile?.user_class || 'trial';
-  }, [currentUser]);
+  const { userClass, hasAccess: hasPropertyAnalyzerAccess, isLoading: isLoadingAccess } = usePropertyAnalyzerAccess();
+  const router = useRouter();
+
+  // --- Modal State ---
+  const [showUnsavedChangesModal, setShowUnsavedChangesModal] = useState(false);
+  const [pendingNavigation, setPendingNavigation] = useState<(() => void) | null>(null);
+  const allowLeavingRef = useRef(false);
 
   // --- Input States: FINANCING ---
   const [purchasePrice, setPurchasePrice] = useState<number>(7000000);
@@ -255,6 +255,11 @@ export default function PropertyAnalyzerPage() {
 
   // Function to save settings as blob
   const saveSettings = () => {
+    // Reset the unsaved changes tracking since we're saving the scenario
+    if ((window as any).propertyAnalyzerSetSavingScenario) {
+      (window as any).propertyAnalyzerSetSavingScenario(true);
+    }
+    
     const settingsToSave = {
       purchasePrice,
       downPaymentPercentage,
@@ -301,10 +306,20 @@ export default function PropertyAnalyzerPage() {
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
+      
+      // File was successfully saved, permanently reset the interaction flag
+      // This prevents warnings until user makes new changes
+      if ((window as any).propertyAnalyzerResetUserInteraction) {
+        (window as any).propertyAnalyzerResetUserInteraction();
+      }
     }
 
     URL.revokeObjectURL(url);
-
+    
+    // Clean up the saving flag 
+    if ((window as any).propertyAnalyzerSetSavingScenario) {
+      (window as any).propertyAnalyzerSetSavingScenario(false);
+    }
   };
 
   // Property data for 10-year cash flow report (moved into Charlie's Analysis)
@@ -411,6 +426,138 @@ export default function PropertyAnalyzerPage() {
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+
+  // Detect any changes on the page and warn before leaving
+  useEffect(() => {
+    let userInteracted = false;
+    let isResettingToDefaults = false;
+    let isSavingScenario = false;
+
+    const handleUserInteraction = () => {
+      if (!isResettingToDefaults && !isSavingScenario) {
+        userInteracted = true;
+      }
+    };
+
+    const resetUserInteraction = () => {
+      userInteracted = false;
+    };
+
+    const setResettingToDefaults = (resetting: boolean) => {
+      isResettingToDefaults = resetting;
+      if (resetting) {
+        userInteracted = false; // Reset when loading defaults
+      }
+    };
+
+    const setSavingScenario = (saving: boolean) => {
+      isSavingScenario = saving;
+      if (saving) {
+        userInteracted = false; // Reset when saving scenario
+      }
+    };
+
+    // Expose functions to window for button clicks to use
+    (window as any).propertyAnalyzerResetUserInteraction = resetUserInteraction;
+    (window as any).propertyAnalyzerSetResettingToDefaults = setResettingToDefaults;
+    (window as any).propertyAnalyzerSetSavingScenario = setSavingScenario;
+
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (userInteracted && !allowLeavingRef.current) {
+        e.preventDefault();
+        e.returnValue = "Charlie here. I see you've been working on an offer and I don't want you to lose your work! Save your scenario first by clicking 'More' then 'Save scenario'.";
+        return "Charlie here. I see you've been working on an offer and I don't want you to lose your work! Save your scenario first by clicking 'More' then 'Save scenario'.";
+      }
+    };
+
+    // Override the router methods to intercept navigation
+    const originalPush = router.push;
+    const originalReplace = router.replace;
+    
+    router.push = (href: string, options?: any) => {
+      if (userInteracted && href !== '/property-analyzer') {
+        setPendingNavigation(() => () => originalPush.call(router, href, options));
+        setShowUnsavedChangesModal(true);
+        return Promise.resolve(false);
+      }
+      return originalPush.call(router, href, options);
+    };
+
+    router.replace = (href: string, options?: any) => {
+      if (userInteracted && href !== '/property-analyzer') {
+        setPendingNavigation(() => () => originalReplace.call(router, href, options));
+        setShowUnsavedChangesModal(true);
+        return Promise.resolve(false);
+      }
+      return originalReplace.call(router, href, options);
+    };
+
+    // Intercept clicks on links and navigation elements
+    const handleLinkClick = (e: MouseEvent) => {
+      if (!userInteracted) return;
+      
+      const target = e.target as HTMLElement;
+      const link = target.closest('a[href], [data-nextjs-link]');
+      
+      if (link) {
+        const href = link.getAttribute('href');
+        if (href && href !== '/property-analyzer' && !href.startsWith('#')) {
+          e.preventDefault();
+          e.stopPropagation();
+          setPendingNavigation(() => () => {
+            window.location.href = href;
+          });
+          setShowUnsavedChangesModal(true);
+          return false;
+        }
+      }
+    };
+
+    // Listen for any input changes or form changes
+    document.addEventListener('input', handleUserInteraction);
+    document.addEventListener('change', handleUserInteraction);
+    
+    // Listen for link clicks
+    document.addEventListener('click', handleLinkClick, true);
+    
+    // Listen for browser navigation events
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    
+    return () => {
+      // Restore original router methods
+      router.push = originalPush;
+      router.replace = originalReplace;
+      
+      // Clean up window functions
+      delete (window as any).propertyAnalyzerResetUserInteraction;
+      delete (window as any).propertyAnalyzerSetResettingToDefaults;
+      delete (window as any).propertyAnalyzerSetSavingScenario;
+      
+      document.removeEventListener('input', handleUserInteraction);
+      document.removeEventListener('change', handleUserInteraction);
+      document.removeEventListener('click', handleLinkClick, true);
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, [router]);
+
+  // Modal handlers
+  const handleStayAndSave = () => {
+    setShowUnsavedChangesModal(false);
+    setPendingNavigation(null);
+    // User should save manually - they'll stay on the page
+  };
+
+  const handleLeaveWithoutSaving = () => {
+    setShowUnsavedChangesModal(false);
+    
+    // Allow leaving without further warnings
+    allowLeavingRef.current = true;
+    
+    if (pendingNavigation) {
+      pendingNavigation();
+    }
+    setPendingNavigation(null);
+  };
 
   // FIXED: Function to calculate remaining loan balance correctly
   const calculateRemainingLoanBalance = (yearsElapsed: number): number => {
@@ -707,6 +854,16 @@ export default function PropertyAnalyzerPage() {
     setCapitalReservePerUnitAnnual(500);
     setDeferredCapitalReservePerUnit(0);
     setHoldingPeriodYears(10);
+    
+    // Reset the unsaved changes tracking since we just loaded defaults
+    if ((window as any).propertyAnalyzerSetResettingToDefaults) {
+      (window as any).propertyAnalyzerSetResettingToDefaults(true);
+      setTimeout(() => {
+        if ((window as any).propertyAnalyzerSetResettingToDefaults) {
+          (window as any).propertyAnalyzerSetResettingToDefaults(false);
+        }
+      }, 100);
+    }
   };
 
   // Custom Tooltip Content for Recharts
@@ -726,6 +883,7 @@ export default function PropertyAnalyzerPage() {
   };
 
   return (
+    <>
     <div className="flex flex-col lg:flex-row p-4 md:p-8 bg-white text-gray-800 min-h-screen">
       {/* Hidden file input for loading settings */}
       <input
@@ -767,7 +925,7 @@ export default function PropertyAnalyzerPage() {
                 expenseRatio,
                 breakEvenYear
               }}
-              userClass={userClass}
+              userClass={userClass || undefined}
               propertyData={propertyData}
             />
           </div>
@@ -1408,6 +1566,14 @@ export default function PropertyAnalyzerPage() {
           </div>
         </div>
       </div>
-    </div >
+    </div>
+    
+    {/* Unsaved Changes Modal */}
+    <UnsavedChangesModal
+      isOpen={showUnsavedChangesModal}
+      onStay={handleStayAndSave}
+      onLeave={handleLeaveWithoutSaving}
+    />
+  </>
   );
 }
