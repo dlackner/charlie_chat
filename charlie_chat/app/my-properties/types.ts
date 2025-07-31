@@ -76,7 +76,7 @@ export interface PageSavedProperty extends BaseSavedProperty {
   longitude?: number;
   last_skip_trace?: string;
   skipTraceData?: any;
-  mailAddress?: {
+  mail_address?: {
     street?: string;
     city?: string;
     state?: string;

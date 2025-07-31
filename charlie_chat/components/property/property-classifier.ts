@@ -1,4 +1,4 @@
-import { Listing } from '../ui/sidebar';
+import { Listing } from '../ui/listingTypes';
 
 export interface PropertyClassification {
   type: 'motivated-seller' | 'distressed' | 'value-add' | 'private-lender' | 'comps' |'high-equity' | 'cash-flow' | 'seller-financing';
@@ -64,65 +64,65 @@ export { CLASSIFICATIONS };
 
 // Classification logic functions
 const isMotivatedSeller = (listing: Listing): boolean => {
-  // Handle both boolean and number formats for outOfStateAbsenteeOwner
-  const isOutOfState = listing.outOfStateAbsenteeOwner === true;
+  // Handle both boolean and number formats for out_of_state_absentee_owner
+  const isOutOfState = listing.out_of_state_absentee_owner === true;
   // Match SmartQueries: 10+ years owned
-  const result = isOutOfState && (listing.yearsOwned || 0) >= 10;
-  console.log('isMotivatedSeller - outOfState:', listing.outOfStateAbsenteeOwner, 'yearsOwned:', listing.yearsOwned, 'result:', result);
+  const result = isOutOfState && (listing.years_owned || 0) >= 10;
+  console.log('isMotivatedSeller - outOfState:', listing.out_of_state_absentee_owner, 'yearsOwned:', listing.years_owned, 'result:', result);
   return result;
 };
 
 const isDistressed = (listing: Listing): boolean => {
-  const result = !!(listing.preForeclosure ||
-    listing.taxLien ||
+  const result = !!(listing.pre_foreclosure ||
+    listing.tax_lien ||
     listing.reo ||
     listing.auction ||
     listing.foreclosure);
-  console.log('isDistressed - preForeclosure:', listing.preForeclosure, 'taxLien:', listing.taxLien, 'reo:', listing.reo, 'auction:', listing.auction, 'foreclosure:', listing.foreclosure, 'result:', result);
+  console.log('isDistressed - preForeclosure:', listing.pre_foreclosure, 'taxLien:', listing.tax_lien, 'reo:', listing.reo, 'auction:', listing.auction, 'foreclosure:', listing.foreclosure, 'result:', result);
   return result;
 };
 
 const isValueAdd = (listing: Listing): boolean => {
-  const yearBuilt = listing.yearBuilt || 0;
-  // Handle both boolean and number formats for outOfStateAbsenteeOwner
-  const isOutOfState = listing.outOfStateAbsenteeOwner === true;
+  const yearBuilt = listing.year_built || 0;
+  // Handle both boolean and number formats for out_of_state_absentee_owner
+  const isOutOfState = listing.out_of_state_absentee_owner === true;
   // Match SmartQueries: 1970-1995 built + out-of-state
   const result = yearBuilt >= 1970 &&
     yearBuilt <= 1995 &&
     isOutOfState;
-  console.log('isValueAdd - yearBuilt:', yearBuilt, 'outOfState:', listing.outOfStateAbsenteeOwner, 'result:', result);
+  console.log('isValueAdd - yearBuilt:', yearBuilt, 'outOfState:', listing.out_of_state_absentee_owner, 'result:', result);
   return result;
 };
 
 const isComps = (listing: Listing): boolean => {
-  const result = listing.lastSaleArmsLength === true && listing.yearsOwned === 1;
-  console.log('isComps - lastSaleArmsLength:', listing.lastSaleArmsLength, 'yearsOwned:', listing.yearsOwned, 'result:', result);
+  const result = listing.last_sale_arms_length === true && listing.years_owned === 1;
+  console.log('isComps - lastSaleArmsLength:', listing.last_sale_arms_length, 'yearsOwned:', listing.years_owned, 'result:', result);
   return result;
 };
 
 const isPrivateLender = (listing: Listing): boolean => {
-  const result = !!listing.privateLender;
-  console.log('isPrivateLender - privateLender:', listing.privateLender, 'result:', result);
+  const result = !!listing.private_lender;
+  console.log('isPrivateLender - privateLender:', listing.private_lender, 'result:', result);
   return result;
 };
 
 const isHighEquity = (listing: Listing): boolean => {
-  if (!listing.estimatedEquity || !listing.estimatedValue) return false;
-  return listing.estimatedEquity > (listing.estimatedValue * 0.4); // 40%+ equity
+  if (!listing.estimated_equity || !listing.estimated_value) return false;
+  return listing.estimated_equity > (listing.estimated_value * 0.4); // 40%+ equity
 };
 
 const isCashFlow = (listing: Listing): boolean => {
-  if (!listing.rentEstimate || !listing.assessedValue) return false;
-  const annualRent = listing.rentEstimate * 12;
-  const rentToValueRatio = annualRent / listing.assessedValue;
+  if (!listing.rent_estimate || !listing.assessed_value) return false;
+  const annualRent = listing.rent_estimate * 12;
+  const rentToValueRatio = annualRent / listing.assessed_value;
   return rentToValueRatio > 0.08; // 8%+ rent-to-value ratio
 };
 
 const isSellerFinancing = (listing: Listing): boolean => {
   return !!(listing.assumable ||
-    (listing.estimatedEquity && listing.estimatedValue &&
-      listing.estimatedEquity > (listing.estimatedValue * 0.4) &&
-      (listing.outOfStateAbsenteeOwner || listing.corporate_owned)));
+    (listing.estimated_equity && listing.estimated_value &&
+      listing.estimated_equity > (listing.estimated_value * 0.4) &&
+      (listing.out_of_state_absentee_owner || listing.corporate_owned)));
 };
 
 // Main classification functions

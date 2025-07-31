@@ -326,7 +326,13 @@ export function ClosingChat() {
               if (data.clearResults) {
                 setListings([]);
               } else if (data.listings) {
+                // API now returns snake_case data, so no transformation needed
                 setListings(data.listings);
+                console.log('🔍 Pagination data received:', {
+                  totalCount: data.totalCount,
+                  hasMore: data.hasMore,
+                  listingsCount: data.listings.length
+                });
               }
             }}
             listings={listings}

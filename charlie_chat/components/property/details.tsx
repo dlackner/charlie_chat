@@ -2,7 +2,7 @@
 
 'use client';
 
-import type { Listing } from '../ui/sidebar';
+import type { Listing } from '../ui/listingTypes';
 
 interface PropertyDetailsProps {
   listing: Listing;
@@ -16,37 +16,37 @@ export const PropertyDetails = ({ listing }: PropertyDetailsProps) => {
       </p>
       <p>
         <strong>Out-of-State Absentee Owner:</strong>{" "}
-        {listing.outOfStateAbsenteeOwner ? "Yes" : "No"}
+        {listing.out_of_state_absentee_owner ? "Yes" : "No"}
       </p>
       <p>
-        <strong>Units:</strong> {listing.unitsCount ?? "N/A"}
+        <strong>Units:</strong> {listing.units_count ?? "N/A"}
       </p>
       <p>
         <strong>Flood Zone Description:</strong>{" "}
-        {listing.floodZoneDescription ?? "N/A"}
+        {listing.flood_zone_description ?? "N/A"}
       </p>
       <p>
-        <strong>Year Built:</strong> {listing.yearBuilt ?? "N/A"}
+        <strong>Year Built:</strong> {listing.year_built ?? "N/A"}
       </p>
       <p>
-        <strong>MLS Active:</strong> {listing.mlsActive ? "Yes" : "No"}
+        <strong>MLS Active:</strong> {listing.mls_active ? "Yes" : "No"}
       </p>
       <p>
         <strong>Lot Size:</strong>{" "}
-        {listing.lotSquareFeet 
-          ? `${listing.lotSquareFeet.toLocaleString()} sq ft` 
+        {listing.lot_square_feet 
+          ? `${listing.lot_square_feet.toLocaleString()} sq ft` 
           : "N/A"}
       </p>
       <p>
-        <strong>Last Sale Date:</strong> {listing.lastSaleDate ?? "N/A"}
+        <strong>Last Sale Date:</strong> {listing.last_sale_date ?? "N/A"}
       </p>
       <p>
-        <strong>Years Owned:</strong> {listing.yearsOwned ?? "N/A"}
+        <strong>Years Owned:</strong> {listing.years_owned ?? "N/A"}
       </p>
       <p>
         <strong>Last Sale Amount:</strong>{" "}
-        {listing.lastSaleAmount 
-          ? `$${Number(listing.lastSaleAmount).toLocaleString()}` 
+        {listing.last_sale_amount 
+          ? `$${Number(listing.last_sale_amount).toLocaleString()}` 
           : "N/A"}
       </p>
     </div>

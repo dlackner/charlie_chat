@@ -1,5 +1,84 @@
 import { NextRequest, NextResponse } from "next/server";
 
+// Transform external API camelCase response to snake_case for consistent frontend usage
+function transformListingToSnakeCase(listing: any) {
+  return {
+    ...listing,
+    // Address handling - keep nested structure but add flat access
+    address_street: listing.address?.street,
+    address_city: listing.address?.city,
+    address_state: listing.address?.state,
+    address_zip: listing.address?.zip,
+    address_full: listing.address?.address,
+    
+    // Mail address handling
+    mail_address_street: listing.mailAddress?.street,
+    mail_address_city: listing.mailAddress?.city,
+    mail_address_state: listing.mailAddress?.state,
+    mail_address_zip: listing.mailAddress?.zip,
+    mail_address_full: listing.mailAddress?.address,
+    
+    // Property characteristics
+    units_count: listing.unitsCount,
+    year_built: listing.yearBuilt,
+    square_feet: listing.squareFeet,
+    lot_square_feet: listing.lotSquareFeet,
+    
+    // Financial information
+    assessed_value: listing.assessedValue,
+    assessed_land_value: listing.assessedLandValue,
+    estimated_value: listing.estimatedValue,
+    estimated_equity: listing.estimatedEquity,
+    
+    // Sale history
+    last_sale_date: listing.lastSaleDate,
+    last_sale_amount: listing.lastSaleAmount,
+    last_sale_arms_length: listing.lastSaleArmsLength,
+    
+    // Ownership information
+    years_owned: listing.yearsOwned,
+    owner_occupied: listing.ownerOccupied,
+    in_state_absentee_owner: listing.inStateAbsenteeOwner,
+    out_of_state_absentee_owner: listing.outOfStateAbsenteeOwner,
+    corporate_owned: listing.corporateOwned,
+    investor_buyer: listing.investorBuyer,
+    owner_first_name: listing.owner1FirstName,
+    owner_last_name: listing.owner1LastName,
+    
+    // Mortgage information
+    mortgage_balance: listing.openMortgageBalance,
+    mortgage_maturing_date: listing.maturityDateFirst,
+    lender_name: listing.lenderName,
+    
+    // Property flags
+    mls_active: listing.mlsActive,
+    for_sale: listing.forSale,
+    assumable: listing.assumable,
+    auction: listing.auction,
+    reo: listing.reo,
+    foreclosure: listing.foreclosure,
+    pre_foreclosure: listing.preForeclosure,
+    tax_lien: listing.taxLien,
+    private_lender: listing.privateLender,
+    free_clear: listing.freeClear,
+    
+    // Portfolio information
+    total_portfolio_equity: listing.totalPortfolioEquity,
+    total_portfolio_mortgage_balance: listing.totalPortfolioMortgageBalance,
+    total_properties_owned: listing.totalPropertiesOwned,
+    
+    // Location information
+    flood_zone: listing.floodZone,
+    flood_zone_description: listing.floodZoneDescription,
+    latitude: listing.latitude,
+    longitude: listing.longitude,
+    
+    // Property details
+    property_type: listing.propertyType,
+    stories: listing.stories
+  };
+}
+
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
@@ -148,7 +227,13 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ids }); // ✅ wrapped in { ids }
     }
 
-    console.log("📍 Sample listing:", data.data?.[0]);
+    console.log("📍 Sample listing (before transformation):", data.data?.[0]);
+    
+    // Transform camelCase API response to snake_case for consistent frontend usage
+    if (data.data && Array.isArray(data.data)) {
+      data.data = data.data.map(transformListingToSnakeCase);
+      console.log("📍 Sample listing (after transformation):", data.data?.[0]);
+    }
 
     return NextResponse.json(data);
   } catch (err) {

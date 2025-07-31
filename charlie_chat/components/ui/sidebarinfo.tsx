@@ -8,44 +8,7 @@ import { Document, Packer, Paragraph, TextRun, ISpacingProperties, LineRuleType 
 import { saveAs } from 'file-saver';
 import { createBrowserClient } from '@supabase/ssr';
 
-type Listing = {
-  id: string;
-  address: {
-    street?: string;
-    address: string;
-    city?: string;
-    state?: string;
-    zip?: string;
-  };
-  mailAddress?: {
-    address?: string;
-    city?: string;
-    county?: string;
-    state?: string;
-    street?: string;
-    zip?: string;
-  };
-  bedrooms?: number;
-  bathrooms?: number;
-  lastSaleAmount?: number;
-  lotSquareFeet?: number;
-  yearsOwned?: number;
-  outOfStateAbsenteeOwner?: number;
-  squareFeet?: number;
-  rentEstimate?: number;
-  assessedValue?: number;
-  estimatedValue?: number;
-  lastSaleDate?: string;
-  yearBuilt?: number;
-  pool?: boolean;
-  ownerOccupied?: boolean;
-  floodZoneDescription?: string;
-  unitsCount?: number;
-  owner1FirstName?: string;
-  owner1LastName?: string;
-  stories?: number;
-  [key: string]: any;
-};
+import type { Listing } from './listingTypes';
 
 type Props = {
   onSearch: (filters: Record<string, any>) => Promise<void>;
@@ -253,8 +216,8 @@ export const Sidebar = ({
       email: "[Email Address]",
     };
     const today = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
-    const rawOwnerFirstName = listing.owner1FirstName?.trim();
-    const rawOwnerLastName = listing.owner1LastName?.trim();
+    const rawOwnerFirstName = listing.owner_first_name?.trim();
+    const rawOwnerLastName = listing.owner_last_name?.trim();
     let displayOwnerFullName: string | null = null;
     let salutationName = "Property Owner";
     if (rawOwnerFirstName && rawOwnerLastName) {
@@ -268,11 +231,11 @@ export const Sidebar = ({
     }
     let finalOwnerMailStreet = "";
     let finalOwnerMailCityStateZip = "";
-    if (listing.mailAddress) {
-      finalOwnerMailStreet = listing.mailAddress.street || "";
-      const city = listing.mailAddress.city;
-      const stateAbbr = listing.mailAddress.state;
-      const zipCode = listing.mailAddress.zip;
+    if (listing.mail_address) {
+      finalOwnerMailStreet = listing.mail_address.street || "";
+      const city = listing.mail_address.city;
+      const stateAbbr = listing.mail_address.state;
+      const zipCode = listing.mail_address.zip;
       let cityStateZipParts = [];
       if (city) cityStateZipParts.push(city);
       if (stateAbbr) cityStateZipParts.push(stateAbbr);
@@ -286,15 +249,15 @@ export const Sidebar = ({
       } else {
           finalOwnerMailCityStateZip = cityStateZipParts.join(' ');
       }
-      if (!finalOwnerMailStreet && listing.mailAddress.address) {
-          const addressParts = listing.mailAddress.address.split(',');
+      if (!finalOwnerMailStreet && listing.mail_address.address) {
+          const addressParts = listing.mail_address.address.split(',');
           finalOwnerMailStreet = addressParts[0]?.trim() || "";
           if (addressParts.length > 1 && !finalOwnerMailCityStateZip) {
               finalOwnerMailCityStateZip = addressParts.slice(1).join(',').trim();
           }
       }
-    } else if (listing.ownerAddress) {
-      const addressParts = listing.ownerAddress.split(',');
+    } else if ((listing as any).mail_address?.address) {
+      const addressParts = (listing as any).mail_address.address.split(',');
       finalOwnerMailStreet = addressParts[0]?.trim() || "";
       if (addressParts.length > 1) {
         finalOwnerMailCityStateZip = addressParts.slice(1).join(',').trim();
@@ -413,12 +376,12 @@ export const Sidebar = ({
         doc.text(`${label} ${value}`, x, y + 7 + i * 6);
       });
     };
-    addSection("PROPERTY OVERVIEW", [["Property ID:", listing.id], ["Units:", listing.unitsCount ?? "N/A"], ["Stories:", listing.stories ?? "N/A"], ["Year Built:", listing.yearBuilt ?? "N/A"], ["Lot Size:", `${listing.lotSquareFeet?.toLocaleString()} sq ft`], ["Years Owned:", listing.yearsOwned ?? "N/A"],], leftX, startY);
-    addSection("VALUATION & EQUITY", [["Assessed Value:", formatCurrency(listing.assessedValue)], ["Estimated Market Value:", formatCurrency(listing.estimatedValue)], ["Estimated Equity:", formatCurrency(listing.estimatedValue)], ["Listing Price:", "Not listed"],], leftX, startY + 46);
-    addSection("MORTGAGE & FINANCING", [["Mortgage Balance:", formatCurrency(listing.openMortgageBalance)], ["Lender:", listing.lenderName ?? "N/A"], ["Mortgage Maturity Date:", listing.maturingDate ?? "N/A"],], leftX, startY + 81);
-    addSection("SALES & TRANSACTION HISTORY", [["Last Sale Date:", listing.lastSaleDate ?? "N/A"], ["Last Sale Amount:", formatCurrency(listing.lastSaleAmount)], ["Arms-Length Sale:", listing.lastSaleArmsLength ? "Yes" : "No"], ["MLS Active:", listing.mlsActive ? "Yes" : "No"],], rightX, startY);
-    addSection("FLOOD ZONE INFORMATION", [["Flood Zone:", listing.floodZone ? "Yes" : "No"], ["Flood Zone Description:", listing.floodZoneDescription ?? "N/A"],], rightX, startY + 35);
-    addSection("OWNERSHIP DETAILS", [["Owner Name:", `${listing.owner1FirstName ?? ""} ${listing.owner1LastName ?? ""}`], ["Owner Address:", listing.ownerAddress ?? "N/A"], ["In-State Absentee Owner:", listing.inStateAbsenteeOwner ? "Yes" : "No"], ["Out-of-State Absentee Owner:", listing.outOfStateAbsenteeOwner ? "Yes" : "No"],], rightX, startY + 60);
+    addSection("PROPERTY OVERVIEW", [["Property ID:", listing.id], ["Units:", listing.units_count ?? "N/A"], ["Stories:", listing.stories ?? "N/A"], ["Year Built:", listing.year_built ?? "N/A"], ["Lot Size:", `${listing.lot_square_feet?.toLocaleString()} sq ft`], ["Years Owned:", listing.years_owned ?? "N/A"],], leftX, startY);
+    addSection("VALUATION & EQUITY", [["Assessed Value:", formatCurrency(listing.assessed_value)], ["Estimated Market Value:", formatCurrency(listing.estimated_value)], ["Estimated Equity:", formatCurrency(listing.estimated_value)], ["Listing Price:", "Not listed"],], leftX, startY + 46);
+    addSection("MORTGAGE & FINANCING", [["Mortgage Balance:", formatCurrency(listing.mortgage_balance)], ["Lender:", listing.lender_name ?? "N/A"], ["Mortgage Maturity Date:", listing.mortgage_maturing_date ?? "N/A"],], leftX, startY + 81);
+    addSection("SALES & TRANSACTION HISTORY", [["Last Sale Date:", listing.last_sale_date ?? "N/A"], ["Last Sale Amount:", formatCurrency(listing.last_sale_amount)], ["Arms-Length Sale:", listing.last_sale_arms_length ? "Yes" : "No"], ["MLS Active:", listing.mls_active ? "Yes" : "No"],], rightX, startY);
+    addSection("FLOOD ZONE INFORMATION", [["Flood Zone:", listing.flood_zone ? "Yes" : "No"], ["Flood Zone Description:", listing.flood_zone_description ?? "N/A"],], rightX, startY + 35);
+    addSection("OWNERSHIP DETAILS", [["Owner Name:", `${listing.owner_first_name ?? ""} ${listing.owner_last_name ?? ""}`], ["Owner Address:", listing.mail_address?.address ?? "N/A"], ["In-State Absentee Owner:", listing.in_state_absentee_owner ? "Yes" : "No"], ["Out-of-State Absentee Owner:", listing.out_of_state_absentee_owner ? "Yes" : "No"],], rightX, startY + 60);
     const safeAddress = (listing.address?.address || "property").replace(/[^a-zA-Z0-9]/g, "_");
     doc.save(`Property_Profile_${safeAddress}.pdf`);
   };
@@ -687,7 +650,7 @@ export const Sidebar = ({
         <div className="flex-1 space-y-2 overflow-y-auto relative">
           {Array.isArray(listings) &&
             listings
-              .sort((a, b) => (b.rentEstimate ?? 0) - (a.rentEstimate ?? 0))
+              .sort((a, b) => (b.rent_estimate ?? 0) - (a.rent_estimate ?? 0))
               .slice(0, 50)
               .map((listing, i) => {
                 const isSelected = selectedListings.some((l: Listing) => l.id === listing.id);
@@ -705,8 +668,8 @@ export const Sidebar = ({
                           {listing.address?.street || "No street info"}
                         </p>
                         <p className="text-xs text-gray-500 mt-1 font-mono leading-relaxed">
-                          Assessed: ${listing.assessedValue?.toLocaleString() ?? "N/A"}<br />
-                          Units: {listing.unitsCount ?? "?"} • Year: {listing.yearBuilt ?? "?"}
+                          Assessed: ${listing.assessed_value?.toLocaleString() ?? "N/A"}<br />
+                          Units: {listing.units_count ?? "?"} • Year: {listing.year_built ?? "?"}
                         </p>
                       </div>
                       <input
@@ -736,15 +699,15 @@ export const Sidebar = ({
               <h2 className="text-2xl font-semibold mb-4 text-gray-800">{activeListing.address?.address || "No Address"}</h2>
               <div className="grid grid-cols-2 gap-4 text-sm text-gray-700">
                 <p><strong>Property ID:</strong> {activeListing.id ?? "N/A"}</p>
-                <p><strong>Out-of-State Absentee Owner:</strong> {activeListing.outOfStateAbsenteeOwner ? "Yes" : "No"}</p>
-                <p><strong>Units:</strong> {activeListing.unitsCount ?? "N/A"}</p>
-                <p><strong>Flood Zone Description:</strong> {activeListing.floodZoneDescription ?? "N/A"}</p>
-                <p><strong>Year Built:</strong> {activeListing.yearBuilt ?? "N/A"}</p>
-                <p><strong>MLS Active:</strong> {activeListing.mlsActive ? "Yes" : "No"}</p>
-                <p><strong>Lot Size:</strong> {activeListing.lotSquareFeet ? `${activeListing.lotSquareFeet.toLocaleString()} sq ft` : "N/A"}</p>
-                <p><strong>Last Sale Date:</strong> {activeListing.lastSaleDate ?? "N/A"}</p>
-                <p><strong>Years Owned:</strong> {activeListing.yearsOwned ?? "N/A"}</p>
-                <p><strong>Last Sale Amount:</strong>{" "}{activeListing.lastSaleAmount ? `$${Number(activeListing.lastSaleAmount).toLocaleString()}` : "N/A"}</p>
+                <p><strong>Out-of-State Absentee Owner:</strong> {activeListing.out_of_state_absentee_owner ? "Yes" : "No"}</p>
+                <p><strong>Units:</strong> {activeListing.units_count ?? "N/A"}</p>
+                <p><strong>Flood Zone Description:</strong> {activeListing.flood_zone_description ?? "N/A"}</p>
+                <p><strong>Year Built:</strong> {activeListing.year_built ?? "N/A"}</p>
+                <p><strong>MLS Active:</strong> {activeListing.mls_active ? "Yes" : "No"}</p>
+                <p><strong>Lot Size:</strong> {activeListing.lot_square_feet ? `${activeListing.lot_square_feet.toLocaleString()} sq ft` : "N/A"}</p>
+                <p><strong>Last Sale Date:</strong> {activeListing.last_sale_date ?? "N/A"}</p>
+                <p><strong>Years Owned:</strong> {activeListing.years_owned ?? "N/A"}</p>
+                <p><strong>Last Sale Amount:</strong>{" "}{activeListing.last_sale_amount ? `$${Number(activeListing.last_sale_amount).toLocaleString()}` : "N/A"}</p>
               </div>
               <div className="mt-6 flex gap-4">
                 <button 
