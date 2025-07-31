@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { getGradeFromScore, getGradeThreshold } from './grading-system'; 
+import { getGradeFromScore, getGradeThreshold } from './grading-system';
+import { generate10YearCashFlowReport } from './cash-flow-report'; 
 
 // Property Summary Generator
 const generatePropertySummary = (
@@ -75,11 +76,11 @@ const generatePropertySummary = (
     // Generate key insights
     const insights = [];
 
-    // IRR insight
+    // Annualized Return insight
     if (breakdown['IRR vs Market'] >= 70) {
-        insights.push(`Strong IRR of ${metrics.irr.toFixed(1)}% delivers solid returns`);
+        insights.push(`Strong annualized return of ${metrics.irr.toFixed(1)}% delivers solid returns`);
     } else if (breakdown['IRR vs Market'] <= 40) {
-        insights.push(`IRR of ${metrics.irr.toFixed(1)}% is below market expectations`);
+        insights.push(`Annualized return of ${metrics.irr.toFixed(1)}% is below market expectations`);
     }
 
     // Cash flow insight
@@ -121,10 +122,10 @@ const generatePropertySummary = (
     const generateImprovementSuggestions = () => {
         const suggestions = [];
 
-        // IRR improvements
+        // Annualized Return improvements
         if (breakdown['IRR vs Market'] < 60) {
             suggestions.push({
-                category: 'IRR Enhancement',
+                category: 'Return Enhancement',
                 suggestions: [
                     'Negotiate purchase price down by 5-10% to improve returns',
                     'Explore value-add opportunities (unit upgrades, amenity improvements)',
@@ -232,7 +233,7 @@ const generatePropertySummary = (
 
     summary += `This property receives a **${grade} grade (${Math.round(score)}/100)** for ${performanceCategory} performance, ${performanceReason}.\n\n`;
 
-    summary += `**Key Metrics:** ${formatCurrency(pricePerUnit)} per unit • ${formatCurrency(metrics.avgMonthlyRentPerUnit)}/month rent • ${metrics.irr.toFixed(1)}% IRR • ${metrics.cashOnCashReturn.toFixed(1)}% Cash-on-Cash\n\n`;
+    summary += `**Key Metrics:** ${formatCurrency(pricePerUnit)} per unit • ${formatCurrency(metrics.avgMonthlyRentPerUnit)}/month rent • ${metrics.irr.toFixed(1)}% Annualized Return • ${metrics.cashOnCashReturn.toFixed(1)}% Cash-on-Cash\n\n`;
 
     if (insights.length > 0) {
         summary += `**Key Performance Drivers:**\n`;
@@ -303,18 +304,35 @@ const generatePropertySummary = (
 // React Component for the Summary Button and Modal
 const PropertySummaryButton = ({
     gradeResult,
-    metrics
+    metrics,
+    userClass,
+    propertyData
 }: {
     gradeResult: { grade: string; score: number; breakdown: Record<string, number>; classification: { assetClass: string; marketTier: string } };
     metrics: any;
+    userClass?: string;
+    propertyData?: any;
 }) => {
     const [showSummary, setShowSummary] = useState(false);
     const [summary, setSummary] = useState('');
 
-    const handleGenerateSummary = () => {
+    // Check if user has access to Charlie's Analysis
+    const hasAccess = userClass && ['pro', 'trial', 'cohort'].includes(userClass.toLowerCase());
+
+    const handleGenerateSummary = async () => {
+        if (!hasAccess) {
+            return; // This shouldn't happen due to button restrictions, but defensive check
+        }
+        
         const generatedSummary = generatePropertySummary(gradeResult, metrics);
         setSummary(generatedSummary);
         setShowSummary(true);
+    };
+
+    const handleGenerateCashFlowReport = async () => {
+        if (propertyData) {
+            await generate10YearCashFlowReport(propertyData);
+        }
     };
     const handlePrintSummary = () => {
         const printWindow = window.open('', '_blank');
@@ -383,15 +401,38 @@ const PropertySummaryButton = ({
         <>
 {/* Summary Button */}
 <div className="mt-8 text-center">
-    <button
-        onClick={handleGenerateSummary}
-        className="bg-orange-600 hover:bg-orange-700 text-white font-bold text-2xl py-3 px-8 rounded-lg transition-colors duration-150 shadow-lg flex items-center mx-auto space-x-2 h-16"
-    >
-        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-        </svg>
-        <span>Charlie's Analysis</span>
-    </button>
+    {hasAccess ? (
+        <button
+            onClick={handleGenerateSummary}
+            className="bg-orange-600 hover:bg-orange-700 text-white font-bold text-2xl py-3 px-8 rounded-lg transition-colors duration-150 shadow-lg flex items-center mx-auto space-x-2 h-16"
+        >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            <span>Charlie's Analysis</span>
+        </button>
+    ) : (
+        <div className="bg-gray-100 border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+            <div className="flex items-center justify-center mb-3">
+                <svg className="w-8 h-8 text-gray-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                </svg>
+                <h3 className="text-lg font-semibold text-gray-700">Charlie's Analysis</h3>
+            </div>
+            <p className="text-sm text-gray-600 mb-4">
+                Get AI-powered investment analysis plus a comprehensive 10-year cash flow report
+            </p>
+            <p className="text-xs text-gray-500 mb-4">
+                Available for Pro, Trial, and Cohort users
+            </p>
+            <button
+                onClick={() => window.location.href = '/pricing'}
+                className="bg-orange-600 hover:bg-orange-700 text-white font-medium py-2 px-6 rounded-lg transition-colors duration-150"
+            >
+                Upgrade to Access
+            </button>
+        </div>
+    )}
 </div>
 
             {/* Summary Modal */}
@@ -426,27 +467,23 @@ const PropertySummaryButton = ({
 
                             <div className="flex space-x-3 mt-6 pt-4 border-t border-gray-200">
                                 <button
+                                    onClick={handleGenerateCashFlowReport}
+                                    className="bg-orange-600 hover:bg-orange-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-150 flex items-center space-x-2"
+                                >
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a4 4 0 01-4-4V5a4 4 0 014-4h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a4 4 0 01-4 4z" />
+                                    </svg>
+                                    <span>10-Year Cash Flow Report</span>
+                                </button>
+                                <button
                                     onClick={handlePrintSummary}
-                                    className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-150 flex items-center space-x-2"
+                                    className="text-white font-medium py-2 px-4 rounded-lg transition-colors duration-150 flex items-center space-x-2"
+                                    style={{ backgroundColor: '#1C599F' }}
                                 >
                                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
                                     </svg>
                                     <span>Print Summary</span>
-                                </button>
-                                <button
-                                    onClick={() => {
-                                        setShowSummary(false);
-                                        setTimeout(() => {
-                                            window.print();
-                                        }, 100);
-                                    }}
-                                    className="bg-orange-600 hover:bg-orange-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-150 flex items-center space-x-2"
-                                >
-                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-                                    </svg>
-                                    <span>Print Assumptions</span>
                                 </button>
                                 <button
                                     onClick={() => setShowSummary(false)}
