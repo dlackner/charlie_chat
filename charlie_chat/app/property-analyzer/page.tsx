@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation';
 import { GradeMetrics, MultifamilyMarketBenchmarks, PropertyCharacteristics, MultifamilyGradeMetrics, MULTIFAMILY_BENCHMARKS, detectAssetClass, detectMarketTier, calculateMultifamilyGrade } from './grading-system';
 import { generatePropertySummary, PropertySummaryButton } from './summary-generator';
 import { useAuth } from '@/contexts/AuthContext';
+import { usePropertyAnalyzerAccess } from './usePropertyAnalyzerAccess';
+import { UnsavedChangesModal } from './UnsavedChangesModal';
 import {
   LineChart,
   Line,
@@ -70,20 +72,15 @@ const calculateIRR = (cashFlows: number[], guess: number = 0.1): number => {
 
 
 export default function PropertyAnalyzerPage() {
-  // Get user authentication and class
+  // Get user authentication and access control
   const { user: currentUser } = useAuth();
+  const { userClass, hasAccess: hasPropertyAnalyzerAccess, isLoading: isLoadingAccess } = usePropertyAnalyzerAccess();
   const router = useRouter();
-  
-  // Determine user class based on profile data
-  const userClass = useMemo(() => {
-    if (!currentUser) return 'trial';
-    
-    // Check if user has subscription info - this would need to be added to your user profile
-    // For now, defaulting to trial, but this should check actual subscription status
-    const userProfile = currentUser as any;
-    return userProfile?.user_class || 'trial';
-  }, [currentUser]);
 
+  // --- Modal State ---
+  const [showUnsavedChangesModal, setShowUnsavedChangesModal] = useState(false);
+  const [pendingNavigation, setPendingNavigation] = useState<(() => void) | null>(null);
+  const allowLeavingRef = useRef(false);
 
   // --- Input States: FINANCING ---
   const [purchasePrice, setPurchasePrice] = useState<number>(7000000);
@@ -466,10 +463,10 @@ export default function PropertyAnalyzerPage() {
     (window as any).propertyAnalyzerSetSavingScenario = setSavingScenario;
 
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      if (userInteracted) {
+      if (userInteracted && !allowLeavingRef.current) {
         e.preventDefault();
-        e.returnValue = 'You have unsaved changes to your property analysis. Are you sure you want to leave?';
-        return 'You have unsaved changes to your property analysis. Are you sure you want to leave?';
+        e.returnValue = "Charlie here. I see you've been working on an offer and I don't want you to lose your work! Save your scenario first by clicking 'More' then 'Save scenario'.";
+        return "Charlie here. I see you've been working on an offer and I don't want you to lose your work! Save your scenario first by clicking 'More' then 'Save scenario'.";
       }
     };
 
@@ -479,20 +476,18 @@ export default function PropertyAnalyzerPage() {
     
     router.push = (href: string, options?: any) => {
       if (userInteracted && href !== '/property-analyzer') {
-        const confirmLeave = window.confirm('You have unsaved changes to your property analysis. Are you sure you want to leave?');
-        if (!confirmLeave) {
-          return Promise.resolve(false);
-        }
+        setPendingNavigation(() => () => originalPush.call(router, href, options));
+        setShowUnsavedChangesModal(true);
+        return Promise.resolve(false);
       }
       return originalPush.call(router, href, options);
     };
 
     router.replace = (href: string, options?: any) => {
       if (userInteracted && href !== '/property-analyzer') {
-        const confirmLeave = window.confirm('You have unsaved changes to your property analysis. Are you sure you want to leave?');
-        if (!confirmLeave) {
-          return Promise.resolve(false);
-        }
+        setPendingNavigation(() => () => originalReplace.call(router, href, options));
+        setShowUnsavedChangesModal(true);
+        return Promise.resolve(false);
       }
       return originalReplace.call(router, href, options);
     };
@@ -507,12 +502,13 @@ export default function PropertyAnalyzerPage() {
       if (link) {
         const href = link.getAttribute('href');
         if (href && href !== '/property-analyzer' && !href.startsWith('#')) {
-          const confirmLeave = window.confirm('You have unsaved changes to your property analysis. Are you sure you want to leave?');
-          if (!confirmLeave) {
-            e.preventDefault();
-            e.stopPropagation();
-            return false;
-          }
+          e.preventDefault();
+          e.stopPropagation();
+          setPendingNavigation(() => () => {
+            window.location.href = href;
+          });
+          setShowUnsavedChangesModal(true);
+          return false;
         }
       }
     };
@@ -543,6 +539,25 @@ export default function PropertyAnalyzerPage() {
       window.removeEventListener('beforeunload', handleBeforeUnload);
     };
   }, [router]);
+
+  // Modal handlers
+  const handleStayAndSave = () => {
+    setShowUnsavedChangesModal(false);
+    setPendingNavigation(null);
+    // User should save manually - they'll stay on the page
+  };
+
+  const handleLeaveWithoutSaving = () => {
+    setShowUnsavedChangesModal(false);
+    
+    // Allow leaving without further warnings
+    allowLeavingRef.current = true;
+    
+    if (pendingNavigation) {
+      pendingNavigation();
+    }
+    setPendingNavigation(null);
+  };
 
   // FIXED: Function to calculate remaining loan balance correctly
   const calculateRemainingLoanBalance = (yearsElapsed: number): number => {
@@ -868,6 +883,7 @@ export default function PropertyAnalyzerPage() {
   };
 
   return (
+    <>
     <div className="flex flex-col lg:flex-row p-4 md:p-8 bg-white text-gray-800 min-h-screen">
       {/* Hidden file input for loading settings */}
       <input
@@ -909,7 +925,7 @@ export default function PropertyAnalyzerPage() {
                 expenseRatio,
                 breakEvenYear
               }}
-              userClass={userClass}
+              userClass={userClass || undefined}
               propertyData={propertyData}
             />
           </div>
@@ -1550,6 +1566,14 @@ export default function PropertyAnalyzerPage() {
           </div>
         </div>
       </div>
-    </div >
+    </div>
+    
+    {/* Unsaved Changes Modal */}
+    <UnsavedChangesModal
+      isOpen={showUnsavedChangesModal}
+      onStay={handleStayAndSave}
+      onLeave={handleLeaveWithoutSaving}
+    />
+  </>
   );
 }
