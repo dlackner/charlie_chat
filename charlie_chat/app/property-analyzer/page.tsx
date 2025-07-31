@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import { GradeMetrics, MultifamilyMarketBenchmarks, PropertyCharacteristics, MultifamilyGradeMetrics, MULTIFAMILY_BENCHMARKS, detectAssetClass, detectMarketTier, calculateMultifamilyGrade } from './grading-system';
 import { generatePropertySummary, PropertySummaryButton } from './summary-generator';
 import { useAuth } from '@/contexts/AuthContext';
@@ -71,6 +72,7 @@ const calculateIRR = (cashFlows: number[], guess: number = 0.1): number => {
 export default function PropertyAnalyzerPage() {
   // Get user authentication and class
   const { user: currentUser } = useAuth();
+  const router = useRouter();
   
   // Determine user class based on profile data
   const userClass = useMemo(() => {
@@ -81,6 +83,7 @@ export default function PropertyAnalyzerPage() {
     const userProfile = currentUser as any;
     return userProfile?.user_class || 'trial';
   }, [currentUser]);
+
 
   // --- Input States: FINANCING ---
   const [purchasePrice, setPurchasePrice] = useState<number>(7000000);
@@ -255,6 +258,11 @@ export default function PropertyAnalyzerPage() {
 
   // Function to save settings as blob
   const saveSettings = () => {
+    // Reset the unsaved changes tracking since we're saving the scenario
+    if ((window as any).propertyAnalyzerSetSavingScenario) {
+      (window as any).propertyAnalyzerSetSavingScenario(true);
+    }
+    
     const settingsToSave = {
       purchasePrice,
       downPaymentPercentage,
@@ -301,10 +309,20 @@ export default function PropertyAnalyzerPage() {
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
+      
+      // File was successfully saved, permanently reset the interaction flag
+      // This prevents warnings until user makes new changes
+      if ((window as any).propertyAnalyzerResetUserInteraction) {
+        (window as any).propertyAnalyzerResetUserInteraction();
+      }
     }
 
     URL.revokeObjectURL(url);
-
+    
+    // Clean up the saving flag 
+    if ((window as any).propertyAnalyzerSetSavingScenario) {
+      (window as any).propertyAnalyzerSetSavingScenario(false);
+    }
   };
 
   // Property data for 10-year cash flow report (moved into Charlie's Analysis)
@@ -411,6 +429,120 @@ export default function PropertyAnalyzerPage() {
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+
+  // Detect any changes on the page and warn before leaving
+  useEffect(() => {
+    let userInteracted = false;
+    let isResettingToDefaults = false;
+    let isSavingScenario = false;
+
+    const handleUserInteraction = () => {
+      if (!isResettingToDefaults && !isSavingScenario) {
+        userInteracted = true;
+      }
+    };
+
+    const resetUserInteraction = () => {
+      userInteracted = false;
+    };
+
+    const setResettingToDefaults = (resetting: boolean) => {
+      isResettingToDefaults = resetting;
+      if (resetting) {
+        userInteracted = false; // Reset when loading defaults
+      }
+    };
+
+    const setSavingScenario = (saving: boolean) => {
+      isSavingScenario = saving;
+      if (saving) {
+        userInteracted = false; // Reset when saving scenario
+      }
+    };
+
+    // Expose functions to window for button clicks to use
+    (window as any).propertyAnalyzerResetUserInteraction = resetUserInteraction;
+    (window as any).propertyAnalyzerSetResettingToDefaults = setResettingToDefaults;
+    (window as any).propertyAnalyzerSetSavingScenario = setSavingScenario;
+
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (userInteracted) {
+        e.preventDefault();
+        e.returnValue = 'You have unsaved changes to your property analysis. Are you sure you want to leave?';
+        return 'You have unsaved changes to your property analysis. Are you sure you want to leave?';
+      }
+    };
+
+    // Override the router methods to intercept navigation
+    const originalPush = router.push;
+    const originalReplace = router.replace;
+    
+    router.push = (href: string, options?: any) => {
+      if (userInteracted && href !== '/property-analyzer') {
+        const confirmLeave = window.confirm('You have unsaved changes to your property analysis. Are you sure you want to leave?');
+        if (!confirmLeave) {
+          return Promise.resolve(false);
+        }
+      }
+      return originalPush.call(router, href, options);
+    };
+
+    router.replace = (href: string, options?: any) => {
+      if (userInteracted && href !== '/property-analyzer') {
+        const confirmLeave = window.confirm('You have unsaved changes to your property analysis. Are you sure you want to leave?');
+        if (!confirmLeave) {
+          return Promise.resolve(false);
+        }
+      }
+      return originalReplace.call(router, href, options);
+    };
+
+    // Intercept clicks on links and navigation elements
+    const handleLinkClick = (e: MouseEvent) => {
+      if (!userInteracted) return;
+      
+      const target = e.target as HTMLElement;
+      const link = target.closest('a[href], [data-nextjs-link]');
+      
+      if (link) {
+        const href = link.getAttribute('href');
+        if (href && href !== '/property-analyzer' && !href.startsWith('#')) {
+          const confirmLeave = window.confirm('You have unsaved changes to your property analysis. Are you sure you want to leave?');
+          if (!confirmLeave) {
+            e.preventDefault();
+            e.stopPropagation();
+            return false;
+          }
+        }
+      }
+    };
+
+    // Listen for any input changes or form changes
+    document.addEventListener('input', handleUserInteraction);
+    document.addEventListener('change', handleUserInteraction);
+    
+    // Listen for link clicks
+    document.addEventListener('click', handleLinkClick, true);
+    
+    // Listen for browser navigation events
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    
+    return () => {
+      // Restore original router methods
+      router.push = originalPush;
+      router.replace = originalReplace;
+      
+      // Clean up window functions
+      delete (window as any).propertyAnalyzerResetUserInteraction;
+      delete (window as any).propertyAnalyzerSetResettingToDefaults;
+      delete (window as any).propertyAnalyzerSetSavingScenario;
+      
+      document.removeEventListener('input', handleUserInteraction);
+      document.removeEventListener('change', handleUserInteraction);
+      document.removeEventListener('click', handleLinkClick, true);
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, [router]);
 
   // FIXED: Function to calculate remaining loan balance correctly
   const calculateRemainingLoanBalance = (yearsElapsed: number): number => {
@@ -707,6 +839,16 @@ export default function PropertyAnalyzerPage() {
     setCapitalReservePerUnitAnnual(500);
     setDeferredCapitalReservePerUnit(0);
     setHoldingPeriodYears(10);
+    
+    // Reset the unsaved changes tracking since we just loaded defaults
+    if ((window as any).propertyAnalyzerSetResettingToDefaults) {
+      (window as any).propertyAnalyzerSetResettingToDefaults(true);
+      setTimeout(() => {
+        if ((window as any).propertyAnalyzerSetResettingToDefaults) {
+          (window as any).propertyAnalyzerSetResettingToDefaults(false);
+        }
+      }, 100);
+    }
   };
 
   // Custom Tooltip Content for Recharts
