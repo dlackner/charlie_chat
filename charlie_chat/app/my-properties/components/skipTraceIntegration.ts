@@ -315,6 +315,10 @@ export const handleSkipTraceForProperty = async (
             } else if (errorText.includes('no phones found') || 
                        errorText.includes('no contact information')) {
                 msg = 'No contact information available for this owner';
+            } else if (errorText.includes('po box') || 
+                       errorText.includes('PO Box') ||
+                       errorText.includes('po box addresses cannot be skip traced')) {
+                msg = 'Skip trace not available for PO Box addresses - need a physical mailing address';
             } else if (errorText.includes('proxy error') || 
                        errorText.includes('skip‑trace failed')) {
                 msg = 'Skip trace service temporarily unavailable - please try again later';

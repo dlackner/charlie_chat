@@ -12,6 +12,7 @@ import { handleSkipTraceForProperty } from './components/skipTraceIntegration';
 import { PropertyMapView } from './components/PropertyMapView';
 import { PageSavedProperty as SavedProperty } from './types';
 import { RentDataProcessor } from './components/rentDataProcessor';
+import { CharlieAlert } from './components/CharlieAlert';
 
 import {
     Star,
@@ -54,8 +55,42 @@ export default function MyPropertiesPage() {
     const [rentData, setRentData] = useState<any[]>([]);
     const [isLoadingRentData, setIsLoadingRentData] = useState(true);
     const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
+    
+    // CharlieAlert state
+    const [charlieAlert, setCharlieAlert] = useState<{
+        isOpen: boolean;
+        title?: string;
+        message: string;
+        type?: 'info' | 'warning' | 'error' | 'success';
+        showConfirm?: boolean;
+        onConfirm?: () => void;
+        confirmText?: string;
+        cancelText?: string;
+    }>({
+        isOpen: false,
+        message: '',
+    });
 
     const dropdownRef = useRef<HTMLDivElement>(null);
+
+    // Helper function to show Charlie alerts
+    const showCharlieAlert = (
+        message: string,
+        options?: {
+            title?: string;
+            type?: 'info' | 'warning' | 'error' | 'success';
+            showConfirm?: boolean;
+            onConfirm?: () => void;
+            confirmText?: string;
+            cancelText?: string;
+        }
+    ) => {
+        setCharlieAlert({
+            isOpen: true,
+            message,
+            ...options,
+        });
+    };
 
     // Helper function to check if a property can be skip traced
     const canSkipTrace = (property: SavedProperty): boolean => {
@@ -239,6 +274,11 @@ export default function MyPropertiesPage() {
         property.address_state?.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
+    // For map view: show selected properties if any are selected, otherwise show all filtered properties
+    const mapViewProperties = selectedProperties.size > 0 
+        ? filteredProperties.filter(property => selectedProperties.has(property.property_id))
+        : filteredProperties;
+
     // Helper functions
     const calculateAge = (yearBuilt: number) => {
         return new Date().getFullYear() - yearBuilt;
@@ -302,14 +342,24 @@ export default function MyPropertiesPage() {
             try {
                 // Remove each selected property
                 for (const propertyId of selectedProperties) {
-                    const { error } = await supabase
+                    console.log("Attempting to remove property:", propertyId, "for user:", user.id);
+                    
+                    const { data, error } = await supabase
                         .from("user_favorites")
                         .update({ is_active: false })
                         .eq("user_id", user.id)
-                        .eq("property_id", propertyId);
+                        .eq("property_id", propertyId)
+                        .select();
 
                     if (error) {
-                        console.error("Error removing property:", propertyId, error);
+                        console.error("Error removing property:", propertyId);
+                        console.error("Error details:", JSON.stringify(error, null, 2));
+                        console.error("Error message:", error.message);
+                        console.error("Error code:", error.code);
+                    } else if (data && data.length === 0) {
+                        console.warn("Property not found in favorites:", propertyId);
+                    } else {
+                        console.log("Successfully removed property:", propertyId, "Rows affected:", data?.length);
                     }
                 }
 
@@ -331,7 +381,12 @@ export default function MyPropertiesPage() {
     };
 
     const handleCSVDownload = () => {
-        exportPropertiesToCSV(savedProperties, selectedProperties);
+        exportPropertiesToCSV(savedProperties, selectedProperties, (message) => {
+            showCharlieAlert(message, {
+                type: 'warning',
+                title: 'Selection Required'
+            });
+        });
     };
 
     const handleSkipTrace = async (propertyId: string, property: SavedProperty) => {
@@ -428,7 +483,10 @@ export default function MyPropertiesPage() {
             return newSet;
         });
 
-        alert(`Skip trace failed: ${error}`);
+        showCharlieAlert(`Skip trace failed: ${error}`, { 
+            type: 'error',
+            title: 'Skip Trace Failed'
+        });
     };
 
     const handleBulkSkipTrace = async () => {
@@ -441,7 +499,10 @@ export default function MyPropertiesPage() {
         const propertiesToTrace = filteredProperties.filter(property => canSkipTrace(property));
         
         if (propertiesToTrace.length === 0) {
-            alert('All properties have been recently skip traced.');
+            showCharlieAlert('All properties have been recently skip traced. You can re-run skip trace after 6 months from the last attempt.', { 
+                type: 'info',
+                title: 'Skip Trace Up to Date'
+            });
             setBulkSkipTraceLoading(false);
             return;
         }
@@ -479,7 +540,10 @@ export default function MyPropertiesPage() {
 
         setBulkSkipTraceLoading(false);
         
-        alert('Skip trace complete.');
+        showCharlieAlert('Skip trace complete! Owner contact information has been updated for all selected properties.', { 
+            type: 'success',
+            title: 'Skip Trace Complete'
+        });
     };
 
     const handleDocumentGeneration = async (template: DocumentTemplate) => {
@@ -490,7 +554,10 @@ export default function MyPropertiesPage() {
         );
 
         if (!user || !supabase) {
-            alert("User or Supabase not loaded.");
+            showCharlieAlert('Something went wrong with your session. Please refresh the page and try again.', { 
+                type: 'error',
+                title: 'Session Error'
+            });
             return;
         }
 
@@ -509,7 +576,10 @@ export default function MyPropertiesPage() {
 
             if (error || !data) {
                 console.error("Profile error:", error);
-                alert("Could not load your profile. Please complete it before generating letters.");
+                showCharlieAlert('I need your profile information to personalize the marketing letters. Please complete your profile first.', { 
+                    type: 'warning',
+                    title: 'Profile Required'
+                });
                 return;
             }
             console.log("Profile data with logo:", { ...data, logo_base64: data.logo_base64 ? "Logo present" : "No logo" });
@@ -534,7 +604,10 @@ export default function MyPropertiesPage() {
             setShowDocumentDropdown(false);
         } catch (err) {
             console.error("Document generation failed:", err);
-            alert("An error occurred while generating the document.");
+            showCharlieAlert('Something went wrong while generating your document. Please try again.', { 
+                type: 'error',
+                title: 'Document Generation Failed'
+            });
         }
     };
 
@@ -746,12 +819,18 @@ export default function MyPropertiesPage() {
 
                                                             // Check if exactly one property is selected
                                                             if (selectedPropertyIds.length === 0) {
-                                                                alert("Please select a property first to generate a Letter of Intent.");
+                                                                showCharlieAlert('Please select a property first to generate a Letter of Intent.', { 
+                                                                    type: 'warning',
+                                                                    title: 'No Property Selected'
+                                                                });
                                                                 return;
                                                             }
 
                                                             if (selectedPropertyIds.length > 1) {
-                                                                alert("Please select only ONE property at a time for Letter of Intent generation.");
+                                                                showCharlieAlert('Please select only ONE property at a time for Letter of Intent generation.', { 
+                                                                    type: 'warning',
+                                                                    title: 'Multiple Properties Selected'
+                                                                });
                                                                 return;
                                                             }
 
@@ -843,6 +922,8 @@ export default function MyPropertiesPage() {
                     /* Cards View - Use the new PropertyCardsView component */
                     <PropertyCardsView
                         properties={savedProperties.length === 0 ? [] : filteredProperties}
+                        totalPropertiesCount={savedProperties.length}
+                        searchTerm={searchTerm}
                         selectedProperties={selectedProperties}
                         onToggleSelection={togglePropertySelection}
                         onRemoveFromFavorites={handleRemoveFromFavorites}
@@ -856,7 +937,7 @@ export default function MyPropertiesPage() {
                 ) : viewMode === 'map' ? (
                     /* Map View */
                     <PropertyMapView
-                        properties={savedProperties.length === 0 ? [] : filteredProperties}
+                        properties={savedProperties.length === 0 ? [] : mapViewProperties}
                         selectedProperties={selectedProperties}
                         onToggleSelection={togglePropertySelection}
                         onRemoveFromFavorites={handleRemoveFromFavorites}
@@ -918,6 +999,19 @@ export default function MyPropertiesPage() {
                     </div>
                 </div>
             )}
+
+            {/* Charlie Alert Modal */}
+            <CharlieAlert
+                isOpen={charlieAlert.isOpen}
+                onClose={() => setCharlieAlert(prev => ({ ...prev, isOpen: false }))}
+                title={charlieAlert.title}
+                message={charlieAlert.message}
+                type={charlieAlert.type}
+                showConfirm={charlieAlert.showConfirm}
+                onConfirm={charlieAlert.onConfirm}
+                confirmText={charlieAlert.confirmText}
+                cancelText={charlieAlert.cancelText}
+            />
         </div>
     );
 }
