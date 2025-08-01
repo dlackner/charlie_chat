@@ -317,7 +317,13 @@ const PropertySummaryButton = ({
     const [summary, setSummary] = useState('');
 
     // Check if user has access to Charlie's Analysis
-    const hasAccess = userClass && ['pro', 'trial', 'cohort'].includes(userClass.toLowerCase());
+    // Must match the same logic as My Properties access control
+    const hasAccess = userClass && (
+        userClass === "charlie_chat_pro" ||
+        userClass === "cohort" ||
+        userClass === "trial" ||
+        userClass === "pro"
+    );
 
     const handleGenerateSummary = async () => {
         if (!hasAccess) {
@@ -420,10 +426,10 @@ const PropertySummaryButton = ({
                 <h3 className="text-lg font-semibold text-gray-700">Charlie's Analysis</h3>
             </div>
             <p className="text-sm text-gray-600 mb-4">
-                Get AI-powered investment analysis plus a comprehensive 10-year cash flow report
+                Get AI-powered investment analysis plus a lender-ready 10-year cash flow report
             </p>
             <p className="text-xs text-gray-500 mb-4">
-                Available for Pro, Trial, and Cohort users
+                Available for Pro and Cohort users
             </p>
             <button
                 onClick={() => window.location.href = '/pricing'}

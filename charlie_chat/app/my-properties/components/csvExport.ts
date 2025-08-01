@@ -3,10 +3,15 @@ import { CompleteSavedProperty as SavedProperty } from '../types';
 
 export const exportPropertiesToCSV = (
   properties: SavedProperty[],
-  selectedPropertyIds: Set<string>
+  selectedPropertyIds: Set<string>,
+  onError?: (message: string) => void
 ) => {
   if (selectedPropertyIds.size === 0) {
-    alert("Please select at least one property to download.");
+    if (onError) {
+      onError("Please select at least one property to download.");
+    } else {
+      alert("Please select at least one property to download.");
+    }
     return;
   }
 

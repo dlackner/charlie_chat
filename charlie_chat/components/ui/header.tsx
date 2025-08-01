@@ -4,7 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useState, useRef, useEffect } from "react";
-import { User, ChevronDown, Settings, Heart, LogOut, LogIn, Star } from "lucide-react";
+import { User, ChevronDown, Settings, Heart, LogOut, LogIn, Star, Home } from "lucide-react";
 
 import { useAuth } from "@/contexts/AuthContext";
 import { useMyPropertiesAccess } from "@/app/my-properties/components/useMyPropertiesAccess";
@@ -136,8 +136,6 @@ export default function Header() {
       {/* Right nav */}
       <div className="flex items-center space-x-6 text-sm">
         <Link href="/" className="text-gray-800 hover:bg-gray-100 transition rounded-md px-3 py-1 font-medium">Home</Link>
-        <Link href="/property-analyzer" className="text-gray-800 hover:bg-gray-100 transition rounded-md px-3 py-1 font-medium">Property Analyzer</Link>
-        <Link href="/templates" className="text-gray-800 hover:bg-gray-100 transition rounded-md px-3 py-1 font-medium">Templates</Link>
         
         {/* My Properties */}
         <button
@@ -152,6 +150,7 @@ export default function Header() {
           {buttonState.showProLabel && <span className="text-xs text-orange-500 ml-1">Pro</span>}
         </button>
         
+        <Link href="/property-analyzer" className="text-gray-800 hover:bg-gray-100 transition rounded-md px-3 py-1 font-medium">Property Analyzer</Link>
         <Link href="/pricing" className="text-gray-800 hover:bg-gray-100 transition rounded-md px-3 py-1 font-medium">Pricing</Link>
         
         {/* Authentication/Account Section */}
@@ -182,6 +181,15 @@ export default function Header() {
                   >
                     <Settings size={16} />
                     <span>Profile</span>
+                  </button>
+
+                  {/* My Buy Box */}
+                  <button
+                    onClick={() => handleMenuItemClick(() => router.push('/my-buy-box'))}
+                    className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center space-x-2"
+                  >
+                    <Home size={16} />
+                    <span>My Buy Box</span>
                   </button>
 
                   {/* Divider */}
