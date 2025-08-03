@@ -30,6 +30,7 @@ type Props = {
     userClass: 'trial' | 'charlie_chat' | 'charlie_chat_pro' | 'cohort';
     triggerBuyCreditsModal: () => void;
     clearSelectedListings?: () => void;
+    userCredits?: number | null;
 };
 
 export const Sidebar = ({
@@ -43,7 +44,8 @@ export const Sidebar = ({
     onCreditsUpdate,
     userClass,
     triggerBuyCreditsModal,
-    clearSelectedListings
+    clearSelectedListings,
+    userCredits
 }: Props) => {
     const [zipcode, setZipcode] = useState("");
     const [minUnits, setMinUnits] = useState<number | string>("");
@@ -385,6 +387,12 @@ export const Sidebar = ({
             return;
         }
 
+        // Check if trial user has no credits
+        if (userClass === 'trial' && (userCredits === 0 || userCredits === null)) {
+            setShowTrialUpgradeMessage(true);
+            return;
+        }
+
         // Check if this is a compound query from SmartQueries
         if (filters.or || filters.and) {
             console.log("🔧 Handling compound query from SmartQueries:", filters);
@@ -462,7 +470,7 @@ export const Sidebar = ({
                             ? String(rpcError.message)
                             : String(rpcError);
 
-                    if (errorMessage.includes("Insufficient credits")) {
+                    if (errorMessage.includes("Insufficient credits") || errorMessage.includes("No credits remaining")) {
                         if (userClass === "trial") {
                             setShowTrialUpgradeMessage(true);
                         } else {
@@ -669,7 +677,7 @@ export const Sidebar = ({
                         ? String(rpcError.message)
                         : String(rpcError);
 
-                if (errorMessage.includes("Insufficient credits")) {
+                if (errorMessage.includes("Insufficient credits") || errorMessage.includes("No credits remaining")) {
                     if (userClass === "trial") {
                         setShowTrialUpgradeMessage(true);
                     } else {
@@ -755,7 +763,7 @@ export const Sidebar = ({
                     ? String(rpcError.message)
                     : String(rpcError);
 
-                if (errorMessage.includes("Insufficient credits")) {
+                if (errorMessage.includes("Insufficient credits") || errorMessage.includes("No credits remaining")) {
                     if (userClass === "trial") {
                         setShowTrialUpgradeMessage(true);
                     } else {
@@ -924,16 +932,35 @@ export const Sidebar = ({
                     <p className="text-red-600 text-xs mt-1 text-center">{creditsError}</p>
                 )}
                 {showTrialUpgradeMessage && (
-                    <div
-                        className="px-6 py-4 rounded-md cursor-pointer text-center font-light text-lg mt-4 transition bg-black text-white hover:bg-gray-800"
-                        onClick={() => window.location.href = "/pricing"}
-                    >
-                        Sorry, but you are out of credits.
-                        <br />
-                        <span style={{ textDecoration: "underline", fontWeight: "medium" }}>
-                            Upgrade now
-                        </span>{" "}
-                        to continue your analysis and find your next investment.
+                    <div className="bg-white rounded-lg shadow-lg border-2 border-orange-500 p-4 mt-4">
+                        {/* Header with Charlie image */}
+                        <div className="flex items-center mb-3">
+                            <img
+                                src="/charlie.png"
+                                alt="Charlie"
+                                className="w-10 h-10 rounded-full mr-3 shadow-md border-[0.5px] border-gray-300"
+                            />
+                            <div className="flex items-center">
+                                <span className="text-lg mr-2">⏰</span>
+                                <h3 className="text-lg font-semibold text-gray-900">
+                                    Grace Period Active
+                                </h3>
+                            </div>
+                        </div>
+                        
+                        {/* Message */}
+                        <p className="text-gray-700 mb-4 leading-relaxed text-sm">
+                            You've used all your trial credits, but don't worry! You have 3 days to choose a plan. 
+                            Your saved properties will be preserved until you do.
+                        </p>
+                        
+                        {/* Button */}
+                        <button
+                            onClick={() => window.location.href = "/pricing"}
+                            className="w-full bg-orange-600 hover:bg-orange-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-150"
+                        >
+                            Choose Your Plan
+                        </button>
                     </div>
                 )}
                 <div className="flex-1 space-y-2 relative" style={{ overflow: 'visible', paddingBottom: selectedListings.length > 0 ? '120px' : '20px' }}>

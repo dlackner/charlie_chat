@@ -109,14 +109,15 @@ export function ClosingChat() {
   const { listings, setListings, toggleListingSelect: toggleListingSelectFn } = useListings();
   const batchSize = BATCH_SIZE;
   
-  // Weekly recommendations state
-  const [showRecommendationsModal, setShowRecommendationsModal] = useState(false);
-  const [weeklyRecommendations, setWeeklyRecommendations] = useState<Array<{
-    name: string;
-    msa_name?: string;
-    properties: Listing[];
-  }>>([]);
-  const [hasNewRecommendations, setHasNewRecommendations] = useState(false);
+  // Weekly recommendations state - DISABLED
+  // TO RE-ENABLE: Uncomment the 3 lines below
+  // const [showRecommendationsModal, setShowRecommendationsModal] = useState(false);
+  // const [weeklyRecommendations, setWeeklyRecommendations] = useState<Array<{
+  //   name: string;
+  //   msa_name?: string;
+  //   properties: Listing[];
+  // }>>([]);
+  // const [hasNewRecommendations, setHasNewRecommendations] = useState(false);
   const {
     selectedListings,
     setSelectedListings,
@@ -286,11 +287,12 @@ export function ClosingChat() {
 
   const { handlePackageSelection } = usePackageSelection();
 
-  // Weekly recommendations handlers
-  const handleCharlieClick = () => {
-    setShowRecommendationsModal(true);
-    setHasNewRecommendations(false);
-  };
+  // Weekly recommendations handlers - DISABLED
+  // TO RE-ENABLE: Uncomment the handleCharlieClick function below
+  // const handleCharlieClick = () => {
+  //   setShowRecommendationsModal(true);
+  //   setHasNewRecommendations(false);
+  // };
 
   const handleFavoriteProperty = async (propertyId: string) => {
     console.log('Favoriting property:', propertyId);
@@ -304,6 +306,13 @@ export function ClosingChat() {
 
   // Load weekly recommendations from API
   const loadWeeklyRecommendations = async () => {
+    // Feature disabled - weekly recommendations not ready for production
+    console.log('Weekly recommendations disabled');
+    return;
+    
+    // TO RE-ENABLE: Remove the return statement above and uncomment all code below until the closing */
+    /*
+    
     try {
       // Get the user's session for authentication
       const { data: { session } } = await supabase.auth.getSession();
@@ -345,18 +354,25 @@ export function ClosingChat() {
     } catch (error) {
       console.error('Error loading weekly recommendations:', error);
     }
+  */
   };
 
   useEffect(() => {
-    // Load recommendations when component mounts
-    loadWeeklyRecommendations();
+    // Load recommendations when component mounts - DISABLED
+    // loadWeeklyRecommendations();
   }, []);
 
   // Fallback mock data for testing when API has no data
 
-  // Load existing weekly recommendations from database on component mount
+  // Load existing weekly recommendations from database on component mount - DISABLED
   useEffect(() => {
     const loadExistingRecommendations = async () => {
+      // Feature disabled - weekly recommendations not ready for production
+      return;
+      
+      // TO RE-ENABLE: Remove the return statement above and uncomment all code below until the closing */
+      /*
+      
       // Only load if no recommendations are already loaded
       if (weeklyRecommendations.length > 0) return;
       
@@ -407,10 +423,11 @@ export function ClosingChat() {
       } catch (error) {
         console.error('Error loading existing recommendations:', error);
       }
+    */
     };
 
-    loadExistingRecommendations();
-  }, [weeklyRecommendations.length, supabase.auth]);
+    // loadExistingRecommendations(); // DISABLED
+  }, [/* weeklyRecommendations.length, */ supabase.auth]);
 
   // Property Analysis UI handlers
   const handleContinueBatch = () => {
@@ -500,14 +517,16 @@ export function ClosingChat() {
             userClass={userClass === 'disabled' ? 'trial' : userClass}
             triggerBuyCreditsModal={() => setShowCreditOptionsModal(true)}
             clearSelectedListings={() => setSelectedListings([])}
+            userCredits={userCredits}
           />
 
           {/* Chat UI */}
           <div className="flex-1 flex flex-col items-center justify-start overflow-hidden">
             <ChatHeader 
-              hasMessages={hasMessages} 
-              hasNewRecommendations={hasNewRecommendations}
-              onCharlieClick={handleCharlieClick}
+              hasMessages={hasMessages}
+              // TO RE-ENABLE: Uncomment the 2 lines below
+              // hasNewRecommendations={hasNewRecommendations}
+              // onCharlieClick={handleCharlieClick}
             />
 
             <MessageList
@@ -744,14 +763,15 @@ export function ClosingChat() {
         </Dialog>
 
 
-        {/* Weekly Recommendations Modal */}
-        <WeeklyRecommendationsModal
+        {/* Weekly Recommendations Modal - DISABLED */}
+        {/* TO RE-ENABLE: Uncomment the entire WeeklyRecommendationsModal component below */}
+        {/*<WeeklyRecommendationsModal
           isOpen={showRecommendationsModal}
           onClose={() => setShowRecommendationsModal(false)}
           markets={weeklyRecommendations}
           onFavoriteProperty={handleFavoriteProperty}
           onDismissProperty={handleDismissProperty}
-        />
+        />*/}
       </>
     </AssistantRuntimeProvider>
   );

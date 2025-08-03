@@ -78,6 +78,13 @@ export default function PropertyAnalyzerPage() {
   const { userClass, hasAccess: hasPropertyAnalyzerAccess, isLoading: isLoadingAccess } = usePropertyAnalyzerAccess();
   const router = useRouter();
 
+  // Redirect disabled users to pricing page
+  useEffect(() => {
+    if (!isLoadingAccess && !hasPropertyAnalyzerAccess && userClass === 'disabled') {
+      router.replace('/pricing');
+    }
+  }, [isLoadingAccess, hasPropertyAnalyzerAccess, userClass, router]);
+
   // --- Modal State ---
   const [showUnsavedChangesModal, setShowUnsavedChangesModal] = useState(false);
   const [pendingNavigation, setPendingNavigation] = useState<(() => void) | null>(null);
@@ -882,6 +889,11 @@ export default function PropertyAnalyzerPage() {
     }
     return null;
   };
+
+  // Show loading while checking access or redirect disabled users
+  if (isLoadingAccess || (userClass === 'disabled' && !hasPropertyAnalyzerAccess)) {
+    return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
+  }
 
   return (
     <>

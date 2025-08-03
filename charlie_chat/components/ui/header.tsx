@@ -57,15 +57,7 @@ export default function Header() {
       return;
     }
     
-    // For trial users, make fresh credit check
-    if (userClass === "trial") {
-      const hasCredits = await checkTrialUserCredits();
-      if (!hasCredits) {
-        router.push("/pricing");
-        return;
-      }
-    }
-    
+    // Let the useMyPropertiesAccess hook handle all access logic including grace period
     if (!hasAccess) {
       router.push("/pricing");
       return;
@@ -183,14 +175,14 @@ export default function Header() {
                     <span>Profile</span>
                   </button>
 
-                  {/* My Buy Box */}
-                  <button
+                  {/* My Buy Box - commented out to disable feature */}
+                  {/*<button
                     onClick={() => handleMenuItemClick(() => router.push('/my-buy-box'))}
                     className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center space-x-2"
                   >
                     <Home size={16} />
                     <span>My Buy Box</span>
-                  </button>
+                  </button>*/}
 
                   {/* Divider */}
                   <div className="border-t border-gray-200 my-1"></div>

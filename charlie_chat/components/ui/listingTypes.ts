@@ -81,6 +81,7 @@ export interface Listing {
   
   // Property Flags
   mls_active?: boolean;
+  mls_days_on_market?: number;
   for_sale?: boolean;
   assumable?: boolean;
   auction?: boolean;
