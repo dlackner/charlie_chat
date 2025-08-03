@@ -1,9 +1,13 @@
 'use client';
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import { GradeMetrics, MultifamilyMarketBenchmarks, PropertyCharacteristics, MultifamilyGradeMetrics, MULTIFAMILY_BENCHMARKS, detectAssetClass, detectMarketTier, calculateMultifamilyGrade } from './grading-system';
 import { generatePropertySummary, PropertySummaryButton } from './summary-generator';
 import { useAuth } from '@/contexts/AuthContext';
+import { usePropertyAnalyzerAccess } from './usePropertyAnalyzerAccess';
+import { UnsavedChangesModal } from './UnsavedChangesModal';
+import { CharlieTooltip } from './CharlieTooltip';
 import {
   LineChart,
   Line,
@@ -69,18 +73,22 @@ const calculateIRR = (cashFlows: number[], guess: number = 0.1): number => {
 
 
 export default function PropertyAnalyzerPage() {
-  // Get user authentication and class
+  // Get user authentication and access control
   const { user: currentUser } = useAuth();
-  
-  // Determine user class based on profile data
-  const userClass = useMemo(() => {
-    if (!currentUser) return 'trial';
-    
-    // Check if user has subscription info - this would need to be added to your user profile
-    // For now, defaulting to trial, but this should check actual subscription status
-    const userProfile = currentUser as any;
-    return userProfile?.user_class || 'trial';
-  }, [currentUser]);
+  const { userClass, hasAccess: hasPropertyAnalyzerAccess, isLoading: isLoadingAccess } = usePropertyAnalyzerAccess();
+  const router = useRouter();
+
+  // Redirect disabled users to pricing page
+  useEffect(() => {
+    if (!isLoadingAccess && !hasPropertyAnalyzerAccess && userClass === 'disabled') {
+      router.replace('/pricing');
+    }
+  }, [isLoadingAccess, hasPropertyAnalyzerAccess, userClass, router]);
+
+  // --- Modal State ---
+  const [showUnsavedChangesModal, setShowUnsavedChangesModal] = useState(false);
+  const [pendingNavigation, setPendingNavigation] = useState<(() => void) | null>(null);
+  const allowLeavingRef = useRef(false);
 
   // --- Input States: FINANCING ---
   const [purchasePrice, setPurchasePrice] = useState<number>(7000000);
@@ -255,6 +263,11 @@ export default function PropertyAnalyzerPage() {
 
   // Function to save settings as blob
   const saveSettings = () => {
+    // Reset the unsaved changes tracking since we're saving the scenario
+    if ((window as any).propertyAnalyzerSetSavingScenario) {
+      (window as any).propertyAnalyzerSetSavingScenario(true);
+    }
+    
     const settingsToSave = {
       purchasePrice,
       downPaymentPercentage,
@@ -301,10 +314,20 @@ export default function PropertyAnalyzerPage() {
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
+      
+      // File was successfully saved, permanently reset the interaction flag
+      // This prevents warnings until user makes new changes
+      if ((window as any).propertyAnalyzerResetUserInteraction) {
+        (window as any).propertyAnalyzerResetUserInteraction();
+      }
     }
 
     URL.revokeObjectURL(url);
-
+    
+    // Clean up the saving flag 
+    if ((window as any).propertyAnalyzerSetSavingScenario) {
+      (window as any).propertyAnalyzerSetSavingScenario(false);
+    }
   };
 
   // Property data for 10-year cash flow report (moved into Charlie's Analysis)
@@ -411,6 +434,138 @@ export default function PropertyAnalyzerPage() {
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+
+  // Detect any changes on the page and warn before leaving
+  useEffect(() => {
+    let userInteracted = false;
+    let isResettingToDefaults = false;
+    let isSavingScenario = false;
+
+    const handleUserInteraction = () => {
+      if (!isResettingToDefaults && !isSavingScenario) {
+        userInteracted = true;
+      }
+    };
+
+    const resetUserInteraction = () => {
+      userInteracted = false;
+    };
+
+    const setResettingToDefaults = (resetting: boolean) => {
+      isResettingToDefaults = resetting;
+      if (resetting) {
+        userInteracted = false; // Reset when loading defaults
+      }
+    };
+
+    const setSavingScenario = (saving: boolean) => {
+      isSavingScenario = saving;
+      if (saving) {
+        userInteracted = false; // Reset when saving scenario
+      }
+    };
+
+    // Expose functions to window for button clicks to use
+    (window as any).propertyAnalyzerResetUserInteraction = resetUserInteraction;
+    (window as any).propertyAnalyzerSetResettingToDefaults = setResettingToDefaults;
+    (window as any).propertyAnalyzerSetSavingScenario = setSavingScenario;
+
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (userInteracted && !allowLeavingRef.current) {
+        e.preventDefault();
+        e.returnValue = "Charlie here. I see you've been working on an offer and I don't want you to lose your work! Save your scenario first by clicking 'More' then 'Save scenario'.";
+        return "Charlie here. I see you've been working on an offer and I don't want you to lose your work! Save your scenario first by clicking 'More' then 'Save scenario'.";
+      }
+    };
+
+    // Override the router methods to intercept navigation
+    const originalPush = router.push;
+    const originalReplace = router.replace;
+    
+    router.push = (href: string, options?: any) => {
+      if (userInteracted && href !== '/property-analyzer') {
+        setPendingNavigation(() => () => originalPush.call(router, href, options));
+        setShowUnsavedChangesModal(true);
+        return Promise.resolve(false);
+      }
+      return originalPush.call(router, href, options);
+    };
+
+    router.replace = (href: string, options?: any) => {
+      if (userInteracted && href !== '/property-analyzer') {
+        setPendingNavigation(() => () => originalReplace.call(router, href, options));
+        setShowUnsavedChangesModal(true);
+        return Promise.resolve(false);
+      }
+      return originalReplace.call(router, href, options);
+    };
+
+    // Intercept clicks on links and navigation elements
+    const handleLinkClick = (e: MouseEvent) => {
+      if (!userInteracted) return;
+      
+      const target = e.target as HTMLElement;
+      const link = target.closest('a[href], [data-nextjs-link]');
+      
+      if (link) {
+        const href = link.getAttribute('href');
+        if (href && href !== '/property-analyzer' && !href.startsWith('#')) {
+          e.preventDefault();
+          e.stopPropagation();
+          setPendingNavigation(() => () => {
+            window.location.href = href;
+          });
+          setShowUnsavedChangesModal(true);
+          return false;
+        }
+      }
+    };
+
+    // Listen for any input changes or form changes
+    document.addEventListener('input', handleUserInteraction);
+    document.addEventListener('change', handleUserInteraction);
+    
+    // Listen for link clicks
+    document.addEventListener('click', handleLinkClick, true);
+    
+    // Listen for browser navigation events
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    
+    return () => {
+      // Restore original router methods
+      router.push = originalPush;
+      router.replace = originalReplace;
+      
+      // Clean up window functions
+      delete (window as any).propertyAnalyzerResetUserInteraction;
+      delete (window as any).propertyAnalyzerSetResettingToDefaults;
+      delete (window as any).propertyAnalyzerSetSavingScenario;
+      
+      document.removeEventListener('input', handleUserInteraction);
+      document.removeEventListener('change', handleUserInteraction);
+      document.removeEventListener('click', handleLinkClick, true);
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, [router]);
+
+  // Modal handlers
+  const handleStayAndSave = () => {
+    setShowUnsavedChangesModal(false);
+    setPendingNavigation(null);
+    // User should save manually - they'll stay on the page
+  };
+
+  const handleLeaveWithoutSaving = () => {
+    setShowUnsavedChangesModal(false);
+    
+    // Allow leaving without further warnings
+    allowLeavingRef.current = true;
+    
+    if (pendingNavigation) {
+      pendingNavigation();
+    }
+    setPendingNavigation(null);
+  };
 
   // FIXED: Function to calculate remaining loan balance correctly
   const calculateRemainingLoanBalance = (yearsElapsed: number): number => {
@@ -707,6 +862,16 @@ export default function PropertyAnalyzerPage() {
     setCapitalReservePerUnitAnnual(500);
     setDeferredCapitalReservePerUnit(0);
     setHoldingPeriodYears(10);
+    
+    // Reset the unsaved changes tracking since we just loaded defaults
+    if ((window as any).propertyAnalyzerSetResettingToDefaults) {
+      (window as any).propertyAnalyzerSetResettingToDefaults(true);
+      setTimeout(() => {
+        if ((window as any).propertyAnalyzerSetResettingToDefaults) {
+          (window as any).propertyAnalyzerSetResettingToDefaults(false);
+        }
+      }, 100);
+    }
   };
 
   // Custom Tooltip Content for Recharts
@@ -725,7 +890,13 @@ export default function PropertyAnalyzerPage() {
     return null;
   };
 
+  // Show loading while checking access or redirect disabled users
+  if (isLoadingAccess || (userClass === 'disabled' && !hasPropertyAnalyzerAccess)) {
+    return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
+  }
+
   return (
+    <>
     <div className="flex flex-col lg:flex-row p-4 md:p-8 bg-white text-gray-800 min-h-screen">
       {/* Hidden file input for loading settings */}
       <input
@@ -767,7 +938,7 @@ export default function PropertyAnalyzerPage() {
                 expenseRatio,
                 breakEvenYear
               }}
-              userClass={userClass}
+              userClass={userClass || undefined}
               propertyData={propertyData}
             />
           </div>
@@ -1007,111 +1178,125 @@ export default function PropertyAnalyzerPage() {
         <h3 className="text-xl font-semibold mb-4 text-gray-700">FINANCING</h3>
         <div className="mb-5">
           <label htmlFor="purchasePrice" className="block text-sm font-medium text-gray-700 mb-1">Purchase Price ($)</label>
-          <input
-            type="text"
-            id="purchasePrice"
-            value={(purchasePrice ?? 0).toLocaleString('en-US')}
-            onChange={formatAndParseNumberInput(setPurchasePrice)}
-            className="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-shadow duration-150 ease-in-out shadow-sm"
-            step="10000"
-            suppressHydrationWarning={true}
-          />
+          <CharlieTooltip message="This is your offer price. Don't get emotional—stick to the numbers. What can you realistically pay and still make money?">
+            <input
+              type="text"
+              id="purchasePrice"
+              value={(purchasePrice ?? 0).toLocaleString('en-US')}
+              onChange={formatAndParseNumberInput(setPurchasePrice)}
+              className="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-shadow duration-150 ease-in-out shadow-sm"
+              step="10000"
+              suppressHydrationWarning={true}
+            />
+          </CharlieTooltip>
         </div>
 
         <div className="mb-5">
           <label htmlFor="downPaymentPercentage" className="block text-sm font-medium text-gray-700 mb-1">Down Payment (%)</label>
-          <input
-            type="number"
-            id="downPaymentPercentage"
-            value={downPaymentPercentage || ''}
-            onChange={(e) => setDownPaymentPercentage(Math.max(0, Math.min(100, parseFloat(e.target.value) || 0)))}
-            className="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-shadow duration-150 ease-in-out shadow-sm"
-            step="0.1"
-            min="0"
-            max="100"
-          />
+          <CharlieTooltip message="Most deals need 20-25% down. Less down = higher leverage = higher returns IF the deal works. More down = safer but lower returns.">
+            <input
+              type="number"
+              id="downPaymentPercentage"
+              value={downPaymentPercentage || ''}
+              onChange={(e) => setDownPaymentPercentage(Math.max(0, Math.min(100, parseFloat(e.target.value) || 0)))}
+              className="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-shadow duration-150 ease-in-out shadow-sm"
+              step="0.1"
+              min="0"
+              max="100"
+            />
+          </CharlieTooltip>
         </div>
 
         <div className="mb-5">
           <label htmlFor="interestRate" className="block text-sm font-medium text-gray-700 mb-1">Interest Rate (%)</label>
-          <input
-            type="number"
-            id="interestRate"
-            value={interestRate || ''}
-            onChange={(e) => setInterestRate(Math.max(0, parseFloat(e.target.value) || 0))}
-            className="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-shadow duration-150 ease-in-out shadow-sm"
-            step="0.1"
-          />
+          <CharlieTooltip message="Shop around! A half percent difference on a million-dollar loan costs you $5,000/year. Your broker relationship matters here.">
+            <input
+              type="number"
+              id="interestRate"
+              value={interestRate || ''}
+              onChange={(e) => setInterestRate(Math.max(0, parseFloat(e.target.value) || 0))}
+              className="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-shadow duration-150 ease-in-out shadow-sm"
+              step="0.1"
+            />
+          </CharlieTooltip>
         </div>
 
         {/* Loan Structure Selection */}
         <div className="mb-5">
           <label className="block text-sm font-medium text-gray-700 mb-3">Loan Structure</label>
-          <div className="flex space-x-4">
-            <label className="flex items-center">
-              <input
-                type="radio"
-                name="loanStructure"
-                value="amortizing"
-                checked={loanStructure === 'amortizing'}
-                onChange={(e) => setLoanStructure(e.target.value as 'amortizing' | 'interest-only')}
-                className="mr-2 text-orange-500 focus:ring-orange-500"
-              />
-              <span className="text-sm text-gray-700">Amortizing Loan</span>
-            </label>
-            <label className="flex items-center">
-              <input
-                type="radio"
-                name="loanStructure"
-                value="interest-only"
-                checked={loanStructure === 'interest-only'}
-                onChange={(e) => setLoanStructure(e.target.value as 'amortizing' | 'interest-only')}
-                className="mr-2 text-orange-500 focus:ring-orange-500"
-              />
-              <span className="text-sm text-gray-700">Interest-Only Loan</span>
-            </label>
-          </div>
+          <CharlieTooltip message="Interest-only gives you better cash flow early but higher payments later. I use it strategically for value-add deals.">
+            <div className="flex space-x-4">
+              <label className="flex items-center">
+                <input
+                  type="radio"
+                  name="loanStructure"
+                  value="amortizing"
+                  checked={loanStructure === 'amortizing'}
+                  onChange={(e) => setLoanStructure(e.target.value as 'amortizing' | 'interest-only')}
+                  className="mr-2 text-orange-500 focus:ring-orange-500"
+                />
+                <span className="text-sm text-gray-700">Amortizing Loan</span>
+              </label>
+              <label className="flex items-center">
+                <input
+                  type="radio"
+                  name="loanStructure"
+                  value="interest-only"
+                  checked={loanStructure === 'interest-only'}
+                  onChange={(e) => setLoanStructure(e.target.value as 'amortizing' | 'interest-only')}
+                  className="mr-2 text-orange-500 focus:ring-orange-500"
+                />
+                <span className="text-sm text-gray-700">Interest-Only Loan</span>
+              </label>
+            </div>
+          </CharlieTooltip>
         </div>
 
         {/* Conditional Fields Based on Loan Structure */}
         {loanStructure === 'amortizing' ? (
           <div className="mb-5">
             <label htmlFor="amortizationPeriodYears" className="block text-sm font-medium text-gray-700 mb-1">Amortization Period (Years)</label>
-            <input
-              type="number"
-              id="amortizationPeriodYears"
-              value={amortizationPeriodYears ?? 0}
-              onChange={(e) => setAmortizationPeriodYears(Math.max(1, parseInt(e.target.value) || 1))}
-              className="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-shadow duration-150 ease-in-out shadow-sm"
-              step="1"
-              min="1"
-            />
+            <CharlieTooltip message="30 years = lower payments, more cash flow. 25 years = higher payments but you build equity faster. Pick your poison.">
+              <input
+                type="number"
+                id="amortizationPeriodYears"
+                value={amortizationPeriodYears ?? 0}
+                onChange={(e) => setAmortizationPeriodYears(Math.max(1, parseInt(e.target.value) || 1))}
+                className="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-shadow duration-150 ease-in-out shadow-sm"
+                step="1"
+                min="1"
+              />
+            </CharlieTooltip>
           </div>
         ) : (
           <div className="space-y-5">
             <div>
               <label htmlFor="interestOnlyPeriodYears" className="block text-sm font-medium text-gray-700 mb-1">Interest-Only Period (Years)</label>
-              <input
-                type="number"
-                id="interestOnlyPeriodYears"
-                value={interestOnlyPeriodYears ?? 0}
-                onChange={(e) => setInterestOnlyPeriodYears(Math.max(1, parseInt(e.target.value) || 1))}
-                className="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-shadow duration-150 ease-in-out shadow-sm"
-                step="1"
-                min="1"
-              />
+              <CharlieTooltip message="Perfect for value-add deals. Use this time to increase rents, then refi. Don't get stuck when the IO period ends!">
+                <input
+                  type="number"
+                  id="interestOnlyPeriodYears"
+                  value={interestOnlyPeriodYears ?? 0}
+                  onChange={(e) => setInterestOnlyPeriodYears(Math.max(1, parseInt(e.target.value) || 1))}
+                  className="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-shadow duration-150 ease-in-out shadow-sm"
+                  step="1"
+                  min="1"
+                />
+              </CharlieTooltip>
             </div>
             <div>
               <label htmlFor="refinanceTermYears" className="block text-sm font-medium text-gray-700 mb-1">Refinance Term (Years)</label>
-              <input
-                type="number"
-                id="refinanceTermYears"
-                value={refinanceTermYears ?? 0}
-                onChange={(e) => setRefinanceTermYears(Math.max(0, parseInt(e.target.value) || 0))}
-                className="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-shadow duration-150 ease-in-out shadow-sm"
-                step="1"
-                min="0"
-              />
+              <CharlieTooltip message="Plan your exit strategy now. Will you sell, refi, or hold? This number should match your business plan.">
+                <input
+                  type="number"
+                  id="refinanceTermYears"
+                  value={refinanceTermYears ?? 0}
+                  onChange={(e) => setRefinanceTermYears(Math.max(0, parseInt(e.target.value) || 0))}
+                  className="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-shadow duration-150 ease-in-out shadow-sm"
+                  step="1"
+                  min="0"
+                />
+              </CharlieTooltip>
               <p className="text-xs text-gray-500 mt-1">Enter 0 if planning to sell at end of interest-only period</p>
             </div>
           </div>
@@ -1119,295 +1304,347 @@ export default function PropertyAnalyzerPage() {
 
         <div className="mb-5 mt-3">
           <label htmlFor="closingCostsPercentage" className="block text-sm font-medium text-gray-700 mb-1">Closing Costs (%)</label>
-          <input
-            type="number"
-            id="closingCostsPercentage"
-            value={closingCostsPercentage || ''}
-            onChange={(e) => setClosingCostsPercentage(Math.max(0, parseFloat(e.target.value) || 0))}
-            className="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-shadow duration-150 ease-in-out shadow-sm"
-            step="0.1"
-            min="0"
-          />
+          <CharlieTooltip message="Don't forget these! They add up fast. Budget 2-4% depending on your lender and market. Factor them into your returns.">
+            <input
+              type="number"
+              id="closingCostsPercentage"
+              value={closingCostsPercentage || ''}
+              onChange={(e) => setClosingCostsPercentage(Math.max(0, parseFloat(e.target.value) || 0))}
+              className="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-shadow duration-150 ease-in-out shadow-sm"
+              step="0.1"
+              min="0"
+            />
+          </CharlieTooltip>
         </div>
 
         {/* Disposition Cap Rate */}
         <div className="mb-5">
           <label htmlFor="dispositionCapRate" className="block text-sm font-medium text-gray-700 mb-1">Disposition Cap Rate (%)</label>
-          <input
-            type="number"
-            id="dispositionCapRate"
-            value={dispositionCapRate || ''}
-            onChange={(e) => setDispositionCapRate(Math.max(0, parseFloat(e.target.value) || 0))}
-            className="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-shadow duration-150 ease-in-out shadow-sm"
-            step="0.1"
-            min="0"
-          />
+          <CharlieTooltip message="What cap rate will you sell at? Be conservative—markets change. I usually assume 0.5-1% higher than today's rates.">
+            <input
+              type="number"
+              id="dispositionCapRate"
+              value={dispositionCapRate || ''}
+              onChange={(e) => setDispositionCapRate(Math.max(0, parseFloat(e.target.value) || 0))}
+              className="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-shadow duration-150 ease-in-out shadow-sm"
+              step="0.1"
+              min="0"
+            />
+          </CharlieTooltip>
         </div>
 
         <h3 className="text-xl font-semibold mb-4 text-gray-700 mt-8">RENTS</h3>
         <div className="mb-5">
           <label htmlFor="numUnits" className="block text-sm font-medium text-gray-700 mb-1">Number of Units</label>
-          <input
-            type="text"
-            id="numUnits"
-            value={(numUnits ?? 0).toLocaleString('en-US')}
-            onChange={formatAndParseNumberInput(setNumUnits)}
-            className="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-shadow duration-150 ease-in-out shadow-sm"
-            suppressHydrationWarning={true}
-          />
+          <CharlieTooltip message="More units = more stability. Fewer units = higher risk but potentially higher returns per unit. Know your market.">
+            <input
+              type="text"
+              id="numUnits"
+              value={(numUnits ?? 0).toLocaleString('en-US')}
+              onChange={formatAndParseNumberInput(setNumUnits)}
+              className="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-shadow duration-150 ease-in-out shadow-sm"
+              suppressHydrationWarning={true}
+            />
+          </CharlieTooltip>
         </div>
 
         <div className="mb-5">
           <label htmlFor="avgMonthlyRentPerUnit" className="block text-sm font-medium text-gray-700 mb-1">Avg Monthly Rent (per unit) ($)</label>
-          <input
-            type="text"
-            id="avgMonthlyRentPerUnit"
-            value={(avgMonthlyRentPerUnit ?? 0).toLocaleString('en-US')}
-            onChange={formatAndParseNumberInput(setAvgMonthlyRentPerUnit)}
-            className="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-shadow duration-150 ease-in-out shadow-sm"
-            step="100"
-            suppressHydrationWarning={true}
-          />
+          <CharlieTooltip message="This should be market rent, not current rent. What can you actually get? Drive the comps yourself.">
+            <input
+              type="text"
+              id="avgMonthlyRentPerUnit"
+              value={(avgMonthlyRentPerUnit ?? 0).toLocaleString('en-US')}
+              onChange={formatAndParseNumberInput(setAvgMonthlyRentPerUnit)}
+              className="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-shadow duration-150 ease-in-out shadow-sm"
+              step="100"
+              suppressHydrationWarning={true}
+            />
+          </CharlieTooltip>
         </div>
 
         <div className="mb-5">
           <label htmlFor="vacancyRate" className="block text-sm font-medium text-gray-700 mb-1">Vacancy Rate (%)</label>
-          <input
-            type="number"
-            id="vacancyRate"
-            value={vacancyRate || ''}
-            onChange={(e) => setVacancyRate(Math.max(0, Math.min(100, parseFloat(e.target.value) || 0)))}
-            className="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-shadow duration-150 ease-in-out shadow-sm"
-            step="0.1"
-            min="0"
-            max="100"
-          />
+          <CharlieTooltip message="Don't be optimistic! Even the best properties have turnover. I use 5-10% minimum, higher for value-add deals.">
+            <input
+              type="number"
+              id="vacancyRate"
+              value={vacancyRate || ''}
+              onChange={(e) => setVacancyRate(Math.max(0, Math.min(100, parseFloat(e.target.value) || 0)))}
+              className="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-shadow duration-150 ease-in-out shadow-sm"
+              step="0.1"
+              min="0"
+              max="100"
+            />
+          </CharlieTooltip>
         </div>
 
         <div className="mb-5">
           <label htmlFor="annualRentalGrowthRate" className="block text-sm font-medium text-gray-700 mb-1">Annual Rental Growth Rate (%)</label>
-          <input
-            type="number"
-            id="annualRentalGrowthRate"
-            value={annualRentalGrowthRate || ''}
-            onChange={(e) => setAnnualRentalGrowthRate(Math.max(0, parseFloat(e.target.value) || 0))}
-            className="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-shadow duration-150 ease-in-out shadow-sm"
-            step="0.1"
-            min="0"
-          />
+          <CharlieTooltip message="Inflation is your friend in real estate. But don't assume 2008 growth rates. Be realistic—1-3% is usually safe.">
+            <input
+              type="number"
+              id="annualRentalGrowthRate"
+              value={annualRentalGrowthRate || ''}
+              onChange={(e) => setAnnualRentalGrowthRate(Math.max(0, parseFloat(e.target.value) || 0))}
+              className="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-shadow duration-150 ease-in-out shadow-sm"
+              step="0.1"
+              min="0"
+            />
+          </CharlieTooltip>
         </div>
 
         <div className="mb-5">
           <label htmlFor="otherIncomeAnnual" className="block text-sm font-medium text-gray-700 mb-1">Other Income ($)</label>
-          <input
-            type="text"
-            id="otherIncomeAnnual"
-            value={(otherIncomeAnnual ?? 0).toLocaleString('en-US')}
-            onChange={formatAndParseNumberInput(setOtherIncomeAnnual)}
-            className="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-shadow duration-150 ease-in-out shadow-sm"
-            step="100"
-            suppressHydrationWarning={true}
-          />
+          <CharlieTooltip message="Laundry, parking, pet fees, storage—every dollar counts. But don't rely on income that doesn't exist yet.">
+            <input
+              type="text"
+              id="otherIncomeAnnual"
+              value={(otherIncomeAnnual ?? 0).toLocaleString('en-US')}
+              onChange={formatAndParseNumberInput(setOtherIncomeAnnual)}
+              className="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-shadow duration-150 ease-in-out shadow-sm"
+              step="100"
+              suppressHydrationWarning={true}
+            />
+          </CharlieTooltip>
         </div>
 
         <div className="mb-5">
           <label htmlFor="incomeReductionsAnnual" className="block text-sm font-medium text-gray-700 mb-1">Income Reducers ($)</label>
-          <input
-            type="text"
-            id="incomeReductionsAnnual"
-            value={(incomeReductionsAnnual ?? 0).toLocaleString('en-US')}
-            onChange={formatAndParseNumberInput(setIncomeReductionsAnnual)}
-            className="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-shadow duration-150 ease-in-out shadow-sm"
-            step="100"
-            suppressHydrationWarning={true}
-          />
+          <CharlieTooltip message="Concessions, bad debt, employee unit discounts. The stuff that hits your bottom line but isn't an 'expense.'">
+            <input
+              type="text"
+              id="incomeReductionsAnnual"
+              value={(incomeReductionsAnnual ?? 0).toLocaleString('en-US')}
+              onChange={formatAndParseNumberInput(setIncomeReductionsAnnual)}
+              className="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-shadow duration-150 ease-in-out shadow-sm"
+              step="100"
+              suppressHydrationWarning={true}
+            />
+          </CharlieTooltip>
         </div>
 
         <h3 id="operating-expenses-section" className="text-xl font-semibold mb-4 text-gray-700 mt-8">OPERATING EXPENSES (ANNUAL)</h3>
         <div className="mb-5">
           <label htmlFor="propertyTaxes" className="block text-sm font-medium text-gray-700 mb-1">Property Taxes ($)</label>
-          <input
-            type="text"
-            id="propertyTaxes"
-            value={(propertyTaxes ?? 0).toLocaleString('en-US')}
-            onChange={formatAndParseNumberInput(setPropertyTaxes)}
-            className="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-shadow duration-150 ease-in-out shadow-sm"
-            step="100"
-            suppressHydrationWarning={true}
-          />
+          <CharlieTooltip message="These will go up! Especially after you improve the property. Budget for reassessment—it's coming.">
+            <input
+              type="text"
+              id="propertyTaxes"
+              value={(propertyTaxes ?? 0).toLocaleString('en-US')}
+              onChange={formatAndParseNumberInput(setPropertyTaxes)}
+              className="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-shadow duration-150 ease-in-out shadow-sm"
+              step="100"
+              suppressHydrationWarning={true}
+            />
+          </CharlieTooltip>
         </div>
 
         <div className="mb-5">
           <label htmlFor="insurance" className="block text-sm font-medium text-gray-700 mb-1">Insurance ($)</label>
-          <input
-            type="text"
-            id="insurance"
-            value={(insurance ?? 0).toLocaleString('en-US')}
-            onChange={formatAndParseNumberInput(setInsurance)}
-            className="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-shadow duration-150 ease-in-out shadow-sm"
-            step="100"
-            suppressHydrationWarning={true}
-          />
+          <CharlieTooltip message="Shop this annually. And get the right coverage—don't cheap out on liability. One lawsuit can kill your returns.">
+            <input
+              type="text"
+              id="insurance"
+              value={(insurance ?? 0).toLocaleString('en-US')}
+              onChange={formatAndParseNumberInput(setInsurance)}
+              className="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-shadow duration-150 ease-in-out shadow-sm"
+              step="100"
+              suppressHydrationWarning={true}
+            />
+          </CharlieTooltip>
         </div>
 
         <div className="mb-5">
           <label htmlFor="propertyManagementFeePercentage" className="block text-sm font-medium text-gray-700 mb-1">Property Management Fee (%)</label>
-          <input
-            type="number"
-            id="propertyManagementFeePercentage"
-            value={propertyManagementFeePercentage || ''}
-            onChange={(e) => setPropertyManagementFeePercentage(Math.max(0, parseFloat(e.target.value) || 0))}
-            className="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-shadow duration-150 ease-in-out shadow-sm"
-            step="0.1"
-            min="0"
-          />
+          <CharlieTooltip message="Good management is worth every penny. Bad management will cost you more than the fee. Interview multiple companies.">
+            <input
+              type="number"
+              id="propertyManagementFeePercentage"
+              value={propertyManagementFeePercentage || ''}
+              onChange={(e) => setPropertyManagementFeePercentage(Math.max(0, parseFloat(e.target.value) || 0))}
+              className="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-shadow duration-150 ease-in-out shadow-sm"
+              step="0.1"
+              min="0"
+            />
+          </CharlieTooltip>
         </div>
 
         <div className="mb-5">
           <label htmlFor="maintenanceRepairsAnnual" className="block text-sm font-medium text-gray-700 mb-1">Maintenance & Repairs ($)</label>
-          <input
-            type="text"
-            id="maintenanceRepairsAnnual"
-            value={(maintenanceRepairsAnnual ?? 0).toLocaleString('en-US')}
-            onChange={formatAndParseNumberInput(setMaintenanceRepairsAnnual)}
-            className="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-shadow duration-150 ease-in-out shadow-sm"
-            step="100"
-            suppressHydrationWarning={true}
-          />
+          <CharlieTooltip message="Deferred maintenance is a profit killer. Budget generously here—better to overestimate than get surprised.">
+            <input
+              type="text"
+              id="maintenanceRepairsAnnual"
+              value={(maintenanceRepairsAnnual ?? 0).toLocaleString('en-US')}
+              onChange={formatAndParseNumberInput(setMaintenanceRepairsAnnual)}
+              className="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-shadow duration-150 ease-in-out shadow-sm"
+              step="100"
+              suppressHydrationWarning={true}
+            />
+          </CharlieTooltip>
         </div>
 
         <div className="mb-5">
           <label htmlFor="utilitiesAnnual" className="block text-sm font-medium text-gray-700 mb-1">Utilities ($)</label>
-          <input
-            type="text"
-            id="utilitiesAnnual"
-            value={(utilitiesAnnual ?? 0).toLocaleString('en-US')}
-            onChange={formatAndParseNumberInput(setUtilitiesAnnual)}
-            className="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-shadow duration-150 ease-in-out shadow-sm"
-            step="100"
-            suppressHydrationWarning={true}
-          />
+          <CharlieTooltip message="Who pays what? Separate meters save you money. Master metered properties need higher budgets.">
+            <input
+              type="text"
+              id="utilitiesAnnual"
+              value={(utilitiesAnnual ?? 0).toLocaleString('en-US')}
+              onChange={formatAndParseNumberInput(setUtilitiesAnnual)}
+              className="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-shadow duration-150 ease-in-out shadow-sm"
+              step="100"
+              suppressHydrationWarning={true}
+            />
+          </CharlieTooltip>
         </div>
 
         <div className="mb-5">
           <label htmlFor="contractServicesAnnual" className="block text-sm font-medium text-gray-700 mb-1">Contract Services ($)</label>
-          <input
-            type="text"
-            id="contractServicesAnnual"
-            value={(contractServicesAnnual ?? 0).toLocaleString('en-US')}
-            onChange={formatAndParseNumberInput(setContractServicesAnnual)}
-            className="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-shadow duration-150 ease-in-out shadow-sm"
-            step="100"
-            suppressHydrationWarning={true}
-          />
+          <CharlieTooltip message="Landscaping, elevator, HVAC contracts. Lock in good vendors early—they're hard to find and keep.">
+            <input
+              type="text"
+              id="contractServicesAnnual"
+              value={(contractServicesAnnual ?? 0).toLocaleString('en-US')}
+              onChange={formatAndParseNumberInput(setContractServicesAnnual)}
+              className="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-shadow duration-150 ease-in-out shadow-sm"
+              step="100"
+              suppressHydrationWarning={true}
+            />
+          </CharlieTooltip>
         </div>
 
         <div className="mb-5">
           <label htmlFor="payrollAnnual" className="block text-sm font-medium text-gray-700 mb-1">Payroll ($)</label>
-          <input
-            type="text"
-            id="payrollAnnual"
-            value={(payrollAnnual ?? 0).toLocaleString('en-US')}
-            onChange={formatAndParseNumberInput(setPayrollAnnual)}
-            className="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-shadow duration-150 ease-in-out shadow-sm"
-            step="100"
-            suppressHydrationWarning={true}
-          />
+          <CharlieTooltip message="On-site staff for 50+ units usually makes sense. Factor in benefits, not just wages.">
+            <input
+              type="text"
+              id="payrollAnnual"
+              value={(payrollAnnual ?? 0).toLocaleString('en-US')}
+              onChange={formatAndParseNumberInput(setPayrollAnnual)}
+              className="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-shadow duration-150 ease-in-out shadow-sm"
+              step="100"
+              suppressHydrationWarning={true}
+            />
+          </CharlieTooltip>
         </div>
 
         <div className="mb-5">
           <label htmlFor="marketingAnnual" className="block text-sm font-medium text-gray-700 mb-1">Marketing ($)</label>
-          <input
-            type="text"
-            id="marketingAnnual"
-            value={(marketingAnnual ?? 0).toLocaleString('en-US')}
-            onChange={formatAndParseNumberInput(setMarketingAnnual)}
-            className="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-shadow duration-150 ease-in-out shadow-sm"
-            step="100"
-            suppressHydrationWarning={true}
-          />
+          <CharlieTooltip message="Good marketing keeps vacancy low. Apartment finders, online listings, signage—it all adds up but pays for itself.">
+            <input
+              type="text"
+              id="marketingAnnual"
+              value={(marketingAnnual ?? 0).toLocaleString('en-US')}
+              onChange={formatAndParseNumberInput(setMarketingAnnual)}
+              className="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-shadow duration-150 ease-in-out shadow-sm"
+              step="100"
+              suppressHydrationWarning={true}
+            />
+          </CharlieTooltip>
         </div>
 
         <div className="mb-5">
           <label htmlFor="gAndAAnnual" className="block text-sm font-medium text-gray-700 mb-1">G&A ($)</label>
-          <input
-            type="text"
-            id="gAndAAnnual"
-            value={(gAndAAnnual ?? 0).toLocaleString('en-US')}
-            onChange={formatAndParseNumberInput(setGAndAAnnual)}
-            className="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-shadow duration-150 ease-in-out shadow-sm"
-            step="100"
-            suppressHydrationWarning={true}
-          />
+          <CharlieTooltip message="General & Administrative—the random stuff. Legal, accounting, office supplies. Usually 2-5% of gross income.">
+            <input
+              type="text"
+              id="gAndAAnnual"
+              value={(gAndAAnnual ?? 0).toLocaleString('en-US')}
+              onChange={formatAndParseNumberInput(setGAndAAnnual)}
+              className="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-shadow duration-150 ease-in-out shadow-sm"
+              step="100"
+              suppressHydrationWarning={true}
+            />
+          </CharlieTooltip>
         </div>
 
         <div className="mb-5">
           <label htmlFor="otherExpensesAnnual" className="block text-sm font-medium text-gray-700 mb-1">Other Expenses ($)</label>
-          <input
-            type="text"
-            id="otherExpensesAnnual"
-            value={(otherExpensesAnnual ?? 0).toLocaleString('en-US')}
-            onChange={formatAndParseNumberInput(setOtherExpensesAnnual)}
-            className="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-shadow duration-150 ease-in-out shadow-sm"
-            step="100"
-            suppressHydrationWarning={true}
-          />
+          <CharlieTooltip message="The catch-all category. There's always something. Budget for it or get surprised by it.">
+            <input
+              type="text"
+              id="otherExpensesAnnual"
+              value={(otherExpensesAnnual ?? 0).toLocaleString('en-US')}
+              onChange={formatAndParseNumberInput(setOtherExpensesAnnual)}
+              className="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-shadow duration-150 ease-in-out shadow-sm"
+              step="100"
+              suppressHydrationWarning={true}
+            />
+          </CharlieTooltip>
         </div>
 
         <div className="mb-5">
           <label htmlFor="expenseGrowthRate" className="block text-sm font-medium text-gray-700 mb-1">Expense Growth Rate (%)</label>
-          <input
-            type="number"
-            id="expenseGrowthRate"
-            value={expenseGrowthRate ?? 0}
-            onChange={(e) => setExpenseGrowthRate(Math.max(0, parseFloat(e.target.value) || 0))}
-            className="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-shadow duration-150 ease-in-out shadow-sm"
-            step="0.1"
-            min="0"
-          />
+          <CharlieTooltip message="Expenses grow faster than rent in many markets. Don't assume they stay flat—that's rookie mistake #1.">
+            <input
+              type="number"
+              id="expenseGrowthRate"
+              value={expenseGrowthRate ?? 0}
+              onChange={(e) => setExpenseGrowthRate(Math.max(0, parseFloat(e.target.value) || 0))}
+              className="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-shadow duration-150 ease-in-out shadow-sm"
+              step="0.1"
+              min="0"
+            />
+          </CharlieTooltip>
         </div>
 
         <h3 className="text-xl font-semibold mb-4 text-gray-700 mt-8">CAPITAL EXPENDITURES (ANNUAL)</h3>
         <div className="mb-5">
           <label htmlFor="capitalReservePerUnitAnnual" className="block text-sm font-medium text-gray-700 mb-1">Capital Reserve (per unit) ($)</label>
-          <input
-            type="text"
-            id="capitalReservePerUnitAnnual"
-            value={(capitalReservePerUnitAnnual ?? 0).toLocaleString('en-US')}
-            onChange={formatAndParseNumberInput(setCapitalReservePerUnitAnnual)}
-            className="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-shadow duration-150 ease-in-out shadow-sm"
-            step="10"
-            suppressHydrationWarning={true}
-          />
+          <CharlieTooltip message="This is your 'stuff breaks' fund. HVAC, roofs, parking lots—big ticket items. I use $300-500/unit minimum.">
+            <input
+              type="text"
+              id="capitalReservePerUnitAnnual"
+              value={(capitalReservePerUnitAnnual ?? 0).toLocaleString('en-US')}
+              onChange={formatAndParseNumberInput(setCapitalReservePerUnitAnnual)}
+              className="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-shadow duration-150 ease-in-out shadow-sm"
+              step="10"
+              suppressHydrationWarning={true}
+            />
+          </CharlieTooltip>
         </div>
         <div className="mb-5">
           <label htmlFor="deferredCapitalReservePerUnit" className="block text-sm font-medium text-gray-700 mb-1">Deferred Capital Reserve (per unit) ($)</label>
-          <input
-            type="text"
-            id="deferredCapitalReservePerUnit"
-            value={(deferredCapitalReservePerUnit ?? 0).toLocaleString('en-US')}
-            onChange={formatAndParseNumberInput(setDeferredCapitalReservePerUnit)}
-            className="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-shadow duration-150 ease-in-out shadow-sm"
-            step="10"
-            suppressHydrationWarning={true}
-          />
+          <CharlieTooltip message="Buying a fixer-upper? This is your renovation budget per unit. Be generous—construction always costs more.">
+            <input
+              type="text"
+              id="deferredCapitalReservePerUnit"
+              value={(deferredCapitalReservePerUnit ?? 0).toLocaleString('en-US')}
+              onChange={formatAndParseNumberInput(setDeferredCapitalReservePerUnit)}
+              className="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-shadow duration-150 ease-in-out shadow-sm"
+              step="10"
+              suppressHydrationWarning={true}
+            />
+          </CharlieTooltip>
         </div>
         <div className="mb-6">
           <label htmlFor="holdingPeriodYears" className="block text-sm font-medium text-gray-700 mb-1">Holding Period (Years)</label>
-          <div className="flex items-center">
-            <input
-              type="range"
-              id="holdingPeriodYears"
-              min="1"
-              max="50"
-              value={holdingPeriodYears ?? 0}
-              onChange={(e) => setHoldingPeriodYears(parseInt(e.target.value))}
-              className="w-full h-2 bg-gray-300 rounded-lg appearance-none cursor-pointer accent-orange-500"
-            />
-            <span className="ml-3 text-gray-700 font-medium w-10 text-right">{holdingPeriodYears}</span>
-          </div>
+          <CharlieTooltip message="How long before you sell or refi? Longer holds smooth out market volatility but tie up your capital.">
+            <div className="flex items-center">
+              <input
+                type="range"
+                id="holdingPeriodYears"
+                min="1"
+                max="50"
+                value={holdingPeriodYears ?? 0}
+                onChange={(e) => setHoldingPeriodYears(parseInt(e.target.value))}
+                className="w-full h-2 bg-gray-300 rounded-lg appearance-none cursor-pointer accent-orange-500"
+              />
+              <span className="ml-3 text-gray-700 font-medium w-10 text-right">{holdingPeriodYears}</span>
+            </div>
+          </CharlieTooltip>
         </div>
       </div>
-    </div >
+    </div>
+    
+    {/* Unsaved Changes Modal */}
+    <UnsavedChangesModal
+      isOpen={showUnsavedChangesModal}
+      onStay={handleStayAndSave}
+      onLeave={handleLeaveWithoutSaving}
+    />
+  </>
   );
 }

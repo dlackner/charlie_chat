@@ -196,24 +196,21 @@ async function processCheckoutSession(session: any, supabase: any, stripe: any) 
 async function handleSubscription(session: any, profile: any, supabase: any, stripe: any) {
   console.log("📋 Processing subscription");
 
-  // Get price ID from line items
-  const sessionWithItems = await stripe.checkout.sessions.retrieve(session.id, {
-    expand: ["line_items.data.price"]
-  });
-  const priceId = sessionWithItems.line_items?.data?.[0]?.price?.id;
-  console.log("📋 Subscription price ID:", priceId);
+  // Get product ID from session metadata
+  const productId = session.metadata?.productId || session.metadata?.product_id;
+  console.log("📋 Subscription product ID:", productId);
 
-  // Map price IDs to user classes
-  const priceToClassMap = {
-    [Deno.env.get('NEXT_PUBLIC_CHARLIE_CHAT_MONTHLY_PRICE') ?? '']: "charlie_chat",
-    [Deno.env.get('NEXT_PUBLIC_CHARLIE_CHAT_ANNUAL_PRICE') ?? '']: "charlie_chat",
-    [Deno.env.get('NEXT_PUBLIC_CHARLIE_CHAT_PRO_MONTHLY_PRICE') ?? '']: "charlie_chat_pro",
-    [Deno.env.get('NEXT_PUBLIC_CHARLIE_CHAT_PRO_ANNUAL_PRICE') ?? '']: "charlie_chat_pro",
-    [Deno.env.get('NEXT_PUBLIC_COHORT_MONTHLY_PRICE') ?? '']: "cohort",
-    [Deno.env.get('NEXT_PUBLIC_COHORT_ANNUAL_PRICE') ?? '']: "cohort"
+  // Map product IDs to user classes
+  const productToClassMap = {
+    [Deno.env.get('NEXT_PUBLIC_CHARLIE_CHAT_MONTHLY_PRODUCT') ?? '']: "charlie_chat",
+    [Deno.env.get('NEXT_PUBLIC_CHARLIE_CHAT_ANNUAL_PRODUCT') ?? '']: "charlie_chat",
+    [Deno.env.get('NEXT_PUBLIC_CHARLIE_CHAT_PRO_MONTHLY_PRODUCT') ?? '']: "charlie_chat_pro",
+    [Deno.env.get('NEXT_PUBLIC_CHARLIE_CHAT_PRO_ANNUAL_PRODUCT') ?? '']: "charlie_chat_pro",
+    [Deno.env.get('NEXT_PUBLIC_COHORT_MONTHLY_PRODUCT') ?? '']: "cohort",
+    [Deno.env.get('NEXT_PUBLIC_COHORT_ANNUAL_PRODUCT') ?? '']: "cohort"
   };
 
-  const assignedUserClass = priceToClassMap[priceId || ''] || "charlie_chat";
+  const assignedUserClass = productToClassMap[productId || ''] || "charlie_chat";
   //console.log(`📋 Assigning user_class: ${assignedUserClass}`);
 
   // Get full subscription details from Stripe if subscription exists
@@ -228,7 +225,7 @@ async function handleSubscription(session: any, profile: any, supabase: any, str
         .upsert([{
           user_id: profile.user_id,
           stripe_subscription_id: subscription.id,
-          stripe_price_id: priceId,
+          stripe_price_id: subscription.items.data[0]?.price?.id,
           status: subscription.status,
           created_at: new Date(subscription.created * 1000).toISOString(),
           updated_at: new Date().toISOString(),
@@ -285,32 +282,58 @@ async function handleSubscription(session: any, profile: any, supabase: any, str
 async function handleCreditPurchase(session: any, profile: any, supabase: any, stripe: any) {
   console.log("💳 Processing credit pack purchase");
 
-  // Get line items to find price ID
-  const sessionWithItems = await stripe.checkout.sessions.retrieve(session.id, {
-    expand: ["line_items.data.price"]
-  });
-  const priceId = sessionWithItems.line_items?.data?.[0]?.price?.id;
-  console.log("💰 Price ID:", priceId);
+  // Get product ID from session metadata (new method)
+  const productId = session.metadata?.productId || session.metadata?.product_id;
+  console.log("💰 Product ID from metadata:", productId);
 
-  // Map price IDs to credit amounts
-  const priceToCreditMap = {
-    [Deno.env.get('NEXT_PUBLIC_CHARLIE_CHAT_25_PACK_PRICE') ?? '']: { credits: 25 },
-    [Deno.env.get('NEXT_PUBLIC_CHARLIE_CHAT_50_PACK_PRICE') ?? '']: { credits: 50 },
-    [Deno.env.get('NEXT_PUBLIC_CHARLIE_CHAT_100_PACK_PRICE') ?? '']: { credits: 100 },
-    [Deno.env.get('NEXT_PUBLIC_CHARLIE_CHAT_PRO_100_PACK_PRICE') ?? '']: {
+  // Map product IDs to credit amounts
+  const productToCreditMap = {
+    [Deno.env.get('NEXT_PUBLIC_CHARLIE_CHAT_25_PACK_PRODUCT') ?? '']: { credits: 25 },
+    [Deno.env.get('NEXT_PUBLIC_CHARLIE_CHAT_50_PACK_PRODUCT') ?? '']: { credits: 50 },
+    [Deno.env.get('NEXT_PUBLIC_CHARLIE_CHAT_100_PACK_PRODUCT') ?? '']: { credits: 100 },
+    [Deno.env.get('NEXT_PUBLIC_CHARLIE_CHAT_PRO_100_PACK_PRODUCT') ?? '']: {
       credits: 100,
       userClass: 'charlie_chat_pro'
     },
-    [Deno.env.get('NEXT_PUBLIC_MULTIFAMILYOS_COHORT_250_PACK_PRICE') ?? '']: {
+    [Deno.env.get('NEXT_PUBLIC_MULTIFAMILYOS_COHORT_250_PACK_PRODUCT') ?? '']: {
       credits: 250,
       userClass: 'cohort'
     }
   };
 
-  const creditInfo = priceToCreditMap[priceId || ''];
+  let creditInfo = productToCreditMap[productId || ''];
+  
+  // Fallback to price ID mapping for backward compatibility
   if (!creditInfo) {
-    console.error("❌ Unknown price ID for credit pack:", priceId);
-    console.log("🔍 Available price IDs in mapping:", Object.keys(priceToCreditMap));
+    console.log("⚠️ No product ID found or mapped, falling back to price ID mapping");
+    
+    // Get line items to find price ID
+    const sessionWithItems = await stripe.checkout.sessions.retrieve(session.id, {
+      expand: ["line_items.data.price"]
+    });
+    const priceId = sessionWithItems.line_items?.data?.[0]?.price?.id;
+    console.log("💰 Fallback Price ID:", priceId);
+
+    // Map price IDs to credit amounts (backward compatibility)
+    const priceToCreditMap = {
+      [Deno.env.get('NEXT_PUBLIC_CHARLIE_CHAT_25_PACK_PRICE') ?? '']: { credits: 25 },
+      [Deno.env.get('NEXT_PUBLIC_CHARLIE_CHAT_50_PACK_PRICE') ?? '']: { credits: 50 },
+      [Deno.env.get('NEXT_PUBLIC_CHARLIE_CHAT_100_PACK_PRICE') ?? '']: { credits: 100 },
+      [Deno.env.get('NEXT_PUBLIC_CHARLIE_CHAT_PRO_100_PACK_PRICE') ?? '']: {
+        credits: 100,
+        userClass: 'charlie_chat_pro'
+      },
+      [Deno.env.get('NEXT_PUBLIC_MULTIFAMILYOS_COHORT_250_PACK_PRICE') ?? '']: {
+        credits: 250,
+        userClass: 'cohort'
+      }
+    };
+
+    creditInfo = priceToCreditMap[priceId || ''];
+  }
+  if (!creditInfo) {
+    console.error("❌ Unknown product/price ID for credit pack:", productId);
+    console.log("🔍 Available product IDs in mapping:", Object.keys(productToCreditMap));
     
     // Fallback: Try to get credit amount from metadata if available
     const fallbackAmount = parseInt(session.metadata?.amount || "0", 10);
@@ -468,19 +491,46 @@ async function processInvoicePayment(invoice: any, supabase: any, stripe: any) {
 async function updateSubscriptionRecord(subscription: any, profile: any, supabase: any) {
   console.log("🔄 Updating subscription record");
 
-  const priceId = subscription.items.data[0]?.price?.id;
+  // First, try to get product ID from existing subscription metadata in database
+  const { data: existingSubscription } = await supabase
+    .from('subscriptions')
+    .select('metadata')
+    .eq('stripe_subscription_id', subscription.id)
+    .single();
 
-  // Map price to user class
-  const priceToClassMap = {
-    [Deno.env.get('NEXT_PUBLIC_CHARLIE_CHAT_MONTHLY_PRICE') ?? '']: "charlie_chat",
-    [Deno.env.get('NEXT_PUBLIC_CHARLIE_CHAT_ANNUAL_PRICE') ?? '']: "charlie_chat",
-    [Deno.env.get('NEXT_PUBLIC_CHARLIE_CHAT_PRO_MONTHLY_PRICE') ?? '']: "charlie_chat_pro",
-    [Deno.env.get('NEXT_PUBLIC_CHARLIE_CHAT_PRO_ANNUAL_PRICE') ?? '']: "charlie_chat_pro",
-    [Deno.env.get('NEXT_PUBLIC_COHORT_MONTHLY_PRICE') ?? '']: "cohort",
-    [Deno.env.get('NEXT_PUBLIC_COHORT_ANNUAL_PRICE') ?? '']: "cohort"
+  let productId = existingSubscription?.metadata?.productId || existingSubscription?.metadata?.product_id;
+  
+  // If no product ID in metadata, fall back to price ID mapping for backward compatibility
+  if (!productId) {
+    console.log("⚠️ No product ID found in metadata, falling back to price ID mapping");
+    const priceId = subscription.items.data[0]?.price?.id;
+    
+    // Map price IDs to product IDs for backward compatibility
+    const priceToProductMap = {
+      [Deno.env.get('NEXT_PUBLIC_CHARLIE_CHAT_MONTHLY_PRICE') ?? '']: Deno.env.get('NEXT_PUBLIC_CHARLIE_CHAT_MONTHLY_PRODUCT'),
+      [Deno.env.get('NEXT_PUBLIC_CHARLIE_CHAT_ANNUAL_PRICE') ?? '']: Deno.env.get('NEXT_PUBLIC_CHARLIE_CHAT_ANNUAL_PRODUCT'),
+      [Deno.env.get('NEXT_PUBLIC_CHARLIE_CHAT_PRO_MONTHLY_PRICE') ?? '']: Deno.env.get('NEXT_PUBLIC_CHARLIE_CHAT_PRO_MONTHLY_PRODUCT'),
+      [Deno.env.get('NEXT_PUBLIC_CHARLIE_CHAT_PRO_ANNUAL_PRICE') ?? '']: Deno.env.get('NEXT_PUBLIC_CHARLIE_CHAT_PRO_ANNUAL_PRODUCT'),
+      [Deno.env.get('NEXT_PUBLIC_COHORT_MONTHLY_PRICE') ?? '']: Deno.env.get('NEXT_PUBLIC_COHORT_MONTHLY_PRODUCT'),
+      [Deno.env.get('NEXT_PUBLIC_COHORT_ANNUAL_PRICE') ?? '']: Deno.env.get('NEXT_PUBLIC_COHORT_ANNUAL_PRODUCT')
+    };
+    
+    productId = priceToProductMap[priceId || ''];
+  }
+
+  console.log("📋 Using product ID for user class mapping:", productId);
+
+  // Map product IDs to user classes
+  const productToClassMap = {
+    [Deno.env.get('NEXT_PUBLIC_CHARLIE_CHAT_MONTHLY_PRODUCT') ?? '']: "charlie_chat",
+    [Deno.env.get('NEXT_PUBLIC_CHARLIE_CHAT_ANNUAL_PRODUCT') ?? '']: "charlie_chat",
+    [Deno.env.get('NEXT_PUBLIC_CHARLIE_CHAT_PRO_MONTHLY_PRODUCT') ?? '']: "charlie_chat_pro",
+    [Deno.env.get('NEXT_PUBLIC_CHARLIE_CHAT_PRO_ANNUAL_PRODUCT') ?? '']: "charlie_chat_pro",
+    [Deno.env.get('NEXT_PUBLIC_COHORT_MONTHLY_PRODUCT') ?? '']: "cohort",
+    [Deno.env.get('NEXT_PUBLIC_COHORT_ANNUAL_PRODUCT') ?? '']: "cohort"
   };
 
-  const assignedUserClass = priceToClassMap[priceId || ''] || "charlie_chat";
+  const assignedUserClass = productToClassMap[productId || ''] || "charlie_chat";
 
   // Update subscription record
   const { error: subscriptionError } = await supabase
@@ -488,7 +538,7 @@ async function updateSubscriptionRecord(subscription: any, profile: any, supabas
     .upsert([{
       user_id: profile.user_id,
       stripe_subscription_id: subscription.id,
-      stripe_price_id: priceId,
+      stripe_price_id: subscription.items.data[0]?.price?.id,
       status: subscription.status,
       created_at: new Date(subscription.created * 1000).toISOString(),
       updated_at: new Date().toISOString(),

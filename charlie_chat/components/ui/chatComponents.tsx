@@ -8,6 +8,8 @@ import { Listing } from './chatTypes';
 // Component interfaces
 interface ChatHeaderProps {
     hasMessages: boolean;
+    hasNewRecommendations?: boolean;
+    onCharlieClick?: () => void;
 }
 
 interface MessageListProps {
@@ -102,20 +104,80 @@ export const CharlieThinkingLoader = () => {
 };
 
 // Chat Header Component
-export const ChatHeader: React.FC<ChatHeaderProps> = ({ hasMessages }) => {
+export const ChatHeader: React.FC<ChatHeaderProps> = ({ hasMessages, hasNewRecommendations, onCharlieClick }) => {
     return (
         <div className={`transition-all duration-500 ease-in-out ${hasMessages
             ? "py-2" // Minimal padding when chat is active
             : "py-8"  // Full padding when no messages
             }`}>
-            <img
-                src="/charlie.png"
-                alt="Charlie Headshot"
-                className={`rounded-full mx-auto shadow-md border transition-all duration-500 ease-in-out ${hasMessages
-                    ? "w-12 h-12 mb-2" // Smaller when chat is active
-                    : "w-24 h-24 mb-4" // Full size when no messages
-                    }`}
-            />
+            <div className="flex justify-center">
+                <div className="relative group">
+                    <img
+                        src="/charlie.png"
+                        alt="Charlie Headshot"
+                        className={`rounded-full shadow-md border transition-all duration-500 ease-in-out cursor-pointer hover:scale-105 ${hasMessages
+                            ? "w-12 h-12 mb-2" // Smaller when chat is active
+                            : "w-24 h-24 mb-4" // Full size when no messages
+                            } ${hasNewRecommendations ? 'animate-bounce' : ''}`}
+                        onClick={onCharlieClick}
+                        style={{
+                            animation: hasNewRecommendations ? 'gentle-bounce 2s ease-in-out infinite' : 'none'
+                        }}
+                    />
+                
+                {/* Notification dot */}
+                {hasNewRecommendations && (
+                    <div className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full border-2 border-white flex items-center justify-center">
+                        <span className="text-xs text-white font-bold">!</span>
+                    </div>
+                )}
+                
+                {/* Cartoon speech bubble - only on hover, positioned to the right */}
+                {hasNewRecommendations && (
+                    <div className="absolute top-1/2 left-full transform -translate-y-1/2 ml-4 opacity-0 transition-opacity duration-300 pointer-events-none group-hover:opacity-100">
+                        <div className="bg-white border-2 border-gray-800 rounded-2xl shadow-lg p-3 max-w-xs relative whitespace-nowrap">
+                            <div className="text-sm text-gray-800 font-medium">
+                                I found some great properties for you!
+                            </div>
+                            {/* Speech bubble tail pointing left */}
+                            <div className="absolute right-full top-1/2 transform -translate-y-1/2 w-0 h-0 border-t-[12px] border-b-[12px] border-r-[12px] border-t-transparent border-b-transparent border-r-white"></div>
+                            <div className="absolute right-full top-1/2 transform -translate-y-1/2 w-0 h-0 border-t-[14px] border-b-[14px] border-r-[14px] border-t-transparent border-b-transparent border-r-gray-800" style={{marginRight: '2px'}}></div>
+                        </div>
+                    </div>
+                )}
+                </div>
+            </div>
+            
+            {/* Custom CSS for animations */}
+            <style jsx>{`
+                @keyframes gentle-bounce {
+                    0%, 20%, 50%, 80%, 100% {
+                        transform: translateY(0);
+                    }
+                    40% {
+                        transform: translateY(-10px);
+                    }
+                    60% {
+                        transform: translateY(-5px);
+                    }
+                }
+                
+                @keyframes fade-in-up {
+                    from {
+                        opacity: 0;
+                        transform: translateX(-50%) translateY(10px);
+                    }
+                    to {
+                        opacity: 1;
+                        transform: translateX(-50%) translateY(0);
+                    }
+                }
+                
+                .animate-fade-in-up {
+                    animation: fade-in-up 0.3s ease-out;
+                }
+            `}</style>
+            
             <h1 className={`font-light text-center tracking-tight transition-all duration-500 ease-in-out ${hasMessages
                 ? "text-xl mb-1" // Smaller when chat is active
                 : "text-3xl sm:text-5xl mb-2" // Full size when no messages

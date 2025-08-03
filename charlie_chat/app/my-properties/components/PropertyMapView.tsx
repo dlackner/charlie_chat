@@ -30,7 +30,7 @@ interface PropertyMapViewProps {
 
 export const PropertyMapView: React.FC<PropertyMapViewProps> = (props) => {
     const [hiddenProperties, setHiddenProperties] = useState<Set<string>>(new Set());
-    const [showRentOverlay, setShowRentOverlay] = useState(false);
+    const [showRentOverlay, setShowRentOverlay] = useState(true);
 
     console.log('PropertyMapView received props.properties:', props.properties.length);
     console.log('Properties:', props.properties);
@@ -179,11 +179,11 @@ const propertiesWithRentData = useMemo(() => {
                     <button
                         onClick={() => setShowRentOverlay(!showRentOverlay)}
                         className={`px-4 py-2 rounded-lg shadow-lg border text-sm font-medium flex items-center gap-2 transition-all duration-300 ${showRentOverlay
-                            ? 'bg-orange-600 text-white border-orange-600'
+                            ? 'bg-gray-600 text-white border-gray-600 hover:bg-gray-700'
                             : 'bg-orange-500 text-white border-orange-500 hover:bg-orange-600'
                             }`}
                     >
-                        {showRentOverlay ? 'Hide' : 'Show'} Rent Data
+                        {showRentOverlay ? 'Hide Rents' : 'Show Rents'}
                     </button>
                 )}
             </div>

@@ -5,6 +5,8 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { Sidebar } from "@/components/ui/sidebar";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
+import { WeeklyRecommendationsModal } from "@/components/WeeklyRecommendationsModal";
+import { Listing } from "@/components/ui/listingTypes";
 import { PropertyBatchState } from './chatServices';
 import { PACKAGES, getPackagesFor } from '@/lib/pricing';
 import type { User } from '@supabase/supabase-js'
@@ -32,7 +34,6 @@ import { AssistantRuntimeProvider } from "@assistant-ui/react";
 import {
   UserClass,
   ExtendedUser,
-  Listing,
   ChatMessage,
   BATCH_SIZE,
   EXAMPLES,
@@ -74,7 +75,7 @@ export function ClosingChat() {
   const { isLoading: isLoadingAuth, supabase } = useAuth() as { isLoading: boolean; supabase: any };
   const stripeCustomerId = (currentUser as any)?.stripe_customer_id;
 
-  const availablePackages = userClass === 'trial' ? [] : getPackagesFor(userClass);
+  const availablePackages = userClass === 'trial' || userClass === 'disabled' ? [] : getPackagesFor(userClass);
   const {
     messages,
     setMessages,
@@ -107,6 +108,16 @@ export function ClosingChat() {
 
   const { listings, setListings, toggleListingSelect: toggleListingSelectFn } = useListings();
   const batchSize = BATCH_SIZE;
+  
+  // Weekly recommendations state - DISABLED
+  // TO RE-ENABLE: Uncomment the 3 lines below
+  // const [showRecommendationsModal, setShowRecommendationsModal] = useState(false);
+  // const [weeklyRecommendations, setWeeklyRecommendations] = useState<Array<{
+  //   name: string;
+  //   msa_name?: string;
+  //   properties: Listing[];
+  // }>>([]);
+  // const [hasNewRecommendations, setHasNewRecommendations] = useState(false);
   const {
     selectedListings,
     setSelectedListings,
@@ -276,6 +287,148 @@ export function ClosingChat() {
 
   const { handlePackageSelection } = usePackageSelection();
 
+  // Weekly recommendations handlers - DISABLED
+  // TO RE-ENABLE: Uncomment the handleCharlieClick function below
+  // const handleCharlieClick = () => {
+  //   setShowRecommendationsModal(true);
+  //   setHasNewRecommendations(false);
+  // };
+
+  const handleFavoriteProperty = async (propertyId: string) => {
+    console.log('Favoriting property:', propertyId);
+    // TODO: Add to favorites in database
+  };
+
+  const handleDismissProperty = async (propertyId: string) => {
+    console.log('Dismissing property:', propertyId);
+    // TODO: Track dismissal for learning
+  };
+
+  // Load weekly recommendations from API
+  const loadWeeklyRecommendations = async () => {
+    // Feature disabled - weekly recommendations not ready for production
+    console.log('Weekly recommendations disabled');
+    return;
+    
+    // TO RE-ENABLE: Remove the return statement above and uncomment all code below until the closing */
+    /*
+    
+    try {
+      // Get the user's session for authentication
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session?.access_token) {
+        console.log('No authenticated session, skipping weekly recommendations');
+        return;
+      }
+
+      const response = await fetch('/api/weekly-recommendations', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+      });
+
+      if (!response.ok) {
+        console.error('Failed to fetch weekly recommendations:', response.status);
+        return;
+      }
+
+      const data = await response.json();
+      
+      if (data.success && data.recommendations.length > 0) {
+        // Sort recommendations by market name for easier review
+        const sortedRecommendations = data.recommendations.sort((a: any, b: any) => {
+          const nameA = a.name || '';
+          const nameB = b.name || '';
+          return nameA.localeCompare(nameB);
+        });
+        
+        setWeeklyRecommendations(sortedRecommendations);
+        setHasNewRecommendations(true);
+        console.log(`✅ Loaded ${data.recommendations.length} weekly recommendations`);
+      } else {
+        console.log('No weekly recommendations available');
+      }
+    } catch (error) {
+      console.error('Error loading weekly recommendations:', error);
+    }
+  */
+  };
+
+  useEffect(() => {
+    // Load recommendations when component mounts - DISABLED
+    // loadWeeklyRecommendations();
+  }, []);
+
+  // Fallback mock data for testing when API has no data
+
+  // Load existing weekly recommendations from database on component mount - DISABLED
+  useEffect(() => {
+    const loadExistingRecommendations = async () => {
+      // Feature disabled - weekly recommendations not ready for production
+      return;
+      
+      // TO RE-ENABLE: Remove the return statement above and uncomment all code below until the closing */
+      /*
+      
+      // Only load if no recommendations are already loaded
+      if (weeklyRecommendations.length > 0) return;
+      
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session?.access_token) return;
+
+        // Check if user has existing weekly recommendations in database
+        const { data: existingRecs } = await supabase
+          .from('user_favorites')
+          .select(`
+            property_id,
+            saved_properties (*)
+          `)
+          .eq('user_id', session.user.id)
+          .eq('recommendation_type', 'weekly_recommendation')
+          .eq('is_active', true)
+          .limit(10);
+
+        if (existingRecs && existingRecs.length > 0) {
+          // Group existing recommendations by market (city, state) for easier review
+          const properties = existingRecs.map((rec: any) => rec.saved_properties).filter(Boolean);
+          const marketGroups: { [key: string]: any[] } = {};
+          
+          properties.forEach((property: any) => {
+            const city = property.address_city || 'Unknown City';
+            const state = property.address_state || 'Unknown State';
+            const marketKey = `${city}, ${state}`;
+            
+            if (!marketGroups[marketKey]) {
+              marketGroups[marketKey] = [];
+            }
+            marketGroups[marketKey].push(property);
+          });
+          
+          // Convert to array format and sort by market name
+          const formattedRecs = Object.keys(marketGroups)
+            .sort((a, b) => a.localeCompare(b))
+            .map(marketName => ({
+              name: marketName,
+              properties: marketGroups[marketName]
+            }));
+          
+          setWeeklyRecommendations(formattedRecs);
+          setHasNewRecommendations(true);
+          console.log('✅ Loaded existing weekly recommendations:', existingRecs.length, 'properties across', formattedRecs.length, 'markets');
+        }
+      } catch (error) {
+        console.error('Error loading existing recommendations:', error);
+      }
+    */
+    };
+
+    // loadExistingRecommendations(); // DISABLED
+  }, [/* weeklyRecommendations.length, */ supabase.auth]);
+
   // Property Analysis UI handlers
   const handleContinueBatch = () => {
     setIsWaitingForContinuation(false);
@@ -361,14 +514,20 @@ export function ClosingChat() {
             isLoggedIn={isLoggedIn}
             triggerAuthModal={() => setShowModal(true)}
             onCreditsUpdate={handleCreditsUpdated}
-            userClass={userClass}
+            userClass={userClass === 'disabled' ? 'trial' : userClass}
             triggerBuyCreditsModal={() => setShowCreditOptionsModal(true)}
             clearSelectedListings={() => setSelectedListings([])}
+            userCredits={userCredits}
           />
 
           {/* Chat UI */}
           <div className="flex-1 flex flex-col items-center justify-start overflow-hidden">
-            <ChatHeader hasMessages={hasMessages} />
+            <ChatHeader 
+              hasMessages={hasMessages}
+              // TO RE-ENABLE: Uncomment the 2 lines below
+              // hasNewRecommendations={hasNewRecommendations}
+              // onCharlieClick={handleCharlieClick}
+            />
 
             <MessageList
               messages={messages}
@@ -546,6 +705,36 @@ export function ClosingChat() {
                   </button>
                 </div>
               </>
+            ) : userClass === 'disabled' ? (
+              <>
+                {/* Header with Charlie image */}
+                <div className="flex items-center mb-4">
+                  <img
+                    src="/charlie.png"
+                    alt="Charlie"
+                    className="w-12 h-12 rounded-full mr-3 shadow-md border-[0.5px] border-gray-300"
+                  />
+                  <div className="flex items-center">
+                    <span className="text-lg mr-2">⚠️</span>
+                    <Dialog.Title className="text-xl font-semibold text-gray-900">
+                      Charlie here!
+                    </Dialog.Title>
+                  </div>
+                </div>
+                
+                <p className="text-base text-gray-700 mb-6 leading-relaxed">
+                  Your trial period has ended, but don't worry! Choose a plan below to continue using Charlie Chat and access all your saved properties.
+                </p>
+                
+                <div className="space-y-3">
+                  <button
+                    onClick={() => router.push("/pricing")}
+                    className="w-full py-3 rounded-lg bg-orange-600 text-white font-medium hover:bg-orange-700 transition-colors duration-150"
+                  >
+                    Choose Your Plan
+                  </button>
+                </div>
+              </>
             ) : (
               <>
                 <Dialog.Title className="text-2xl font-semibold text-gray-900 mb-2">
@@ -572,6 +761,17 @@ export function ClosingChat() {
             )}
           </Dialog.Panel>
         </Dialog>
+
+
+        {/* Weekly Recommendations Modal - DISABLED */}
+        {/* TO RE-ENABLE: Uncomment the entire WeeklyRecommendationsModal component below */}
+        {/*<WeeklyRecommendationsModal
+          isOpen={showRecommendationsModal}
+          onClose={() => setShowRecommendationsModal(false)}
+          markets={weeklyRecommendations}
+          onFavoriteProperty={handleFavoriteProperty}
+          onDismissProperty={handleDismissProperty}
+        />*/}
       </>
     </AssistantRuntimeProvider>
   );

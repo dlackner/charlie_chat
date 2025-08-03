@@ -79,7 +79,13 @@ export default function ProfilePage() {
                         phone_number: data.phone_number || "",
                         business_name: data.business_name || "",
                         job_title: data.job_title || "",
+                        logo_base64: data.logo_base64 || "",
                     });
+                    
+                    // Set logo preview if logo exists
+                    if (data.logo_base64) {
+                        setLogoPreview(data.logo_base64);
+                    }
                 }
             } catch (error) {
                 console.error("Unexpected error loading profile:", error);

@@ -186,62 +186,140 @@ export default function PricingPage() {
         <div className="space-y-6">
           {/* FAQ Item 1 */}
           <div className="bg-white border border-gray-200 rounded-lg p-6 shadow hover:shadow-lg transition duration-200">
-            <h3 className="text-lg font-semibold text-gray-900 mb-3">Who is Charles Dobens?</h3>
-            <p className="text-gray-700">Charles Dobens is the founder of MultifamilyOS™, a business owner and lawyer who personally owns over $50 million in real estate assets and has assisted in over $3 billion in client acquisitions. He developed the MultifamilyOS™ system and created the AI-powered Charlie Chat to help multifamily real estate investors make smarter investment decisions.</p>
+            <h3 className="text-xl font-bold text-orange-600 mb-3">What can Charlie Chat do for me?</h3>
+            <div className="text-sm text-gray-700">
+              <p className="mb-3">Charlie Chat is your AI co‑pilot in multifamily investing. It lets you:</p>
+              <ul className="list-disc pl-6 space-y-1">
+                <li>Discover, organize, and view properties in card, matrix, and interactive map formats</li>
+                <li>Quickly run skip traces to uncover owner contact info</li>
+                <li>Generate personalized marketing letters and LOIs in seconds</li>
+                <li>Export property data for spreadsheets or CRMs</li>
+                <li>Run deep investment analyses—IRR, Cash-on-Cash, Cap Rate, DSCR, NOI projections, cash‑flow modeling, and break-even checks</li>
+                <li>Deliver AI-powered recommendations to help you decide faster</li>
+              </ul>
+              <p className="mt-3">From property search to signed LOI, do it all in one place—fast, smart, seamless.</p>
+            </div>
           </div>
 
           {/* FAQ Item 2 */}
           <div className="bg-white border border-gray-200 rounded-lg p-6 shadow hover:shadow-lg transition duration-200">
-            <h3 className="text-lg font-semibold text-gray-900 mb-3">What capabilities does Charlie Chat have?</h3>
-            <p className="text-gray-700">Charlie Chat can organize your saved properties, view them in cards/matrix/map formats, generate marketing letters and LOIs, run skip trace reports, export property data, and provide AI-powered investment analysis and recommendations.</p>
+            <h3 className="text-xl font-bold text-orange-600 mb-3">How do credits work?</h3>
+            <div className="text-sm text-gray-700">
+              <ul className="list-disc pl-6 space-y-1">
+                <li>Every property you view costs 1 credit</li>
+                <li>Credits are only used when you retrieve detailed property info</li>
+                <li>Unused credits roll over month to month, as long as your subscription is active</li>
+                <li>Flexibility to buy extra packs anytime or upgrade for better pricing</li>
+              </ul>
+              <p className="mt-3">No expiration. No waste. Only pay for what you use.</p>
+            </div>
           </div>
 
           {/* FAQ Item 3 */}
           <div className="bg-white border border-gray-200 rounded-lg p-6 shadow hover:shadow-lg transition duration-200">
-            <h3 className="text-lg font-semibold text-gray-900 mb-3">How do credits work?</h3>
-            <p className="text-gray-700">Each property you retrieve from our database costs 1 credit. Credits are consumed when you search for and view property details. Unused credits never expire and roll over to the next month as long as your subscription is active.</p>
+            <h3 className="text-xl font-bold text-orange-600 mb-3">What's included in a property analysis?</h3>
+            <div className="text-sm text-gray-700">
+              <ul className="list-disc pl-6 space-y-1">
+                <li>Full financial performance breakdown: Cap Rate, NOI, Cash-on‑Cash, DSCR</li>
+                <li>Detailed cash‑flow modeling and break-even analysis</li>
+                <li>Multifamily grading system to instantly compare deals</li>
+                <li>AI-driven investment recommendations via Charlie Chat</li>
+                <li>10-year cash flow statement</li>
+              </ul>
+              <p className="mt-3">Whether you're underwriting your first small deal or your hundredth large one—you'll do it faster and smarter.</p>
+            </div>
           </div>
 
           {/* FAQ Item 4 */}
           <div className="bg-white border border-gray-200 rounded-lg p-6 shadow hover:shadow-lg transition duration-200">
-            <h3 className="text-lg font-semibold text-gray-900 mb-3">What's included in a property analysis?</h3>
-            <p className="text-gray-700">Complete investment analysis including IRR calculations, Cash-on-Cash returns, Cap Rates, DSCR, NOI projections, cash flow modeling, break-even analysis, multifamily grading system, and AI-powered investment recommendations through Charlie Chat.</p>
+            <h3 className="text-xl font-bold text-orange-600 mb-3">Where does your property data come from?</h3>
+            <div className="text-sm text-gray-700">
+              <p className="mb-3">Charlie Chat compiles insights from public records, MLS feeds, market analytics, and proprietary algorithms. We combine this data with the built-in multifamily expertise of Charles Dobens, giving you:</p>
+              <ul className="list-disc pl-6 space-y-1">
+                <li>Access to every U.S. multifamily property—whether on or off market</li>
+                <li>Skip trace data for direct outreach</li>
+                <li>Market intelligence to help you spot high-potential deals</li>
+              </ul>
+              <p className="mt-3">Plus built-in tools to immediately generate outreach letters and LOIs so you can act as soon as you see opportunity.</p>
+            </div>
           </div>
 
           {/* FAQ Item 5 */}
           <div className="bg-white border border-gray-200 rounded-lg p-6 shadow hover:shadow-lg transition duration-200">
-            <h3 className="text-lg font-semibold text-gray-900 mb-3">What data sources do you use?</h3>
-            <p className="text-gray-700">We combine public records, MLS data, market analytics, and proprietary algorithms to provide comprehensive property insights.</p>
+            <h3 className="text-xl font-bold text-orange-600 mb-3">Who is Charles Dobens?</h3>
+            <div className="text-sm text-gray-700">
+              <p className="mb-3">Charles Dobens—known industry-wide as the Multifamily Attorney—is the founder and visionary behind MultifamilyOS™. With 25+ years of experience, he has:</p>
+              <ul className="list-disc pl-6 space-y-1">
+                <li>Personally invested in and operated $50M+ in multifamily property</li>
+                <li>Mentored clients through $3B+ in investments</li>
+                <li>Charles leads with honesty and integrity, and treats his students like clients—providing access, support, and mentorship that's rare in this industry.</li>
+              </ul>
+            </div>
           </div>
 
           {/* FAQ Item 6 */}
           <div className="bg-white border border-gray-200 rounded-lg p-6 shadow hover:shadow-lg transition duration-200">
-            <h3 className="text-lg font-semibold text-gray-900 mb-3">Can I upgrade or downgrade my plan anytime?</h3>
-            <p className="text-gray-700">Yes! You can change plans at any time. Upgrades take effect immediately, and downgrades take effect at your next billing cycle.</p>
+            <h3 className="text-xl font-bold text-orange-600 mb-3">Can I upgrade or downgrade my plan anytime?</h3>
+            <div className="text-sm text-gray-700">
+              <p className="mb-3">Absolutely.</p>
+              <ul className="list-disc pl-6 space-y-1">
+                <li>Upgrades take effect immediately, so your workflow never skips a beat</li>
+                <li>Downgrades apply at your next billing cycle with no penalty</li>
+              </ul>
+              <p className="mt-3">Your plan flexes with your needs—no surprises.</p>
+            </div>
           </div>
 
           {/* FAQ Item 7 */}
           <div className="bg-white border border-gray-200 rounded-lg p-6 shadow hover:shadow-lg transition duration-200">
-            <h3 className="text-lg font-semibold text-gray-900 mb-3">What happens if I go over my monthly credit limit?</h3>
-            <p className="text-gray-700">You can purchase additional credit packs anytime, or upgrade to a higher plan for more monthly credits at a better rate.</p>
+            <h3 className="text-xl font-bold text-orange-600 mb-3">What happens if I go over my monthly credit limit?</h3>
+            <div className="text-sm text-gray-700">
+              <p className="mb-3">You have options:</p>
+              <ul className="list-disc pl-6 space-y-1">
+                <li>Purchase additional credit packs on demand</li>
+                <li>Upgrade your plan to receive more credits per month at a better rate</li>
+              </ul>
+              <p className="mt-3">We make sure you never hit a stop sign in your property search.</p>
+            </div>
           </div>
 
           {/* FAQ Item 8 */}
           <div className="bg-white border border-gray-200 rounded-lg p-6 shadow hover:shadow-lg transition duration-200">
-            <h3 className="text-lg font-semibold text-gray-900 mb-3">Is there a free trial?</h3>
-            <p className="text-gray-700">Yes! New users get 250 free credits to explore our property database and try Charlie Chat with no credit card required.</p>
+            <h3 className="text-xl font-bold text-orange-600 mb-3">Is there a free trial?</h3>
+            <div className="text-sm text-gray-700">
+              <p className="mb-3">Yes—get started without paying a dime:</p>
+              <ul className="list-disc pl-6 space-y-1">
+                <li>250 free credits to explore properties, run analyses, and send outreach</li>
+                <li>No credit card required</li>
+              </ul>
+              <p className="mt-3">Try it real, risk‑free—and then decide.</p>
+            </div>
           </div>
 
           {/* FAQ Item 9 */}
           <div className="bg-white border border-gray-200 rounded-lg p-6 shadow hover:shadow-lg transition duration-200">
-            <h3 className="text-lg font-semibold text-gray-900 mb-3">Can I cancel anytime?</h3>
-            <p className="text-gray-700">Absolutely. Cancel anytime with no fees. You'll keep access through the end of your billing period.</p>
+            <h3 className="text-xl font-bold text-orange-600 mb-3">Can I cancel anytime?</h3>
+            <div className="text-sm text-gray-700">
+              <p className="mb-3">You can. Totally.</p>
+              <ul className="list-disc pl-6 space-y-1">
+                <li>No cancellation fees.</li>
+                <li>Access continues through the end of your current billing period.</li>
+                <li>Most subscribers come back quickly—because once you try Charlie Chat, it gets hard to compete without it.</li>
+              </ul>
+            </div>
           </div>
 
           {/* FAQ Item 10 */}
           <div className="bg-white border border-gray-200 rounded-lg p-6 shadow hover:shadow-lg transition duration-200">
-            <h3 className="text-lg font-semibold text-gray-900 mb-3">Do you offer discounts for annual billing?</h3>
-            <p className="text-gray-700">Yes! Save 19% or more when you pay annually instead of monthly.</p>
+            <h3 className="text-xl font-bold text-orange-600 mb-3">Do you offer discounts for annual billing?</h3>
+            <div className="text-sm text-gray-700">
+              <p className="mb-3">Yes—save big when you commit:</p>
+              <ul className="list-disc pl-6 space-y-1">
+                <li>Pay annually and save 19% or more</li>
+                <li>Secure a full year of resources at a lower rate</li>
+              </ul>
+              <p className="mt-3">Accelerate your business—and keep more equity in your pocket.</p>
+            </div>
           </div>
         </div>
       </div>

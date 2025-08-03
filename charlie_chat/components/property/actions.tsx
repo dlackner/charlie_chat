@@ -120,12 +120,13 @@ export const PropertyActions = ({ listing }: PropertyActionsProps) => {
       ["Last Sale Amount:", formatCurrency(listing.last_sale_amount)],
       ["Arms-Length Sale:", listing.last_sale_arms_length ? "Yes" : "No"],
       ["MLS Active:", listing.mls_active ? "Yes" : "No"],
+      ["MLS Days on Market:", listing.mls_days_on_market ?? "N/A"],
     ], rightX, startY);
 
     addSection("FLOOD ZONE INFORMATION", [
       ["Flood Zone:", listing.flood_zone ? "Yes" : "No"],
       ["Flood Zone Description:", listing.flood_zone_description ?? "N/A"],
-    ], rightX, startY + 35);
+    ], rightX, startY + 41);
 
     addSection("OWNERSHIP DETAILS", [
       ["Owner Name:", `${listing.owner_first_name ?? ""} ${listing.owner_last_name ?? ""}`],
@@ -135,7 +136,7 @@ export const PropertyActions = ({ listing }: PropertyActionsProps) => {
 
       ["In-State Absentee Owner:", listing.in_state_absentee_owner ? "Yes" : "No"],
       ["Out-of-State Absentee Owner:", listing.out_of_state_absentee_owner ? "Yes" : "No"],
-    ], rightX, startY + 60);
+    ], rightX, startY + 66);
 
     addSection("OTHER INFORMATION", [
       ["Assumable:", listing.assumable ? "Yes" : "No"],
@@ -144,7 +145,7 @@ export const PropertyActions = ({ listing }: PropertyActionsProps) => {
       ["Tax Lien:", listing.tax_lien ? "Yes" : "No"],
       ["Pre Foreclosure:", listing.pre_foreclosure ? "Yes" : "No"],
       ["Private Lender:", listing.private_lender ? "Yes" : "No"],
-    ], rightX, startY + 95);
+    ], rightX, startY + 101);
 
     const safeAddress = (listing.address?.address || "property").replace(/[^a-zA-Z0-9]/g, "_");
     doc.save(`Property_Profile_${safeAddress}.pdf`);

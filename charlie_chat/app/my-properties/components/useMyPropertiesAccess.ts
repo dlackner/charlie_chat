@@ -14,6 +14,7 @@ interface UseMyPropertiesAccessReturn {
 }
 
 export const useMyPropertiesAccess = (): UseMyPropertiesAccessReturn => {
+    console.log('🚀 useMyPropertiesAccess hook started');
     const { user: currentUser, supabase } = useAuth();
     const [userClass, setUserClass] = useState<string | null>(null);
     const [userCredits, setUserCredits] = useState<number | null>(null);
@@ -63,14 +64,25 @@ export const useMyPropertiesAccess = (): UseMyPropertiesAccessReturn => {
     // Calculate grace period status
     const calculateGracePeriod = () => {
         if (userClass !== "trial" || !creditsDepletedAt) {
+            console.log('🔍 Grace period check: No trial user or no credits_depleted_at', { userClass, creditsDepletedAt });
             return { isInGracePeriod: false, daysLeftInGracePeriod: null };
         }
 
         const depletedDate = new Date(creditsDepletedAt);
         const now = new Date();
-        const gracePeriodEnd = new Date(depletedDate.getTime() + (5 * 24 * 60 * 60 * 1000)); // 5 days
+        const gracePeriodEnd = new Date(depletedDate.getTime() + (3 * 24 * 60 * 60 * 1000)); // 3 days
         const timeLeft = gracePeriodEnd.getTime() - now.getTime();
         const daysLeft = Math.ceil(timeLeft / (24 * 60 * 60 * 1000));
+
+        console.log('🔍 Grace period calculation:', {
+            creditsDepletedAt,
+            depletedDate: depletedDate.toString(),
+            now: now.toString(),
+            gracePeriodEnd: gracePeriodEnd.toString(),
+            timeLeftMs: timeLeft,
+            daysLeft,
+            isInGracePeriod: timeLeft > 0
+        });
 
         return {
             isInGracePeriod: timeLeft > 0,
@@ -84,7 +96,9 @@ export const useMyPropertiesAccess = (): UseMyPropertiesAccessReturn => {
     const hasAccess =
         userClass === "charlie_chat_pro" ||
         userClass === "cohort" ||
-        (userClass === "trial" && userCredits !== null && userCredits > 0);
+        (userClass === "charlie_chat" && userCredits !== null && userCredits > 0) ||
+        (userClass === "trial" && userCredits !== null && (userCredits > 0 || isInGracePeriod));
+        // Note: disabled users get NO access
 
     // Fresh credit check for trial users (used by Header component)
     const checkTrialUserCredits = async (): Promise<boolean> => {
@@ -111,6 +125,15 @@ export const useMyPropertiesAccess = (): UseMyPropertiesAccessReturn => {
             return false;
         }
     };
+
+    console.log('🔍 useMyPropertiesAccess final result:', {
+        hasAccess,
+        isLoading,
+        userClass,
+        userCredits,
+        isInGracePeriod,
+        daysLeftInGracePeriod
+    });
 
     return {
         hasAccess,

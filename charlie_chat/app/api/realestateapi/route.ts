@@ -52,6 +52,7 @@ function transformListingToSnakeCase(listing: any) {
     
     // Property flags
     mls_active: listing.mlsActive,
+    mls_days_on_market: listing.mlsDaysOnMarket,
     for_sale: listing.forSale,
     assumable: listing.assumable,
     auction: listing.auction,
@@ -132,6 +133,10 @@ export async function POST(req: NextRequest) {
       resultIndex,
       count,
       ids_only,
+      // MLS fields
+      mls_cancelled,
+      mls_days_on_market_min,
+      mls_days_on_market_max,
       // ADD COMPOUND QUERY FIELDS:
       or,
       and
@@ -189,6 +194,10 @@ export async function POST(req: NextRequest) {
       private_lender,
       street,
       house,
+      // MLS fields
+      mls_cancelled,
+      mls_days_on_market_min,
+      mls_days_on_market_max,
       // ADD COMPOUND QUERY FIELDS TO PAYLOAD:
       ...(or && { or }),
       ...(and && { and })
