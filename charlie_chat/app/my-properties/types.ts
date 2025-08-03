@@ -8,6 +8,7 @@ export interface BaseSavedProperty {
   id: string;
   property_id: string;
   address_full: string;
+  address_street?: string;
   address_city: string;
   address_state: string;
   units_count: number;

@@ -44,13 +44,14 @@ export const usePropertyAnalyzerAccess = (): UsePropertyAnalyzerAccessReturn => 
         fetchUserProfile();
     }, [currentUser, supabase]);
 
-    // Check if user has access to Charlie's Analysis
-    // Based on the same logic as My Properties but specific to Property Analyzer needs
+    // Check if user has access to Property Analyzer
+    // Property Analyzer is available to all user classes except disabled
     const hasAccess =
         userClass === "charlie_chat_pro" ||
         userClass === "cohort" ||
-        userClass === "trial" ||
-        userClass === "pro";
+        userClass === "charlie_chat" ||
+        userClass === "trial";
+        // Note: disabled users get NO access
 
     return {
         hasAccess,

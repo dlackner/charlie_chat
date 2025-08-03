@@ -35,9 +35,19 @@ type DocumentTemplate = 'marketing-letter' | 'loi-1' | 'loi-2' | 'loi-3' | 'loi-
 const SKIP_TRACE_REFRESH_MONTHS = 6;
 
 export default function MyPropertiesPage() {
+    console.log('🏠 MyPropertiesPage component started');
     const { user, supabase, isLoading: isAuthLoading } = useAuth();
     const { hasAccess, isLoading: isLoadingAccess } = useMyPropertiesAccess();
     const router = useRouter();
+    
+    console.log('🏠 MyPropertiesPage state:', { isAuthLoading, isLoadingAccess, hasAccess, user: !!user });
+    
+    // Add this to debug the access check
+    console.log('🏠 Access check:', { 
+        hasAccess, 
+        willRedirect: !hasAccess,
+        isLoading: isAuthLoading || isLoadingAccess 
+    });
 
     // State management
     const [savedProperties, setSavedProperties] = useState<SavedProperty[]>([]);

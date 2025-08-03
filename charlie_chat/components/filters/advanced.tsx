@@ -275,6 +275,7 @@ export const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({
               onChange={setLastSaleArmsLength}
             />
           </div>
+
         </div>
       </div>
 
