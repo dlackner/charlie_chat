@@ -37,7 +37,10 @@ const SKIP_TRACE_REFRESH_MONTHS = 6;
 export default function MyPropertiesPage() {
     console.log('🏠 MyPropertiesPage component started');
     const { user, supabase, isLoading: isAuthLoading } = useAuth();
-    const { hasAccess, isLoading: isLoadingAccess } = useMyPropertiesAccess();
+    const { 
+        hasAccess, 
+        isLoading: isLoadingAccess
+    } = useMyPropertiesAccess();
     const router = useRouter();
     
     console.log('🏠 MyPropertiesPage state:', { isAuthLoading, isLoadingAccess, hasAccess, user: !!user });
@@ -129,6 +132,7 @@ export default function MyPropertiesPage() {
             document.removeEventListener('mousedown', handleClickOutside);
         };
     }, [showDocumentDropdown]);
+
 
     // Load and process rent data
     useEffect(() => {
@@ -607,7 +611,16 @@ export default function MyPropertiesPage() {
 
             for (const property of selected) {
                 console.log("Generating letter for:", property.address_full);
-                await generateMarketingLetter(property as any, senderInfo as any);
+                const result = await generateMarketingLetter(property as any, senderInfo as any);
+                
+                // Handle validation or generation errors
+                if (!result.success) {
+                    showCharlieAlert(result.message || 'Something went wrong while generating your document.', { 
+                        type: 'warning',
+                        title: 'Update your profile'
+                    });
+                    return; // Stop processing if validation fails
+                }
             }
 
             //alert("Marketing letter(s) downloaded.");
@@ -855,6 +868,62 @@ export default function MyPropertiesPage() {
 
                                                     <div className="border-t border-gray-200 my-1"></div>
 
+                                                    {/* ── Pricing Analysis ─────────────────────────── */}
+                                                    <button
+                                                        onClick={() => {
+                                                            setShowDocumentDropdown(false);
+
+                                                            // Get the selected property IDs
+                                                            const selectedPropertyIds = Array.from(selectedProperties);
+
+                                                            // Check if exactly one property is selected
+                                                            if (selectedPropertyIds.length === 0) {
+                                                                showCharlieAlert('Please select a property first to generate a Pricing Analysis.', { 
+                                                                    type: 'warning',
+                                                                    title: 'No Property Selected'
+                                                                });
+                                                                return;
+                                                            }
+
+                                                            if (selectedPropertyIds.length > 1) {
+                                                                showCharlieAlert('Please select only ONE property at a time for Pricing Analysis.', { 
+                                                                    type: 'warning',
+                                                                    title: 'Multiple Properties Selected'
+                                                                });
+                                                                return;
+                                                            }
+
+                                                            // Find the selected property to get address data
+                                                            const propertyId = selectedPropertyIds[0];
+                                                            const selectedProperty = filteredProperties.find((p: any) => p.property_id === propertyId);
+                                                            
+                                                            if (selectedProperty) {
+                                                                // Navigate to property analyzer with address parameters
+                                                                // Use address_street if available, otherwise try to extract from address_full
+                                                                let streetAddress = selectedProperty.address_street || '';
+                                                                if (!streetAddress && selectedProperty.address_full) {
+                                                                    // Try to extract street from full address (before first comma)
+                                                                    const addressParts = selectedProperty.address_full.split(',');
+                                                                    streetAddress = addressParts[0]?.trim() || '';
+                                                                }
+                                                                
+                                                                const addressParams = new URLSearchParams({
+                                                                    street: streetAddress,
+                                                                    city: selectedProperty.address_city || '',
+                                                                    state: selectedProperty.address_state || ''
+                                                                });
+                                                                router.push(`/property-analyzer?${addressParams.toString()}`);
+                                                            } else {
+                                                                router.push('/property-analyzer');
+                                                            }
+                                                        }}
+                                                        className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                                    >
+                                                        &gt; Pricing Analysis
+                                                    </button>
+
+                                                    <div className="border-t border-gray-200 my-1"></div>
+
                                                     {/* ── Download CSV ─────────────────────────────── */}
                                                     <button
                                                         onClick={() => {
@@ -878,14 +947,13 @@ export default function MyPropertiesPage() {
                 </div>
 
                 {/* View Mode Tabs */}
-                <div className="flex items-center space-x-1 mb-6">
+                <div className="flex bg-gray-100 rounded-lg p-1 mb-6 inline-flex">
                     <button
                         onClick={() => setViewMode('cards')}
-                        className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${viewMode === 'cards'
-                            ? 'text-white'
-                            : 'text-gray-600 hover:text-gray-800 hover:bg-gray-100'
+                        className={`flex items-center space-x-2 px-4 py-2 rounded-md text-sm font-medium transition-all duration-200 ${viewMode === 'cards'
+                            ? 'bg-white text-blue-600 shadow-sm border border-gray-200'
+                            : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'
                             }`}
-                        style={viewMode === 'cards' ? { backgroundColor: '#1C599F' } : {}}
                     >
                         <Grid3X3 size={16} />
                         <span>Cards</span>
@@ -893,11 +961,10 @@ export default function MyPropertiesPage() {
 
                     <button
                         onClick={() => setViewMode('map')}
-                        className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${viewMode === 'map'
-                            ? 'text-white'
-                            : 'text-gray-600 hover:text-gray-800 hover:bg-gray-100'
+                        className={`flex items-center space-x-2 px-4 py-2 rounded-md text-sm font-medium transition-all duration-200 ${viewMode === 'map'
+                            ? 'bg-white text-blue-600 shadow-sm border border-gray-200'
+                            : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'
                             }`}
-                        style={viewMode === 'map' ? { backgroundColor: '#1C599F' } : {}}
                     >
                         <Map size={16} />
                         <span>Map</span>
@@ -905,11 +972,10 @@ export default function MyPropertiesPage() {
 
                     <button
                         onClick={() => setViewMode('matrix')}
-                        className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${viewMode === 'matrix'
-                            ? 'text-white'
-                            : 'text-gray-600 hover:text-gray-800 hover:bg-gray-100'
+                        className={`flex items-center space-x-2 px-4 py-2 rounded-md text-sm font-medium transition-all duration-200 ${viewMode === 'matrix'
+                            ? 'bg-white text-blue-600 shadow-sm border border-gray-200'
+                            : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'
                             }`}
-                        style={viewMode === 'matrix' ? { backgroundColor: '#1C599F' } : {}}
                     >
                         <BarChart3 size={16} />
                         <span>Matrix</span>
@@ -1022,6 +1088,7 @@ export default function MyPropertiesPage() {
                 confirmText={charlieAlert.confirmText}
                 cancelText={charlieAlert.cancelText}
             />
+
         </div>
     );
 }

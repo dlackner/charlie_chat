@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { useRouter } from 'next/navigation';
+import React, { useState, useEffect, useMemo, useRef, Suspense, useCallback } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { GradeMetrics, MultifamilyMarketBenchmarks, PropertyCharacteristics, MultifamilyGradeMetrics, MULTIFAMILY_BENCHMARKS, detectAssetClass, detectMarketTier, calculateMultifamilyGrade } from './grading-system';
 import { generatePropertySummary, PropertySummaryButton } from './summary-generator';
 import { useAuth } from '@/contexts/AuthContext';
@@ -70,7 +70,20 @@ const calculateIRR = (cashFlows: number[], guess: number = 0.1): number => {
   return irr; // Return the last approximation if not converged
 };
 
-
+// Component to handle search params
+function SearchParamsHandler({ onParamsLoaded }: { onParamsLoaded: (params: { street: string; city: string; state: string }) => void }) {
+  const searchParams = useSearchParams();
+  
+  useEffect(() => {
+    onParamsLoaded({
+      street: searchParams.get('street') || '',
+      city: searchParams.get('city') || '',
+      state: searchParams.get('state') || ''
+    });
+  }, [searchParams, onParamsLoaded]);
+  
+  return null;
+}
 
 export default function PropertyAnalyzerPage() {
   // Get user authentication and access control
@@ -89,6 +102,18 @@ export default function PropertyAnalyzerPage() {
   const [showUnsavedChangesModal, setShowUnsavedChangesModal] = useState(false);
   const [pendingNavigation, setPendingNavigation] = useState<(() => void) | null>(null);
   const allowLeavingRef = useRef(false);
+
+  // --- Property Address State (from URL params, not displayed in UI) ---
+  const [propertyStreet, setPropertyStreet] = useState<string>('');
+  const [propertyCity, setPropertyCity] = useState<string>('');
+  const [propertyState, setPropertyState] = useState<string>('');
+  
+  // Callback to handle search params
+  const handleParamsLoaded = useCallback((params: { street: string; city: string; state: string }) => {
+    setPropertyStreet(params.street);
+    setPropertyCity(params.city);
+    setPropertyState(params.state);
+  }, []);
 
   // --- Input States: FINANCING ---
   const [purchasePrice, setPurchasePrice] = useState<number>(7000000);
@@ -332,6 +357,9 @@ export default function PropertyAnalyzerPage() {
 
   // Property data for 10-year cash flow report (moved into Charlie's Analysis)
   const propertyData = useMemo(() => ({
+    propertyStreet,
+    propertyCity,
+    propertyState,
     purchasePrice,
     downPaymentPercentage,
     closingCostsPercentage,
@@ -359,6 +387,7 @@ export default function PropertyAnalyzerPage() {
     capitalReservePerUnitAnnual,
     holdingPeriodYears
   }), [
+    propertyStreet, propertyCity, propertyState,
     purchasePrice, downPaymentPercentage, closingCostsPercentage, interestRate,
     amortizationPeriodYears, loanStructure, interestOnlyPeriodYears, numUnits,
     avgMonthlyRentPerUnit, vacancyRate, annualRentalGrowthRate, otherIncomeAnnual,
@@ -897,6 +926,9 @@ export default function PropertyAnalyzerPage() {
 
   return (
     <>
+      <Suspense fallback={null}>
+        <SearchParamsHandler onParamsLoaded={handleParamsLoaded} />
+      </Suspense>
     <div className="flex flex-col lg:flex-row p-4 md:p-8 bg-white text-gray-800 min-h-screen">
       {/* Hidden file input for loading settings */}
       <input
@@ -1027,93 +1059,121 @@ export default function PropertyAnalyzerPage() {
 
         <div className="mt-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {/* Row 1 Metrics */}
-          <div className="bg-white p-5 rounded-xl shadow-lg border border-gray-200">
-            <h3 className="text-md font-semibold text-orange-600 mb-1">Gross Operating Income</h3>
-            <p className="text-2xl font-bold text-gray-900">{formatCurrency(effectiveGrossIncome)}</p>
-          </div>
+          <CharlieTooltip message="This is your total rental income after vacancy. The foundation of everything—if this number's wrong, your whole deal is wrong.">
+            <div className="bg-white p-5 rounded-xl shadow-lg border border-gray-200 cursor-pointer">
+              <h3 className="text-md font-semibold text-orange-600 mb-1">Gross Operating Income</h3>
+              <p className="text-2xl font-bold text-gray-900">{formatCurrency(effectiveGrossIncome)}</p>
+            </div>
+          </CharlieTooltip>
 
-          <div className="bg-white p-5 rounded-xl shadow-lg border border-gray-200">
-            <h3 className="text-md font-semibold text-orange-600 mb-1">Net Operating Income</h3>
-            <p className="text-2xl font-bold text-gray-900">{formatCurrency(netOperatingIncome)}</p>
-          </div>
+          <CharlieTooltip message="The money left after all operating expenses. This is what pays your mortgage and puts cash in your pocket. Make it count.">
+            <div className="bg-white p-5 rounded-xl shadow-lg border border-gray-200 cursor-pointer">
+              <h3 className="text-md font-semibold text-orange-600 mb-1">Net Operating Income</h3>
+              <p className="text-2xl font-bold text-gray-900">{formatCurrency(netOperatingIncome)}</p>
+            </div>
+          </CharlieTooltip>
 
-          <div className="bg-white p-5 rounded-xl shadow-lg border border-gray-200">
-            <h3 className="text-md font-semibold text-orange-600 mb-1">Expense Ratio (Year 1)</h3>
-            <p className="text-2xl font-bold text-gray-900">{formatPercentage(expenseRatio)}</p>
-          </div>
+          <CharlieTooltip message="What percentage of your income goes to expenses. Under 50% is good. Over 60% and you're working for your property manager.">
+            <div className="bg-white p-5 rounded-xl shadow-lg border border-gray-200 cursor-pointer">
+              <h3 className="text-md font-semibold text-orange-600 mb-1">Expense Ratio (Year 1)</h3>
+              <p className="text-2xl font-bold text-gray-900">{formatPercentage(expenseRatio)}</p>
+            </div>
+          </CharlieTooltip>
 
           {/* Row 2 Metrics: Cap Rate, DSCR, IRR */}
-          <div className="bg-white p-5 rounded-xl shadow-lg border border-gray-200">
-            <h3 className="text-md font-semibold text-orange-600 mb-1">Cap Rate (Year 1)</h3>
-            <p className="text-2xl font-bold text-gray-900">{formatPercentage(capRate)}</p>
-          </div>
+          <CharlieTooltip message="Your NOI divided by purchase price. It's like a stock dividend—higher is better, but don't chase cap rates into bad neighborhoods.">
+            <div className="bg-white p-5 rounded-xl shadow-lg border border-gray-200 cursor-pointer">
+              <h3 className="text-md font-semibold text-orange-600 mb-1">Cap Rate (Year 1)</h3>
+              <p className="text-2xl font-bold text-gray-900">{formatPercentage(capRate)}</p>
+            </div>
+          </CharlieTooltip>
 
-          <div className="bg-white p-5 rounded-xl shadow-lg border border-gray-200">
-            <h3 className="text-md font-semibold text-orange-600 mb-1">Debt Service Coverage Ratio</h3>
-            <p className="text-2xl font-bold text-gray-900">{debtServiceCoverageRatio.toFixed(2)}</p>
-          </div>
+          <CharlieTooltip message="How well your property covers its debt payments. 1.25+ is what lenders want. Below 1.0 means you're paying out of pocket every month.">
+            <div className="bg-white p-5 rounded-xl shadow-lg border border-gray-200 cursor-pointer">
+              <h3 className="text-md font-semibold text-orange-600 mb-1">Debt Service Coverage Ratio</h3>
+              <p className="text-2xl font-bold text-gray-900">{debtServiceCoverageRatio.toFixed(2)}</p>
+            </div>
+          </CharlieTooltip>
 
-          <div className="bg-white p-5 rounded-xl shadow-lg border border-gray-200">
-            <h3 className="text-md font-semibold text-orange-600 mb-1">Annualized Return ({holdingPeriodYears} Year)</h3>
-            <p className="text-2xl font-bold text-gray-900">{formatPercentage(irr)}</p>
-          </div>
+          <CharlieTooltip message="Your annual return including cash flow AND appreciation. This is the gold standard—aim for double digits but be realistic about your market.">
+            <div className="bg-white p-5 rounded-xl shadow-lg border border-gray-200 cursor-pointer">
+              <h3 className="text-md font-semibold text-orange-600 mb-1">Annualized Return ({holdingPeriodYears} Year)</h3>
+              <p className="text-2xl font-bold text-gray-900">{formatPercentage(irr)}</p>
+            </div>
+          </CharlieTooltip>
 
           {/* Row 3 Metrics */}
-          <div className="bg-white p-5 rounded-xl shadow-lg border border-gray-200">
-            <h3 className="text-md font-semibold text-orange-600 mb-1">Cash Flow (Before Tax)</h3>
-            <p className="text-2xl font-bold text-gray-900">{formatCurrency(cashFlowBeforeTax)}</p>
-          </div>
+          <CharlieTooltip message="Money in your pocket each month after debt service. Positive is good, negative means you're feeding the property every month.">
+            <div className="bg-white p-5 rounded-xl shadow-lg border border-gray-200 cursor-pointer">
+              <h3 className="text-md font-semibold text-orange-600 mb-1">Cash Flow (Before Tax)</h3>
+              <p className="text-2xl font-bold text-gray-900">{formatCurrency(cashFlowBeforeTax)}</p>
+            </div>
+          </CharlieTooltip>
 
-          <div className="bg-white p-5 rounded-xl shadow-lg border border-gray-200">
-            <h3 className="text-md font-semibold text-orange-600 mb-1">Cash Flow (After Capital Reserve)</h3>
-            <p className="text-2xl font-bold text-gray-900">{formatCurrency(cashFlowAfterCapitalReserve)}</p>
-          </div>
+          <CharlieTooltip message="Cash flow after setting aside money for future repairs and improvements. This is your real spendable cash—don't forget the reserves!">
+            <div className="bg-white p-5 rounded-xl shadow-lg border border-gray-200 cursor-pointer">
+              <h3 className="text-md font-semibold text-orange-600 mb-1">Cash Flow (After Capital Reserve)</h3>
+              <p className="text-2xl font-bold text-gray-900">{formatCurrency(cashFlowAfterCapitalReserve)}</p>
+            </div>
+          </CharlieTooltip>
 
-          <div className="bg-white p-5 rounded-xl shadow-lg border border-gray-200">
-            <h3 className="text-md font-semibold text-orange-600 mb-1">Total ROI ({holdingPeriodYears} Year)</h3>
-            <p className="text-2xl font-bold text-gray-900">{formatPercentage(roiAtHorizon)}</p>
-          </div>
+          <CharlieTooltip message="Your total return if you sell at the end of your holding period. Includes all cash flow plus sale proceeds. This is what really matters.">
+            <div className="bg-white p-5 rounded-xl shadow-lg border border-gray-200 cursor-pointer">
+              <h3 className="text-md font-semibold text-orange-600 mb-1">Total ROI ({holdingPeriodYears} Year)</h3>
+              <p className="text-2xl font-bold text-gray-900">{formatPercentage(roiAtHorizon)}</p>
+            </div>
+          </CharlieTooltip>
 
           {/* Row 4 Metrics */}
-          <div className="bg-white p-5 rounded-xl shadow-lg border border-gray-200">
-            <h3 className="text-md font-semibold text-orange-600 mb-1">
-              {loanStructure === 'interest-only' ? 'Annual IO Payment' : 'Annual Debt Service'}
-            </h3>
-            <p className="text-2xl font-bold text-gray-900">{formatCurrency(annualDebtService)}</p>
-            {loanStructure === 'interest-only' && refinanceTermYears === 0 && (
-              <p className="text-xs text-gray-500 mt-1">
-                Sale required by Year {interestOnlyPeriodYears}
-              </p>
-            )}
-            {loanStructure === 'interest-only' && refinanceTermYears > 0 && (
-              <p className="text-xs text-gray-500 mt-1">
-                Refinance required by Year {interestOnlyPeriodYears}
-              </p>
-            )}
-          </div>
+          <CharlieTooltip message="Your annual payment to the bank. This comes out of your NOI first—everything else is gravy. Keep this manageable.">
+            <div className="bg-white p-5 rounded-xl shadow-lg border border-gray-200 cursor-pointer">
+              <h3 className="text-md font-semibold text-orange-600 mb-1">
+                {loanStructure === 'interest-only' ? 'Annual IO Payment' : 'Annual Debt Service'}
+              </h3>
+              <p className="text-2xl font-bold text-gray-900">{formatCurrency(annualDebtService)}</p>
+              {loanStructure === 'interest-only' && refinanceTermYears === 0 && (
+                <p className="text-xs text-gray-500 mt-1">
+                  Sale required by Year {interestOnlyPeriodYears}
+                </p>
+              )}
+              {loanStructure === 'interest-only' && refinanceTermYears > 0 && (
+                <p className="text-xs text-gray-500 mt-1">
+                  Refinance required by Year {interestOnlyPeriodYears}
+                </p>
+              )}
+            </div>
+          </CharlieTooltip>
 
-          <div className="bg-white p-5 rounded-xl shadow-lg border border-gray-200">
-            <h3 className="text-md font-semibold text-orange-600 mb-1">Loan Balance (Year 1)</h3>
-            <p className="text-2xl font-bold text-gray-900">{formatCurrency(year1LoanBalance)}</p>
-          </div>
+          <CharlieTooltip message="How much you still owe the bank after one year. With interest-only loans, this doesn't change much. That's the point.">
+            <div className="bg-white p-5 rounded-xl shadow-lg border border-gray-200 cursor-pointer">
+              <h3 className="text-md font-semibold text-orange-600 mb-1">Loan Balance (Year 1)</h3>
+              <p className="text-2xl font-bold text-gray-900">{formatCurrency(year1LoanBalance)}</p>
+            </div>
+          </CharlieTooltip>
 
-          <div className="bg-white p-5 rounded-xl shadow-lg border border-gray-200">
-            <h3 className="text-md font-semibold text-orange-600 mb-1">Break-Even Point</h3>
-            <p className="text-2xl font-bold text-gray-900">
-              {breakEvenYear !== null ? `${breakEvenYear} years` : 'N/A (No positive cash flow within horizon)'}
-            </p>
-          </div>
+          <CharlieTooltip message="When your cumulative cash flow turns positive and you stop feeding the deal. The sooner the better—deals that never break even are wealth destroyers.">
+            <div className="bg-white p-5 rounded-xl shadow-lg border border-gray-200 cursor-pointer">
+              <h3 className="text-md font-semibold text-orange-600 mb-1">Break-Even Point</h3>
+              <p className="text-2xl font-bold text-gray-900">
+                {breakEvenYear !== null ? `${breakEvenYear} years` : 'N/A (No positive cash flow within horizon)'}
+              </p>
+            </div>
+          </CharlieTooltip>
 
           {/* Row 5 Metrics */}
-          <div className="bg-white p-5 rounded-xl shadow-lg border border-gray-200">
-            <h3 className="text-md font-semibold text-orange-600 mb-1">Cash-on-Cash Return (Year 1)</h3>
-            <p className="text-2xl font-bold text-gray-900">{formatPercentage(cashOnCashReturn)}</p>
-          </div>
+          <CharlieTooltip message="The return on your actual cash invested in year one. This is immediate gratification—what you earn on your down payment right away.">
+            <div className="bg-white p-5 rounded-xl shadow-lg border border-gray-200 cursor-pointer">
+              <h3 className="text-md font-semibold text-orange-600 mb-1">Cash-on-Cash Return (Year 1)</h3>
+              <p className="text-2xl font-bold text-gray-900">{formatPercentage(cashOnCashReturn)}</p>
+            </div>
+          </CharlieTooltip>
 
-          <div className="bg-white p-5 rounded-xl shadow-lg border border-gray-200">
-            <h3 className="text-md font-semibold text-orange-600 mb-1">Projected Equity (at Year {holdingPeriodYears})</h3>
-            <p className="text-2xl font-bold text-gray-900">{formatCurrency(projectedEquityAtHorizon)}</p>
-          </div>
+          <CharlieTooltip message="What your property should be worth when you sell, minus remaining debt. This is your payday—appreciation plus principal paydown over time.">
+            <div className="bg-white p-5 rounded-xl shadow-lg border border-gray-200 cursor-pointer">
+              <h3 className="text-md font-semibold text-orange-600 mb-1">Projected Equity (at Year {holdingPeriodYears})</h3>
+              <p className="text-2xl font-bold text-gray-900">{formatCurrency(projectedEquityAtHorizon)}</p>
+            </div>
+          </CharlieTooltip>
         </div>
 
       </div>
