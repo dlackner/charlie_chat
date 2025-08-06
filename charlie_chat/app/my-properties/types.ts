@@ -73,6 +73,7 @@ export interface CardSavedProperty extends BaseSavedProperty {
 
 // For Page.tsx (with coordinates and mailing address)
 export interface PageSavedProperty extends BaseSavedProperty {
+  address_zip?: string;
   latitude?: number;
   longitude?: number;
   last_skip_trace?: string;

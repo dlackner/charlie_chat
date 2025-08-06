@@ -11,6 +11,11 @@ const TAX_RATES = {
 };
 
 interface CashFlowReportProps {
+  // Property Address (optional - for cash flow statement title)
+  propertyStreet?: string;
+  propertyCity?: string;
+  propertyState?: string;
+  
   // Acquisition Details
   purchasePrice: number;
   downPaymentPercentage: number;
@@ -78,6 +83,9 @@ interface YearlyData {
 
 export const generate10YearCashFlowReport = async (props: CashFlowReportProps) => {
   const {
+    propertyStreet,
+    propertyCity,
+    propertyState,
     purchasePrice,
     downPaymentPercentage,
     closingCostsPercentage,
@@ -361,7 +369,19 @@ export const generate10YearCashFlowReport = async (props: CashFlowReportProps) =
   doc.setFontSize(16);
   doc.setFont('helvetica', 'bold');
   doc.text('10-Year After Tax Cash Flow Analysis', pageWidth / 2, yPosition, { align: 'center' });
-  yPosition += 20;
+  yPosition += 15;
+  
+  // Show property address if provided (smaller font than title)
+  if (propertyStreet || propertyCity || propertyState) {
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'normal');
+    const addressParts = [propertyStreet, propertyCity, propertyState].filter(Boolean);
+    const addressText = addressParts.join(', ');
+    doc.text(addressText, pageWidth / 2, yPosition, { align: 'center' });
+    yPosition += 20;
+  } else {
+    yPosition += 5;
+  }
 
   doc.setFontSize(12);
   doc.setFont('helvetica', 'normal');

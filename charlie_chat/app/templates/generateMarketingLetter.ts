@@ -38,7 +38,7 @@ export function validateSenderProfile(senderInfo: SenderInfo): ValidationResult 
   
   let message = '';
   if (!isValid) {
-    message = `Please complete your profile before generating marketing letters. Missing: ${missingFields.join(", ")}.`;
+    message = `Hi there! Please complete your profile in the Account tab so that your outreach is personalized. I want you to make a great first impression!`;
   }
 
   return { isValid, missingFields, message };
@@ -55,15 +55,7 @@ export async function generateMarketingLetter(
   if (!validation.isValid) {
     console.warn('Profile validation failed:', validation.message);
     
-    // Show toast error notification
-    if (typeof window !== 'undefined' && (window as any).toast) {
-      (window as any).toast.error(validation.message);
-    } else {
-      // Fallback for environments without toast
-      alert(validation.message);
-    }
-    
-    // Return failure result
+    // Return failure result - let the calling component handle UI
     return {
       success: false,
       message: validation.message

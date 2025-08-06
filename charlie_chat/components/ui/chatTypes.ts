@@ -2,7 +2,7 @@ import type { User } from '@supabase/supabase-js'
 import type { Attachment, AttachmentStatus } from "@assistant-ui/react";
 
 // User and Auth Types
-export type UserClass = 'trial' | 'charlie_chat' | 'charlie_chat_pro' | 'cohort' | 'disabled';
+export type UserClass = 'trial' | 'charlie_chat' | 'charlie_chat_pro' | 'cohort' | 'disabled' | 'pending' | 'pending_payment';
 
 export type ExtendedUser = User & {
   stripe_customer_id?: string;

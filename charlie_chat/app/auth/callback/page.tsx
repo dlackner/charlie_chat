@@ -31,7 +31,29 @@ function AuthCallbackContent() {
         for (let i = 0; i < 10; i++) {
           const { data: { session } } = await supabase.auth.getSession();
           if (session) {
-            //console.log('Session active, redirecting...');
+            //console.log('Session active, processing affiliate info...');
+            
+            // Check for affiliate customer ID
+            const affiliateCustomerId = search.get('affiliate_customer');
+            if (affiliateCustomerId) {
+              try {
+                // Update user profile with affiliate info
+                await supabase
+                  .from('profiles')
+                  .update({
+                    stripe_customer_id: affiliateCustomerId,
+                    affiliate_sale: true,
+                    credits: 250, // Give them trial credits
+                    user_class: 'trial'
+                  })
+                  .eq('user_id', session.user.id);
+                
+                console.log('✅ Affiliate user setup completed');
+              } catch (error) {
+                console.error('❌ Error setting up affiliate user:', error);
+              }
+            }
+            
             router.replace('/');
             return;
           }
