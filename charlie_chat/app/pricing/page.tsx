@@ -1,8 +1,10 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from "@/contexts/AuthContext"; // Add this import
 import { useRouter } from "next/navigation"; // Add this import
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 
 // ✅ Import product IDs from env
 const CHARLIE_CHAT_MONTHLY = process.env.NEXT_PUBLIC_CHARLIE_CHAT_MONTHLY_PRODUCT!;
@@ -12,22 +14,39 @@ const CHARLIE_CHAT_PRO_ANNUAL = process.env.NEXT_PUBLIC_CHARLIE_CHAT_PRO_ANNUAL_
 const COHORT_MONTHLY = process.env.NEXT_PUBLIC_COHORT_MONTHLY_PRODUCT!;
 const COHORT_ANNUAL = process.env.NEXT_PUBLIC_COHORT_ANNUAL_PRODUCT!;
 
+// 🚀 CHECKOUT FLOW TOGGLE - Set to true to test intent-based checkout
+const USE_INTENT_BASED_CHECKOUT = false; // Change to true to test new flow
+
 export default function PricingPage() {
   const [isAnnual, setIsAnnual] = useState(true);
+  const [userClass, setUserClass] = useState<string | null>(null);
+  const [showTrialAlert, setShowTrialAlert] = useState(false);
+  const [showIntentExplanation, setShowIntentExplanation] = useState(false);
+  const [pendingCheckoutData, setPendingCheckoutData] = useState<{productId: string, plan: string} | null>(null);
   
   // ✅ Add auth context and router
   const { user: currentUser, supabase, session } = useAuth();
   const router = useRouter();
 
-  // ✅ Fixed handleCheckout function with proper auth
-  const handleCheckout = async (productId: string, plan: "monthly" | "annual") => {
-    // Check if user is logged in
-    if (!currentUser) {
-      // Redirect to signup if not logged in
-      router.push("/signup");
-      return;
-    }
+  // Fetch user class
+  useEffect(() => {
+    const fetchUserClass = async () => {
+      if (currentUser) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('user_class')
+          .eq('user_id', currentUser.id)
+          .single();
+        
+        setUserClass(profile?.user_class || null);
+      }
+    };
 
+    fetchUserClass();
+  }, [currentUser, supabase]);
+
+  // Function to handle affiliate checkout with stored payment method
+  const proceedWithAffiliateCheckout = async (productId: string, plan: "monthly" | "annual") => {
     // Get fresh session with access token
     const { data: { session: freshSession }, error } = await supabase.auth.getSession();
     const sessionToUse = freshSession || session;
@@ -40,27 +59,120 @@ export default function PricingPage() {
     }
 
     try {
-      const res = await fetch("/api/stripe/checkout", {
+      console.log("💳 Processing affiliate checkout:", { productId, plan });
+      
+      const res = await fetch("/api/stripe/affiliate-checkout", {
         method: "POST",
         headers: { 
           "Content-Type": "application/json",
-          Authorization: `Bearer ${sessionToUse.access_token}`, // ✅ Added missing auth header
+          Authorization: `Bearer ${sessionToUse.access_token}`,
         },
         body: JSON.stringify({ productId, plan }),
       });
       
       const data = await res.json();
       
+      if (data.success) {
+        // Success! Redirect to success page
+        router.push("/success");
+      } else {
+        console.error("Affiliate checkout failed:", data.error);
+        alert("Checkout failed: " + (data.error || "Unknown error"));
+      }
+    } catch (error) {
+      console.error("Network error during affiliate checkout:", error);
+      alert("Something went wrong. Please try again.");
+    }
+  };
+
+  // Function to proceed with checkout after Charlie's explanation
+  const proceedWithCheckout = async (productId: string, plan: "monthly" | "annual") => {
+    // Get fresh session with access token
+    const { data: { session: freshSession }, error } = await supabase.auth.getSession();
+    const sessionToUse = freshSession || session;
+
+    if (!sessionToUse || !sessionToUse.access_token) {
+      console.error("🚫 No valid session or access token");
+      alert(`You must be logged in to ${USE_INTENT_BASED_CHECKOUT ? 'start your trial' : 'complete this purchase'}.`);
+      router.push("/signup");
+      return;
+    }
+
+    try {
+      // Determine checkout mode based on toggle and user class
+      const checkoutMode = (USE_INTENT_BASED_CHECKOUT && userClass !== 'disabled') 
+        ? "intent" 
+        : "subscription";
+      
+      console.log("🎯 Frontend checkout:", { 
+        USE_INTENT_BASED_CHECKOUT, 
+        userClass, 
+        checkoutMode, 
+        productId, 
+        plan 
+      });
+      
+      const res = await fetch("/api/stripe/checkout", {
+        method: "POST",
+        headers: { 
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${sessionToUse.access_token}`,
+        },
+        body: JSON.stringify({ productId, plan, mode: checkoutMode }),
+      });
+      
+      const data = await res.json();
+      
       if (data.url) {
+        // Both traditional and intent-based checkout redirect to Stripe
         window.location.href = data.url;
       } else {
         console.error("Checkout failed:", data.error);
-        alert("Checkout failed: " + (data.error || "Unknown error"));
+        alert(`${USE_INTENT_BASED_CHECKOUT ? 'Trial setup' : 'Checkout'} failed: ` + (data.error || "Unknown error"));
       }
     } catch (error) {
       console.error("Network error during checkout:", error);
       alert("Something went wrong. Please try again.");
     }
+  };
+
+  // Unified checkout handler - checks for affiliate users first
+  const handleCheckout = async (productId: string, plan: "monthly" | "annual") => {
+    // Check if user is logged in
+    if (!currentUser) {
+      router.push("/signup");
+      return;
+    }
+
+    // Check if user is affiliate user with stored payment method
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('affiliate_sale, stripe_customer_id')
+      .eq('user_id', currentUser.id)
+      .single();
+
+    if (profile?.affiliate_sale && profile?.stripe_customer_id) {
+      // Affiliate user with stored card - process instant checkout
+      console.log("🎯 Affiliate user detected, processing instant checkout");
+      await proceedWithAffiliateCheckout(productId, plan);
+      return;
+    }
+
+    // Check if user is already on trial (for intent-based flow)
+    if (USE_INTENT_BASED_CHECKOUT && userClass === 'trial') {
+      setShowTrialAlert(true);
+      return;
+    }
+
+    // For intent-based checkout, show Charlie's explanation first
+    if (USE_INTENT_BASED_CHECKOUT && userClass !== 'disabled') {
+      setPendingCheckoutData({ productId, plan });
+      setShowIntentExplanation(true);
+      return;
+    }
+
+    // For traditional checkout, proceed directly
+    await proceedWithCheckout(productId, plan);
   };
 
   return (
@@ -116,7 +228,7 @@ export default function PricingPage() {
             onClick={() => handleCheckout(isAnnual ? CHARLIE_CHAT_ANNUAL : CHARLIE_CHAT_MONTHLY, isAnnual ? "annual" : "monthly")}
             className="mt-auto w-full bg-black text-white py-2 rounded font-semibold transition duration-200 transform hover:scale-105 hover:bg-orange-600 hover:shadow-xl"
           >
-            Get Access
+{(USE_INTENT_BASED_CHECKOUT && userClass !== 'disabled' && userClass !== 'trial') ? "Start Free Trial" : "Get Access"}
           </button>
         </div>
 
@@ -151,7 +263,7 @@ export default function PricingPage() {
             onClick={() => handleCheckout(isAnnual ? CHARLIE_CHAT_PRO_ANNUAL : CHARLIE_CHAT_PRO_MONTHLY, isAnnual ? "annual" : "monthly")}
             className="mt-auto w-full bg-black text-white py-2 rounded font-semibold transition duration-200 transform hover:scale-105 hover:bg-orange-600 hover:shadow-xl"
           >
-            Get Access
+{(USE_INTENT_BASED_CHECKOUT && userClass !== 'disabled' && userClass !== 'trial') ? "Start Free Trial" : "Get Access"}
           </button>
         </div>
 
@@ -323,6 +435,84 @@ export default function PricingPage() {
           </div>
         </div>
       </div>
+
+      {/* Charlie Trial Alert Dialog */}
+      <Dialog open={showTrialAlert} onOpenChange={setShowTrialAlert}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <div className="flex items-start gap-4">
+              <Avatar className="size-12 flex-shrink-0">
+                <AvatarImage src="/charlie.png" alt="Charlie" />
+                <AvatarFallback>CC</AvatarFallback>
+              </Avatar>
+              <div className="flex-1">
+                <DialogTitle className="text-lg font-semibold text-gray-900">
+                  Hi there!
+                </DialogTitle>
+                <DialogDescription className="text-base mt-2 text-gray-700">
+                  You're already on a trial! Your trial will automatically convert to a subscription when it ends.
+                  <br/><br/>
+                  <span className="font-semibold text-orange-600">
+                    Keep exploring all the features - you're all set!
+                  </span>
+                </DialogDescription>
+              </div>
+            </div>
+          </DialogHeader>
+        </DialogContent>
+      </Dialog>
+
+      {/* Charlie Intent Explanation Dialog */}
+      <Dialog open={showIntentExplanation} onOpenChange={setShowIntentExplanation}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <div className="flex items-start gap-4">
+              <Avatar className="size-12 flex-shrink-0">
+                <AvatarImage src="/charlie.png" alt="Charlie" />
+                <AvatarFallback>CD</AvatarFallback>
+              </Avatar>
+              <div className="flex-1">
+                <DialogTitle className="text-left text-lg font-semibold text-gray-900">
+                  Let me explain how this works!
+                </DialogTitle>
+              </div>
+            </div>
+          </DialogHeader>
+          
+          {/* Message content */}
+          <div className="text-gray-700 text-sm leading-relaxed mt-4">
+            I want to make sure you're happy and this is the right product for you. Here's the deal:
+            <br/><br/>
+            • <span className="font-semibold">Your card won't be charged until your trial is over</span>
+            <br/>
+            • You'll get full access to everything for your trial period
+            <br/>
+            • Only after your trial ends will we start your chosen plan
+            <br/><br/>
+            Sound fair? I'm confident you're going to love what we've built!
+          </div>
+          
+          <div className="flex gap-3 mt-4">
+            <button
+              onClick={() => setShowIntentExplanation(false)}
+              className="flex-1 px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+            >
+              Maybe Later
+            </button>
+            <button
+              onClick={async () => {
+                setShowIntentExplanation(false);
+                if (pendingCheckoutData) {
+                  await proceedWithCheckout(pendingCheckoutData.productId, pendingCheckoutData.plan as "monthly" | "annual");
+                }
+              }}
+              className="flex-1 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors font-semibold"
+            >
+              Let's Do This!
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
