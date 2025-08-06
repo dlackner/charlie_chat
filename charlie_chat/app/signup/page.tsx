@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 
-export default function SignUpPage() {
+function SignUpContent() {
   const [email, setEmail] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [linkSent, setLinkSent] = useState(false); // Renamed for clarity
@@ -134,5 +134,23 @@ export default function SignUpPage() {
         </p>
       </div>
     </div>
+  );
+}
+
+function SignUpLoading() {
+  return (
+    <div className="min-h-screen flex items-start justify-center pt-24 bg-gray-100 p-6">
+      <div className="bg-white rounded-lg shadow-md p-6 w-full max-w-sm">
+        <p className="text-center text-gray-600">Loading...</p>
+      </div>
+    </div>
+  );
+}
+
+export default function SignUpPage() {
+  return (
+    <Suspense fallback={<SignUpLoading />}>
+      <SignUpContent />
+    </Suspense>
   );
 }

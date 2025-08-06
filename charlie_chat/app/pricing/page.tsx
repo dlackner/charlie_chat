@@ -158,20 +158,7 @@ export default function PricingPage() {
       return;
     }
 
-    // Check if user is already on trial (for intent-based flow)
-    if (USE_INTENT_BASED_CHECKOUT && userClass === 'trial') {
-      setShowTrialAlert(true);
-      return;
-    }
-
-    // For intent-based checkout, show Charlie's explanation first
-    if (USE_INTENT_BASED_CHECKOUT && userClass !== 'disabled') {
-      setPendingCheckoutData({ productId, plan });
-      setShowIntentExplanation(true);
-      return;
-    }
-
-    // For traditional checkout, proceed directly
+    // For all users (affiliate and regular), proceed with traditional checkout
     await proceedWithCheckout(productId, plan);
   };
 

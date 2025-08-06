@@ -126,7 +126,7 @@ export async function POST(request: NextRequest) {
 
     // Create subscription record in database
     const now = new Date().toISOString();
-    const periodEnd = new Date(subscription.current_period_end * 1000).toISOString();
+    const periodEnd = new Date((subscription as any).current_period_end * 1000).toISOString();
 
     await supabase
       .from("subscriptions")

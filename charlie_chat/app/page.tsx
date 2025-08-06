@@ -4,11 +4,23 @@ import { ClosingChat } from "@/components/ui/closing-chat";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { useMyPropertiesAccess } from "@/app/my-properties/components/useMyPropertiesAccess";
+import TrialDecisionModal from "@/components/ui/trial-decision-modal";
 
 export default function Home() {
   const { user, isLoading, supabase } = useAuth();
   const router = useRouter();
   const [userClass, setUserClass] = useState<string | null>(null);
+  const [showTrialModal, setShowTrialModal] = useState(false);
+  
+  // Get trial status information
+  const { 
+    trialExpired, 
+    isInTrialGracePeriod, 
+    daysLeftInTrialGracePeriod,
+    isInGracePeriod,
+    daysLeftInGracePeriod
+  } = useMyPropertiesAccess();
 
   useEffect(() => {
     if (!isLoading && user) {
@@ -35,6 +47,14 @@ export default function Home() {
     }
   }, [user, isLoading, router, supabase]);
 
+  // Show trial decision modal when trial expires OR when credits are depleted
+  useEffect(() => {
+    if (userClass === 'trial' && 
+        ((trialExpired && isInTrialGracePeriod) || isInGracePeriod)) {
+      setShowTrialModal(true);
+    }
+  }, [userClass, trialExpired, isInTrialGracePeriod, isInGracePeriod]);
+
   // Show loading while checking user status
   if (isLoading || (user && userClass === null)) {
     return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
@@ -45,5 +65,16 @@ export default function Home() {
     return null;
   }
 
-  return <ClosingChat />;
+  return (
+    <>
+      <ClosingChat />
+      
+      {/* Trial Decision Modal */}
+      <TrialDecisionModal
+        open={showTrialModal}
+        onOpenChange={setShowTrialModal}
+        daysLeftInGracePeriod={daysLeftInTrialGracePeriod || daysLeftInGracePeriod}
+      />
+    </>
+  );
 }

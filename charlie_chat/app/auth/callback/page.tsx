@@ -37,18 +37,24 @@ function AuthCallbackContent() {
             const affiliateCustomerId = search.get('affiliate_customer');
             if (affiliateCustomerId) {
               try {
-                // Update user profile with affiliate info
+                // Calculate trial end date using MAX_TRIAL_DAYS
+                const maxTrialDays = parseInt(process.env.NEXT_PUBLIC_MAX_TRIAL_DAYS || '14');
+                const trialEndDate = new Date();
+                trialEndDate.setDate(trialEndDate.getDate() + maxTrialDays);
+                
+                // Update user profile with affiliate info and trial end date
                 await supabase
                   .from('profiles')
                   .update({
                     stripe_customer_id: affiliateCustomerId,
                     affiliate_sale: true,
                     credits: 250, // Give them trial credits
-                    user_class: 'trial'
+                    user_class: 'trial',
+                    trial_end_date: trialEndDate.toISOString()
                   })
                   .eq('user_id', session.user.id);
                 
-                console.log('✅ Affiliate user setup completed');
+                console.log('✅ Affiliate user setup completed with trial end:', trialEndDate.toISOString());
               } catch (error) {
                 console.error('❌ Error setting up affiliate user:', error);
               }

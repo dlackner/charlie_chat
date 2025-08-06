@@ -13,6 +13,7 @@ import { PropertyMapView } from './components/PropertyMapView';
 import { PageSavedProperty as SavedProperty } from './types';
 import { RentDataProcessor } from './components/rentDataProcessor';
 import { CharlieAlert } from './components/CharlieAlert';
+import TrialDecisionModal from "@/components/ui/trial-decision-modal";
 
 import {
     Star,
@@ -39,9 +40,18 @@ export default function MyPropertiesPage() {
     const { user, supabase, isLoading: isAuthLoading } = useAuth();
     const { 
         hasAccess, 
-        isLoading: isLoadingAccess
+        isLoading: isLoadingAccess,
+        userClass,
+        trialExpired,
+        isInTrialGracePeriod,
+        daysLeftInTrialGracePeriod,
+        isInGracePeriod,
+        daysLeftInGracePeriod
     } = useMyPropertiesAccess();
     const router = useRouter();
+    
+    // Trial decision modal state
+    const [showTrialModal, setShowTrialModal] = useState(false);
     
     console.log('🏠 MyPropertiesPage state:', { isAuthLoading, isLoadingAccess, hasAccess, user: !!user });
     
@@ -115,6 +125,14 @@ export default function MyPropertiesPage() {
         
         return lastAttempt < cutoffDate; // Can re-run if older than cutoff
     };
+
+    // Show trial decision modal when trial expires OR when credits are depleted
+    useEffect(() => {
+        if (userClass === 'trial' && 
+            ((trialExpired && isInTrialGracePeriod) || isInGracePeriod)) {
+            setShowTrialModal(true);
+        }
+    }, [userClass, trialExpired, isInTrialGracePeriod, isInGracePeriod]);
 
     // Close dropdown when clicking outside for More button on Document Generation
     useEffect(() => {
@@ -1087,6 +1105,13 @@ export default function MyPropertiesPage() {
                 onConfirm={charlieAlert.onConfirm}
                 confirmText={charlieAlert.confirmText}
                 cancelText={charlieAlert.cancelText}
+            />
+
+            {/* Trial Decision Modal */}
+            <TrialDecisionModal
+                open={showTrialModal}
+                onOpenChange={setShowTrialModal}
+                daysLeftInGracePeriod={daysLeftInTrialGracePeriod || daysLeftInGracePeriod}
             />
 
         </div>
