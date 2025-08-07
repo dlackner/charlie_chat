@@ -1097,7 +1097,7 @@ export default function PropertyAnalyzerPage() {
 
           <CharlieTooltip message="Your annual return including cash flow AND appreciation. This is the gold standard—aim for double digits but be realistic about your market.">
             <div className="bg-white p-5 rounded-xl shadow-lg border border-gray-200 cursor-pointer">
-              <h3 className="text-md font-semibold text-orange-600 mb-1">Annualized Return ({holdingPeriodYears} Year)</h3>
+              <h3 className="text-md font-semibold text-orange-600 mb-1">Internal Rate of Return ({holdingPeriodYears} Year)</h3>
               <p className="text-2xl font-bold text-gray-900">{formatPercentage(irr)}</p>
             </div>
           </CharlieTooltip>

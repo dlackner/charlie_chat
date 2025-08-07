@@ -10,6 +10,7 @@ const MultiFamilyChatWidget = () => {
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [userProfile, setUserProfile] = useState<{first_name?: string, last_name?: string} | null>(null);
+  const [showTooltip, setShowTooltip] = useState(false);
   const widgetRef = useRef<HTMLDivElement>(null);
 
   // Fetch user profile when user is available
@@ -125,20 +126,30 @@ const MultiFamilyChatWidget = () => {
   return (
     <>
       {/* Chat Toggle Button */}
-      <div className="fixed bottom-20 right-6 z-50" ref={widgetRef}>
+      <div className="fixed top-3 left-65 z-40" ref={widgetRef}>
         <button
           onClick={() => setIsOpen(!isOpen)}
-          className="shadow-2xl text-white p-4 rounded-full hover:shadow-xl transition-all duration-300 hover:scale-105"
+          onMouseEnter={() => setShowTooltip(true)}
+          onMouseLeave={() => setShowTooltip(false)}
+          className="shadow-2xl text-white p-3 rounded-full hover:shadow-xl transition-all duration-300 hover:scale-105 relative"
           style={{ 
             backgroundColor: '#1C599F'
           }}
         >
-          <MessageCircle size={24} />
+          <MessageCircle size={20} />
         </button>
+        
+        {/* Charlie-style tooltip */}
+        {showTooltip && (
+          <div className="absolute top-12 left-1/2 transform -translate-x-1/2 bg-white text-gray-800 px-3 py-2 rounded-lg text-sm font-medium whitespace-nowrap shadow-lg z-50 border-2" style={{ borderColor: '#1C599F' }}>
+            Need help?
+            <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-b-4 border-transparent border-b-white"></div>
+          </div>
+        )}
 
         {/* Chat Widget */}
         {isOpen && (
-          <div className="absolute bottom-16 right-0 w-80 bg-white rounded-2xl shadow-2xl overflow-hidden border border-gray-200">
+          <div className="absolute top-16 left-0 w-80 bg-white rounded-2xl shadow-2xl overflow-hidden border border-gray-200">
           {/* Close Button */}
           <button
             onClick={() => setIsOpen(false)}
