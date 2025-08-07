@@ -82,7 +82,6 @@ export const Sidebar = ({
     };
 
     const [showAdvanced, setShowAdvanced] = useState(false);
-    const [showTrialUpgradeMessage, setShowTrialUpgradeMessage] = useState(false);
 
     const [mlsActive, setMlsActive] = useState("");
     const [radius, setRadius] = useState(5);
@@ -387,9 +386,9 @@ export const Sidebar = ({
             return;
         }
 
-        // Check if trial user has no credits
+        // Check if trial user has no credits - redirect to home to show modal
         if (userClass === 'trial' && (userCredits === 0 || userCredits === null)) {
-            setShowTrialUpgradeMessage(true);
+            window.location.href = '/';
             return;
         }
 
@@ -472,7 +471,7 @@ export const Sidebar = ({
 
                     if (errorMessage.includes("Insufficient credits") || errorMessage.includes("No credits remaining")) {
                         if (userClass === "trial") {
-                            setShowTrialUpgradeMessage(true);
+                            window.location.href = '/';
                         } else {
                             triggerBuyCreditsModal();
                         }
@@ -679,7 +678,7 @@ export const Sidebar = ({
 
                 if (errorMessage.includes("Insufficient credits") || errorMessage.includes("No credits remaining")) {
                     if (userClass === "trial") {
-                        setShowTrialUpgradeMessage(true);
+                        window.location.href = '/';
                     } else {
                         triggerBuyCreditsModal();
                     }
@@ -765,7 +764,7 @@ export const Sidebar = ({
 
                 if (errorMessage.includes("Insufficient credits") || errorMessage.includes("No credits remaining")) {
                     if (userClass === "trial") {
-                        setShowTrialUpgradeMessage(true);
+                        window.location.href = '/';
                     } else {
                         triggerBuyCreditsModal();
                     }
@@ -930,38 +929,6 @@ export const Sidebar = ({
 
                 {creditsError && (
                     <p className="text-red-600 text-xs mt-1 text-center">{creditsError}</p>
-                )}
-                {showTrialUpgradeMessage && (
-                    <div className="bg-white rounded-lg shadow-lg border-2 border-orange-500 p-4 mt-4">
-                        {/* Header with Charlie image */}
-                        <div className="flex items-center mb-3">
-                            <img
-                                src="/charlie.png"
-                                alt="Charlie"
-                                className="w-10 h-10 rounded-full mr-3 shadow-md border-[0.5px] border-gray-300"
-                            />
-                            <div className="flex items-center">
-                                <span className="text-lg mr-2">⏰</span>
-                                <h3 className="text-lg font-semibold text-gray-900">
-                                    Grace Period Active
-                                </h3>
-                            </div>
-                        </div>
-                        
-                        {/* Message */}
-                        <p className="text-gray-700 mb-4 leading-relaxed text-sm">
-                            You've used all your trial credits, but don't worry! You have 3 days to choose a plan. 
-                            Your saved properties will be preserved until you do.
-                        </p>
-                        
-                        {/* Button */}
-                        <button
-                            onClick={() => window.location.href = "/pricing"}
-                            className="w-full bg-orange-600 hover:bg-orange-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-150"
-                        >
-                            Choose Your Plan
-                        </button>
-                    </div>
                 )}
                 <div className="flex-1 space-y-2 relative" style={{ overflow: 'visible', paddingBottom: selectedListings.length > 0 ? '120px' : '20px' }}>
 

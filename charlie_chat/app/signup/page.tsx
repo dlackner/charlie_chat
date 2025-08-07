@@ -1,27 +1,72 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 
-export default function SignUpPage() {
+function SignUpContent() {
   const [email, setEmail] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [linkSent, setLinkSent] = useState(false); // Renamed for clarity
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   const supabase = createSupabaseBrowserClient();
+  
+  // Check for affiliate customer parameter
+  const affiliateCustomerId = searchParams.get('affiliate_customer');
+  const autoSignup = searchParams.get('auto_signup');
+  const emailParam = searchParams.get('email');
+
+  // Auto-trigger signup for affiliate users
+  useEffect(() => {
+    if (autoSignup && affiliateCustomerId && emailParam) {
+      setEmail(emailParam);
+      // Automatically send magic link
+      const autoSubmit = async () => {
+        setError(null);
+        
+        const redirectUrl = `${window.location.origin}/auth/callback?affiliate_customer=${affiliateCustomerId}`;
+
+        const { error: signUpError } = await supabase.auth.signInWithOtp({
+          email: emailParam,
+          options: {
+            shouldCreateUser: true,
+            emailRedirectTo: redirectUrl
+          }
+        });
+
+        if (signUpError) {
+          setError(signUpError.message);
+        } else {
+          setLinkSent(true);
+          
+          // Add affiliate tracking
+          if (typeof window !== 'undefined' && (window as any).gr) {
+            (window as any).gr('track', 'conversion', { email: emailParam });
+          }
+        }
+      };
+      
+      autoSubmit();
+    }
+  }, [autoSignup, affiliateCustomerId, emailParam, supabase]);
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+
+    // Prepare redirect URL with affiliate info if present
+    const redirectUrl = affiliateCustomerId 
+      ? `${window.location.origin}/auth/callback?affiliate_customer=${affiliateCustomerId}`
+      : `${window.location.origin}/auth/callback`;
 
     // Send magic link (OTP via email) for passwordless signup
     const { error: signUpError } = await supabase.auth.signInWithOtp({
       email,
       options: {
         shouldCreateUser: true, // Creates user if they don't exist
-        emailRedirectTo: `${window.location.origin}/auth/callback`
+        emailRedirectTo: redirectUrl
       }
     });
 
@@ -89,5 +134,23 @@ export default function SignUpPage() {
         </p>
       </div>
     </div>
+  );
+}
+
+function SignUpLoading() {
+  return (
+    <div className="min-h-screen flex items-start justify-center pt-24 bg-gray-100 p-6">
+      <div className="bg-white rounded-lg shadow-md p-6 w-full max-w-sm">
+        <p className="text-center text-gray-600">Loading...</p>
+      </div>
+    </div>
+  );
+}
+
+export default function SignUpPage() {
+  return (
+    <Suspense fallback={<SignUpLoading />}>
+      <SignUpContent />
+    </Suspense>
   );
 }

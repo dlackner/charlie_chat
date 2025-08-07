@@ -302,9 +302,11 @@ export const PropertyCardsView: React.FC<PropertyCardsViewProps> = ({
                                             <div className="flex items-start justify-between mb-2">
                                                 <div className="flex-1 min-w-0">
                                                     <div className="text-sm font-medium text-gray-900">
-                                                        <div className="truncate">{property.address_full}</div>
+                                                        <div className="truncate">
+                                                            {property.address_street || (property.address_full ? property.address_full.split(',')[0]?.trim() : '')}
+                                                        </div>
                                                         <div className="text-xs text-gray-600 truncate">
-                                                            {property.address_city}, {property.address_state}
+                                                            {[property.address_city, property.address_state, property.address_zip].filter(Boolean).join(', ')}
                                                         </div>
                                                     </div>
                                                 </div>
@@ -385,9 +387,9 @@ export const PropertyCardsView: React.FC<PropertyCardsViewProps> = ({
                                                     title="Select"
                                                 >
                                                     {isSelected ? (
-                                                        <CheckSquare size={14} className="text-blue-600" />
+                                                        <CheckSquare size={20} className="text-blue-600" />
                                                     ) : (
-                                                        <Square size={14} className="text-gray-400" />
+                                                        <Square size={20} className="text-gray-400" />
                                                     )}
                                                     <span className="text-xs text-gray-600">Select</span>
                                                 </button>
@@ -407,12 +409,12 @@ export const PropertyCardsView: React.FC<PropertyCardsViewProps> = ({
                                                         const buttonState = getSkipTraceButtonState(property);
                                                         switch (buttonState.icon) {
                                                             case 'checked':
-                                                                return <CheckSquare size={14} className="text-blue-600" />;
+                                                                return <CheckSquare size={20} className="text-blue-600" />;
                                                             case 'disabled':
                                                                 return null; // No icon for "No Skip Trace Data Found"
                                                             case 'unchecked':
                                                             default:
-                                                                return <Square size={14} className="text-gray-400" />;
+                                                                return <Square size={20} className="text-gray-400" />;
                                                         }
                                                     })()}
                                                     <span className="text-xs text-gray-600">{getSkipTraceButtonState(property).text}</span>
