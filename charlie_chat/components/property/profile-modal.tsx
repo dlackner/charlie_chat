@@ -61,12 +61,12 @@ export const PropertyProfileModal = ({
             {listing.address?.address || "No Address"}
           </h2>
           <a
-            href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(listing.address?.address || "")}`}
+            href={`https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${listing.latitude || 0},${listing.longitude || 0}&heading=0&pitch=0&fov=90`}
             target="_blank"
             rel="noopener noreferrer"
             className="ml-2 text-sm text-blue-600 hover:text-blue-800 underline"
           >
-            View Map
+            View Property
           </a>
         </div>
 

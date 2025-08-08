@@ -131,7 +131,7 @@ const MultiFamilyChatWidget = () => {
           onClick={() => setIsOpen(!isOpen)}
           onMouseEnter={() => setShowTooltip(true)}
           onMouseLeave={() => setShowTooltip(false)}
-          className="shadow-2xl text-white p-3 rounded-full hover:shadow-xl transition-all duration-300 hover:scale-105 relative"
+          className="shadow-2xl text-white p-3 rounded-full hover:shadow-xl transition-all duration-300 hover:scale-110 hover:-translate-y-1 relative"
           style={{ 
             backgroundColor: '#1C599F'
           }}

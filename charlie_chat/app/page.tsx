@@ -15,9 +15,6 @@ export default function Home() {
   
   // Get trial status information
   const { 
-    trialExpired, 
-    isInTrialGracePeriod, 
-    daysLeftInTrialGracePeriod,
     isInGracePeriod,
     daysLeftInGracePeriod
   } = useMyPropertiesAccess();
@@ -47,13 +44,12 @@ export default function Home() {
     }
   }, [user, isLoading, router, supabase]);
 
-  // Show trial decision modal when trial expires OR when credits are depleted
+  // Show trial decision modal when user is in grace period
   useEffect(() => {
-    if (userClass === 'trial' && 
-        ((trialExpired && isInTrialGracePeriod) || isInGracePeriod)) {
+    if (userClass === 'trial' && isInGracePeriod) {
       setShowTrialModal(true);
     }
-  }, [userClass, trialExpired, isInTrialGracePeriod, isInGracePeriod]);
+  }, [userClass, isInGracePeriod]);
 
   // Show loading while checking user status
   if (isLoading || (user && userClass === null)) {
@@ -73,7 +69,7 @@ export default function Home() {
       <TrialDecisionModal
         open={showTrialModal}
         onOpenChange={setShowTrialModal}
-        daysLeftInGracePeriod={daysLeftInTrialGracePeriod || daysLeftInGracePeriod}
+        daysLeftInGracePeriod={daysLeftInGracePeriod}
       />
     </>
   );

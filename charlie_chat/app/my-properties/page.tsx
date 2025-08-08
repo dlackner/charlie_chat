@@ -42,9 +42,6 @@ export default function MyPropertiesPage() {
         hasAccess, 
         isLoading: isLoadingAccess,
         userClass,
-        trialExpired,
-        isInTrialGracePeriod,
-        daysLeftInTrialGracePeriod,
         isInGracePeriod,
         daysLeftInGracePeriod
     } = useMyPropertiesAccess();
@@ -126,13 +123,12 @@ export default function MyPropertiesPage() {
         return lastAttempt < cutoffDate; // Can re-run if older than cutoff
     };
 
-    // Show trial decision modal when trial expires OR when credits are depleted
+    // Show trial decision modal when user is in grace period
     useEffect(() => {
-        if (userClass === 'trial' && 
-            ((trialExpired && isInTrialGracePeriod) || isInGracePeriod)) {
+        if (userClass === 'trial' && isInGracePeriod) {
             setShowTrialModal(true);
         }
-    }, [userClass, trialExpired, isInTrialGracePeriod, isInGracePeriod]);
+    }, [userClass, isInGracePeriod]);
 
     // Close dropdown when clicking outside for More button on Document Generation
     useEffect(() => {
@@ -1111,7 +1107,7 @@ export default function MyPropertiesPage() {
             <TrialDecisionModal
                 open={showTrialModal}
                 onOpenChange={setShowTrialModal}
-                daysLeftInGracePeriod={daysLeftInTrialGracePeriod || daysLeftInGracePeriod}
+                daysLeftInGracePeriod={daysLeftInGracePeriod}
             />
 
         </div>

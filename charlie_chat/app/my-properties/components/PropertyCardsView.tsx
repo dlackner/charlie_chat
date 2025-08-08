@@ -4,6 +4,7 @@ import { Heart, CheckSquare, Square } from "lucide-react";
 import { useState } from "react";
 import { performSkipTrace } from './skipTraceIntegration';
 import { PageSavedProperty as SavedProperty } from '../types';
+import { StreetViewImage } from '../../../components/ui/StreetViewImage';
 
 
 interface PropertyCardsViewProps {
@@ -422,38 +423,16 @@ export const PropertyCardsView: React.FC<PropertyCardsViewProps> = ({
                                             </div>
                                         </div>
 
-                                        {/* Right side - Notes */}
+                                        {/* Right side - Street View */}
                                         <div className="w-32 flex-shrink-0 min-w-0">
-                                            <div className="bg-gray-50 rounded border p-2 h-[120px] relative">
-                                                <div className="flex items-center justify-between mb-1">
-                                                    <span className="text-xs font-medium text-gray-700 truncate">Notes</span>
-                                                    <button
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            setNotesModalOpen(property.property_id);
-                                                        }}
-                                                        className="text-gray-400 hover:text-gray-600 ml-1"
-                                                        title="Open notes editor"
-                                                    >
-                                                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                                            <path d="M15 3h6v6M14 10l6.1-6.1M9 21H3v-6M10 14l-6.1 6.1" />
-                                                        </svg>
-                                                    </button>
-                                                </div>
-                                                <div
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        setNotesModalOpen(property.property_id);
-                                                    }}
-                                                    className="text-xs text-gray-600 cursor-pointer h-20 overflow-hidden"
-                                                >
-                                                    {getCurrentNotes(property) ? (
-                                                        <span>{truncateNotes(getCurrentNotes(property))}</span>
-                                                    ) : (
-                                                        <span className="text-gray-400 italic">Click to add notes...</span>
-                                                    )}
-                                                </div>
-                                            </div>
+                                            <StreetViewImage
+                                                address={`${property.address_street || property.address_full}, ${property.address_city}, ${property.address_state}`}
+                                                latitude={property.latitude}
+                                                longitude={property.longitude}
+                                                className="h-[120px]"
+                                                width={300}
+                                                height={200}
+                                            />
                                         </div>
                                     </div>
                                 </div>
@@ -507,6 +486,35 @@ export const PropertyCardsView: React.FC<PropertyCardsViewProps> = ({
                                                 <span>Pre-Foreclosure:&nbsp;</span>
                                                 <span className="font-medium">{property.pre_foreclosure ? 'Yes' : 'No'}</span>
                                             </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Notes section at bottom - full width */}
+                                    <div className="border-t border-gray-200 pt-3 mt-3">
+                                        <div
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                setNotesModalOpen(property.property_id);
+                                            }}
+                                            className="relative text-xs text-gray-600 cursor-pointer p-2 bg-gray-50 rounded border min-h-[40px] max-h-[60px] overflow-hidden"
+                                        >
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setNotesModalOpen(property.property_id);
+                                                }}
+                                                className="absolute top-1 right-1 text-gray-400 hover:text-gray-600"
+                                                title="Edit notes"
+                                            >
+                                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                                    <path d="M15 3h6v6M14 10l6.1-6.1M9 21H3v-6M10 14l-6.1 6.1" />
+                                                </svg>
+                                            </button>
+                                            {getCurrentNotes(property) ? (
+                                                <span>{truncateNotes(getCurrentNotes(property))}</span>
+                                            ) : (
+                                                <span className="text-gray-400 italic">Click to add notes...</span>
+                                            )}
                                         </div>
                                     </div>
 
