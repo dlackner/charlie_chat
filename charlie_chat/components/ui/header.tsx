@@ -102,7 +102,7 @@ export default function Header() {
         ? "Upgrade to Pro or Cohort to access My Properties" 
         : "Upgrade to Pro or Cohort to access My Properties",
       showAsterisk: false,
-      showProLabel: true
+      showProLabel: false
     };
   };
 
