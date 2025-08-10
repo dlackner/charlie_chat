@@ -32,8 +32,6 @@ export const PropertyMapView: React.FC<PropertyMapViewProps> = (props) => {
     const [hiddenProperties, setHiddenProperties] = useState<Set<string>>(new Set());
     const [showRentOverlay, setShowRentOverlay] = useState(true);
 
-    console.log('PropertyMapView received props.properties:', props.properties.length);
-    console.log('Properties:', props.properties);
 
     // Type guard function
     const hasValidCoordinates = (p: SavedProperty): p is SavedProperty & { latitude: number; longitude: number } => {
@@ -44,7 +42,6 @@ export const PropertyMapView: React.FC<PropertyMapViewProps> = (props) => {
         .filter(hasValidCoordinates)
         .filter(p => !hiddenProperties.has(p.property_id));
 
-    console.log('Visible properties after filtering:', visibleProperties.length);
 
     // Calculate distance between two points (Haversine formula)
     const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {

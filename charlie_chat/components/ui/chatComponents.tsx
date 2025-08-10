@@ -79,7 +79,8 @@ export const CharlieThinkingLoader = () => {
         'thinking', 'manifesting', 'incubating', 'calculating', 'unfurling',
         'marinating', 'channeling', 'synthesizing', 'musing', 'actualizing',
         'pontificating', 'philosophizing', 'coalescing', 'forming',
-        'stewing', 'working', 'inferring', 'vibing', 'generating'
+        'stewing', 'working', 'inferring', 'vibing', 'generating',
+        'ideating', 'wizarding', 'ruminating', 'deciphering', 'elucidating', 'combobulating'
     ];
     
     const [currentWord] = useState(() => {

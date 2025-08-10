@@ -17,7 +17,7 @@ const COHORT_MONTHLY = process.env.NEXT_PUBLIC_COHORT_MONTHLY_PRODUCT!;
 const COHORT_ANNUAL = process.env.NEXT_PUBLIC_COHORT_ANNUAL_PRODUCT!;
 
 
-export default function PricingPage() {
+export default function PricingPageV2() {
   const [isAnnual, setIsAnnual] = useState(true);
   const [userClass, setUserClass] = useState<string | null>(null);
   const [showTrialAlert, setShowTrialAlert] = useState(false);
@@ -145,7 +145,7 @@ export default function PricingPage() {
 
   return (
     <div className="min-h-screen bg-white text-black px-6 py-12">
-      <h1 className="text-3xl sm:text-5xl font-semibold mb-6 text-orange-600 text-center">Pricing</h1>
+      <h1 className="text-3xl sm:text-5xl font-semibold mb-6 text-orange-600 text-center">Pricing V2 - Development</h1>
 
       {/* Toggle for Monthly/Annual */}
       <div className="flex justify-center mb-8">
@@ -167,21 +167,18 @@ export default function PricingPage() {
         </button>
       </div>
 
-      <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {/* Charlie Chat */}
-        <div className="border border-gray-300 rounded-lg p-6 bg-white shadow hover:shadow-lg hover:-translate-y-1 transform transition duration-200 ease-in-out flex flex-col">
+      <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 pt-8">
+        {/* Charlie Chat FREE */}
+        <div className="border border-gray-300 rounded-lg p-6 bg-white shadow hover:shadow-lg hover:-translate-y-1 transform transition duration-200 ease-in-out flex flex-col relative">
+          {/* Free Badge */}
+          <div className="absolute -top-6 left-6 z-10">
+            <span className="bg-gradient-to-r from-green-500 to-green-600 text-white text-xs font-extrabold px-4 py-2 rounded-full shadow-lg border-2 border-white whitespace-nowrap">FREE</span>
+          </div>
           <h2 className="text-2xl font-semibold mb-2">Charlie Chat</h2>
-          {isAnnual ? (
-            <>
-              <p className="text-xl font-bold mb-1">$16</p>
-              <p className="text-sm text-gray-500 mb-4">(Per month, billed annually)</p>
-            </>
-          ) : (
-            <>
-              <p className="text-xl font-bold mb-1">$20</p>
-              <p className="text-sm text-gray-500 mb-4">(Billed monthly)</p>
-            </>
-          )}
+          <div className="mb-4">
+            <p className="text-xl font-bold mb-1">$0</p>
+            <p className="text-sm text-gray-500">Forever free</p>
+          </div>
           <p className="text-sm text-gray-700 mb-4">
             It's me, Charles Dobens—my multifamily lessons and stories, my multifamily legal and operational know-how—delivered to you through my Charlie Chat AI assistant.
           </p>
@@ -190,27 +187,31 @@ export default function PricingPage() {
             <li>✔️ Full Access to my entire knowledge base</li>
             <li>✔️ Deal tactics</li>
             <li>✔️ Closing strategies</li>
+            <li>✔️ 250 free property matches to get started</li>
           </ul>
-          <p className="text-sm italic text-gray-600 mb-3">Try for free! No credit card required. Includes 250 free property matches.</p>
           <button
-            onClick={() => handleCheckout(isAnnual ? CHARLIE_CHAT_ANNUAL : CHARLIE_CHAT_MONTHLY, isAnnual ? "annual" : "monthly")}
-            className="mt-auto w-full bg-black text-white py-2 rounded font-semibold transition duration-200 transform hover:scale-105 hover:bg-orange-600 hover:shadow-xl"
+            onClick={() => router.push("/signup")}
+            className="mt-auto w-full bg-gray-800 text-white py-2 rounded font-semibold transition duration-200 transform hover:scale-105 hover:bg-gray-900 hover:shadow-xl"
           >
-            Get Access
+            Get Started Free
           </button>
         </div>
 
         {/* Charlie Chat Plus */}
-        <div className="border border-gray-300 rounded-lg p-6 bg-white shadow hover:shadow-lg hover:-translate-y-1 transform transition duration-200 ease-in-out flex flex-col">
+        <div className="border border-gray-300 rounded-lg p-6 bg-white shadow hover:shadow-lg hover:-translate-y-1 transform transition duration-200 ease-in-out flex flex-col relative">
+          {/* Most Popular Badge */}
+          <div className="absolute -top-6 left-1/2 transform -translate-x-1/2 z-10">
+            <span className="bg-gradient-to-r from-blue-500 to-blue-600 text-white text-xs font-extrabold px-4 py-2 rounded-full shadow-lg border-2 border-white whitespace-nowrap">MOST POPULAR</span>
+          </div>
           <h2 className="text-2xl font-semibold mb-2">Charlie Chat Plus</h2>
           {isAnnual ? (
             <>
-              <p className="text-xl font-bold mb-1">$85</p>
+              <p className="text-xl font-bold mb-1">$75</p>
               <p className="text-sm text-gray-500 mb-4">(Per month, billed annually)</p>
             </>
           ) : (
             <>
-              <p className="text-xl font-bold mb-1">$100</p>
+              <p className="text-xl font-bold mb-1">$90</p>
               <p className="text-sm text-gray-500 mb-4">(Billed monthly)</p>
             </>
           )}
@@ -223,8 +224,8 @@ export default function PricingPage() {
             </li>
             <li>✔️ AI analysis of broker documents and offer memorandums</li>
             <li>✔️ Best practice marketing tools & LOI's</li>
-            <li>✔️ Includes 250 national property matches every month</li>
             <li>✔️ Advanced property analytics and mapping</li>
+            <li>✔️ Includes 250 national property matches every month</li>
           </ul>
           <button
             onClick={() => handleCheckout(isAnnual ? CHARLIE_CHAT_PLUS_ANNUAL : CHARLIE_CHAT_PLUS_MONTHLY, isAnnual ? "annual" : "monthly")}
@@ -253,12 +254,11 @@ export default function PricingPage() {
           </p>
           <ul className="text-sm space-y-1 text-gray-800 mb-4 flex flex-col">
             <li className="flex items-baseline">
-              <span className="text-lg font-semibold text-orange-500">Everything in Charlie Chat Plus, Plus</span>
+              <span className="text-lg font-semibold text-orange-500">Everything in Charlie Chat Plus, PLUS:</span>
             </li>
             <li>✔️ Access to my Master Class Training Program</li>
-            <li>✔️ AI analysis of broker documents and offer memorandums</li>
-            <li>✔️ Best practice marketing tools & LOI's</li>
-            <li>✔️ Weekly group coaching call with Charles</li>
+            <li>✔️ Weekly group coaching call with Charles Dobens</li>
+            <li>✔️ Community Access</li>
             <li>✔️ Includes 250 national property matches every month</li>
           </ul>
           <button
@@ -277,7 +277,7 @@ export default function PricingPage() {
           </p>
           <ul className="text-sm space-y-1 text-gray-800 mb-4 flex flex-col">
             <li className="flex items-baseline">
-              <span className="text-lg font-semibold text-orange-500">Everything in Charlie Chat Pro, Plus</span>
+              <span className="text-lg font-semibold text-orange-500">Everything in Charlie Chat Pro, PLUS:</span>
             </li>
             <li>✔️ Weekly expert sessions led by me</li>
             <li>✔️ A supportive community of peers & investors</li>

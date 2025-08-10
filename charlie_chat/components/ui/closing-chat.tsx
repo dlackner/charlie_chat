@@ -224,7 +224,6 @@ export function ClosingChat() {
             localStorage.removeItem("threadId");
             delete (window as any).__CURRENT_THREAD_ID__;
 
-            console.log("New document uploaded - cleared thread for fresh conversation");
             return {
               ...result,
               contentType: "application/pdf",
@@ -295,19 +294,16 @@ export function ClosingChat() {
   // };
 
   const handleFavoriteProperty = async (propertyId: string) => {
-    console.log('Favoriting property:', propertyId);
     // TODO: Add to favorites in database
   };
 
   const handleDismissProperty = async (propertyId: string) => {
-    console.log('Dismissing property:', propertyId);
     // TODO: Track dismissal for learning
   };
 
   // Load weekly recommendations from API
   const loadWeeklyRecommendations = async () => {
     // Feature disabled - weekly recommendations not ready for production
-    console.log('Weekly recommendations disabled');
     return;
     
     // TO RE-ENABLE: Remove the return statement above and uncomment all code below until the closing */
@@ -481,11 +477,6 @@ export function ClosingChat() {
               } else if (data.listings) {
                 // API now returns snake_case data, so no transformation needed
                 setListings(data.listings);
-                console.log('🔍 Pagination data received:', {
-                  totalCount: data.totalCount,
-                  hasMore: data.hasMore,
-                  listingsCount: data.listings.length
-                });
               }
             }}
             listings={listings}
@@ -516,6 +507,7 @@ export function ClosingChat() {
             onCreditsUpdate={handleCreditsUpdated}
             userClass={userClass === 'disabled' ? 'trial' : userClass}
             triggerBuyCreditsModal={() => setShowCreditOptionsModal(true)}
+            triggerProModal={() => setShowProModal(true)}
             clearSelectedListings={() => setSelectedListings([])}
             userCredits={userCredits}
           />
@@ -614,19 +606,16 @@ export function ClosingChat() {
                   className="w-16 h-16 rounded-full mb-3 shadow-md border"
                 />
                 <Dialog.Title className="text-2xl font-light tracking-tight text-gray-900">
-                  Charlie Chat Pro
-                </Dialog.Title>
-              </div>
-
-              {/* Feature highlight */}
-              <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
-                <Dialog.Description className="text-base text-gray-700 font-medium">
                   Unlock the full potential of Charlie Chat
-                </Dialog.Description>
+                </Dialog.Title>
               </div>
 
               {/* Benefits list */}
               <div className="text-left space-y-2">
+                <div className="flex items-center gap-3">
+                  <span className="text-green-500 font-bold">✓</span>
+                  <span className="text-sm text-gray-700">My favorite properties</span>
+                </div>
                 <div className="flex items-center gap-3">
                   <span className="text-green-500 font-bold">✓</span>
                   <span className="text-sm text-gray-700">PDF document analysis</span>
@@ -641,11 +630,7 @@ export function ClosingChat() {
                 </div>
                 <div className="flex items-center gap-3">
                   <span className="text-green-500 font-bold">✓</span>
-                  <span className="text-sm text-gray-700">100 monthly property credits</span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <span className="text-green-500 font-bold">✓</span>
-                  <span className="text-sm text-gray-700">Access to my Master Class Training Program</span>
+                  <span className="text-sm text-gray-700">250 monthly property credits</span>
                 </div>
               </div>
 
@@ -658,7 +643,7 @@ export function ClosingChat() {
                   }}
                   className="w-full bg-orange-500 hover:bg-orange-600 text-white font-medium py-3 px-4 rounded-lg transition-colors shadow-sm"
                 >
-                  Upgrade to Pro
+                  Upgrade Now
                 </button>
                 <button
                   onClick={() => setShowProModal(false)}

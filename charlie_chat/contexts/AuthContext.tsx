@@ -22,11 +22,6 @@ export const SupabaseAuthProvider = ({ children }: { children: React.ReactNode }
 
   useEffect(() => {
     let isMounted = true;
-    console.log("[AuthContext] useEffect RUNNING. Initial isLoading:", isLoading);
-
-    if (isMounted && !isLoading) {
-    } else if (isMounted && isLoading) {
-    }
 
 
     supabase.auth.getSession()
@@ -37,20 +32,18 @@ export const SupabaseAuthProvider = ({ children }: { children: React.ReactNode }
           setUser(null);
           setSession(null);
         } else {
-          console.log("[AuthContext] Initial getSession complete. User ID:", initialSession?.user?.id || "null");
           setUser(initialSession?.user ?? null);
           setSession(initialSession ?? null);
         }
       })
       .catch((err) => {
         if (!isMounted) return;
-        console.error("[AuthContext] CATCH block for initial getSession:", err);
+        console.error("[AuthContext] Error in initial getSession catch:", err);
         setUser(null);
         setSession(null);
       })
       .finally(() => {
         if (isMounted) {
-          console.log("[AuthContext] Initial getSession flow FINISHED. Setting isLoading to false.");
           setIsLoading(false);
         }
       });
@@ -58,11 +51,9 @@ export const SupabaseAuthProvider = ({ children }: { children: React.ReactNode }
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, currentSession) => {
         if (!isMounted) return;
-        console.log(`[AuthContext] onAuthStateChange event: ${event}, User ID: ${currentSession?.user?.id || 'null'}`);
         
         // Clear localStorage on sign out for privacy/security
         if (event === 'SIGNED_OUT' && typeof window !== 'undefined') {
-          console.log('[AuthContext] Clearing localStorage on sign out');
           localStorage.removeItem("threadId");
           localStorage.removeItem("chatMessages");
           localStorage.removeItem("listings");
@@ -77,7 +68,6 @@ export const SupabaseAuthProvider = ({ children }: { children: React.ReactNode }
         setSession(currentSession ?? null);
         
         if (isLoading && (event === 'INITIAL_SESSION' || event === 'SIGNED_IN' || event === 'SIGNED_OUT')) {
-            console.log(`[AuthContext] onAuthStateChange (${event}) is also setting isLoading to false as a fallback.`);
             setIsLoading(false);
         }
       }
@@ -86,7 +76,6 @@ export const SupabaseAuthProvider = ({ children }: { children: React.ReactNode }
     return () => {
       isMounted = false;
       subscription?.unsubscribe();
-      console.log("[AuthContext] Unsubscribed from onAuthStateChange.");
     };
   }, [supabase]);
 
@@ -97,9 +86,6 @@ export const SupabaseAuthProvider = ({ children }: { children: React.ReactNode }
     isLoading,
   }), [supabase, user, session, isLoading]);
 
-  useEffect(() => {
-    console.log("[AuthContext] PROVIDING VALUE:", contextValue);
-  }, [contextValue]);
 
   return <AuthContext.Provider value={contextValue}>{children}</AuthContext.Provider>;
 };

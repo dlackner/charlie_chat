@@ -32,6 +32,18 @@ const productPricing: Record<
     annual: process.env.NEXT_PUBLIC_CHARLIE_CHAT_PRO_ANNUAL_PRICE!,
     mode: "subscription",
   },
+  // Charlie Chat Plus Monthly Product
+  [process.env.NEXT_PUBLIC_CHARLIE_CHAT_PLUS_MONTHLY_PRODUCT!]: {
+    monthly: process.env.NEXT_PUBLIC_CHARLIE_CHAT_PLUS_MONTHLY_PRICE!,
+    annual: process.env.NEXT_PUBLIC_CHARLIE_CHAT_PLUS_ANNUAL_PRICE!,
+    mode: "subscription",
+  },
+  // Charlie Chat Plus Annual Product
+  [process.env.NEXT_PUBLIC_CHARLIE_CHAT_PLUS_ANNUAL_PRODUCT!]: {
+    monthly: process.env.NEXT_PUBLIC_CHARLIE_CHAT_PLUS_MONTHLY_PRICE!,
+    annual: process.env.NEXT_PUBLIC_CHARLIE_CHAT_PLUS_ANNUAL_PRICE!,
+    mode: "subscription",
+  },
   // Cohort Monthly Product
   [process.env.NEXT_PUBLIC_COHORT_MONTHLY_PRODUCT!]: {
     monthly: process.env.NEXT_PUBLIC_COHORT_MONTHLY_PRICE!,
@@ -55,6 +67,10 @@ const creditPackPricing: Record<number, string> = {
 
 // Special credit packs with user class upgrades
 const specialCreditPacks: Record<string, { credits: number; priceId: string }> = {
+  "charlie_chat_plus": {
+    credits: 100,
+    priceId: process.env.NEXT_PUBLIC_CHARLIE_CHAT_PRO_100_PACK_PRICE!
+  },
   "charlie_chat_pro": {
     credits: 100,
     priceId: process.env.NEXT_PUBLIC_CHARLIE_CHAT_PRO_100_PACK_PRICE!

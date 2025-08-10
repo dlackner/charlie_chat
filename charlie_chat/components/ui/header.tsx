@@ -8,13 +8,16 @@ import { User, ChevronDown, Settings, Heart, LogOut, LogIn, Star, Home } from "l
 
 import { useAuth } from "@/contexts/AuthContext";
 import { useMyPropertiesAccess } from "@/app/my-properties/components/useMyPropertiesAccess";
+import { Dialog } from "@headlessui/react";
 
 export default function Header() {
   const { user: currentUser, isLoading: isLoadingAuth, supabase, session } = useAuth();
   const { hasAccess, isLoading: isLoadingAccess, userClass, checkTrialUserCredits } = useMyPropertiesAccess();
   const router = useRouter();
   const [showAccountMenu, setShowAccountMenu] = useState(false);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const isLoggedIn = !!currentUser;
 
@@ -59,7 +62,7 @@ export default function Header() {
     
     // Let the useMyPropertiesAccess hook handle all access logic including grace period
     if (!hasAccess) {
-      router.push("/pricing");
+      setShowUpgradeModal(true);
       return;
     }
     
@@ -132,9 +135,27 @@ export default function Header() {
         {/* My Properties */}
         <button
           onClick={handleMyPropertiesClick}
+          onMouseEnter={() => {
+            // Clear any existing timeout
+            if (hoverTimeoutRef.current) {
+              clearTimeout(hoverTimeoutRef.current);
+            }
+            // Show modal on hover only if user doesn't have access (with delay)
+            if (isLoggedIn && !hasAccess) {
+              hoverTimeoutRef.current = setTimeout(() => {
+                setShowUpgradeModal(true);
+              }, 800); // 800ms delay
+            }
+          }}
+          onMouseLeave={() => {
+            // Clear timeout if user moves mouse away quickly
+            if (hoverTimeoutRef.current) {
+              clearTimeout(hoverTimeoutRef.current);
+              hoverTimeoutRef.current = null;
+            }
+          }}
           disabled={isLoggedIn && isLoadingAccess}
           className={`flex items-center space-x-1 transition rounded-md px-3 py-1 font-medium ${buttonState.className} ${isLoadingAccess ? "opacity-50" : ""}`}
-          title={buttonState.tooltip}
         >
           <Star size={14} />
           <span>My Properties</span>
@@ -215,6 +236,47 @@ export default function Header() {
           </Link>
         )}
       </div>
+
+      {/* Simple Charlie Upgrade Modal */}
+      <Dialog open={showUpgradeModal} onClose={() => setShowUpgradeModal(false)} className="relative z-50">
+        <div className="fixed inset-0 bg-black/40" aria-hidden="true" />
+        <div className="fixed inset-0 flex items-center justify-center p-4">
+          <Dialog.Panel className="w-full max-w-md rounded-lg bg-white p-6 space-y-4 shadow-xl">
+            <div className="flex items-start gap-4 mb-4">
+              <img
+                src="/charlie.png"
+                alt="Charlie"
+                className="w-12 h-12 rounded-full shadow-md border flex-shrink-0"
+              />
+              <Dialog.Title className="text-xl font-semibold text-gray-900 mt-1">
+                Hi There!
+              </Dialog.Title>
+            </div>
+            
+            <p className="text-base text-gray-700 leading-relaxed">
+              You wouldn't believe all the good things we have in store for you if you upgrade to Plus or Pro!
+            </p>
+            
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={() => {
+                  setShowUpgradeModal(false);
+                  router.push("/pricing");
+                }}
+                className="flex-1 bg-orange-600 text-white py-3 px-4 rounded-lg font-semibold hover:bg-orange-700 transition-colors"
+              >
+                Check It Out
+              </button>
+              <button
+                onClick={() => setShowUpgradeModal(false)}
+                className="flex-1 text-gray-500 hover:text-gray-700 py-3 px-4 rounded-lg transition-colors"
+              >
+                Maybe Later
+              </button>
+            </div>
+          </Dialog.Panel>
+        </div>
+      </Dialog>
     </header>
   );
 }

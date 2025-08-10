@@ -320,6 +320,7 @@ const PropertySummaryButton = ({
     // Must match the same logic as My Properties access control
     const hasAccess = userClass && (
         userClass === "charlie_chat_pro" ||
+        userClass === "charlie_chat_plus" ||
         userClass === "cohort" ||
         userClass === "trial" ||
         userClass === "pro"

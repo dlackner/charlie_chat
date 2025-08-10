@@ -44,9 +44,12 @@ export default function Home() {
     }
   }, [user, isLoading, router, supabase]);
 
-  // Show trial decision modal when user is in grace period
+  // Show trial decision modal when user is in grace period OR testing query param is present
   useEffect(() => {
-    if (userClass === 'trial' && isInGracePeriod) {
+    const urlParams = new URLSearchParams(window.location.search);
+    const showTrialModalParam = urlParams.get('showTrialModal');
+    
+    if (showTrialModalParam === 'true' || (userClass === 'trial' && isInGracePeriod)) {
       setShowTrialModal(true);
     }
   }, [userClass, isInGracePeriod]);

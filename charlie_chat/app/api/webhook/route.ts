@@ -67,6 +67,8 @@ export async function POST(req: NextRequest) {
     const priceMap: Record<string, string> = {
       [process.env.NEXT_PUBLIC_CHARLIE_CHAT_MONTHLY_PRICE!]: "charlie_chat",
       [process.env.NEXT_PUBLIC_CHARLIE_CHAT_ANNUAL_PRICE!]: "charlie_chat",
+      [process.env.NEXT_PUBLIC_CHARLIE_CHAT_PLUS_MONTHLY_PRICE!]: "charlie_chat_plus",
+      [process.env.NEXT_PUBLIC_CHARLIE_CHAT_PLUS_ANNUAL_PRICE!]: "charlie_chat_plus",
       [process.env.NEXT_PUBLIC_CHARLIE_CHAT_PRO_MONTHLY_PRICE!]: "charlie_chat_pro",
       [process.env.NEXT_PUBLIC_CHARLIE_CHAT_PRO_ANNUAL_PRICE!]: "charlie_chat_pro",
       [process.env.NEXT_PUBLIC_COHORT_MONTHLY_PRICE!]: "cohort",

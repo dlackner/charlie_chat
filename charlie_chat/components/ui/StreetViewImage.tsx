@@ -41,8 +41,6 @@ export const StreetViewImage: React.FC<StreetViewImageProps> = ({
         const contentLength = response.headers.get('content-length');
         const fileSizeKB = contentLength ? parseInt(contentLength) / 1024 : 0;
         
-        console.log(`Street View image size: ${fileSizeKB.toFixed(1)}KB for address: ${address}`);
-        
         // If file size is small (< 5KB), it's likely Google's "no imagery" placeholder
         if (fileSizeKB < 5) {
           setHasImagery(false);
@@ -100,7 +98,6 @@ export const StreetViewImage: React.FC<StreetViewImageProps> = ({
     } else {
       // If no imagery confirmed, use map view with address
       const encodedAddress = encodeURIComponent(address);
-      console.log('Opening map view for address:', address, 'URL:', `https://www.google.com/maps/place/${encodedAddress}`);
       return `https://www.google.com/maps/place/${encodedAddress}`;
     }
   };

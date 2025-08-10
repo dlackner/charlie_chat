@@ -48,6 +48,7 @@ export const usePropertyAnalyzerAccess = (): UsePropertyAnalyzerAccessReturn => 
     // Property Analyzer is available to all user classes except disabled
     const hasAccess =
         userClass === "charlie_chat_pro" ||
+        userClass === "charlie_chat_plus" ||
         userClass === "cohort" ||
         userClass === "charlie_chat" ||
         userClass === "trial";

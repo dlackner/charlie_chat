@@ -46,8 +46,6 @@ export class RentDataProcessor {
         const lines = csvData.split('\n');
         const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, '').replace(/\r/g, ''));
 
-        console.log('All headers found:', headers);
-        console.log('First raw data line:', lines[1]);
 
         for (let i = 1; i < lines.length; i++) {
             const line = lines[i];
@@ -73,17 +71,7 @@ export class RentDataProcessor {
                 }
             });
 
-            // Debug first few rows
-            if (i <= 3) {
-                console.log(`Row ${i} parsed:`, {
-                    'City/State': row['City/State'],
-                    'Monthly Average': row['Monthly Average'],
-                    'Lat': row.Lat,
-                    'Long': row.Long,
-                    'Radius': row.Radius,
-                    'YOY %': row['YOY %']
-                });
-            }
+            // Debug first few rows (debug logging removed)
 
             this.rawData.push(row as RawRentData);
         }
@@ -111,8 +99,6 @@ export class RentDataProcessor {
     }
 
     public processRentData(): ProcessedRentData[] {
-        console.log('Raw data entries:', this.rawData.length);
-        console.log('Sample raw data:', this.rawData.slice(0, 3));
 
         const processed = this.rawData
             .filter(row => row['City/State'] && row['City/State'] !== 'United States') // Filter out country-level data
@@ -132,8 +118,6 @@ export class RentDataProcessor {
             })
             .sort((a, b) => a.sizeRank - b.sizeRank);
 
-        console.log('Processed data sample:', processed.slice(0, 3));
-        console.log('Data with coordinates:', processed.filter(d => d.latitude && d.longitude).length);
 
         return processed;
     }

@@ -110,12 +110,10 @@ const DynamicMapComponent: React.FC<DynamicMapComponentProps> = ({
 
                 // Add rent overlay if enabled
                 if (showRentOverlay && rentData.length > 0) {
-                    console.log('Adding rent overlay with', rentData.length, 'metro areas');
 
                     rentData.forEach(metro => {
                         if (!metro.latitude || !metro.longitude || !metro.averageRent) return;
 
-                        console.log('Adding circle for:', metro.RegionName, 'at', metro.latitude, metro.longitude);
 
                         // Convert miles to meters (1 mile = 1609.34 meters)
                         const msaRadiusMiles = metro.radius || 25;
@@ -196,8 +194,6 @@ const DynamicMapComponent: React.FC<DynamicMapComponentProps> = ({
             try {
                 const L = (await import('leaflet')).default;
 
-                console.log('Updating markers, properties:', properties.length);
-                console.log('Properties with latitude/longitude:', properties.filter(p => p.latitude && p.longitude).length);
 
                 // Clear existing markers
                 markersRef.current.forEach(marker => {
@@ -208,7 +204,6 @@ const DynamicMapComponent: React.FC<DynamicMapComponentProps> = ({
                 // Add new markers
                 properties.forEach((property, index) => {
                     if (!property.latitude || !property.longitude) {
-                        console.log(`Skipping property ${property.property_id} - missing coordinates`);
                         return;
                     }
 
