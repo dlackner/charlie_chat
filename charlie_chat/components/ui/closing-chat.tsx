@@ -556,13 +556,16 @@ export function ClosingChat() {
           </div>
         </div>
 
-        <CreditDisplay
-          userCredits={userCredits}
-          isLoggedIn={isLoggedIn}
-          showBuyCreditsTooltip={showBuyCreditsTooltip}
-          setShowBuyCreditsTooltip={setShowBuyCreditsTooltip}
-          setShowCreditOptionsModal={setShowCreditOptionsModal}
-        />
+        {/* Show CreditDisplay for Trial and Charlie Chat users */}
+        {(userClass === 'trial' || userClass === 'charlie_chat') && (
+          <CreditDisplay
+            userCredits={userCredits}
+            isLoggedIn={isLoggedIn}
+            showBuyCreditsTooltip={showBuyCreditsTooltip}
+            setShowBuyCreditsTooltip={setShowBuyCreditsTooltip}
+            setShowCreditOptionsModal={setShowCreditOptionsModal}
+          />
+        )}
 
         {/* Auth Modal */}
         <Dialog open={showModal} onClose={() => setShowModal(false)} className="relative z-50">
@@ -720,7 +723,7 @@ export function ClosingChat() {
                   </button>
                 </div>
               </>
-            ) : (
+            ) : userClass === 'charlie_chat' ? (
               <>
                 <Dialog.Title className="text-2xl font-semibold text-gray-900 mb-2">
                   Purchase More Credits
@@ -741,6 +744,23 @@ export function ClosingChat() {
                       Buy {pkg.amount} Credits — ${pkg.price}
                     </button>
                   ))}
+                </div>
+              </>
+            ) : (
+              <>
+                <Dialog.Title className="text-2xl font-semibold text-gray-900 mb-2">
+                  Unlimited Credits
+                </Dialog.Title>
+                <p className="text-sm text-gray-700 mb-6">
+                  You have unlimited property searches with your current plan. No need to purchase additional credits!
+                </p>
+                <div className="space-y-3">
+                  <button
+                    onClick={() => setShowCreditOptionsModal(false)}
+                    className="w-full py-3 rounded-lg bg-green-600 text-white font-medium hover:bg-green-700 transition-colors duration-150"
+                  >
+                    Got It
+                  </button>
                 </div>
               </>
             )}

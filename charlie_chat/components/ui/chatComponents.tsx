@@ -377,14 +377,14 @@ export const ChatInput: React.FC<ChatInputProps> = ({
             )}
 
             <div className="flex items-center border border-gray-300 rounded-lg shadow-sm p-2 focus-within:ring-2 focus-within:ring-black">
-                {isLoggedIn && (userClass === 'charlie_chat_pro' || userClass === 'cohort') && <ComposerAddAttachment />}
+                {isLoggedIn && <ComposerAddAttachment />}
 
-                {!(userClass === 'charlie_chat_pro' || userClass === 'cohort') && (
+                {!isLoggedIn && (
                     <button
                         type="button"
-                        onClick={() => (isLoggedIn ? setShowProModal(true) : setShowModal(true))}
+                        onClick={() => setShowModal(true)}
                         className="p-2 hover:bg-gray-100 rounded transition"
-                        title="Upgrade to Pro to upload"
+                        title="Log in to upload documents"
                     >
                         <Plus className="w-5 h-5 text-gray-400" />
                     </button>

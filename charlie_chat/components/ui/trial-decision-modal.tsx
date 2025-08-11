@@ -51,11 +51,11 @@ export default function TrialDecisionModal({
     setIsProcessing(true);
     
     try {
-      // Update user to disabled status
+      // Update user to charlie_chat (free) status
       await supabase
         .from('profiles')
         .update({
-          user_class: 'disabled',
+          user_class: 'charlie_chat',
           trial_cancelled_at: new Date().toISOString()
         })
         .eq('user_id', currentUser?.id);
@@ -423,12 +423,12 @@ export default function TrialDecisionModal({
                   disabled={isProcessing}
                   className="flex-1 bg-white text-gray-600 py-3 px-4 rounded-lg text-base border border-gray-300 hover:bg-gray-50 transition-colors disabled:opacity-50"
                 >
-                  {isProcessing ? "Processing..." : "Cancel Trial"}
+                  {isProcessing ? "Processing..." : "Use Free Charlie Chat"}
                 </button>
               </div>
 
               <p className="text-sm text-gray-500 text-center">
-                If no choice is made, we'll automatically cancel your subscription in 3 days.
+                If no choice is made, you'll automatically get free Charlie Chat access in 3 days.
               </p>
             </div>
           </>
@@ -453,8 +453,8 @@ export default function TrialDecisionModal({
             
             <div className="space-y-6">
               <p className="text-base text-gray-700 leading-relaxed">
-                Are you sure you want to go? You just got started building your multifamily business with me! 
-                Why not give it a month and see what we can accomplish together?
+                You'll still get free access to Charlie Chat! But you just got started building your multifamily business with me. 
+                Why not give it a month with unlimited property searches and see what we can accomplish together?
               </p>
 
               {/* Action Buttons */}
@@ -472,7 +472,7 @@ export default function TrialDecisionModal({
                   disabled={isProcessing}
                   className="flex-1 bg-white text-gray-600 py-3 px-4 rounded-lg text-base border border-gray-300 hover:bg-gray-50 transition-colors disabled:opacity-50"
                 >
-                  {isProcessing ? "Processing..." : "Yes I'm sure"}
+                  {isProcessing ? "Processing..." : "Yes, just free access"}
                 </button>
               </div>
             </div>

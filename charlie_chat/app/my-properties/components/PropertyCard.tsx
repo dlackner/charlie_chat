@@ -114,7 +114,7 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
         if (!onSkipTrace || !canSkipTrace || !canSkipTrace(property)) return;
         
         try {
-            await onSkipTrace(property.property_id, property);
+            onSkipTrace(property.property_id, property);
         } catch (error: any) {
             const friendlyMessage = error?.message || 'Skip trace failed - please try again';
             if (onSkipTraceError) {
@@ -131,7 +131,11 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
             onCardClick(property);
         } else if (cardSide === 'front') {
             setCardSide('back');
+        } else if (cardSide === 'back') {
+            // If has skip trace data, go to contact page, otherwise go back to front
+            setCardSide(hasSkipTrace ? 'contact' : 'front');
         } else {
+            // From contact page, go back to front
             setCardSide('front');
         }
     };
@@ -379,53 +383,89 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
 
                     {/* Notes section */}
                     <div className="mb-3">
-                        <div className="flex items-center justify-between mb-1">
-                            <h4 className="text-xs font-medium text-gray-800">Notes</h4>
-                            <button
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    setNotesModalOpen(true);
-                                }}
-                                className="text-xs text-blue-600 hover:text-blue-800"
-                            >
-                                {property.notes ? 'Edit' : 'Add'}
-                            </button>
-                        </div>
-                        <div className="text-xs text-gray-600 min-h-[20px]">
+                        <h4 className="text-xs font-medium text-gray-800 mb-1">Notes</h4>
+                        <div 
+                            className="text-xs text-gray-600 min-h-[40px] p-2 border border-gray-200 rounded cursor-pointer hover:border-gray-300"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                setNotesModalOpen(true);
+                            }}
+                        >
                             {property.notes ? (
                                 <div className="break-words">{property.notes}</div>
                             ) : (
-                                <div className="italic text-gray-400">No notes yet</div>
+                                <div className="italic text-gray-400">Add your notes and reminders here</div>
                             )}
                         </div>
                     </div>
 
-                    {/* Action buttons on back side too */}
-                    <div className="flex items-center justify-between pt-2 border-t border-gray-100">
-                        <button
-                            onClick={() => setCardSide('front')}
-                            className="text-xs text-blue-600 hover:text-blue-800"
-                        >
-                            ← Back to front
-                        </button>
-                        
-                        {showSelection && (
-                            <button
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    onToggleSelection(property.property_id);
-                                }}
-                                className="flex items-center space-x-1"
-                                title="Select"
-                            >
-                                {isSelected ? (
-                                    <CheckSquare size={20} className="text-blue-600" />
-                                ) : (
-                                    <Square size={20} className="text-gray-400" />
+                </div>
+            )}
+
+            {/* CONTACT/SKIP TRACE SIDE */}
+            {cardSide === 'contact' && hasSkipTrace && (
+                <div className="p-3">
+                    <div className="mb-3">
+                        <h4 className="text-xs font-medium text-gray-800 mb-2">Skip Trace Results</h4>
+                        <div className="space-y-2 text-xs text-gray-600">
+                            <div className="flex">
+                                <span>Name:&nbsp;</span>
+                                <span className="font-medium">{property.skipTraceData?.name || 'N/A'}</span>
+                                {property.skipTraceData?.age && (
+                                    <>
+                                        <span>&nbsp;•&nbsp;Age:&nbsp;</span>
+                                        <span className="font-medium">{property.skipTraceData.age}</span>
+                                    </>
                                 )}
-                            </button>
-                        )}
+                            </div>
+                        </div>
                     </div>
+
+                    <div className="mb-3">
+                        <h4 className="text-xs font-medium text-gray-800 mb-2">Phones:</h4>
+                        <div className="space-y-1 text-xs text-gray-600">
+                            {property.skipTraceData?.phone1 && (
+                                <div className="flex items-center">
+                                    <span className="font-medium">{property.skipTraceData.phone1}</span>
+                                    <span className="ml-1">• landline</span>
+                                    {property.skipTraceData.phone1DNC && (
+                                        <span className="ml-1 text-red-500">(DNC)</span>
+                                    )}
+                                </div>
+                            )}
+                            {property.skipTraceData?.phone2 && (
+                                <div className="flex items-center">
+                                    <span className="font-medium">{property.skipTraceData.phone2}</span>
+                                    <span className="ml-1">• landline</span>
+                                    {property.skipTraceData.phone2DNC && (
+                                        <span className="ml-1 text-red-500">(DNC)</span>
+                                    )}
+                                </div>
+                            )}
+                            {!property.skipTraceData?.phone1 && !property.skipTraceData?.phone2 && (
+                                <div className="text-gray-400 italic">No phone numbers found</div>
+                            )}
+                        </div>
+                    </div>
+
+                    {property.skipTraceData?.email && (
+                        <div className="mb-3">
+                            <span className="text-xs font-medium text-gray-800">Email: </span>
+                            <span className="text-xs text-gray-600 font-medium">
+                                {property.skipTraceData.email}
+                            </span>
+                        </div>
+                    )}
+
+                    {property.skipTraceData?.currentAddress && (
+                        <div className="mb-3">
+                            <span className="text-xs font-medium text-gray-800">Current Address: </span>
+                            <span className="text-xs text-gray-600 font-medium">
+                                {property.skipTraceData.currentAddress}
+                            </span>
+                        </div>
+                    )}
+
                 </div>
             )}
 

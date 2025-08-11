@@ -21,6 +21,9 @@ export default function PricingPage() {
   const [isAnnual, setIsAnnual] = useState(true);
   const [userClass, setUserClass] = useState<string | null>(null);
   const [showTrialAlert, setShowTrialAlert] = useState(false);
+  const [showPremiumUserModal, setShowPremiumUserModal] = useState(false);
+  const [showDowngradeModal, setShowDowngradeModal] = useState(false);
+  const [showDowngradeInstructions, setShowDowngradeInstructions] = useState(false);
   
   // ✅ Add auth context and router
   const { user: currentUser, supabase, session } = useAuth();
@@ -118,11 +121,90 @@ export default function PricingPage() {
     }
   };
 
+  // Handle Charlie Chat conversion for existing trial users
+  const handleCharlieChatConversion = async () => {
+    // Check if user is logged in
+    if (!currentUser) {
+      router.push("/signup");
+      return;
+    }
+
+    // If user is trial or disabled, convert them to charlie_chat
+    if (userClass === 'trial' || userClass === 'disabled') {
+      try {
+        // Get fresh session with access token
+        const { data: { session: freshSession }, error } = await supabase.auth.getSession();
+        const sessionToUse = freshSession || session;
+
+        if (!sessionToUse || !sessionToUse.access_token) {
+          console.error("🚫 No valid session or access token");
+          alert("You must be logged in to complete this conversion.");
+          router.push("/signup");
+          return;
+        }
+
+        const res = await fetch('/api/convert-to-charlie-chat', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${sessionToUse.access_token}`,
+          },
+        });
+
+        const data = await res.json();
+
+        if (data.success) {
+          // Update local state
+          setUserClass('charlie_chat');
+          // Redirect to home page
+          router.push('/');
+        } else {
+          console.error('Conversion failed:', data.error);
+          alert('Conversion failed: ' + (data.error || 'Unknown error'));
+        }
+      } catch (error) {
+        console.error('Network error during conversion:', error);
+        alert('Something went wrong. Please try again.');
+      }
+    } else {
+      // For premium users (Plus, Pro, Cohort), show Charlie's modal
+      if (userClass === 'charlie_chat_plus' || userClass === 'charlie_chat_pro' || userClass === 'cohort') {
+        setShowPremiumUserModal(true);
+      } else {
+        // For non-logged-in users, redirect to signup
+        router.push("/signup");
+      }
+    }
+  };
+
+  // Handle downgrade request
+  const handleDowngradeRequest = () => {
+    setShowDowngradeModal(false);
+    setShowDowngradeInstructions(true);
+  };
+
   // Unified checkout handler - checks for affiliate users first
   const handleCheckout = async (productId: string, plan: "monthly" | "annual") => {
     // Check if user is logged in
     if (!currentUser) {
       router.push("/signup");
+      return;
+    }
+
+    // Check for Pro → Plus downgrade
+    if (userClass === 'charlie_chat_pro' && (productId === CHARLIE_CHAT_PLUS_MONTHLY || productId === CHARLIE_CHAT_PLUS_ANNUAL)) {
+      setShowDowngradeModal(true);
+      return;
+    }
+
+    // Check for Cohort downgrades (to any lower tier)
+    if (userClass === 'cohort' && (
+      productId === CHARLIE_CHAT_PLUS_MONTHLY || 
+      productId === CHARLIE_CHAT_PLUS_ANNUAL ||
+      productId === CHARLIE_CHAT_PRO_MONTHLY ||
+      productId === CHARLIE_CHAT_PRO_ANNUAL
+    )) {
+      setShowDowngradeModal(true);
       return;
     }
 
@@ -167,21 +249,18 @@ export default function PricingPage() {
         </button>
       </div>
 
-      <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {/* Charlie Chat */}
-        <div className="border border-gray-300 rounded-lg p-6 bg-white shadow hover:shadow-lg hover:-translate-y-1 transform transition duration-200 ease-in-out flex flex-col">
+      <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 pt-8">
+        {/* Charlie Chat FREE */}
+        <div className="border border-gray-300 rounded-lg p-6 bg-white shadow hover:shadow-lg hover:-translate-y-1 transform transition duration-200 ease-in-out flex flex-col relative">
+          {/* Free Badge */}
+          <div className="absolute -top-6 left-6 z-10">
+            <span className="bg-gradient-to-r from-green-500 to-green-600 text-white text-xs font-extrabold px-4 py-2 rounded-full shadow-lg border-2 border-white whitespace-nowrap">FREE</span>
+          </div>
           <h2 className="text-2xl font-semibold mb-2">Charlie Chat</h2>
-          {isAnnual ? (
-            <>
-              <p className="text-xl font-bold mb-1">$16</p>
-              <p className="text-sm text-gray-500 mb-4">(Per month, billed annually)</p>
-            </>
-          ) : (
-            <>
-              <p className="text-xl font-bold mb-1">$20</p>
-              <p className="text-sm text-gray-500 mb-4">(Billed monthly)</p>
-            </>
-          )}
+          <div className="mb-4">
+            <p className="text-xl font-bold mb-1">$0</p>
+            <p className="text-sm text-gray-500">Forever free</p>
+          </div>
           <p className="text-sm text-gray-700 mb-4">
             It's me, Charles Dobens—my multifamily lessons and stories, my multifamily legal and operational know-how—delivered to you through my Charlie Chat AI assistant.
           </p>
@@ -190,27 +269,31 @@ export default function PricingPage() {
             <li>✔️ Full Access to my entire knowledge base</li>
             <li>✔️ Deal tactics</li>
             <li>✔️ Closing strategies</li>
+            <li>✔️ 250 free property matches to get started</li>
           </ul>
-          <p className="text-sm italic text-gray-600 mb-3">Try for free! No credit card required. Includes 250 free property matches.</p>
           <button
-            onClick={() => handleCheckout(isAnnual ? CHARLIE_CHAT_ANNUAL : CHARLIE_CHAT_MONTHLY, isAnnual ? "annual" : "monthly")}
-            className="mt-auto w-full bg-black text-white py-2 rounded font-semibold transition duration-200 transform hover:scale-105 hover:bg-orange-600 hover:shadow-xl"
+            onClick={handleCharlieChatConversion}
+            className="mt-auto w-full bg-gray-800 text-white py-2 rounded font-semibold transition duration-200 transform hover:scale-105 hover:bg-gray-900 hover:shadow-xl"
           >
-            Get Access
+            {currentUser && (userClass === 'trial' || userClass === 'disabled') ? 'Get Access' : 'Get Started Free'}
           </button>
         </div>
 
         {/* Charlie Chat Plus */}
-        <div className="border border-gray-300 rounded-lg p-6 bg-white shadow hover:shadow-lg hover:-translate-y-1 transform transition duration-200 ease-in-out flex flex-col">
+        <div className="border border-gray-300 rounded-lg p-6 bg-white shadow hover:shadow-lg hover:-translate-y-1 transform transition duration-200 ease-in-out flex flex-col relative">
+          {/* Most Popular Badge */}
+          <div className="absolute -top-6 left-6 z-10">
+            <span className="bg-gradient-to-r from-blue-500 to-blue-600 text-white text-xs font-extrabold px-4 py-2 rounded-full shadow-lg border-2 border-white whitespace-nowrap">MOST POPULAR</span>
+          </div>
           <h2 className="text-2xl font-semibold mb-2">Charlie Chat Plus</h2>
           {isAnnual ? (
             <>
-              <p className="text-xl font-bold mb-1">$85</p>
+              <p className="text-xl font-bold mb-1">$75</p>
               <p className="text-sm text-gray-500 mb-4">(Per month, billed annually)</p>
             </>
           ) : (
             <>
-              <p className="text-xl font-bold mb-1">$100</p>
+              <p className="text-xl font-bold mb-1">$90</p>
               <p className="text-sm text-gray-500 mb-4">(Billed monthly)</p>
             </>
           )}
@@ -223,8 +306,8 @@ export default function PricingPage() {
             </li>
             <li>✔️ AI analysis of broker documents and offer memorandums</li>
             <li>✔️ Best practice marketing tools & LOI's</li>
-            <li>✔️ Includes 250 national property matches every month</li>
             <li>✔️ Advanced property analytics and mapping</li>
+            <li>✔️ UNLIMITED national property matches every month</li>
           </ul>
           <button
             onClick={() => handleCheckout(isAnnual ? CHARLIE_CHAT_PLUS_ANNUAL : CHARLIE_CHAT_PLUS_MONTHLY, isAnnual ? "annual" : "monthly")}
@@ -235,8 +318,12 @@ export default function PricingPage() {
         </div>
 
         {/* Charlie Chat Pro */}
-        <div className="border border-gray-300 rounded-lg p-6 bg-white shadow hover:shadow-lg hover:-translate-y-1 transform transition duration-200 ease-in-out flex flex-col">
-          <h2 className="text-2xl font-semibold mb-2">Charlie Chat Pro</h2>
+        <div className="border border-gray-300 rounded-lg p-6 bg-white shadow hover:shadow-lg hover:-translate-y-1 transform transition duration-200 ease-in-out flex flex-col relative">
+          {/* Best Value Badge */}
+          <div className="absolute -top-6 left-6 z-10">
+            <span className="bg-gradient-to-r from-orange-500 to-orange-600 text-white text-xs font-extrabold px-4 py-2 rounded-full shadow-lg border-2 border-white whitespace-nowrap">BEST VALUE</span>
+          </div>
+          <h2 className="text-2xl font-semibold mb-2">Charlie Chat Professional</h2>
           {isAnnual ? (
             <>
               <p className="text-xl font-bold mb-1">$250</p>
@@ -253,13 +340,12 @@ export default function PricingPage() {
           </p>
           <ul className="text-sm space-y-1 text-gray-800 mb-4 flex flex-col">
             <li className="flex items-baseline">
-              <span className="text-lg font-semibold text-orange-500">Everything in Charlie Chat Plus, Plus</span>
+              <span className="text-lg font-semibold text-orange-500">Everything in Charlie Chat Plus, PLUS:</span>
             </li>
             <li>✔️ Access to my Master Class Training Program</li>
-            <li>✔️ AI analysis of broker documents and offer memorandums</li>
-            <li>✔️ Best practice marketing tools & LOI's</li>
-            <li>✔️ Weekly group coaching call with Charles</li>
-            <li>✔️ Includes 250 national property matches every month</li>
+            <li>✔️ Weekly group coaching call with Charles Dobens</li>
+            <li>✔️ Community Access</li>
+            <li>✔️ UNLIMITED national property matches every month</li>
           </ul>
           <button
             onClick={() => handleCheckout(isAnnual ? CHARLIE_CHAT_PRO_ANNUAL : CHARLIE_CHAT_PRO_MONTHLY, isAnnual ? "annual" : "monthly")}
@@ -270,20 +356,24 @@ export default function PricingPage() {
         </div>
 
         {/* Cohort Program */}
-        <div className="border border-gray-300 rounded-lg p-6 bg-white shadow hover:shadow-lg hover:-translate-y-1 transform transition duration-200 ease-in-out flex flex-col">
+        <div className="border border-gray-300 rounded-lg p-6 bg-white shadow hover:shadow-lg hover:-translate-y-1 transform transition duration-200 ease-in-out flex flex-col relative">
+          {/* Serious Investors Badge */}
+          <div className="absolute -top-6 left-6 z-10">
+            <span className="text-white text-xs font-extrabold px-4 py-2 rounded-full shadow-lg border-2 border-white whitespace-nowrap" style={{ backgroundColor: '#1C599F' }}>SERIOUS INVESTORS</span>
+          </div>
           <h2 className="text-2xl font-semibold mb-4">MultifamilyOS Cohort Program</h2>
           <p className="text-sm text-gray-700 mb-4">
             Connect with me and a community of like-minded investors and experienced professionals who provide the guidance and support needed to achieve your goals.
           </p>
           <ul className="text-sm space-y-1 text-gray-800 mb-4 flex flex-col">
             <li className="flex items-baseline">
-              <span className="text-lg font-semibold text-orange-500">Everything in Charlie Chat Pro, Plus</span>
+              <span className="text-lg font-semibold text-orange-500">Everything in Charlie Chat Pro, PLUS:</span>
             </li>
             <li>✔️ Weekly expert sessions led by me</li>
             <li>✔️ A supportive community of peers & investors</li>
             <li>✔️ Step-by-step roadmap for your multifamily investing journey</li>
             <li>✔️ One-on-one access to attorney Charles Dobens</li>
-            <li>✔️ Includes 250 national property matches every month for your first 6 months</li>
+            <li>✔️ UNLIMITED national property matches every month for your first 6 months</li>
           </ul>
           <button
             onClick={() => window.location.href = "https://multifamilyos.com/multifamilyos-cohort-program/"}
@@ -326,7 +416,7 @@ export default function PricingPage() {
                 <div className="text-sm font-semibold text-gray-900">Charlie Chat Plus</div>
               </div>
               <div className="px-6 py-4 text-center border-l border-gray-200">
-                <div className="text-sm font-semibold text-gray-900">Charlie Chat Pro</div>
+                <div className="text-sm font-semibold text-gray-900">Charlie Chat Professional</div>
               </div>
             </div>
           </div>
@@ -364,10 +454,10 @@ export default function PricingPage() {
                 <span className="text-xs text-gray-600 bg-gray-100 px-2 py-1 rounded">à la carte</span>
               </div>
               <div className="px-6 py-4 text-center border-l border-gray-100">
-                <span className="text-xs text-gray-600 bg-gray-100 px-2 py-1 rounded">250/month</span>
+                <span className="text-xs text-gray-600 bg-gray-100 px-2 py-1 rounded">UNLIMITED</span>
               </div>
               <div className="px-6 py-4 text-center border-l border-gray-100">
-                <span className="text-xs text-gray-600 bg-gray-100 px-2 py-1 rounded">250/month</span>
+                <span className="text-xs text-gray-600 bg-gray-100 px-2 py-1 rounded">UNLIMITED</span>
               </div>
             </div>
 
@@ -767,6 +857,155 @@ export default function PricingPage() {
               </div>
             </div>
           </DialogHeader>
+        </DialogContent>
+      </Dialog>
+
+      {/* Premium User Charlie Modal */}
+      <Dialog open={showPremiumUserModal} onOpenChange={setShowPremiumUserModal}>
+        <DialogContent className="sm:max-w-md border-2 border-orange-500">
+          <DialogHeader>
+            <div className="flex items-start gap-4">
+              <Avatar className="size-12 flex-shrink-0">
+                <AvatarImage src="/charlie.png" alt="Charlie" />
+                <AvatarFallback>CC</AvatarFallback>
+              </Avatar>
+              <div className="flex-1">
+                <DialogTitle className="text-lg font-semibold text-gray-900">
+                  Hi there!
+                </DialogTitle>
+                <DialogDescription className="text-base mt-2 text-gray-700">
+                  {userClass === 'cohort' ? (
+                    <>You're already in my exclusive Cohort program! That means you get everything in Charlie Chat <em>plus</em> all the premium features, unlimited property searches, my personal coaching calls, and direct access to me. <br/><br/>You're all set with the best we've got – no need to go backwards!</>
+                  ) : userClass === 'charlie_chat_pro' ? (
+                    <>You're already a Charlie Chat Professional member! That gives you everything in basic Charlie Chat <em>plus</em> unlimited property searches, advanced analytics, my master class training, and weekly group coaching. <br/><br/>You've got the premium experience already – no need to downgrade!</>
+                  ) : (
+                    <>You're already a Charlie Chat Plus member! That gets you everything in basic Charlie Chat <em>plus</em> unlimited property searches, advanced analytics, and all the premium tools. <br/><br/>You've got more than the basic plan already – you're all set!</>
+                  )}
+                </DialogDescription>
+              </div>
+            </div>
+          </DialogHeader>
+        </DialogContent>
+      </Dialog>
+
+      {/* Pro to Plus Downgrade Modal */}
+      <Dialog open={showDowngradeModal} onOpenChange={setShowDowngradeModal}>
+        <DialogContent className="sm:max-w-2xl border-2 border-orange-500">
+          <DialogHeader>
+            <div className="flex items-start gap-4">
+              <Avatar className="size-12 flex-shrink-0">
+                <AvatarImage src="/charlie.png" alt="Charlie" />
+                <AvatarFallback>CC</AvatarFallback>
+              </Avatar>
+              <div className="flex-1">
+                <DialogTitle className="text-lg font-semibold text-gray-900">
+                  Hold on there!
+                </DialogTitle>
+                <div className="text-base mt-2 text-gray-700">
+                  {userClass === 'cohort' ? (
+                    <>
+                      <p className="mb-4">You're thinking about downgrading from the Cohort program? Look, I get it - sometimes budgets change. But here's what you'd be giving up if you make that move:</p>
+                      
+                      <div className="mb-4">
+                        <p className="font-semibold mb-2">You'd lose access to:</p>
+                        <ul className="list-disc ml-4 space-y-1">
+                          <li>Weekly expert sessions led by me</li>
+                          <li>One-on-one access to attorney Charles Dobens</li>
+                          <li>Supportive community of peers & investors</li>
+                          <li>Step-by-step roadmap for your multifamily investing journey</li>
+                        </ul>
+                      </div>
+                      
+                      <div className="mb-4">
+                        <p className="font-semibold mb-2">You'd keep:</p>
+                        <ul className="list-disc ml-4 space-y-1">
+                          <li>All the features of whichever plan you choose</li>
+                          <li>Unlimited property searches and analytics</li>
+                          <li>Everything in basic Charlie Chat</li>
+                        </ul>
+                      </div>
+                      
+                      <p>That's exclusive access and personal mentorship you'd be walking away from. Are you sure you want to make this change?</p>
+                    </>
+                  ) : (
+                    <>
+                      <p className="mb-4">You're thinking about downgrading from Professional to Plus? Look, I get it - sometimes budgets change. But here's what you'd be giving up if you make that move:</p>
+                      
+                      <div className="mb-4">
+                        <p className="font-semibold mb-2">You'd lose access to:</p>
+                        <ul className="list-disc ml-4 space-y-1">
+                          <li>My Master Class Training Program (hundreds of hours of content)</li>
+                          <li>Weekly group coaching calls with me personally</li>
+                          <li>Direct access to the community</li>
+                        </ul>
+                      </div>
+                      
+                      <div className="mb-4">
+                        <p className="font-semibold mb-2">You'd keep:</p>
+                        <ul className="list-disc ml-4 space-y-1">
+                          <li>All the Plus features (unlimited property searches, analytics, marketing tools)</li>
+                          <li>Everything in basic Charlie Chat</li>
+                        </ul>
+                      </div>
+                      
+                      <p>That's a lot of valuable training and personal mentorship you'd be walking away from. Are you sure you want to make this change?</p>
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+          </DialogHeader>
+          <div className="flex gap-3 mt-4">
+            <button
+              onClick={() => setShowDowngradeModal(false)}
+              className="flex-1 px-4 py-2 bg-orange-600 text-white rounded-lg font-semibold hover:bg-orange-700 transition-colors"
+            >
+              {userClass === 'cohort' ? 'Stay in Cohort' : 'Keep Professional'}
+            </button>
+            <button
+              onClick={handleDowngradeRequest}
+              className="flex-1 px-4 py-2 bg-gray-200 text-gray-800 rounded-lg font-semibold hover:bg-gray-300 transition-colors"
+            >
+              Yes, Request Downgrade
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Downgrade Instructions Modal */}
+      <Dialog open={showDowngradeInstructions} onOpenChange={setShowDowngradeInstructions}>
+        <DialogContent className="sm:max-w-lg border-2 border-orange-500">
+          <DialogHeader>
+            <div className="flex items-start gap-4">
+              <Avatar className="size-12 flex-shrink-0">
+                <AvatarImage src="/charlie.png" alt="Charlie" />
+                <AvatarFallback>CC</AvatarFallback>
+              </Avatar>
+              <div className="flex-1">
+                <DialogTitle className="text-lg font-semibold text-gray-900">
+                  Got it!
+                </DialogTitle>
+                <div className="text-base mt-2 text-gray-700">
+                  <p className="mb-4">No problem - I understand you'd like to make that change. Here's what to do next:</p>
+                  
+                  <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 mb-4">
+                    <p className="font-semibold text-orange-800 mb-2">📧 Contact Our Team:</p>
+                    <p className="text-gray-700">Open up the chat help and send us a message requesting your subscription change. Our team will contact you right away to process the change.</p>
+                  </div>
+                  
+                  <p className="text-sm text-gray-600">We'll take care of everything else from there!</p>
+                </div>
+              </div>
+            </div>
+          </DialogHeader>
+          <div className="flex justify-center mt-4">
+            <button
+              onClick={() => setShowDowngradeInstructions(false)}
+              className="px-6 py-2 bg-orange-600 text-white rounded-lg font-semibold hover:bg-orange-700 transition-colors"
+            >
+              Got It
+            </button>
+          </div>
         </DialogContent>
       </Dialog>
 
