@@ -320,6 +320,7 @@ const PropertySummaryButton = ({
     // Must match the same logic as My Properties access control
     const hasAccess = userClass && (
         userClass === "charlie_chat_pro" ||
+        userClass === "charlie_chat_plus" ||
         userClass === "cohort" ||
         userClass === "trial" ||
         userClass === "pro"
@@ -418,7 +419,16 @@ const PropertySummaryButton = ({
             <span>Charlie's Analysis</span>
         </button>
     ) : (
-        <div className="bg-gray-100 border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+        <div className="bg-gray-100 border-2 border-dashed border-gray-300 rounded-lg p-6 text-center relative">
+            {/* Charlie's Avatar in upper left */}
+            <div className="absolute top-3 left-3">
+                <img
+                    src="/charlie.png"
+                    alt="Charlie"
+                    className="w-12 h-12 rounded-full shadow-md border-[0.5px] border-gray-300"
+                />
+            </div>
+            
             <div className="flex items-center justify-center mb-3">
                 <svg className="w-8 h-8 text-gray-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
@@ -427,9 +437,6 @@ const PropertySummaryButton = ({
             </div>
             <p className="text-sm text-gray-600 mb-4">
                 Get AI-powered investment analysis plus a lender-ready 10-year cash flow report
-            </p>
-            <p className="text-xs text-gray-500 mb-4">
-                Available for Pro and Cohort users
             </p>
             <button
                 onClick={() => window.location.href = '/pricing'}

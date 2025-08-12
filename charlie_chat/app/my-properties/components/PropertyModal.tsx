@@ -139,211 +139,109 @@ export const PropertyModal: React.FC<PropertyModalProps> = ({
           </button>
         </div>
 
-        {/* Modal Content */}
+        {/* Modal Content - Simple Map-Style Layout */}
         <div className="p-4 overflow-y-auto">
-          <div
-            className={`relative bg-white rounded-lg border shadow-sm cursor-pointer ${
-              selectedProperties.has(property.property_id)
-                ? 'border-blue-500 bg-blue-50'
-                : hasSkipTrace
-                  ? 'border-3 border-blue-400'
-                  : 'border-gray-200 hover:border-gray-300'
-            }`}
-            style={{ minHeight: '160px' }}
-            onClick={handleCardFlip}
-          >
-            {/* FRONT SIDE */}
-            {!isFlipped && (
-              <div className="p-3">
-                <div className="flex gap-3">
-                  <div className="flex-1">
-                    <div className="flex items-start justify-between mb-2">
-                      <div className="flex-1 min-w-0">
-                        <h3 className="text-sm font-medium text-gray-900 truncate">
-                          {property.address_full}, {property.address_city}, {property.address_state}
-                        </h3>
-                      </div>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onRemoveFromFavorites(property.property_id);
-                          onClose();
-                        }}
-                        className="ml-2 p-1 flex-shrink-0"
-                        title="Remove from favorites"
-                      >
-                        <Heart size={14} className="text-red-500 fill-current" />
-                      </button>
-                    </div>
+          <div className="bg-white">
+            {/* Property Address with Google Maps Link */}
+            <div className="flex items-start justify-between mb-3">
+              <div className="flex-1">
+                <div className="text-sm font-medium text-gray-900 mb-1">
+                  {property.address_full}
+                </div>
+                <div className="text-xs text-gray-600 mb-2">
+                  {property.address_city}, {property.address_state}
+                </div>
+                <a 
+                  href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(property.address_full + ', ' + property.address_city + ', ' + property.address_state)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center text-xs text-blue-600 hover:text-blue-800 no-underline"
+                  title="View Property on Google Maps"
+                >
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" className="mr-1">
+                    <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
+                  </svg>
+                  View Property
+                </a>
+              </div>
+              
+              {/* Remove from favorites */}
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onRemoveFromFavorites(property.property_id);
+                  onClose();
+                }}
+                className="text-red-500 hover:text-red-700 text-lg leading-none"
+                title="Remove from favorites"
+              >
+                ✕
+              </button>
+            </div>
+            
+            {/* Property Details */}
+            <div className="space-y-1 text-xs text-gray-600 mb-3">
+              <div>Units: <span className="font-medium">{property.units_count}</span></div>
+              <div>Built: <span className="font-medium">{property.year_built} ({calculateAge(property.year_built)} years old)</span></div>
+              <div>Assessed: <span className="font-medium text-green-600">{formatCurrency(property.assessed_value)}</span></div>
+              <div>Est. Equity: <span className="font-medium text-blue-600">{formatCurrency(property.estimated_equity)}</span></div>
+            </div>
 
-                    <div className="space-y-1 text-xs text-gray-600 mb-3">
-                      <div className="flex">
-                        <span>Units:&nbsp;</span>
-                        <span className="font-medium">{property.units_count}</span>
-                      </div>
-                      <div className="flex">
-                        <span>Built:&nbsp;</span>
-                        <span className="font-medium">{property.year_built} ({calculateAge(property.year_built)} years old)</span>
-                      </div>
-                      <div className="flex">
-                        <span>Assessed:&nbsp;</span>
-                        <span className="font-medium text-green-600">{formatCurrency(property.assessed_value)}</span>
-                      </div>
-                      <div className="flex">
-                        <span>Est. Equity:&nbsp;</span>
-                        <span className="font-medium text-blue-600">{formatCurrency(property.estimated_equity)}</span>
-                      </div>
-                    </div>
-
-                    {investmentFlags.length > 0 && (
-                      <div className="mb-2">
-                        <div className="flex flex-wrap gap-1">
-                          {investmentFlags.map(flag => (
-                            <span
-                              key={flag}
-                              className="inline-block px-1 py-0.5 text-xs rounded bg-orange-100 text-orange-800"
-                            >
-                              {flag}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {!hideActions && (
-                      <div className="flex items-center justify-between pt-2 border-t border-gray-100">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleActionChange(property.property_id, 'select');
-                          }}
-                          className="flex items-center space-x-1"
-                          title="Select"
-                        >
-                          {selectedAction[property.property_id] === 'select' ?
-                            <CheckSquare size={14} className="text-blue-600" /> :
-                            <Square size={14} className="text-gray-400" />
-                          }
-                          <span className="text-xs text-gray-600">Select</span>
-                        </button>
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="w-32 flex-shrink-0">
-                    <div className="bg-gray-50 rounded border p-2 h-[120px]">
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-xs font-medium text-gray-700">Notes</span>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setNotesModalOpen(property.property_id);
-                          }}
-                          className="text-gray-400 hover:text-gray-600"
-                          title="Open notes editor"
-                        >
-                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <path d="M15 3h6v6M14 10l6.1-6.1M9 21H3v-6M10 14l-6.1 6.1" />
-                          </svg>
-                        </button>
-                      </div>
-                      <div
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setNotesModalOpen(property.property_id);
-                        }}
-                        className="text-xs text-gray-600 cursor-pointer h-20 overflow-hidden"
-                      >
-                        {getCurrentNotes(property) ? (
-                          <span>{truncateNotes(getCurrentNotes(property))}</span>
-                        ) : (
-                          <span className="text-gray-400 italic">Click to add notes...</span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
+            {/* Investment Flags */}
+            {investmentFlags.length > 0 && (
+              <div className="mb-3">
+                <div className="flex flex-wrap gap-1">
+                  {investmentFlags.map(flag => (
+                    <span
+                      key={flag}
+                      className="inline-block px-2 py-1 text-xs bg-orange-100 text-orange-800 rounded"
+                    >
+                      {flag}
+                    </span>
+                  ))}
                 </div>
               </div>
             )}
 
-            {/* BACK SIDE */}
-            {isFlipped && (
-              <div className="p-3">
-                <div className="mb-3">
-                  <h4 className="text-xs font-medium text-gray-800 mb-1">Current Ownership</h4>
-                  <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs text-gray-600">
-                    <div className="flex">
-                      <span>Last Sale:&nbsp;</span>
-                      <span className="font-medium">{formatDate(property.last_sale_date)}</span>
-                    </div>
-                    <div className="flex">
-                      <span>Years Owned:&nbsp;</span>
-                      <span className="font-medium">{property.years_owned}</span>
-                    </div>
-                    <div className="flex">
-                      <span>Out-of-State Owner:&nbsp;</span>
-                      <span className="font-medium">{property.out_of_state_absentee_owner ? 'Yes' : 'No'}</span>
-                    </div>
-                    <div className="flex">
-                      <span>Last Sale Amount:&nbsp;</span>
-                      <span className="font-medium">{formatCurrency(property.assessed_value)}</span>
-                    </div>
-                  </div>
-                </div>
+            {/* Skip Trace Indicator */}
+            <div className="pt-3 border-t border-gray-100">
+              {hasSkipTrace ? (
+                <span className="text-xs text-blue-600 font-medium">Skip Traced</span>
+              ) : null}
+            </div>
 
-                <div className="mb-3">
-                  <h4 className="text-xs font-medium text-gray-800 mb-1">Property Flags</h4>
-                  <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs text-gray-600">
-                    <div className="flex">
-                      <span>Assumable:&nbsp;</span>
-                      <span className="font-medium">No</span>
-                    </div>
-                    <div className="flex">
-                      <span>REO:&nbsp;</span>
-                      <span className="font-medium">{property.reo ? 'Yes' : 'No'}</span>
-                    </div>
-                    <div className="flex">
-                      <span>Auction:&nbsp;</span>
-                      <span className="font-medium">{property.auction ? 'Yes' : 'No'}</span>
-                    </div>
-                    <div className="flex">
-                      <span>Tax Lien:&nbsp;</span>
-                      <span className="font-medium">{property.tax_lien ? 'Yes' : 'No'}</span>
-                    </div>
-                    <div className="flex">
-                      <span>Pre-Foreclosure:&nbsp;</span>
-                      <span className="font-medium">{property.pre_foreclosure ? 'Yes' : 'No'}</span>
-                    </div>
-                    {!hideActions && (
-                      <div className="flex items-center">
-                        <span>Skip Trace:&nbsp;</span>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleActionChange(property.property_id, 'skiptrace');
-                          }}
-                          className="ml-1"
-                          title="Skip Trace"
-                        >
-                          {selectedAction[property.property_id] === 'skiptrace' ?
-                            <div className="w-3 h-3 rounded-full bg-blue-600 border-2 border-blue-600"></div> :
-                            <div className="w-3 h-3 rounded-full border-2 border-gray-400"></div>
-                          }
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
+            {/* Action buttons */}
+            {!hideActions && (
+              <div className="flex items-center justify-between mt-4 pt-3 border-t border-gray-200">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onToggleSelection(property.property_id);
+                  }}
+                  className="flex items-center space-x-1 text-xs text-gray-600 hover:text-blue-600"
+                  title="Select for analysis"
+                >
+                  {selectedProperties.has(property.property_id) ? (
+                    <CheckSquare size={16} className="text-blue-600" />
+                  ) : (
+                    <Square size={16} className="text-gray-400" />
+                  )}
+                  <span>{selectedProperties.has(property.property_id) ? 'Selected' : 'Select'}</span>
+                </button>
+                
+                {onSkipTrace && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onSkipTrace(property.property_id, property);
+                    }}
+                    className="text-xs text-blue-600 hover:text-blue-800 font-medium"
+                  >
+                    {hasSkipTrace ? 'Re-run Skip Trace' : 'Skip Trace'}
+                  </button>
+                )}
               </div>
             )}
-          </div>
-        </div>
-
-        {/* Property ID Footer */}
-        <div className="px-4 py-2 bg-gray-50 border-t border-gray-200">
-          <div className="text-xs text-gray-500 text-center">
-            Property ID: {property.property_id}
           </div>
         </div>
       </div>

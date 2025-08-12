@@ -27,6 +27,7 @@ const DynamicMapComponent: React.FC<DynamicMapComponentProps> = ({
     const mapInstanceRef = useRef<any>(null);
     const markersRef = useRef<any[]>([]);
     const rentMarkersRef = useRef<any[]>([]);
+    const hasInitializedBounds = useRef(false);
     const [isMapReady, setIsMapReady] = useState(false);
     const [mapId] = useState(() => `map-${Date.now()}-${Math.random().toString(36)}`);
 
@@ -109,12 +110,10 @@ const DynamicMapComponent: React.FC<DynamicMapComponentProps> = ({
 
                 // Add rent overlay if enabled
                 if (showRentOverlay && rentData.length > 0) {
-                    console.log('Adding rent overlay with', rentData.length, 'metro areas');
 
                     rentData.forEach(metro => {
                         if (!metro.latitude || !metro.longitude || !metro.averageRent) return;
 
-                        console.log('Adding circle for:', metro.RegionName, 'at', metro.latitude, metro.longitude);
 
                         // Convert miles to meters (1 mile = 1609.34 meters)
                         const msaRadiusMiles = metro.radius || 25;
@@ -195,8 +194,6 @@ const DynamicMapComponent: React.FC<DynamicMapComponentProps> = ({
             try {
                 const L = (await import('leaflet')).default;
 
-                console.log('Updating markers, properties:', properties.length);
-                console.log('Properties with latitude/longitude:', properties.filter(p => p.latitude && p.longitude).length);
 
                 // Clear existing markers
                 markersRef.current.forEach(marker => {
@@ -207,7 +204,6 @@ const DynamicMapComponent: React.FC<DynamicMapComponentProps> = ({
                 // Add new markers
                 properties.forEach((property, index) => {
                     if (!property.latitude || !property.longitude) {
-                        console.log(`Skipping property ${property.property_id} - missing coordinates`);
                         return;
                     }
 
@@ -230,13 +226,14 @@ const DynamicMapComponent: React.FC<DynamicMapComponentProps> = ({
                     markersRef.current.push(marker);
                 });
 
-                // Fit bounds after adding all markers
-                if (markersRef.current.length > 0) {
+                // Fit bounds after adding all markers - only on initial load
+                if (markersRef.current.length > 0 && !hasInitializedBounds.current) {
                     const group = L.featureGroup(markersRef.current);
                     mapInstanceRef.current.fitBounds(group.getBounds(), {
                         padding: [50, 50],
                         maxZoom: 15
                     });
+                    hasInitializedBounds.current = true;
                 }
             } catch (error) {
                 console.error('Error updating markers:', error);
@@ -287,11 +284,11 @@ const DynamicMapComponent: React.FC<DynamicMapComponentProps> = ({
                            <a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(property.address_full + ', ' + property.address_city + ', ' + property.address_state)}"
                                target="_blank" 
                                style="display: inline-flex; align-items: center; font-size: 11px; color: #2563EB; text-decoration: none; margin-top: 2px;"
-                               title="Open in Google Maps">
+                               title="View Property">
                                 <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" style="margin-right: 3px;">
                                     <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
                                 </svg>
-                                Google Maps
+                                View Property
                             </a>
                         </div>
                     </div>

@@ -1,6 +1,6 @@
 // src/lib/pricing.ts
 
-type UserClass = 'charlie_chat' | 'charlie_chat_pro' | 'cohort';
+type UserClass = 'charlie_chat' | 'charlie_chat_plus' | 'charlie_chat_pro' | 'cohort';
 
 interface PropertyPackage { amount: number; price: number; }
 
@@ -16,6 +16,9 @@ export const PACKAGES: Record<UserClass, PropertyPackage[]> = {
     { amount:  25, price: publicNum('NEXT_PUBLIC_APP_CHARLIE_CHAT_25_PACK_PRICE', 29) },
     { amount:  50, price: publicNum('NEXT_PUBLIC_APP_CHARLIE_CHAT_50_PACK_PRICE', 39) },
     { amount: 100, price: publicNum('NEXT_PUBLIC_APP_CHARLIE_CHAT_100_PACK_PRICE',49) },
+  ],
+  charlie_chat_plus: [
+    { amount: 100, price: publicNum('NEXT_PUBLIC_APP_CHARLIE_CHAT_PRO_100_PACK_PRICE',29) },
   ],
   charlie_chat_pro: [
     { amount: 100, price: publicNum('NEXT_PUBLIC_APP_CHARLIE_CHAT_PRO_100_PACK_PRICE',29) },

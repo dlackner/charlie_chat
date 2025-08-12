@@ -280,6 +280,5 @@ export const exportPropertiesToCSV = (
     link.click();
     document.body.removeChild(link);
 
-    console.log(`Downloaded ${selectedProps.length} properties with ${csvHeaders.length} fields to ${filename}`);
   }
 };

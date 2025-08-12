@@ -29,6 +29,7 @@ type Props = {
     onCreditsUpdate?: (newBalance: number) => void;
     userClass: 'trial' | 'charlie_chat' | 'charlie_chat_pro' | 'cohort';
     triggerBuyCreditsModal: () => void;
+    triggerProModal: () => void;
     clearSelectedListings?: () => void;
     userCredits?: number | null;
 };
@@ -44,6 +45,7 @@ export const Sidebar = ({
     onCreditsUpdate,
     userClass,
     triggerBuyCreditsModal,
+    triggerProModal,
     clearSelectedListings,
     userCredits
 }: Props) => {
@@ -394,8 +396,6 @@ export const Sidebar = ({
 
         // Check if this is a compound query from SmartQueries
         if (filters.or || filters.and) {
-            console.log("🔧 Handling compound query from SmartQueries:", filters);
-
             // For compound queries, use the structure as-is and add location data
             const searchParameters = {
                 ...filters,
@@ -405,13 +405,10 @@ export const Sidebar = ({
                 state: stateCode || undefined,
             };
 
-            console.log("📤 Sending compound query:", searchParameters);
-
             setIsSearching(true);
             setCreditsError(null);
 
             try {
-                console.log("🚀 ACTUAL API REQUEST BODY:", JSON.stringify(searchParameters, null, 2));
                 const response = await fetch("/api/realestateapi", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
@@ -427,14 +424,6 @@ export const Sidebar = ({
                 }
 
                 const data = await response.json();
-
-                console.log("🔍 Normal Search API Response Structure:", {
-                    resultCount: data.resultCount,
-                    resultIndex: data.resultIndex,
-                    recordCount: data.recordCount,
-                    dataLength: data.data?.length,
-                    hasMoreCalculation: (data.resultIndex || 0) + (data.recordCount || 0) < (data.resultCount || 0)
-                });
 
                 if (!data.data || data.data.length === 0) {
                     setCreditsError("No properties matched your criteria.");
@@ -635,13 +624,6 @@ export const Sidebar = ({
             }
 
             const data = await response.json();
-            console.log("🔍 External API Response Structure:", {
-                resultCount: data.resultCount,
-                resultIndex: data.resultIndex,
-                recordCount: data.recordCount,
-                dataLength: data.data?.length,
-                responseKeys: Object.keys(data)
-            });
 
             if (!data.data || data.data.length === 0) {
                 setCreditsError("No properties matched your criteria.");
@@ -741,13 +723,6 @@ export const Sidebar = ({
             }
 
             const data = await response.json();
-            console.log("🔍 External API Response Structure:", {
-                resultCount: data.resultCount,
-                resultIndex: data.resultIndex,
-                recordCount: data.recordCount,
-                dataLength: data.data?.length,
-                responseKeys: Object.keys(data)
-            });
 
             // Charge credits for this batch
             const { data: newCreditBalance, error: rpcError } = await supabase.rpc(
@@ -954,6 +929,13 @@ export const Sidebar = ({
                             <div className="relative">
                                 <button
                                     onClick={async () => {
+                                        // Check if user has access to My Properties (favoriting)
+                                        if (userClass === "charlie_chat") {
+                                            // Show Pro upgrade modal for basic charlie_chat users
+                                            triggerProModal();
+                                            return;
+                                        }
+                                        
                                         // Check if all current listings are already favorited
                                         const allCurrentlyFavorited = currentSearchListings.every(listing => 
                                             savedPropertyIds.has(listing.id)
@@ -1025,6 +1007,13 @@ export const Sidebar = ({
                                                         <button
                                                             onClick={async (e) => {
                                                                 e.stopPropagation();
+                                                                
+                                                                // Check if user has access to My Properties (favoriting)
+                                                                if (userClass === "charlie_chat") {
+                                                                    // Show Pro upgrade modal for basic charlie_chat users
+                                                                    triggerProModal();
+                                                                    return;
+                                                                }
                                                                 
                                                                 const isCurrentlyFavorited = savedPropertyIds.has(listing.id);
                                                                 

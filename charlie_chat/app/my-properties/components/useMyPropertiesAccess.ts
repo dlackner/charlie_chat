@@ -11,19 +11,13 @@ interface UseMyPropertiesAccessReturn {
     checkTrialUserCredits: () => Promise<boolean>;
     isInGracePeriod: boolean;
     daysLeftInGracePeriod: number | null;
-    trialExpired: boolean;
-    trialEndDate: string | null;
-    isInTrialGracePeriod: boolean;
-    daysLeftInTrialGracePeriod: number | null;
 }
 
 export const useMyPropertiesAccess = (): UseMyPropertiesAccessReturn => {
-    console.log('🚀 useMyPropertiesAccess hook started');
     const { user: currentUser, supabase } = useAuth();
     const [userClass, setUserClass] = useState<string | null>(null);
     const [userCredits, setUserCredits] = useState<number | null>(null);
     const [creditsDepletedAt, setCreditsDepletedAt] = useState<string | null>(null);
-    const [trialEndDate, setTrialEndDate] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(true);
 
     // Load user class, credits, and grace period data from Supabase
@@ -37,7 +31,7 @@ export const useMyPropertiesAccess = (): UseMyPropertiesAccessReturn => {
             try {
                 const { data, error } = await supabase
                     .from("profiles")
-                    .select("user_class, credits, credits_depleted_at, trial_end_date")
+                    .select("user_class, credits, credits_depleted_at")
                     .eq("user_id", currentUser.id)
                     .single();
 
@@ -52,7 +46,6 @@ export const useMyPropertiesAccess = (): UseMyPropertiesAccessReturn => {
                     setUserClass(data?.user_class || null);
                     setUserCredits(data?.credits || 0);
                     setCreditsDepletedAt(data?.credits_depleted_at || null);
-                    setTrialEndDate(data?.trial_end_date || null);
                 }
             } catch (error) {
                 // Only log if it's not a network/auth issue during signup flow
@@ -76,7 +69,6 @@ export const useMyPropertiesAccess = (): UseMyPropertiesAccessReturn => {
     // Calculate grace period status
     const calculateGracePeriod = () => {
         if (userClass !== "trial" || !creditsDepletedAt) {
-            console.log('🔍 Grace period check: No trial user or no credits_depleted_at', { userClass, creditsDepletedAt });
             return { isInGracePeriod: false, daysLeftInGracePeriod: null };
         }
 
@@ -86,16 +78,6 @@ export const useMyPropertiesAccess = (): UseMyPropertiesAccessReturn => {
         const timeLeft = gracePeriodEnd.getTime() - now.getTime();
         const daysLeft = Math.ceil(timeLeft / (24 * 60 * 60 * 1000));
 
-        console.log('🔍 Grace period calculation:', {
-            creditsDepletedAt,
-            depletedDate: depletedDate.toString(),
-            now: now.toString(),
-            gracePeriodEnd: gracePeriodEnd.toString(),
-            timeLeftMs: timeLeft,
-            daysLeft,
-            isInGracePeriod: timeLeft > 0
-        });
-
         return {
             isInGracePeriod: timeLeft > 0,
             daysLeftInGracePeriod: timeLeft > 0 ? Math.max(0, daysLeft) : null
@@ -104,46 +86,13 @@ export const useMyPropertiesAccess = (): UseMyPropertiesAccessReturn => {
 
     const { isInGracePeriod, daysLeftInGracePeriod } = calculateGracePeriod();
 
-    // Check if trial has expired based on trial_end_date
-    const isTrialExpired = () => {
-        if (userClass !== "trial" || !trialEndDate) {
-            return false;
-        }
-        const now = new Date();
-        const trialEnd = new Date(trialEndDate);
-        return now > trialEnd;
-    };
-
-    // Calculate grace period after trial expiration (3 days)
-    const calculateTrialGracePeriod = () => {
-        if (!isTrialExpired() || !trialEndDate) {
-            return { isInTrialGracePeriod: false, daysLeftInTrialGracePeriod: null };
-        }
-
-        const trialEnd = new Date(trialEndDate);
-        const now = new Date();
-        const gracePeriodEnd = new Date(trialEnd.getTime() + (3 * 24 * 60 * 60 * 1000)); // 3 days
-        const timeLeft = gracePeriodEnd.getTime() - now.getTime();
-        const daysLeft = Math.ceil(timeLeft / (24 * 60 * 60 * 1000));
-
-        return {
-            isInTrialGracePeriod: timeLeft > 0,
-            daysLeftInTrialGracePeriod: timeLeft > 0 ? Math.max(0, daysLeft) : null
-        };
-    };
-
-    const trialExpired = isTrialExpired();
-    const { isInTrialGracePeriod, daysLeftInTrialGracePeriod } = calculateTrialGracePeriod();
 
     // Check if user has access to My Properties
     const hasAccess =
         userClass === "charlie_chat_pro" ||
+        userClass === "charlie_chat_plus" ||
         userClass === "cohort" ||
-        (userClass === "charlie_chat" && userCredits !== null && userCredits > 0) ||
-        (userClass === "trial" && (
-            (!trialExpired && userCredits !== null && (userCredits > 0 || isInGracePeriod)) ||
-            (trialExpired && isInTrialGracePeriod)
-        ));
+        (userClass === "trial" && userCredits !== null && (userCredits > 0 || isInGracePeriod));
         // Note: disabled users get NO access, trials past grace period get NO access
 
     // Fresh credit check for trial users (used by Header component)
@@ -172,18 +121,6 @@ export const useMyPropertiesAccess = (): UseMyPropertiesAccessReturn => {
         }
     };
 
-    console.log('🔍 useMyPropertiesAccess final result:', {
-        hasAccess,
-        isLoading,
-        userClass,
-        userCredits,
-        isInGracePeriod,
-        daysLeftInGracePeriod,
-        trialEndDate,
-        trialExpired,
-        isInTrialGracePeriod,
-        daysLeftInTrialGracePeriod
-    });
 
     return {
         hasAccess,
@@ -192,10 +129,6 @@ export const useMyPropertiesAccess = (): UseMyPropertiesAccessReturn => {
         userCredits,
         checkTrialUserCredits,
         isInGracePeriod,
-        daysLeftInGracePeriod,
-        trialExpired,
-        trialEndDate,
-        isInTrialGracePeriod,
-        daysLeftInTrialGracePeriod
+        daysLeftInGracePeriod
     };
 };

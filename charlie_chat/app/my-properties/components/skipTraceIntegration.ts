@@ -296,22 +296,17 @@ export const handleSkipTraceForProperty = async (
         onSuccess(propertyId, data);
     } catch (err) {
         // Add debugging logs
-        console.log('Raw error caught:', err);
-        console.log('Error type:', typeof err);
-        console.log('Error message:', err instanceof Error ? err.message : 'No message');
         
         let msg = 'Unknown skip‑trace error';
         
         if (err instanceof Error) {
             const errorText = err.message.toLowerCase();
-            console.log('Error text (lowercase):', errorText);
             
             // Handle various formats of the "property not found" error
             if (errorText.includes('unable to locate valid property') || 
                 errorText.includes('address(es) provided') ||
                 errorText.includes('property from address')) {
                 msg = 'No skip trace data available - property address not found in database';
-                console.log('Using friendly message:', msg);
             } else if (errorText.includes('no phones found') || 
                        errorText.includes('no contact information')) {
                 msg = 'No contact information available for this owner';
@@ -328,7 +323,6 @@ export const handleSkipTraceForProperty = async (
             }
         }
         
-        console.log('Final message being sent to onError:', msg);
         onError(propertyId, msg);
     }
 };

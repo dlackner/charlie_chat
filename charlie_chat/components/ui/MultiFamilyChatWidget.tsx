@@ -57,8 +57,6 @@ const MultiFamilyChatWidget = () => {
     if (message.trim()) {
       setIsLoading(true);
       try {
-        console.log('Sending message to edge function...');
-        
         const response = await fetch('https://fgdonkzncrncxnunljev.supabase.co/functions/v1/contact-form', {
           method: 'POST',
           headers: {
@@ -73,15 +71,11 @@ const MultiFamilyChatWidget = () => {
           })
         });
 
-        console.log('Response status:', response.status);
-        console.log('Response ok:', response.ok);
-
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
 
         const result = await response.json();
-        console.log('Response data:', result);
 
         if (result.success) {
           setIsSubmitted(true);
@@ -131,7 +125,7 @@ const MultiFamilyChatWidget = () => {
           onClick={() => setIsOpen(!isOpen)}
           onMouseEnter={() => setShowTooltip(true)}
           onMouseLeave={() => setShowTooltip(false)}
-          className="shadow-2xl text-white p-3 rounded-full hover:shadow-xl transition-all duration-300 hover:scale-105 relative"
+          className="shadow-2xl text-white p-3 rounded-full hover:shadow-xl transition-all duration-300 hover:scale-110 hover:-translate-y-1 relative"
           style={{ 
             backgroundColor: '#1C599F'
           }}
@@ -261,7 +255,7 @@ const MultiFamilyChatWidget = () => {
                   key={index}
                   className="w-full text-left p-3 rounded-lg border border-gray-200 hover:bg-gray-50 hover:border-orange-200 transition-colors text-sm group"
                   onClick={() => {
-                    console.log('FAQ clicked:', item);
+                    // FAQ functionality placeholder
                   }}
                 >
                   <span className="text-gray-700 group-hover:text-orange-600">{item}</span>

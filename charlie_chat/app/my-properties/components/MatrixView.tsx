@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     QuadrantType,
     getQuadrantInfo,
@@ -9,7 +9,6 @@ import {
     calculateValuePerUnit,
     formatCurrency
 } from './matrixCalculations';
-import { PropertyModal } from './PropertyModal';
 import { PageSavedProperty as SavedProperty } from '../types';
 
 interface MatrixViewProps {
@@ -34,29 +33,31 @@ export const MatrixView: React.FC<MatrixViewProps> = ({
     className = ''
 }) => {
 
-    // Modal state management
+    // Click modal state management
     const [selectedProperty, setSelectedProperty] = useState<SavedProperty | null>(null);
-    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [modalPosition, setModalPosition] = useState({ x: 0, y: 0 });
+    const [showModal, setShowModal] = useState(false);
     
     // Track properties hidden from matrix view via right-click
     const [hiddenFromMatrix, setHiddenFromMatrix] = useState<Set<string>>(new Set());
 
+    // Close modal when clicking outside
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (showModal && !(event.target as Element).closest('.property-modal')) {
+                setShowModal(false);
+                setSelectedProperty(null);
+            }
+        };
+
+        if (showModal) {
+            document.addEventListener('mousedown', handleClickOutside);
+            return () => document.removeEventListener('mousedown', handleClickOutside);
+        }
+    }, [showModal]);
+
     // Use real properties data
     const testProperties = properties;
-
-    console.log('Matrix data check:', {
-        totalProperties: testProperties.length,
-        sampleProperty: testProperties[0],
-        hasAssessedValue: testProperties.filter(p => p.assessed_value && p.assessed_value > 0).length,
-        hasEstimatedValue: testProperties.filter(p => p.estimated_value && p.estimated_value > 0).length,
-        hasYearBuilt: testProperties.filter(p => p.year_built && p.year_built > 0).length,
-        hasUnitsCount: testProperties.filter(p => p.units_count && p.units_count > 0).length,
-        completePropertiesCount: testProperties.filter(p =>
-            (p.assessed_value > 0 || p.estimated_value > 0) &&
-            p.year_built && p.year_built > 0 &&
-            p.units_count && p.units_count > 0
-        ).length
-    });
 
     // Filter properties with complete required data (value and year_built)
     const completeProperties = testProperties.filter(p =>
@@ -120,34 +121,60 @@ export const MatrixView: React.FC<MatrixViewProps> = ({
     const cleanMinValue = minInMillions * 1000000;
     const cleanRange = cleanMaxValue - cleanMinValue;
 
-    // Handle property click - opens modal
-    const handlePropertyClick = (propertyId: string) => {
-        console.log('Property clicked:', propertyId);
-        const property = testProperties.find(p => p.property_id === propertyId);
-        if (property) {
-            setSelectedProperty(property);
-            setIsModalOpen(true);
-        }
-    };
-
-    // Handle modal close
-    const handleModalClose = () => {
-        setIsModalOpen(false);
-        setSelectedProperty(null);
-    };
-
-    const handlePropertyDotClick = (propertyId: string, event: React.MouseEvent) => {
+    // Handle property click
+    const handlePropertyClick = (propertyId: string, event: React.MouseEvent) => {
         event.stopPropagation();
-        console.log('Property dot clicked:', propertyId);
         const property = testProperties.find(p => p.property_id === propertyId);
         if (property) {
-            setSelectedProperty(property);
-            setIsModalOpen(true);
+            const rect = event.currentTarget.getBoundingClientRect();
+            const matrixContainer = event.currentTarget.closest('.relative') as HTMLElement;
+            
+            if (matrixContainer) {
+                const containerRect = matrixContainer.getBoundingClientRect();
+                
+                // Calculate position relative to the matrix grid container
+                const relativeX = rect.left - containerRect.left + rect.width / 2;
+                let relativeY = rect.top - containerRect.top + rect.height + 15;
+                
+                // If modal would go below the container, position it above the dot
+                if (relativeY + 200 > 320) { // 320px is the matrix height
+                    relativeY = rect.top - containerRect.top - 210;
+                }
+                
+                // Ensure modal stays within 1000px container bounds horizontally
+                const modalHalfWidth = 192; // 384px / 2 = 192px
+                const clampedX = Math.max(modalHalfWidth, Math.min(relativeX, 1000 - modalHalfWidth));
+                
+                setModalPosition({ x: clampedX, y: relativeY });
+                setSelectedProperty(property);
+                setShowModal(true);
+            }
         }
     };
 
     const handleMissingPropertyClick = (propertyId: string) => {
-        handlePropertyClick(propertyId);
+        const property = testProperties.find(p => p.property_id === propertyId);
+        if (property) {
+            // Position modal in center of missing properties section
+            setModalPosition({ x: 300, y: 100 });
+            setSelectedProperty(property);
+            setShowModal(true);
+        }
+    };
+
+    const getInvestmentFlags = (property: SavedProperty) => {
+        const flags = [];
+        if (property.auction) flags.push('Auction');
+        if (property.reo) flags.push('REO');
+        if (property.tax_lien) flags.push('Tax Lien');
+        if (property.pre_foreclosure) flags.push('Pre-Foreclosure');
+        if (property.private_lender) flags.push('Private Lender');
+        if (property.out_of_state_absentee_owner) flags.push('Absentee Owner');
+        return flags;
+    };
+
+    const calculateAge = (yearBuilt: number) => {
+        return new Date().getFullYear() - yearBuilt;
     };
 
     return (
@@ -302,10 +329,7 @@ export const MatrixView: React.FC<MatrixViewProps> = ({
                                                         border: '2px solid white', // White border for contrast
                                                         opacity: 1 // Normal opacity
                                                     }}
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        handlePropertyDotClick(property.property_id, e);
-                                                    }}
+                                                    onClick={(e) => handlePropertyClick(property.property_id, e)}
                                                     onContextMenu={(e) => {
                                                         e.preventDefault();
                                                         setHiddenFromMatrix(prev => {
@@ -318,7 +342,6 @@ export const MatrixView: React.FC<MatrixViewProps> = ({
                                                             return newSet;
                                                         });
                                                     }}
-                                                    title={`${property.address_full} - ${formatCurrency(property.propertyValue)}, ${property.propertyAge} years old, ${formatCurrency(property.valuePerUnit)}/unit • Right-click to remove`}
                                                 />
                                             );
                                         });
@@ -373,6 +396,93 @@ export const MatrixView: React.FC<MatrixViewProps> = ({
                                     <span className="mr-1">{getQuadrantInfo('MIDDLE').emoji}</span>
                                     <span>{getQuadrantInfo('MIDDLE').name}</span>
                                 </div>
+
+                                {/* Property Click Modal - Inside matrix container */}
+                                {showModal && selectedProperty && (
+                                    <div 
+                                        className="absolute z-50 property-modal"
+                                        style={{
+                                            left: `${modalPosition.x}px`,
+                                            top: `${modalPosition.y}px`,
+                                            transform: 'translateX(-50%)',
+                                            pointerEvents: 'auto'
+                                        }}
+                                    >
+                                        <div className="bg-white border-2 border-orange-400 rounded-lg shadow-xl p-4 w-96 max-h-48 overflow-y-auto">
+                                            {/* Property content in horizontal layout */}
+                                            <div className="flex gap-4">
+                                                {/* Left column - Address and basic info */}
+                                                <div className="flex-1">
+                                                    <div className="text-sm font-medium text-gray-900 mb-1">
+                                                        {selectedProperty.address_full}
+                                                    </div>
+                                                    <div className="text-xs text-gray-600 mb-2">
+                                                        {selectedProperty.address_city}, {selectedProperty.address_state}
+                                                    </div>
+                                                    <a 
+                                                        href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(selectedProperty.address_full + ', ' + selectedProperty.address_city + ', ' + selectedProperty.address_state)}`}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="inline-flex items-center text-xs text-blue-600 hover:text-blue-800 no-underline"
+                                                        title="View Property on Google Maps"
+                                                    >
+                                                        <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" className="mr-1">
+                                                            <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
+                                                        </svg>
+                                                        View Property
+                                                    </a>
+                                                </div>
+                                                
+                                                {/* Right column - Details and flags */}
+                                                <div className="flex-1">
+                                                    {/* Property Details */}
+                                                    <div className="space-y-1 text-xs text-gray-600 mb-2">
+                                                        <div className="flex justify-between">
+                                                            <span>Units:</span>
+                                                            <span className="font-medium">{selectedProperty.units_count}</span>
+                                                        </div>
+                                                        <div className="flex justify-between">
+                                                            <span>Built:</span>
+                                                            <span className="font-medium">{selectedProperty.year_built} ({calculateAge(selectedProperty.year_built)}y)</span>
+                                                        </div>
+                                                        <div className="flex justify-between">
+                                                            <span>Assessed:</span>
+                                                            <span className="font-medium text-green-600">{formatCurrency(selectedProperty.assessed_value)}</span>
+                                                        </div>
+                                                        <div className="flex justify-between">
+                                                            <span>Est. Equity:</span>
+                                                            <span className="font-medium text-blue-600">{formatCurrency(selectedProperty.estimated_equity)}</span>
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Investment Flags */}
+                                                    {(() => {
+                                                        const investmentFlags = getInvestmentFlags(selectedProperty);
+                                                        return investmentFlags.length > 0 ? (
+                                                            <div className="mb-2">
+                                                                <div className="flex flex-wrap gap-1">
+                                                                    {investmentFlags.map(flag => (
+                                                                        <span
+                                                                            key={flag}
+                                                                            className="inline-block px-1 py-0.5 text-xs bg-orange-100 text-orange-800 rounded"
+                                                                        >
+                                                                            {flag}
+                                                                        </span>
+                                                                    ))}
+                                                                </div>
+                                                            </div>
+                                                        ) : null;
+                                                    })()}
+
+                                                    {/* Skip Trace Indicator */}
+                                                    {selectedProperty.skipTraceData && (
+                                                        <div className="text-xs text-blue-600 font-medium">Skip Traced</div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
 
                             {/* X-Axis Label */}
@@ -452,18 +562,6 @@ export const MatrixView: React.FC<MatrixViewProps> = ({
                 </div>
             </div>
 
-            {/* Property Modal */}
-            <PropertyModal
-                isOpen={isModalOpen}
-                property={selectedProperty}
-                selectedProperties={selectedProperties}
-                onClose={handleModalClose}
-                onToggleSelection={onToggleSelection}
-                onRemoveFromFavorites={onRemoveFromFavorites}
-                onUpdateNotes={onUpdateNotes}
-                onSkipTrace={onSkipTrace}
-                hideActions={true}
-            />
         </>
     );
 };
