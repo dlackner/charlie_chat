@@ -1,6 +1,8 @@
 // app/my-properties/types.ts
 // Centralized type definitions to eliminate duplicate SavedProperty interfaces
 
+import { FavoriteStatus } from './constants';
+
 /* ================================================================
    CORE BASE INTERFACE - Common fields used by most components
    ================================================================ */
@@ -28,6 +30,7 @@ export interface BaseSavedProperty {
   notes?: string;
   owner_first_name?: string;
   owner_last_name?: string;
+  favorite_status?: FavoriteStatus | null;
 }
 
 /* ================================================================

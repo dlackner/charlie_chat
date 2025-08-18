@@ -147,6 +147,10 @@ export default function PropertyAnalyzerPage() {
   const [otherExpensesAnnual, setOtherExpensesAnnual] = useState<number>(5000); // Total annual
   const [expenseGrowthRate, setExpenseGrowthRate] = useState<number>(2); // Percentage
 
+  // --- Operating Expenses Toggle States ---
+  const [usePercentageMode, setUsePercentageMode] = useState<boolean>(false);
+  const [operatingExpensePercentage, setOperatingExpensePercentage] = useState<number>(45);
+
   // --- Input States: CAPITAL EXPENDITURES (ANNUAL) ---
   const [capitalReservePerUnitAnnual, setCapitalReservePerUnitAnnual] = useState<number>(500); // Per unit, annual
   const [holdingPeriodYears, setHoldingPeriodYears] = useState<number>(10); // Years
@@ -218,12 +222,16 @@ export default function PropertyAnalyzerPage() {
 
   // Expense Calculations (Year 1)
   const propertyManagementFeeAmount = useMemo(() => {
+    if (usePercentageMode) return 0; // Show $0 in percentage mode
     return effectiveGrossIncome * (propertyManagementFeePercentage / 100);
-  }, [effectiveGrossIncome, propertyManagementFeePercentage]);
+  }, [usePercentageMode, effectiveGrossIncome, propertyManagementFeePercentage]);
 
   const totalOperatingExpenses = useMemo(() => {
+    if (usePercentageMode) {
+      return effectiveGrossIncome * (operatingExpensePercentage / 100);
+    }
     return propertyTaxes + insurance + propertyManagementFeeAmount + maintenanceRepairsAnnual + utilitiesAnnual + contractServicesAnnual + payrollAnnual + marketingAnnual + gAndAAnnual + otherExpensesAnnual;
-  }, [propertyTaxes, insurance, propertyManagementFeeAmount, maintenanceRepairsAnnual, utilitiesAnnual, contractServicesAnnual, payrollAnnual, marketingAnnual, gAndAAnnual, otherExpensesAnnual]);
+  }, [usePercentageMode, operatingExpensePercentage, effectiveGrossIncome, propertyTaxes, insurance, propertyManagementFeeAmount, maintenanceRepairsAnnual, utilitiesAnnual, contractServicesAnnual, payrollAnnual, marketingAnnual, gAndAAnnual, otherExpensesAnnual]);
 
   const netOperatingIncome = useMemo(() => {
     return effectiveGrossIncome - totalOperatingExpenses;
@@ -233,6 +241,19 @@ export default function PropertyAnalyzerPage() {
     if (effectiveGrossIncome === 0) return 0;
     return (totalOperatingExpenses / effectiveGrossIncome) * 100; // Percentage
   }, [totalOperatingExpenses, effectiveGrossIncome]);
+
+  // Individual Operating Expense Line Items for Display (Year 1)
+  // These show $0 in percentage mode, actual values in detailed mode
+  const displayPropertyTaxes = useMemo(() => usePercentageMode ? 0 : propertyTaxes, [usePercentageMode, propertyTaxes]);
+  const displayInsurance = useMemo(() => usePercentageMode ? 0 : insurance, [usePercentageMode, insurance]);
+  const displayPropertyManagementFeeAmount = useMemo(() => usePercentageMode ? 0 : propertyManagementFeeAmount, [usePercentageMode, propertyManagementFeeAmount]);
+  const displayMaintenanceRepairsAnnual = useMemo(() => usePercentageMode ? 0 : maintenanceRepairsAnnual, [usePercentageMode, maintenanceRepairsAnnual]);
+  const displayUtilitiesAnnual = useMemo(() => usePercentageMode ? 0 : utilitiesAnnual, [usePercentageMode, utilitiesAnnual]);
+  const displayContractServicesAnnual = useMemo(() => usePercentageMode ? 0 : contractServicesAnnual, [usePercentageMode, contractServicesAnnual]);
+  const displayPayrollAnnual = useMemo(() => usePercentageMode ? 0 : payrollAnnual, [usePercentageMode, payrollAnnual]);
+  const displayMarketingAnnual = useMemo(() => usePercentageMode ? 0 : marketingAnnual, [usePercentageMode, marketingAnnual]);
+  const displayGAndAAnnual = useMemo(() => usePercentageMode ? 0 : gAndAAnnual, [usePercentageMode, gAndAAnnual]);
+  const displayOtherExpensesAnnual = useMemo(() => usePercentageMode ? 0 : otherExpensesAnnual, [usePercentageMode, otherExpensesAnnual]);
 
   // Capital Reserve (Year 1)
   const annualCapitalReserveTotal = useMemo(() => {
@@ -373,17 +394,19 @@ export default function PropertyAnalyzerPage() {
     annualRentalGrowthRate,
     otherIncomeAnnual,
     incomeReductionsAnnual,
-    propertyTaxes,
-    insurance,
+    propertyTaxes: displayPropertyTaxes,
+    insurance: displayInsurance,
     propertyManagementFeePercentage,
-    maintenanceRepairsAnnual,
-    utilitiesAnnual,
-    contractServicesAnnual,
-    payrollAnnual,
-    marketingAnnual,
-    gAndAAnnual,
-    otherExpensesAnnual,
+    maintenanceRepairsAnnual: displayMaintenanceRepairsAnnual,
+    utilitiesAnnual: displayUtilitiesAnnual,
+    contractServicesAnnual: displayContractServicesAnnual,
+    payrollAnnual: displayPayrollAnnual,
+    marketingAnnual: displayMarketingAnnual,
+    gAndAAnnual: displayGAndAAnnual,
+    otherExpensesAnnual: displayOtherExpensesAnnual,
     expenseGrowthRate,
+    usePercentageMode,
+    operatingExpensePercentage,
     capitalReservePerUnitAnnual,
     holdingPeriodYears
   }), [
@@ -391,10 +414,10 @@ export default function PropertyAnalyzerPage() {
     purchasePrice, downPaymentPercentage, closingCostsPercentage, interestRate,
     amortizationPeriodYears, loanStructure, interestOnlyPeriodYears, numUnits,
     avgMonthlyRentPerUnit, vacancyRate, annualRentalGrowthRate, otherIncomeAnnual,
-    incomeReductionsAnnual, propertyTaxes, insurance, propertyManagementFeePercentage,
-    maintenanceRepairsAnnual, utilitiesAnnual, contractServicesAnnual, payrollAnnual,
-    marketingAnnual, gAndAAnnual, otherExpensesAnnual, expenseGrowthRate,
-    capitalReservePerUnitAnnual, holdingPeriodYears
+    incomeReductionsAnnual, displayPropertyTaxes, displayInsurance, propertyManagementFeePercentage,
+    displayMaintenanceRepairsAnnual, displayUtilitiesAnnual, displayContractServicesAnnual, displayPayrollAnnual,
+    displayMarketingAnnual, displayGAndAAnnual, displayOtherExpensesAnnual, expenseGrowthRate,
+    usePercentageMode, operatingExpensePercentage, capitalReservePerUnitAnnual, holdingPeriodYears
   ]);
 
   // Function to handle file loading
@@ -687,18 +710,28 @@ export default function PropertyAnalyzerPage() {
       currentEffectiveGrossIncome = (currentGrossPotentialRent * (1 - vacancyRate / 100)) + currentOtherIncomeAnnual - currentIncomeReductionsAnnual;
 
       // Project Expense Growth
-      const currentPropertyManagementFeeAmount = currentEffectiveGrossIncome * (propertyManagementFeePercentage / 100);
-      const projectedPropertyTaxes = propertyTaxes * Math.pow(1 + expenseGrowthRate / 100, y - 1);
-      const projectedInsurance = insurance * Math.pow(1 + expenseGrowthRate / 100, y - 1);
-      const projectedMaintenanceRepairs = maintenanceRepairsAnnual * Math.pow(1 + expenseGrowthRate / 100, y - 1);
-      const projectedUtilities = utilitiesAnnual * Math.pow(1 + expenseGrowthRate / 100, y - 1);
-      const projectedContractServices = contractServicesAnnual * Math.pow(1 + expenseGrowthRate / 100, y - 1);
-      const projectedPayroll = payrollAnnual * Math.pow(1 + expenseGrowthRate / 100, y - 1);
-      const projectedMarketing = marketingAnnual * Math.pow(1 + expenseGrowthRate / 100, y - 1);
-      const projectedGAndA = gAndAAnnual * Math.pow(1 + expenseGrowthRate / 100, y - 1);
-      const projectedOtherExpenses = otherExpensesAnnual * Math.pow(1 + expenseGrowthRate / 100, y - 1);
+      let currentPropertyManagementFeeAmount;
+      
+      if (usePercentageMode) {
+        // In percentage mode, calculate total operating expenses based on percentage
+        currentPropertyManagementFeeAmount = 0; // Don't show property management fee in percentage mode
+        currentTotalOperatingExpenses = currentEffectiveGrossIncome * (operatingExpensePercentage / 100) * Math.pow(1 + expenseGrowthRate / 100, y - 1);
+      } else {
+        // In detailed mode, calculate property management fee normally
+        currentPropertyManagementFeeAmount = currentEffectiveGrossIncome * (propertyManagementFeePercentage / 100);
+        // In detailed mode, use individual line items
+        const projectedPropertyTaxes = propertyTaxes * Math.pow(1 + expenseGrowthRate / 100, y - 1);
+        const projectedInsurance = insurance * Math.pow(1 + expenseGrowthRate / 100, y - 1);
+        const projectedMaintenanceRepairs = maintenanceRepairsAnnual * Math.pow(1 + expenseGrowthRate / 100, y - 1);
+        const projectedUtilities = utilitiesAnnual * Math.pow(1 + expenseGrowthRate / 100, y - 1);
+        const projectedContractServices = contractServicesAnnual * Math.pow(1 + expenseGrowthRate / 100, y - 1);
+        const projectedPayroll = payrollAnnual * Math.pow(1 + expenseGrowthRate / 100, y - 1);
+        const projectedMarketing = marketingAnnual * Math.pow(1 + expenseGrowthRate / 100, y - 1);
+        const projectedGAndA = gAndAAnnual * Math.pow(1 + expenseGrowthRate / 100, y - 1);
+        const projectedOtherExpenses = otherExpensesAnnual * Math.pow(1 + expenseGrowthRate / 100, y - 1);
 
-      currentTotalOperatingExpenses = projectedPropertyTaxes + projectedInsurance + currentPropertyManagementFeeAmount + projectedMaintenanceRepairs + projectedUtilities + projectedContractServices + projectedPayroll + projectedMarketing + projectedGAndA + projectedOtherExpenses;
+        currentTotalOperatingExpenses = projectedPropertyTaxes + projectedInsurance + currentPropertyManagementFeeAmount + projectedMaintenanceRepairs + projectedUtilities + projectedContractServices + projectedPayroll + projectedMarketing + projectedGAndA + projectedOtherExpenses;
+      }
       currentNetOperatingIncome = currentEffectiveGrossIncome - currentTotalOperatingExpenses;
       currentCashFlowBeforeTax = currentNetOperatingIncome - annualDebtService;
 
@@ -1484,7 +1517,64 @@ export default function PropertyAnalyzerPage() {
           </CharlieTooltip>
         </div>
 
-        <h3 id="operating-expenses-section" className="text-xl font-semibold mb-4 text-gray-700 mt-8">OPERATING EXPENSES (ANNUAL)</h3>
+        <div className="flex items-center justify-between mb-4 mt-8">
+          <h3 id="operating-expenses-section" className="text-xl font-semibold text-gray-700">OPERATING EXPENSES (ANNUAL)</h3>
+          <button
+            onClick={() => setUsePercentageMode(!usePercentageMode)}
+            className="text-sm px-3 py-1 text-white rounded-lg hover:opacity-80 transition-all duration-150 ease-in-out"
+            style={{ backgroundColor: '#1C599F' }}
+          >
+            {usePercentageMode ? 'Use Detailed Breakdown' : 'Use % Estimate'}
+          </button>
+        </div>
+
+        {usePercentageMode ? (
+          <div>
+            <div className="mb-5">
+              <label htmlFor="operatingExpensePercentage" className="block text-sm font-medium text-gray-700 mb-1">Operating Expense Ratio (%)</label>
+              <CharlieTooltip message={`Here's my rule of thumb based on 25+ years of experience. These are guidelines - adjust based on your specific property and market conditions.
+
+• All Bills Paid, 1985 or older: 60%+ of gross income
+• Tenant Paid, 1986-2010: 45-55% of gross income
+• Tenant Paid, 2011 and newer: 35-40% of gross income`}>
+                <input
+                  type="text"
+                  id="operatingExpensePercentage"
+                  value={operatingExpensePercentage}
+                  onChange={(e) => {
+                    const value = e.target.value.replace(/[^\d.]/g, ''); // Allow only digits and decimal
+                    const numValue = parseFloat(value);
+                    
+                    if (value === '' || !isNaN(numValue)) {
+                      setOperatingExpensePercentage(numValue || 0);
+                    }
+                  }}
+                  className="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-shadow duration-150 ease-in-out shadow-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                  placeholder="45"
+                />
+              </CharlieTooltip>
+              {(operatingExpensePercentage < 20 || operatingExpensePercentage > 80) && (
+                <p className="text-red-600 text-sm mt-1">Please enter a percentage between 20% and 80%</p>
+              )}
+            </div>
+            
+            <div className="mb-5">
+              <label htmlFor="expenseGrowthRate" className="block text-sm font-medium text-gray-700 mb-1">Expense Growth Rate (%)</label>
+              <CharlieTooltip message="Expenses grow faster than rent in many markets. Don't assume they stay flat—that's rookie mistake #1.">
+                <input
+                  type="number"
+                  id="expenseGrowthRate"
+                  value={expenseGrowthRate ?? 0}
+                  onChange={(e) => setExpenseGrowthRate(Math.max(0, parseFloat(e.target.value) || 0))}
+                  className="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-shadow duration-150 ease-in-out shadow-sm"
+                  step="0.1"
+                  min="0"
+                />
+              </CharlieTooltip>
+            </div>
+          </div>
+        ) : (
+          <div>
         <div className="mb-5">
           <label htmlFor="propertyTaxes" className="block text-sm font-medium text-gray-700 mb-1">Property Taxes ($)</label>
           <CharlieTooltip message="These will go up! Especially after you improve the property. Budget for reassessment—it's coming.">
@@ -1649,6 +1739,8 @@ export default function PropertyAnalyzerPage() {
             />
           </CharlieTooltip>
         </div>
+          </div>
+        )}
 
         <h3 className="text-xl font-semibold mb-4 text-gray-700 mt-8">CAPITAL EXPENDITURES (ANNUAL)</h3>
         <div className="mb-5">

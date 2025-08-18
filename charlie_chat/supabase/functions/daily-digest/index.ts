@@ -242,7 +242,7 @@ function createHtmlReport(data, dateStr, convertedUsers) {
     const signup = new Date(createdAt);
     const today = new Date();
     const daysDiff = Math.floor((today.getTime() - signup.getTime()) / (1000 * 60 * 60 * 24));
-    const label = userType === 'paid' ? 'days as customer' : 'days on trial';
+    const label = userType === 'paid' ? 'days as customer' : userType === 'free' ? 'days as free user' : 'days on trial';
     
     if (daysDiff > 14 && userType === 'trial') {
       return ` - <span style="color: #e74c3c; font-weight: bold;">${daysDiff} ${label}</span>`;
@@ -268,8 +268,8 @@ function createHtmlReport(data, dateStr, convertedUsers) {
   } else {
     const newUsers = data.filter(d => d['New User Signup']);
     const trialUsers = data.filter(d => !d['New User Signup'] && d['User Tier'] === 'trial');
+    const charlieChatUsers = data.filter(d => !d['New User Signup'] && d['User Tier'] === 'charlie_chat');
     const paidUsers = data.filter(d => [
-      'charlie_chat',
       'charlie_chat_pro', 
       'charlie_chat_plus',
       'cohort'
@@ -301,11 +301,23 @@ function createHtmlReport(data, dateStr, convertedUsers) {
       html += '</ul>';
     }
 
+    // Charlie Chat Free Users Section
+    if (charlieChatUsers.length > 0) {
+      html += `<h3>🆓 Charlie Chat Free Users (${charlieChatUsers.length})</h3><ul>`;
+      charlieChatUsers.forEach(user => {
+        html += `<li><strong>${user['Email Address']}</strong> - ${user['User Tier']} (${user['Current Credits']} credits)`;
+        html += ` - ⭐ ${user['Properties Favorited']} properties favorited`;
+        html += formatDaysSinceSignup(user['created_at'], 'free');
+        html += `</li>`;
+      });
+      html += '</ul>';
+    }
+
     // Paid Users Section
     if (paidUsers.length > 0) {
       html += `<h3>💰 Paid Users (${paidUsers.length})</h3><ul>`;
       paidUsers.forEach(user => {
-        html += `<li><strong>${user['Email Address']}</strong> - ${user['User Tier']} (${user['Current Credits']} credits)`;
+        html += `<li><strong>${user['Email Address']}</strong> - ${user['User Tier']}`;
         html += ` - ⭐ ${user['Properties Favorited']} properties favorited`;
         html += formatDaysSinceSignup(user['created_at'], 'paid');
         html += `</li>`;

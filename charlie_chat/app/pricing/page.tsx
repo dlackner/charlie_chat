@@ -342,8 +342,8 @@ export default function PricingPage() {
             <li className="flex items-baseline">
               <span className="text-lg font-semibold text-orange-500">Everything in Charlie Chat Plus, PLUS:</span>
             </li>
-            <li>✔️ Access to my Master Class Training Program</li>
-            <li>✔️ Weekly group coaching call with Charles Dobens</li>
+            <li><a href="#charlie-chat-pro-details" className="text-gray-800 border-b border-dotted border-gray-400 hover:border-gray-600 cursor-pointer transition-colors duration-200">✔️ Access to my Master Class Training Program</a></li>
+            <li><a href="#charlie-chat-pro-details" className="text-gray-800 border-b border-dotted border-gray-400 hover:border-gray-600 cursor-pointer transition-colors duration-200">✔️ Weekly group coaching call with Charles Dobens</a></li>
             <li>✔️ Community Access</li>
             <li>✔️ UNLIMITED national property matches every month</li>
           </ul>
@@ -713,34 +713,18 @@ export default function PricingPage() {
 
           {/* FAQ Item 2 */}
           <div className="bg-white border border-gray-200 rounded-lg p-6 shadow hover:shadow-lg transition duration-200">
-            <h3 className="text-xl font-bold text-orange-600 mb-3">How do credits work?</h3>
+            <h3 className="text-xl font-bold text-orange-600 mb-3">Who is Charles Dobens?</h3>
             <div className="text-sm text-gray-700">
+              <p className="mb-3">Charles Dobens—known industry-wide as the Multifamily Attorney—is the founder and visionary behind MultifamilyOS™. With 25+ years of experience, he has:</p>
               <ul className="list-disc pl-6 space-y-1">
-                <li>Every property you view costs 1 credit</li>
-                <li>Credits are only used when you retrieve detailed property info</li>
-                <li>Unused credits roll over month to month, as long as your subscription is active</li>
-                <li>Flexibility to buy extra packs anytime or upgrade for better pricing</li>
+                <li>Personally invested in and operated $50M+ in multifamily property</li>
+                <li>Mentored clients through $3B+ in investments</li>
+                <li>Charles leads with honesty and integrity, and treats his students like clients—providing access, support, and mentorship that's rare in this industry.</li>
               </ul>
-              <p className="mt-3">No expiration. No waste. Only pay for what you use.</p>
             </div>
           </div>
 
           {/* FAQ Item 3 */}
-          <div className="bg-white border border-gray-200 rounded-lg p-6 shadow hover:shadow-lg transition duration-200">
-            <h3 className="text-xl font-bold text-orange-600 mb-3">What's included in a property analysis?</h3>
-            <div className="text-sm text-gray-700">
-              <ul className="list-disc pl-6 space-y-1">
-                <li>Full financial performance breakdown: Cap Rate, NOI, Cash-on‑Cash, DSCR</li>
-                <li>Detailed cash‑flow modeling and break-even analysis</li>
-                <li>Multifamily grading system to instantly compare deals</li>
-                <li>AI-driven investment recommendations via Charlie Chat</li>
-                <li>10-year cash flow statement</li>
-              </ul>
-              <p className="mt-3">Whether you're underwriting your first small deal or your hundredth large one—you'll do it faster and smarter.</p>
-            </div>
-          </div>
-
-          {/* FAQ Item 4 */}
           <div className="bg-white border border-gray-200 rounded-lg p-6 shadow hover:shadow-lg transition duration-200">
             <h3 className="text-xl font-bold text-orange-600 mb-3">Where does your property data come from?</h3>
             <div className="text-sm text-gray-700">
@@ -754,20 +738,19 @@ export default function PricingPage() {
             </div>
           </div>
 
-          {/* FAQ Item 5 */}
-          <div className="bg-white border border-gray-200 rounded-lg p-6 shadow hover:shadow-lg transition duration-200">
-            <h3 className="text-xl font-bold text-orange-600 mb-3">Who is Charles Dobens?</h3>
+          {/* FAQ Item 4 */}
+          <div id="charlie-chat-pro-details" className="bg-white border border-gray-200 rounded-lg p-6 shadow hover:shadow-lg transition duration-200">
+            <h3 className="text-xl font-bold text-orange-600 mb-3">What's so special about Charlie Chat Pro?</h3>
             <div className="text-sm text-gray-700">
-              <p className="mb-3">Charles Dobens—known industry-wide as the Multifamily Attorney—is the founder and visionary behind MultifamilyOS™. With 25+ years of experience, he has:</p>
-              <ul className="list-disc pl-6 space-y-1">
-                <li>Personally invested in and operated $50M+ in multifamily property</li>
-                <li>Mentored clients through $3B+ in investments</li>
-                <li>Charles leads with honesty and integrity, and treats his students like clients—providing access, support, and mentorship that's rare in this industry.</li>
-              </ul>
+              <p className="mb-3"><strong>Master Class Training:</strong></p>
+              <p className="mb-3">The Charlie Chat Multifamily Video Training is your complete, start-to-finish roadmap for finding, funding, and closing profitable multifamily deals. Across 90+ lessons, you'll learn how to choose the right markets, protect your assets, master sales and marketing, structure irresistible offers, uncover hidden opportunities, analyze deals with precision, raise capital confidently, and navigate due diligence—all the way to a smooth closing. Designed for both new and experienced investors, this program gives you the tools, strategies, and confidence to scale a portfolio that generates long-term wealth.</p>
+              
+              <p className="mb-3 mt-4"><strong>Group Coaching:</strong></p>
+              <p>Monday Night Live Coaching and Community calls are your weekly deep-dive into real-world multifamily investing—where theory meets action. Each session combines group coaching with open Q&A, deal analysis, and market updates, giving you direct access to expert guidance and a supportive community of like-minded investors. Whether you're stuck on an offer, raising capital, or navigating due diligence, you'll get actionable answers in real time—plus the motivation and accountability to keep moving forward.</p>
             </div>
           </div>
 
-          {/* FAQ Item 6 */}
+          {/* FAQ Item 5 */}
           <div className="bg-white border border-gray-200 rounded-lg p-6 shadow hover:shadow-lg transition duration-200">
             <h3 className="text-xl font-bold text-orange-600 mb-3">Can I upgrade or downgrade my plan anytime?</h3>
             <div className="text-sm text-gray-700">
@@ -781,19 +764,6 @@ export default function PricingPage() {
           </div>
 
           {/* FAQ Item 7 */}
-          <div className="bg-white border border-gray-200 rounded-lg p-6 shadow hover:shadow-lg transition duration-200">
-            <h3 className="text-xl font-bold text-orange-600 mb-3">What happens if I go over my monthly credit limit?</h3>
-            <div className="text-sm text-gray-700">
-              <p className="mb-3">You have options:</p>
-              <ul className="list-disc pl-6 space-y-1">
-                <li>Purchase additional credit packs on demand</li>
-                <li>Upgrade your plan to receive more credits per month at a better rate</li>
-              </ul>
-              <p className="mt-3">We make sure you never hit a stop sign in your property search.</p>
-            </div>
-          </div>
-
-          {/* FAQ Item 8 */}
           <div className="bg-white border border-gray-200 rounded-lg p-6 shadow hover:shadow-lg transition duration-200">
             <h3 className="text-xl font-bold text-orange-600 mb-3">Is there a free trial?</h3>
             <div className="text-sm text-gray-700">

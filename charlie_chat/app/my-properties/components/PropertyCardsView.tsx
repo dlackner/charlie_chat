@@ -2,12 +2,14 @@
 
 import { Heart } from "lucide-react";
 import { PageSavedProperty as SavedProperty } from '../types';
+import { FavoriteStatus } from '../constants';
 import { PropertyCard } from './PropertyCard';
 
 interface PropertyCardsViewProps {
     properties: SavedProperty[];
     totalPropertiesCount: number;
     searchTerm: string;
+    selectedStatuses: Set<FavoriteStatus | 'ALL' | 'NO_STATUS'>;
     selectedProperties: Set<string>;
     onToggleSelection: (propertyId: string) => void;
     onRemoveFromFavorites: (propertyId: string) => void;
@@ -16,6 +18,9 @@ interface PropertyCardsViewProps {
     onSkipTrace?: (propertyId: string, property: SavedProperty) => void;
     onSkipTraceError?: (propertyId: string, error: string) => void;
     canSkipTrace?: (property: SavedProperty) => boolean;
+    onStatusChange?: (propertyId: string, status: FavoriteStatus | null) => void;
+    openStatusDropdown?: string | null;
+    onStatusDropdownToggle?: (propertyId: string, isOpen: boolean) => void;
     isLoading: boolean;
 }
 
@@ -23,6 +28,7 @@ export const PropertyCardsView: React.FC<PropertyCardsViewProps> = ({
     properties,
     totalPropertiesCount,
     searchTerm,
+    selectedStatuses,
     selectedProperties,
     onToggleSelection,
     onRemoveFromFavorites,
@@ -31,6 +37,9 @@ export const PropertyCardsView: React.FC<PropertyCardsViewProps> = ({
     onSkipTrace,
     onSkipTraceError,
     canSkipTrace,
+    onStatusChange,
+    openStatusDropdown,
+    onStatusDropdownToggle,
     isLoading
 }) => {
     if (isLoading) {
@@ -43,17 +52,21 @@ export const PropertyCardsView: React.FC<PropertyCardsViewProps> = ({
 
     if (properties.length === 0) {
         const hasSearchFilter = searchTerm.trim().length > 0;
+        const hasStatusFilter = !selectedStatuses.has('ALL') || selectedStatuses.size > 1;
         const hasOtherProperties = totalPropertiesCount > 0;
         
         return (
             <div className="text-center py-12">
                 <Heart size={48} className="mx-auto text-gray-400 mb-4" />
-                {hasSearchFilter && hasOtherProperties ? (
+                {(hasSearchFilter || hasStatusFilter) && hasOtherProperties ? (
                     <>
-                        <h3 className="text-lg font-medium text-gray-900 mb-2">No Properties Match Your Search</h3>
+                        <h3 className="text-lg font-medium text-gray-900 mb-2">No Properties Match Your Filters</h3>
                         <p className="text-gray-600 mb-6">
-                            You have {totalPropertiesCount} saved {totalPropertiesCount === 1 ? 'property' : 'properties'}, but none match "{searchTerm}". 
-                            Try clearing your search to see all properties.
+                            You have {totalPropertiesCount} saved {totalPropertiesCount === 1 ? 'property' : 'properties'}, but none match your current filters.
+                            {hasSearchFilter && ` Try clearing your search term "${searchTerm}"`}
+                            {hasSearchFilter && hasStatusFilter && ' and'}
+                            {hasStatusFilter && ' adjusting your status filter'}
+                            {' to see more properties.'}
                         </p>
                     </>
                 ) : (
@@ -88,6 +101,9 @@ export const PropertyCardsView: React.FC<PropertyCardsViewProps> = ({
                     onSkipTrace={onSkipTrace}
                     onSkipTraceError={onSkipTraceError}
                     canSkipTrace={canSkipTrace}
+                    onStatusChange={onStatusChange}
+                    openStatusDropdown={openStatusDropdown}
+                    onStatusDropdownToggle={onStatusDropdownToggle}
                     displayMode="grid"
                     showStreetView={true}
                     showSelection={true}
