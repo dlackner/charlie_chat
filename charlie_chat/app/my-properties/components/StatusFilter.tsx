@@ -216,7 +216,7 @@ export const StatusFilter: React.FC<StatusFilterProps> = ({
               <div className="space-y-2 mb-4">
                 <div className="text-gray-700 text-sm mb-4">
                   <p className="mb-2">
-                    Hi there! Listen, if you want to close deals and build real wealth in real estate, you've GOT to stay organized. 
+                    If you want to close deals and build real wealth in real estate, you've GOT to stay organized. 
                     I've seen too many investors lose great opportunities because they couldn't keep track of where they stood with each property.
                   </p>
                   <p className="mb-3">

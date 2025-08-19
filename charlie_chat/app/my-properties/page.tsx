@@ -81,6 +81,7 @@ export default function MyPropertiesPage() {
     const [rentData, setRentData] = useState<any[]>([]);
     const [isLoadingRentData, setIsLoadingRentData] = useState(true);
     const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
+    const [clusterFilteredIds, setClusterFilteredIds] = useState<Set<string>>(new Set());
     
     // CharlieAlert state
     const [charlieAlert, setCharlieAlert] = useState<{
@@ -303,8 +304,11 @@ export default function MyPropertiesPage() {
         }
     };
 
-    // Filter properties based on search and status
+    // Filter properties based on search, status, and cluster
     const filteredProperties = savedProperties.filter(property => {
+        // Cluster filter (if active, only show properties in the selected cluster)
+        const matchesCluster = clusterFilteredIds.size === 0 || clusterFilteredIds.has(property.property_id);
+        
         // Search filter
         const matchesSearch = searchTerm === '' || 
             property.address_full?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -316,7 +320,7 @@ export default function MyPropertiesPage() {
             (property.favorite_status && selectedStatuses.has(property.favorite_status)) ||
             (!property.favorite_status && selectedStatuses.has('NO_STATUS'));
         
-        return matchesSearch && matchesStatus;
+        return matchesCluster && matchesSearch && matchesStatus;
     });
 
     // For map view: show selected properties if any are selected, otherwise show all filtered properties
@@ -393,6 +397,27 @@ export default function MyPropertiesPage() {
             // Filter to show only the selected status
             setSelectedStatuses(new Set([status]));
         }
+    };
+
+    // Cluster filter handler
+    const handleClusterFilter = (propertyIds: string[]) => {
+        setClusterFilteredIds(new Set(propertyIds));
+        // Clear status filter to show all statuses within the cluster
+        setSelectedStatuses(new Set(['ALL']));
+        // Clear search term to focus on cluster properties
+        setSearchTerm('');
+    };
+
+    // Clear cluster filter when changing views (except when going to cards from analytics)
+    const handleViewModeChange = (newMode: ViewMode) => {
+        if (viewMode === 'analytics' && newMode === 'cards') {
+            // Keep cluster filter when going from analytics to cards (user clicked cluster)
+            // Don't clear the filter
+        } else {
+            // Clear cluster filter for other view transitions
+            setClusterFilteredIds(new Set());
+        }
+        setViewMode(newMode);
     };
 
     // Notes update handler
@@ -1034,7 +1059,7 @@ export default function MyPropertiesPage() {
                     
                     <div className="flex bg-gray-100 rounded-lg p-1">
                         <button
-                            onClick={() => setViewMode('cards')}
+                            onClick={() => handleViewModeChange('cards')}
                             className={`flex items-center space-x-2 px-4 py-2 rounded-md text-sm font-medium transition-all duration-200 ${viewMode === 'cards'
                                 ? 'bg-white text-blue-600 shadow-sm border border-gray-200'
                                 : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'
@@ -1045,7 +1070,7 @@ export default function MyPropertiesPage() {
                         </button>
 
                     <button
-                        onClick={() => setViewMode('map')}
+                        onClick={() => handleViewModeChange('map')}
                         className={`flex items-center space-x-2 px-4 py-2 rounded-md text-sm font-medium transition-all duration-200 ${viewMode === 'map'
                             ? 'bg-white text-blue-600 shadow-sm border border-gray-200'
                             : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'
@@ -1056,7 +1081,7 @@ export default function MyPropertiesPage() {
                     </button>
 
                         <button
-                            onClick={() => setViewMode('matrix')}
+                            onClick={() => handleViewModeChange('matrix')}
                             className={`flex items-center space-x-2 px-4 py-2 rounded-md text-sm font-medium transition-all duration-200 ${viewMode === 'matrix'
                                 ? 'bg-white text-blue-600 shadow-sm border border-gray-200'
                                 : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'
@@ -1067,7 +1092,7 @@ export default function MyPropertiesPage() {
                         </button>
 
                         <button
-                            onClick={() => setViewMode('analytics')}
+                            onClick={() => handleViewModeChange('analytics')}
                             className={`flex items-center space-x-2 px-4 py-2 rounded-md text-sm font-medium transition-all duration-200 ${viewMode === 'analytics'
                                 ? 'bg-white text-blue-600 shadow-sm border border-gray-200'
                                 : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'
@@ -1141,7 +1166,8 @@ export default function MyPropertiesPage() {
                         properties={filteredProperties}
                         selectedStatuses={selectedStatuses}
                         onStatusFilterChange={handleAnalyticsStatusChange}
-                        onViewChange={setViewMode}
+                        onViewChange={handleViewModeChange}
+                        onClusterFilter={handleClusterFilter}
                     />
                 )}
             </div>
