@@ -1,6 +1,6 @@
 'use client';
 import React, { useState, useEffect, useRef } from 'react';
-import { MessageCircle, X, Send } from 'lucide-react';
+import { X, Send } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 
 const MultiFamilyChatWidget = () => {
@@ -10,7 +10,6 @@ const MultiFamilyChatWidget = () => {
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [userProfile, setUserProfile] = useState<{first_name?: string, last_name?: string} | null>(null);
-  const [showTooltip, setShowTooltip] = useState(false);
   const widgetRef = useRef<HTMLDivElement>(null);
 
   // Fetch user profile when user is available
@@ -119,31 +118,18 @@ const MultiFamilyChatWidget = () => {
 
   return (
     <>
-      {/* Chat Toggle Button */}
-      <div className="fixed top-3 left-65 z-40" ref={widgetRef}>
+      {/* Help Button - Integrated into header */}
+      <div className="relative" ref={widgetRef}>
         <button
           onClick={() => setIsOpen(!isOpen)}
-          onMouseEnter={() => setShowTooltip(true)}
-          onMouseLeave={() => setShowTooltip(false)}
-          className="shadow-2xl text-white p-3 rounded-full hover:shadow-xl transition-all duration-300 hover:scale-110 hover:-translate-y-1 relative"
-          style={{ 
-            backgroundColor: '#1C599F'
-          }}
+          className="text-gray-800 hover:bg-gray-100 transition rounded-md px-3 py-1 font-medium"
         >
-          <MessageCircle size={20} />
+          <span className="text-sm font-medium">Help</span>
         </button>
-        
-        {/* Charlie-style tooltip */}
-        {showTooltip && (
-          <div className="absolute top-12 left-1/2 transform -translate-x-1/2 bg-white text-gray-800 px-3 py-2 rounded-lg text-sm font-medium whitespace-nowrap shadow-lg z-50 border-2" style={{ borderColor: '#1C599F' }}>
-            Need help?
-            <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-b-4 border-transparent border-b-white"></div>
-          </div>
-        )}
 
         {/* Chat Widget */}
         {isOpen && (
-          <div className="absolute top-16 left-0 w-80 bg-white rounded-2xl shadow-2xl overflow-hidden border border-gray-200">
+          <div className="absolute top-12 right-0 w-80 bg-white rounded-2xl shadow-2xl overflow-hidden border border-gray-200 z-50">
           {/* Close Button */}
           <button
             onClick={() => setIsOpen(false)}
@@ -242,7 +228,7 @@ const MultiFamilyChatWidget = () => {
                 <div className="text-green-600 text-2xl mb-2">✓</div>
                 <h4 className="font-medium text-green-900 mb-1">Message Sent!</h4>
                 <p className="text-sm text-green-700">
-                  Thanks for reaching out. We'll get back to you soon with answers to your questions.
+                  Thanks for reaching out. We'll respond to you as soon as possible, usually within a few hours on weekdays.
                 </p>
               </div>
             )}

@@ -20,7 +20,13 @@ export default function Home() {
   } = useMyPropertiesAccess();
 
   useEffect(() => {
-    if (!isLoading && user) {
+    if (!isLoading) {
+      if (!user) {
+        // Redirect non-logged-in users to login page
+        router.replace('/login');
+        return;
+      }
+      
       // Get user class from the user profile
       const fetchUserClass = async () => {
         const { data: profile } = await supabase

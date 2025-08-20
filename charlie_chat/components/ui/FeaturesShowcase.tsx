@@ -1,0 +1,136 @@
+'use client';
+
+import React from 'react';
+import FeatureTile from './FeatureTile';
+import { Search, BarChart3, Calculator, MapPin, MessageSquare, GitBranch, Mail, ChevronLeft, ChevronRight } from 'lucide-react';
+
+const FeaturesShowcase = () => {
+  const scrollRef = React.useRef<HTMLDivElement>(null);
+
+  const scrollLeft = () => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollBy({ left: -300, behavior: 'smooth' });
+    }
+  };
+
+  const scrollRight = () => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollBy({ left: 300, behavior: 'smooth' });
+    }
+  };
+  const features = [
+    {
+      title: "Property Search",
+      icon: <Search size={24} />,
+      image: "/feature-images/search.png",
+      imageAlt: "Property search interface",
+      gradient: "linear-gradient(135deg, #ef4444 0%, #dc2626 100%)", // Red
+      badge: undefined
+    },
+    {
+      title: "AI Chat Assistant",
+      icon: <MessageSquare size={24} />,
+      image: "/feature-images/AI chat.png",
+      imageAlt: "AI chat interface",
+      gradient: "linear-gradient(135deg, #f97316 0%, #ea580c 100%)", // Orange
+      badge: undefined
+    },
+    {
+      title: "Location Intel",
+      icon: <MapPin size={24} />,
+      image: "/feature-images/cards.png",
+      imageAlt: "Location intelligence",
+      gradient: "linear-gradient(135deg, #f59e0b 0%, #d97706 100%)", // Amber
+      badge: undefined
+    },
+    {
+      title: "Mapping",
+      icon: <MapPin size={24} />,
+      image: "/feature-images/mapping.png",
+      imageAlt: "Property mapping interface",
+      gradient: "linear-gradient(135deg, #ec4899 0%, #db2777 100%)", // Pink
+      badge: undefined
+    },
+    {
+      title: "Offer Analytics",
+      icon: <Calculator size={24} />,
+      image: "/feature-images/investment.png",
+      imageAlt: "Offer analytics tool",
+      gradient: "linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)", // Blue
+      badge: undefined
+    },
+    {
+      title: "Investment Analysis",
+      icon: <BarChart3 size={24} />,
+      image: "/feature-images/financial.png",
+      imageAlt: "Investment analysis dashboard",
+      gradient: "linear-gradient(135deg, #06b6d4 0%, #0891b2 100%)", // Cyan
+      badge: undefined
+    },
+    {
+      title: "Owner Engagement",
+      icon: <Mail size={24} />,
+      image: "/feature-images/LOI.png",
+      imageAlt: "Owner engagement and LOI functionality",
+      gradient: "linear-gradient(135deg, #10b981 0%, #059669 100%)", // Green
+      badge: undefined
+    },
+    {
+      title: "Pipeline Tracking",
+      icon: <GitBranch size={24} />,
+      image: "/feature-images/pipeline.png",
+      imageAlt: "Pipeline tracking interface",
+      gradient: "white",
+      badge: undefined,
+      border: "border-2 border-teal-500",
+      textColor: "text-teal-600"
+    }
+  ];
+
+  return (
+    <section className="py-16 bg-gray-50">
+      <div className="max-w-7xl mx-auto px-6">
+
+        {/* Features Carousel */}
+        <div className="relative">
+          {/* Left Arrow */}
+          <button
+            onClick={scrollLeft}
+            className="absolute left-0 top-1/2 -translate-y-1/2 z-10 w-12 h-12 bg-white border border-gray-200 rounded-full shadow-lg flex items-center justify-center hover:bg-gray-50 transition-colors duration-200"
+          >
+            <ChevronLeft size={20} className="text-gray-600" />
+          </button>
+
+          {/* Right Arrow */}
+          <button
+            onClick={scrollRight}
+            className="absolute right-0 top-1/2 -translate-y-1/2 z-10 w-12 h-12 bg-white border border-gray-200 rounded-full shadow-lg flex items-center justify-center hover:bg-gray-50 transition-colors duration-200"
+          >
+            <ChevronRight size={20} className="text-gray-600" />
+          </button>
+
+          <div 
+            ref={scrollRef}
+            className="flex gap-6 overflow-x-auto pb-4 scrollbar-hide px-14"
+          >
+            {features.map((feature, index) => (
+              <FeatureTile
+                key={index}
+                title={feature.title}
+                icon={feature.icon}
+                image={feature.image}
+                imageAlt={feature.imageAlt}
+                gradient={feature.gradient}
+                badge={feature.badge}
+                border={feature.border}
+                textColor={feature.textColor}
+              />
+            ))}
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+};
+
+export default FeaturesShowcase;
