@@ -21,6 +21,7 @@ const FeaturesShowcase = () => {
   const features = [
     {
       title: "Property Search",
+      description: "Find profitable multifamily properties faster with advanced filters and AI-powered analyses",
       icon: <Search size={24} />,
       image: "/feature-images/search.png",
       imageAlt: "Property search interface",
@@ -29,6 +30,7 @@ const FeaturesShowcase = () => {
     },
     {
       title: "AI Chat Assistant",
+      description: "Get instant answers about properties, markets, and investment strategies from your personal AI advisor",
       icon: <MessageSquare size={24} />,
       image: "/feature-images/AI chat.png",
       imageAlt: "AI chat interface",
@@ -37,6 +39,7 @@ const FeaturesShowcase = () => {
     },
     {
       title: "Location Intel",
+      description: "Unlock neighborhood insights, demographics, and market trends to make smarter investment decisions",
       icon: <MapPin size={24} />,
       image: "/feature-images/cards.png",
       imageAlt: "Location intelligence",
@@ -45,6 +48,7 @@ const FeaturesShowcase = () => {
     },
     {
       title: "Mapping",
+      description: "Visualize properties on interactive maps with rent overlays showing investment opportunities",
       icon: <MapPin size={24} />,
       image: "/feature-images/mapping.png",
       imageAlt: "Property mapping interface",
@@ -53,6 +57,7 @@ const FeaturesShowcase = () => {
     },
     {
       title: "Offer Analytics",
+      description: "Calculate precise offers with IRR, NPV, and cash flow projections to maximize your returns",
       icon: <Calculator size={24} />,
       image: "/feature-images/investment.png",
       imageAlt: "Offer analytics tool",
@@ -61,6 +66,7 @@ const FeaturesShowcase = () => {
     },
     {
       title: "Investment Analysis",
+      description: "Generate detailed financial reports and performance metrics for confident investment decisions",
       icon: <BarChart3 size={24} />,
       image: "/feature-images/financial.png",
       imageAlt: "Investment analysis dashboard",
@@ -69,6 +75,7 @@ const FeaturesShowcase = () => {
     },
     {
       title: "Owner Engagement",
+      description: "Create professional LOIs and marketing letters to connect with property owners effectively",
       icon: <Mail size={24} />,
       image: "/feature-images/LOI.png",
       imageAlt: "Owner engagement and LOI functionality",
@@ -77,6 +84,7 @@ const FeaturesShowcase = () => {
     },
     {
       title: "Pipeline Tracking",
+      description: "Manage your entire deal pipeline from initial contact to closing with organized workflows",
       icon: <GitBranch size={24} />,
       image: "/feature-images/pipeline.png",
       imageAlt: "Pipeline tracking interface",
@@ -88,11 +96,11 @@ const FeaturesShowcase = () => {
   ];
 
   return (
-    <section className="py-16 bg-gray-50">
+    <section className="py-16 bg-gray-50 overflow-visible">
       <div className="max-w-7xl mx-auto px-6">
 
         {/* Features Carousel */}
-        <div className="relative">
+        <div className="relative pt-16">
           {/* Left Arrow */}
           <button
             onClick={scrollLeft}
@@ -111,12 +119,13 @@ const FeaturesShowcase = () => {
 
           <div 
             ref={scrollRef}
-            className="flex gap-6 overflow-x-auto pb-4 scrollbar-hide px-14"
+            className="flex gap-6 overflow-x-auto overflow-y-visible pb-12 pt-8 scrollbar-hide px-14"
           >
             {features.map((feature, index) => (
               <FeatureTile
                 key={index}
                 title={feature.title}
+                description={feature.description}
                 icon={feature.icon}
                 image={feature.image}
                 imageAlt={feature.imageAlt}
