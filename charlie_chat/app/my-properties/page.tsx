@@ -10,10 +10,13 @@ import { generateMarketingLetter } from '@/app/templates/generateMarketingLetter
 import { exportPropertiesToCSV } from './components/csvExport';
 import { handleSkipTraceForProperty } from './components/skipTraceIntegration';
 import { PropertyMapView } from './components/PropertyMapView';
+import { StatusFilter } from './components/StatusFilter';
+import { AnalyticsView } from './components/AnalyticsView';
 import { PageSavedProperty as SavedProperty } from './types';
 import { RentDataProcessor } from './components/rentDataProcessor';
 import { CharlieAlert } from './components/CharlieAlert';
 import TrialDecisionModal from "@/components/ui/trial-decision-modal";
+import { FavoriteStatus } from './constants';
 
 import {
     Star,
@@ -22,6 +25,7 @@ import {
     Grid3X3,
     Map,
     BarChart3,
+    PieChart,
     Heart,
     Search,
     Filter,
@@ -29,7 +33,7 @@ import {
     Square
 } from "lucide-react";
 
-type ViewMode = 'cards' | 'map' | 'matrix';
+type ViewMode = 'cards' | 'map' | 'matrix' | 'analytics';
 type DocumentTemplate = 'marketing-letter' | 'loi-1' | 'loi-2' | 'loi-3' | 'loi-4' | 'loi-5';
 
 // Skip trace re-run cutoff - easily changeable
@@ -65,7 +69,9 @@ export default function MyPropertiesPage() {
     const [selectedProperties, setSelectedProperties] = useState<Set<string>>(new Set());
     const [viewMode, setViewMode] = useState<ViewMode>('cards');
     const [searchTerm, setSearchTerm] = useState('');
+    const [selectedStatuses, setSelectedStatuses] = useState<Set<FavoriteStatus | 'ALL' | 'NO_STATUS'>>(new Set(['ALL']));
     const [showDocumentDropdown, setShowDocumentDropdown] = useState(false);
+    const [openStatusDropdown, setOpenStatusDropdown] = useState<string | null>(null);
     const [errorMessage, setErrorMessage] = useState('');
     const [skipTraceLoading, setSkipTraceLoading] = useState<Set<string>>(new Set());
     const [skipTraceErrors, setSkipTraceErrors] = useState<{ [key: string]: string }>({});
@@ -75,6 +81,7 @@ export default function MyPropertiesPage() {
     const [rentData, setRentData] = useState<any[]>([]);
     const [isLoadingRentData, setIsLoadingRentData] = useState(true);
     const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
+    const [clusterFilteredIds, setClusterFilteredIds] = useState<Set<string>>(new Set());
     
     // CharlieAlert state
     const [charlieAlert, setCharlieAlert] = useState<{
@@ -232,6 +239,7 @@ export default function MyPropertiesPage() {
                     .from("user_favorites")
                     .select(`
             saved_at,
+            favorite_status,
             saved_properties (*, owner_first_name, owner_last_name, notes)
           `)
                     .eq("user_id", user.id)
@@ -246,6 +254,7 @@ export default function MyPropertiesPage() {
                         return {
                             ...prop,
                             saved_at: item.saved_at,
+                            favorite_status: item.favorite_status,
                             skipTraceData: prop.skip_trace_data,
                             mailAddress: {
                                 street: prop.owner_street || '',
@@ -295,12 +304,24 @@ export default function MyPropertiesPage() {
         }
     };
 
-    // Filter properties based on search
-    const filteredProperties = savedProperties.filter(property =>
-        property.address_full?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        property.address_city?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        property.address_state?.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    // Filter properties based on search, status, and cluster
+    const filteredProperties = savedProperties.filter(property => {
+        // Cluster filter (if active, only show properties in the selected cluster)
+        const matchesCluster = clusterFilteredIds.size === 0 || clusterFilteredIds.has(property.property_id);
+        
+        // Search filter
+        const matchesSearch = searchTerm === '' || 
+            property.address_full?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            property.address_city?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            property.address_state?.toLowerCase().includes(searchTerm.toLowerCase());
+        
+        // Status filter
+        const matchesStatus = selectedStatuses.has('ALL') || 
+            (property.favorite_status && selectedStatuses.has(property.favorite_status)) ||
+            (!property.favorite_status && selectedStatuses.has('NO_STATUS'));
+        
+        return matchesCluster && matchesSearch && matchesStatus;
+    });
 
     // For map view: show selected properties if any are selected, otherwise show all filtered properties
     const mapViewProperties = selectedProperties.size > 0 
@@ -328,6 +349,75 @@ export default function MyPropertiesPage() {
             currency: 'USD',
             maximumFractionDigits: 0
         }).format(amount);
+    };
+
+    // Status dropdown control
+    const handleStatusDropdownToggle = (propertyId: string, isOpen: boolean) => {
+        if (isOpen) {
+            setOpenStatusDropdown(propertyId);
+        } else {
+            setOpenStatusDropdown(null);
+        }
+    };
+
+    // Status update handler
+    const handleStatusChange = async (propertyId: string, status: FavoriteStatus | null) => {
+        if (!user || !supabase) return;
+
+        try {
+            const { error } = await supabase
+                .from("user_favorites")
+                .update({ favorite_status: status })
+                .eq("user_id", user.id)
+                .eq("property_id", propertyId);
+
+            if (error) {
+                console.error('Error updating status:', error);
+            } else {
+                // Update local state
+                setSavedProperties(prev =>
+                    prev.map(p =>
+                        p.property_id === propertyId
+                            ? { ...p, favorite_status: status }
+                            : p
+                    )
+                );
+            }
+        } catch (error) {
+            console.error('Error saving status:', error);
+        }
+    };
+
+    // Analytics status filter handler
+    const handleAnalyticsStatusChange = (status: FavoriteStatus | 'NO_STATUS' | null) => {
+        if (status === null) {
+            // Clear all filters - show all statuses
+            setSelectedStatuses(new Set(['ALL']));
+        } else {
+            // Filter to show only the selected status
+            setSelectedStatuses(new Set([status]));
+        }
+    };
+
+    // Cluster filter handler
+    const handleClusterFilter = (propertyIds: string[]) => {
+        setClusterFilteredIds(new Set(propertyIds));
+        // Clear status filter to show all statuses within the cluster
+        setSelectedStatuses(new Set(['ALL']));
+        // Clear search term to focus on cluster properties
+        setSearchTerm('');
+    };
+
+    // Clear cluster filter when changing views (except when going to cards from analytics)
+    const handleViewModeChange = (newMode: ViewMode) => {
+        if (viewMode === 'analytics' && newMode === 'cards') {
+            // Keep cluster filter when going from analytics to cards (user clicked cluster)
+            // Don't clear the filter
+        } else {
+            // Clear cluster filter for other view transitions
+            setClusterFilteredIds(new Set());
+        }
+        setViewMode(newMode);
     };
 
     // Notes update handler
@@ -960,21 +1050,27 @@ export default function MyPropertiesPage() {
                     )}
                 </div>
 
-                {/* View Mode Tabs */}
-                <div className="flex bg-gray-100 rounded-lg p-1 mb-6 inline-flex">
-                    <button
-                        onClick={() => setViewMode('cards')}
-                        className={`flex items-center space-x-2 px-4 py-2 rounded-md text-sm font-medium transition-all duration-200 ${viewMode === 'cards'
-                            ? 'bg-white text-blue-600 shadow-sm border border-gray-200'
-                            : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'
-                            }`}
-                    >
-                        <Grid3X3 size={16} />
-                        <span>Cards</span>
-                    </button>
+                {/* Status Filter and View Mode Tabs */}
+                <div className="flex items-center space-x-4 mb-6">
+                    <StatusFilter 
+                        selectedStatuses={selectedStatuses}
+                        onStatusChange={setSelectedStatuses}
+                    />
+                    
+                    <div className="flex bg-gray-100 rounded-lg p-1">
+                        <button
+                            onClick={() => handleViewModeChange('cards')}
+                            className={`flex items-center space-x-2 px-4 py-2 rounded-md text-sm font-medium transition-all duration-200 ${viewMode === 'cards'
+                                ? 'bg-white text-blue-600 shadow-sm border border-gray-200'
+                                : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'
+                                }`}
+                        >
+                            <Grid3X3 size={16} />
+                            <span>Cards</span>
+                        </button>
 
                     <button
-                        onClick={() => setViewMode('map')}
+                        onClick={() => handleViewModeChange('map')}
                         className={`flex items-center space-x-2 px-4 py-2 rounded-md text-sm font-medium transition-all duration-200 ${viewMode === 'map'
                             ? 'bg-white text-blue-600 shadow-sm border border-gray-200'
                             : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'
@@ -984,16 +1080,28 @@ export default function MyPropertiesPage() {
                         <span>Map</span>
                     </button>
 
-                    <button
-                        onClick={() => setViewMode('matrix')}
-                        className={`flex items-center space-x-2 px-4 py-2 rounded-md text-sm font-medium transition-all duration-200 ${viewMode === 'matrix'
-                            ? 'bg-white text-blue-600 shadow-sm border border-gray-200'
-                            : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'
-                            }`}
-                    >
-                        <BarChart3 size={16} />
-                        <span>Matrix</span>
-                    </button>
+                        <button
+                            onClick={() => handleViewModeChange('matrix')}
+                            className={`flex items-center space-x-2 px-4 py-2 rounded-md text-sm font-medium transition-all duration-200 ${viewMode === 'matrix'
+                                ? 'bg-white text-blue-600 shadow-sm border border-gray-200'
+                                : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'
+                                }`}
+                        >
+                            <BarChart3 size={16} />
+                            <span>Matrix</span>
+                        </button>
+
+                        <button
+                            onClick={() => handleViewModeChange('analytics')}
+                            className={`flex items-center space-x-2 px-4 py-2 rounded-md text-sm font-medium transition-all duration-200 ${viewMode === 'analytics'
+                                ? 'bg-white text-blue-600 shadow-sm border border-gray-200'
+                                : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'
+                                }`}
+                        >
+                            <PieChart size={16} />
+                            <span>Analytics</span>
+                        </button>
+                    </div>
                 </div>
 
                 {/* Error Message */}
@@ -1014,6 +1122,7 @@ export default function MyPropertiesPage() {
                         properties={savedProperties.length === 0 ? [] : filteredProperties}
                         totalPropertiesCount={savedProperties.length}
                         searchTerm={searchTerm}
+                        selectedStatuses={selectedStatuses}
                         selectedProperties={selectedProperties}
                         onToggleSelection={togglePropertySelection}
                         onRemoveFromFavorites={handleRemoveFromFavorites}
@@ -1022,6 +1131,9 @@ export default function MyPropertiesPage() {
                         onSkipTrace={handleSkipTrace}
                         onSkipTraceError={handleSkipTraceError}
                         canSkipTrace={canSkipTrace}
+                        onStatusChange={handleStatusChange}
+                        openStatusDropdown={openStatusDropdown}
+                        onStatusDropdownToggle={handleStatusDropdownToggle}
                         isLoading={isLoadingProperties}
                     />
                 ) : viewMode === 'map' ? (
@@ -1037,7 +1149,7 @@ export default function MyPropertiesPage() {
                         isLoading={isLoadingProperties || isLoadingRentData}
                         rentData={Array.isArray(rentData) ? rentData : []} // Ensure it's always an array
                     />
-                ) : (
+                ) : viewMode === 'matrix' ? (
                     /* Matrix View */
                     <MatrixView
                         properties={filteredProperties}
@@ -1047,6 +1159,15 @@ export default function MyPropertiesPage() {
                         onUpdateNotes={handleUpdateNotes}
                         onSkipTrace={handleSkipTrace}
                         selectionMode={matrixSelectionMode}
+                    />
+                ) : (
+                    /* Analytics View */
+                    <AnalyticsView
+                        properties={filteredProperties}
+                        selectedStatuses={selectedStatuses}
+                        onStatusFilterChange={handleAnalyticsStatusChange}
+                        onViewChange={handleViewModeChange}
+                        onClusterFilter={handleClusterFilter}
                     />
                 )}
             </div>

@@ -79,9 +79,9 @@ export const CharlieTooltip: React.FC<CharlieTooltipProps> = ({ message, childre
               
               {/* Message Content */}
               <div className="flex-1">
-                <p className="text-sm text-gray-800 leading-relaxed font-medium">
+                <div className="text-sm text-gray-800 leading-tight font-medium whitespace-pre-line">
                   {message}
-                </p>
+                </div>
               </div>
             </div>
           </div>

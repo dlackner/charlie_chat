@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { Heart, CheckSquare, Square } from 'lucide-react';
+import { Heart, CheckSquare, Square, ChevronDown } from 'lucide-react';
 import { PageSavedProperty as SavedProperty } from '../types';
+import { FavoriteStatus, STATUS_OPTIONS } from '../constants';
 import { StreetViewImage } from '../../../components/ui/StreetViewImage';
 
 export interface PropertyCardProps {
@@ -12,6 +13,9 @@ export interface PropertyCardProps {
     onSkipTrace?: (propertyId: string, property: SavedProperty) => void;
     canSkipTrace?: (property: SavedProperty) => boolean;
     onSkipTraceError?: (propertyId: string, error: string) => void;
+    onStatusChange?: (propertyId: string, status: FavoriteStatus | null) => void;
+    openStatusDropdown?: string | null;
+    onStatusDropdownToggle?: (propertyId: string, isOpen: boolean) => void;
     
     // Display configuration
     displayMode?: 'grid' | 'modal' | 'list';
@@ -35,6 +39,9 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
     onSkipTrace,
     canSkipTrace,
     onSkipTraceError,
+    onStatusChange,
+    openStatusDropdown,
+    onStatusDropdownToggle,
     displayMode = 'grid',
     showStreetView = true,
     showSelection = true,
@@ -96,7 +103,7 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
             };
         } else if (hasBeenAttempted && !canTrace) {
             return { 
-                text: 'No Skip Trace Data Found', 
+                text: 'No Data Found', 
                 disabled: true,
                 icon: 'disabled'
             };
@@ -163,11 +170,29 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
         setNotesModalOpen(false);
     };
 
+    const handleStatusChange = (status: FavoriteStatus | null) => {
+        if (onStatusChange) {
+            onStatusChange(property.property_id, status);
+        }
+        if (onStatusDropdownToggle) {
+            onStatusDropdownToggle(property.property_id, false);
+        }
+    };
+
+    const getStatusDisplay = () => {
+        if (!property.favorite_status) {
+            return 'Set Status';
+        }
+        const option = STATUS_OPTIONS.find(opt => opt.value === property.favorite_status);
+        return option?.label || property.favorite_status;
+    };
+
     // Component state
     const isSelected = selectedProperties.has(property.property_id);
     const hasSkipTrace = !!property.skipTraceData;
     const investmentFlags = getInvestmentFlags(property);
     const skipTraceState = getSkipTraceButtonState();
+    const isStatusDropdownOpen = openStatusDropdown === property.property_id;
 
     // Base card styles
     const cardStyles = `
@@ -294,11 +319,61 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
                                     </button>
                                 )}
 
+                                {/* Status dropdown */}
+                                <div className="relative">
+                                    <button
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            if (onStatusDropdownToggle) {
+                                                onStatusDropdownToggle(property.property_id, !isStatusDropdownOpen);
+                                            }
+                                        }}
+                                        className="flex items-center space-x-1 px-2 py-1 text-xs rounded transition-colors bg-gray-100 hover:bg-gray-200 whitespace-nowrap"
+                                        title="Change status"
+                                    >
+                                        <span className="text-gray-700">{getStatusDisplay()}</span>
+                                        <ChevronDown size={12} className="text-gray-500" />
+                                    </button>
+
+                                    {isStatusDropdownOpen && (
+                                        <div className="absolute bottom-full left-0 mb-1 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
+                                            <div className="py-1">
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handleStatusChange(null);
+                                                    }}
+                                                    className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                                                >
+                                                    Clear Status
+                                                </button>
+                                                <div className="border-t border-gray-200"></div>
+                                                {STATUS_OPTIONS.map((option) => (
+                                                    <button
+                                                        key={option.value}
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            handleStatusChange(option.value);
+                                                        }}
+                                                        className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-50 ${
+                                                            property.favorite_status === option.value 
+                                                                ? 'bg-blue-50 text-blue-700' 
+                                                                : 'text-gray-700'
+                                                        }`}
+                                                    >
+                                                        {option.label}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+
                                 {showSkipTrace && onSkipTrace && (
                                     <button
                                         onClick={handleSkipTrace}
                                         disabled={skipTraceState.disabled}
-                                        className="flex items-center space-x-1 px-2 py-1 text-xs rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed bg-gray-100 hover:bg-gray-200"
+                                        className="flex items-center space-x-1 px-2 py-1 text-xs rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed bg-gray-100 hover:bg-gray-200 whitespace-nowrap"
                                         title={skipTraceState.text}
                                     >
                                         {(() => {
@@ -311,7 +386,7 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
                                                     return <Square size={14} className="text-blue-600" />;
                                             }
                                         })()}
-                                        <span className="text-xs text-gray-600">{skipTraceState.text}</span>
+                                        <span className="text-xs text-gray-600 whitespace-nowrap">{skipTraceState.text}</span>
                                     </button>
                                 )}
                             </div>

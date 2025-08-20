@@ -48,6 +48,10 @@ interface CashFlowReportProps {
   otherExpensesAnnual: number;
   expenseGrowthRate: number;
   
+  // Operating Expenses Percentage Mode
+  usePercentageMode?: boolean;
+  operatingExpensePercentage?: number;
+  
   // Capital Expenditures
   capitalReservePerUnitAnnual: number;
   holdingPeriodYears: number;
@@ -110,6 +114,8 @@ export const generate10YearCashFlowReport = async (props: CashFlowReportProps) =
     gAndAAnnual,
     otherExpensesAnnual,
     expenseGrowthRate,
+    usePercentageMode = false,
+    operatingExpensePercentage = 45,
     capitalReservePerUnitAnnual,
     holdingPeriodYears
   } = props;
@@ -185,20 +191,41 @@ export const generate10YearCashFlowReport = async (props: CashFlowReportProps) =
     const effectiveGrossIncome = effectiveRentalIncome + otherIncome;
     
     // OPERATING EXPENSES CALCULATIONS
-    const yearlyPropertyTaxes = propertyTaxes * expenseGrowthFactor;
-    const yearlyInsurance = insurance * expenseGrowthFactor;
-    const yearlyPropertyManagement = effectiveGrossIncome * (propertyManagementFeePercentage / 100);
-    const yearlyMaintenanceRepairs = maintenanceRepairsAnnual * expenseGrowthFactor;
-    const yearlyUtilities = utilitiesAnnual * expenseGrowthFactor;
-    const yearlyContractServices = contractServicesAnnual * expenseGrowthFactor;
-    const yearlyPayroll = payrollAnnual * expenseGrowthFactor;
-    const yearlyMarketing = marketingAnnual * expenseGrowthFactor;
-    const yearlyGAndA = gAndAAnnual * expenseGrowthFactor;
-    const yearlyOtherExpenses = otherExpensesAnnual * expenseGrowthFactor;
+    let yearlyPropertyTaxes, yearlyInsurance, yearlyPropertyManagement, yearlyMaintenanceRepairs;
+    let yearlyUtilities, yearlyContractServices, yearlyPayroll, yearlyMarketing, yearlyGAndA, yearlyOtherExpenses;
+    let totalOperatingExpenses;
     
-    const totalOperatingExpenses = yearlyPropertyTaxes + yearlyInsurance + yearlyPropertyManagement + 
-      yearlyMaintenanceRepairs + yearlyUtilities + yearlyContractServices + yearlyPayroll + 
-      yearlyMarketing + yearlyGAndA + yearlyOtherExpenses;
+    if (usePercentageMode) {
+      // In percentage mode, show $0 for individual items and calculate total from percentage
+      yearlyPropertyTaxes = 0;
+      yearlyInsurance = 0;
+      yearlyPropertyManagement = 0;
+      yearlyMaintenanceRepairs = 0;
+      yearlyUtilities = 0;
+      yearlyContractServices = 0;
+      yearlyPayroll = 0;
+      yearlyMarketing = 0;
+      yearlyGAndA = 0;
+      yearlyOtherExpenses = 0;
+      
+      totalOperatingExpenses = effectiveGrossIncome * (operatingExpensePercentage / 100) * expenseGrowthFactor;
+    } else {
+      // In detailed mode, calculate individual line items
+      yearlyPropertyTaxes = propertyTaxes * expenseGrowthFactor;
+      yearlyInsurance = insurance * expenseGrowthFactor;
+      yearlyPropertyManagement = effectiveGrossIncome * (propertyManagementFeePercentage / 100);
+      yearlyMaintenanceRepairs = maintenanceRepairsAnnual * expenseGrowthFactor;
+      yearlyUtilities = utilitiesAnnual * expenseGrowthFactor;
+      yearlyContractServices = contractServicesAnnual * expenseGrowthFactor;
+      yearlyPayroll = payrollAnnual * expenseGrowthFactor;
+      yearlyMarketing = marketingAnnual * expenseGrowthFactor;
+      yearlyGAndA = gAndAAnnual * expenseGrowthFactor;
+      yearlyOtherExpenses = otherExpensesAnnual * expenseGrowthFactor;
+      
+      totalOperatingExpenses = yearlyPropertyTaxes + yearlyInsurance + yearlyPropertyManagement + 
+        yearlyMaintenanceRepairs + yearlyUtilities + yearlyContractServices + yearlyPayroll + 
+        yearlyMarketing + yearlyGAndA + yearlyOtherExpenses;
+    }
     
     // FINANCIAL METRICS
     const netOperatingIncome = effectiveGrossIncome - totalOperatingExpenses;
