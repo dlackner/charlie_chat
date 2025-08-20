@@ -45,7 +45,7 @@ const FeaturesShowcase = () => {
       imageAlt: "Location intelligence",
       gradient: "linear-gradient(135deg, oklch(0.828 0.189 84.429), oklch(0.78 0.17 80))", // Chart-4 based
       badge: undefined,
-      textColor: "text-gray-800"
+      textColor: "text-black"
     },
     {
       title: "Mapping",
@@ -58,7 +58,7 @@ const FeaturesShowcase = () => {
     },
     {
       title: "Offer Analytics",
-      description: "Calculate precise offers with IRR, NPV, and cash flow projections to maximize your returns",
+      description: "Calculate precise offers with IRR, Cap Rate, and cash flow projections to maximize your returns",
       icon: <Calculator size={24} />,
       image: "/feature-images/investment.png",
       imageAlt: "Offer analytics tool",

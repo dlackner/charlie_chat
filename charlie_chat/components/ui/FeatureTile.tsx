@@ -46,7 +46,7 @@ const FeatureTile: React.FC<FeatureTileProps> = ({
             </span>
           )}
         </div>
-        <p className={`${textColor === 'text-white' ? 'text-white/80' : 'text-teal-600/80'} text-xs leading-tight`}>
+        <p className={`${textColor === 'text-white' ? 'text-white/80' : textColor === 'text-black' ? 'text-black/90' : 'text-teal-600/80'} text-xs leading-tight`}>
           {description}
         </p>
       </div>
