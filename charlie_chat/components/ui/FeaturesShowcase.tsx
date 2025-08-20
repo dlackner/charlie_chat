@@ -25,7 +25,7 @@ const FeaturesShowcase = () => {
       icon: <Search size={24} />,
       image: "/feature-images/search.png",
       imageAlt: "Property search interface",
-      gradient: "linear-gradient(135deg, #ef4444 0%, #dc2626 100%)", // Red
+      gradient: "linear-gradient(135deg, oklch(0.646 0.222 41.116), oklch(0.6 0.2 35))", // Chart-1 based (orange)
       badge: undefined
     },
     {
@@ -34,7 +34,7 @@ const FeaturesShowcase = () => {
       icon: <MessageSquare size={24} />,
       image: "/feature-images/AI chat.png",
       imageAlt: "AI chat interface",
-      gradient: "linear-gradient(135deg, #f97316 0%, #ea580c 100%)", // Orange
+      gradient: "linear-gradient(135deg, oklch(0.21 0.006 285.885), oklch(0.18 0.008 280))", // Primary based
       badge: undefined
     },
     {
@@ -43,8 +43,9 @@ const FeaturesShowcase = () => {
       icon: <MapPin size={24} />,
       image: "/feature-images/cards.png",
       imageAlt: "Location intelligence",
-      gradient: "linear-gradient(135deg, #f59e0b 0%, #d97706 100%)", // Amber
-      badge: undefined
+      gradient: "linear-gradient(135deg, oklch(0.828 0.189 84.429), oklch(0.78 0.17 80))", // Chart-4 based
+      badge: undefined,
+      textColor: "text-gray-800"
     },
     {
       title: "Mapping",
@@ -52,7 +53,7 @@ const FeaturesShowcase = () => {
       icon: <MapPin size={24} />,
       image: "/feature-images/mapping.png",
       imageAlt: "Property mapping interface",
-      gradient: "linear-gradient(135deg, #ec4899 0%, #db2777 100%)", // Pink
+      gradient: "linear-gradient(135deg, oklch(0.6 0.118 184.704), oklch(0.55 0.13 180))", // Chart-2 based
       badge: undefined
     },
     {
@@ -61,7 +62,7 @@ const FeaturesShowcase = () => {
       icon: <Calculator size={24} />,
       image: "/feature-images/investment.png",
       imageAlt: "Offer analytics tool",
-      gradient: "linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)", // Blue
+      gradient: "linear-gradient(135deg, oklch(0.398 0.07 227.392), oklch(0.35 0.09 230))", // Chart-3 based
       badge: undefined
     },
     {
@@ -70,7 +71,7 @@ const FeaturesShowcase = () => {
       icon: <BarChart3 size={24} />,
       image: "/feature-images/financial.png",
       imageAlt: "Investment analysis dashboard",
-      gradient: "linear-gradient(135deg, #06b6d4 0%, #0891b2 100%)", // Cyan
+      gradient: "linear-gradient(135deg, oklch(0.769 0.188 70.08), oklch(0.72 0.17 65))", // Chart-5 based
       badge: undefined
     },
     {
@@ -79,7 +80,7 @@ const FeaturesShowcase = () => {
       icon: <Mail size={24} />,
       image: "/feature-images/LOI.png",
       imageAlt: "Owner engagement and LOI functionality",
-      gradient: "linear-gradient(135deg, #10b981 0%, #059669 100%)", // Green
+      gradient: "linear-gradient(135deg, #1C599F, #164a87)", // Brand blue
       badge: undefined
     },
     {
