@@ -7,6 +7,7 @@ import { useState, useRef, useEffect } from "react";
 import { User, ChevronDown, Settings, Heart, LogOut, Star } from "lucide-react";
 
 import { useAuth } from "@/contexts/AuthContext";
+import { useModal } from "@/contexts/ModalContext";
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import { useMyPropertiesAccess } from "@/app/my-properties/components/useMyPropertiesAccess";
 import { Dialog } from "@headlessui/react";
@@ -18,13 +19,12 @@ export default function Header() {
   const router = useRouter();
   const [showAccountMenu, setShowAccountMenu] = useState(false);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
-  const [showSignUpModal, setShowSignUpModal] = useState(false);
+  const { showSignUpModal, setShowSignUpModal, showLoginModal, setShowLoginModal } = useModal();
   
   // Sign up modal states
   const [signupEmail, setSignupEmail] = useState("");
   const [signupError, setSignupError] = useState<string | null>(null);
   const [signupLinkSent, setSignupLinkSent] = useState(false);
-  const [showLoginModal, setShowLoginModal] = useState(false);
   
   // Login modal states
   const [loginEmail, setLoginEmail] = useState("");
