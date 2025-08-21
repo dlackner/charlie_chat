@@ -267,7 +267,7 @@ export default function PricingPage() {
             It's me, Charles Dobens—my multifamily lessons and stories, my multifamily legal and operational know-how—delivered to you through my Charlie Chat AI assistant.
           </p>
           <ul className="text-sm space-y-1 text-gray-800 mb-4 flex flex-col">
-            <li>✔️ Unlimited Charlie Chat searches</li>
+            <li>✔️ Unlimited Charlie Chats</li>
             <li>✔️ Full Access to my entire knowledge base</li>
             <li>✔️ Deal tactics</li>
             <li>✔️ Closing strategies</li>
