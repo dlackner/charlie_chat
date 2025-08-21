@@ -304,7 +304,7 @@ export default function PricingPage() {
           </p>
           <ul className="text-sm space-y-1 text-gray-800 mb-4 flex flex-col">
             <li className="flex items-baseline">
-              <span className="text-lg font-semibold text-orange-500">Everything in Charlie Chat, Plus</span>
+              <span className="text-lg font-semibold text-orange-500">Everything in Charlie Chat, PLUS:</span>
             </li>
             <li>✔️ AI analysis of broker documents and offer memorandums</li>
             <li>✔️ Best practice marketing tools & LOI's</li>
