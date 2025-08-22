@@ -214,6 +214,7 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
             className={cardStyles}
             style={{ [containerHeight.split('-')[0]]: containerHeight.split('-')[1] }}
             onClick={handleCardClick}
+            data-property-id={property.property_id}
         >
             {/* FRONT SIDE */}
             {cardSide === 'front' && (
@@ -547,8 +548,11 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
             {/* Notes Modal */}
             {notesModalOpen && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onClick={() => setNotesModalOpen(false)}>
-                    <div className="bg-white rounded-lg p-4 w-96 max-w-[90vw]" onClick={(e) => e.stopPropagation()}>
-                        <h3 className="text-lg font-medium mb-3">Property Notes</h3>
+                    <div className="bg-white rounded-lg p-4 w-[500px] max-w-[90vw]" onClick={(e) => e.stopPropagation()}>
+                        <h3 className="text-lg font-medium mb-2">Property Notes</h3>
+                        <p className="text-sm text-gray-500 mb-3">
+                            Add reminders by including dates in your notes (e.g., "@12/25/24 call seller")
+                        </p>
                         <textarea
                             value={localNotes}
                             onChange={(e) => setLocalNotes(e.target.value)}

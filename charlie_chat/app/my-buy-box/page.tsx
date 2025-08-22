@@ -20,7 +20,11 @@ const generateCriteriaHash = (market: Market): string => {
         units_min: market.units_min,
         units_max: market.units_max,
         assessed_value_min: market.assessed_value_min,
-        assessed_value_max: market.assessed_value_max
+        assessed_value_max: market.assessed_value_max,
+        estimated_value_min: market.estimated_value_min,
+        estimated_value_max: market.estimated_value_max,
+        year_built_min: market.year_built_min,
+        year_built_max: market.year_built_max
     });
     
     // Simple hash function (you could use crypto.subtle.digest for better hashing)
@@ -43,6 +47,10 @@ interface Market {
     units_max: number;
     assessed_value_min: number;
     assessed_value_max: number;
+    estimated_value_min: number;
+    estimated_value_max: number;
+    year_built_min: number;
+    year_built_max: number;
     isExpanded?: boolean;
     propertyCount?: number;
     propertyCountChecked?: boolean;
@@ -141,8 +149,8 @@ export default function MyBuyBoxPage() {
     }, [user, supabase, hasAccess, isLoadingAccess]);
 
     // Number formatting functions for assessed values
-    const formatCurrency = (value: number): string => {
-        return value === 0 ? '' : value.toLocaleString();
+    const formatCurrency = (value: number | undefined): string => {
+        return !value || value === 0 ? '' : value.toLocaleString();
     };
 
     const parseCurrency = (value: string): number => {
@@ -164,6 +172,10 @@ export default function MyBuyBoxPage() {
                 units_max: 0,
                 assessed_value_min: 0,
                 assessed_value_max: 0,
+                estimated_value_min: 0,
+                estimated_value_max: 0,
+                year_built_min: 0,
+                year_built_max: 0,
                 isExpanded: true,
             };
             setBuyBoxData(prev => ({
@@ -207,7 +219,7 @@ export default function MyBuyBoxPage() {
                 ids_only: true // Get property IDs without full details to avoid charges
             };
 
-            // Add market-specific filters
+            // Add market-specific filters (these are required)
             if (market.type === 'city' && market.city && market.state) {
                 searchPayload.city = market.city;
                 searchPayload.state = market.state;
@@ -218,20 +230,66 @@ export default function MyBuyBoxPage() {
                 return { count: 0, propertyIds: [] };
             }
 
-            // Add unit constraints
-            if (market.units_min > 0) {
-                searchPayload.units_min = market.units_min;
-            }
-            if (market.units_max > 0) {
-                searchPayload.units_max = market.units_max;
+            // Build OR conditions for criteria that might have missing data
+            // This allows properties to match if they satisfy any of the specified criteria,
+            // even if some data fields are missing
+            const orConditions: any[] = [];
+
+            // Create separate OR conditions for each criterion to handle missing data gracefully
+            const criteriaGroups: any[] = [];
+
+            // Base location-only search (always included as fallback)
+            const baseCondition: any = {};
+            if (market.type === 'city' && market.city && market.state) {
+                baseCondition.city = market.city;
+                baseCondition.state = market.state;
+            } else if (market.type === 'zip' && market.zip) {
+                baseCondition.zip = market.zip;
             }
 
-            // Add value constraints
-            if (market.assessed_value_min > 0) {
-                searchPayload.assessed_value_min = market.assessed_value_min;
+            // Add unit constraints with OR logic for missing data
+            if (market.units_min > 0 || market.units_max > 0) {
+                const unitsCondition = { ...baseCondition };
+                if (market.units_min > 0) unitsCondition.units_min = market.units_min;
+                if (market.units_max > 0) unitsCondition.units_max = market.units_max;
+                criteriaGroups.push(unitsCondition);
             }
-            if (market.assessed_value_max > 0) {
-                searchPayload.assessed_value_max = market.assessed_value_max;
+
+            // Add assessed value constraints with OR logic for missing data
+            if (market.assessed_value_min > 0 || market.assessed_value_max > 0) {
+                const assessedValueCondition = { ...baseCondition };
+                if (market.assessed_value_min > 0) assessedValueCondition.assessed_value_min = market.assessed_value_min;
+                if (market.assessed_value_max > 0) assessedValueCondition.assessed_value_max = market.assessed_value_max;
+                criteriaGroups.push(assessedValueCondition);
+            }
+
+            // Add estimated value constraints with OR logic for missing data
+            if (market.estimated_value_min > 0 || market.estimated_value_max > 0) {
+                const estimatedValueCondition = { ...baseCondition };
+                if (market.estimated_value_min > 0) estimatedValueCondition.estimated_value_min = market.estimated_value_min;
+                if (market.estimated_value_max > 0) estimatedValueCondition.estimated_value_max = market.estimated_value_max;
+                criteriaGroups.push(estimatedValueCondition);
+            }
+
+            // Add year built constraints with OR logic for missing data
+            if (market.year_built_min > 0 || market.year_built_max > 0) {
+                const yearBuiltCondition = { ...baseCondition };
+                if (market.year_built_min > 0) yearBuiltCondition.year_built_min = market.year_built_min;
+                if (market.year_built_max > 0) yearBuiltCondition.year_built_max = market.year_built_max;
+                criteriaGroups.push(yearBuiltCondition);
+            }
+
+            // If we have multiple criteria groups, use OR logic
+            if (criteriaGroups.length > 0) {
+                // Always include the base condition for properties with missing data
+                orConditions.push(baseCondition);
+                orConditions.push(...criteriaGroups);
+                
+                // Use OR logic via the external API
+                searchPayload.or = orConditions;
+            } else {
+                // No specific criteria set, just use base location filters
+                Object.assign(searchPayload, baseCondition);
             }
 
             console.log('🔍 Checking property count for market:', searchPayload);
@@ -634,6 +692,35 @@ export default function MyBuyBoxPage() {
 
                                                     <div>
                                                         <label className="block text-xs font-medium text-gray-700 mb-2">
+                                                            Year Built Range
+                                                        </label>
+                                                        <div className="flex items-center space-x-2">
+                                                            <input
+                                                                type="number"
+                                                                min="1800"
+                                                                max={new Date().getFullYear()}
+                                                                value={market.year_built_min || ''}
+                                                                placeholder="Min"
+                                                                onChange={(e) => updateMarket(market.id, { year_built_min: parseInt(e.target.value) || 0 })}
+                                                                className="w-16 px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                                            />
+                                                            <span className="text-gray-500">to</span>
+                                                            <input
+                                                                type="number"
+                                                                min="1800"
+                                                                max={new Date().getFullYear()}
+                                                                value={market.year_built_max || ''}
+                                                                placeholder="Max"
+                                                                onChange={(e) => updateMarket(market.id, { year_built_max: parseInt(e.target.value) || 0 })}
+                                                                className="w-16 px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                <div className="grid grid-cols-2 gap-4 mt-4">
+                                                    <div>
+                                                        <label className="block text-xs font-medium text-gray-700 mb-2">
                                                             Assessed Value Range
                                                         </label>
                                                         <div className="flex items-center space-x-2">
@@ -650,6 +737,29 @@ export default function MyBuyBoxPage() {
                                                                 value={formatCurrency(market.assessed_value_max)}
                                                                 placeholder="Max value"
                                                                 onChange={(e) => updateMarket(market.id, { assessed_value_max: parseCurrency(e.target.value) })}
+                                                                className="w-24 px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                                            />
+                                                        </div>
+                                                    </div>
+
+                                                    <div>
+                                                        <label className="block text-xs font-medium text-gray-700 mb-2">
+                                                            Estimated Value Range
+                                                        </label>
+                                                        <div className="flex items-center space-x-2">
+                                                            <input
+                                                                type="text"
+                                                                value={formatCurrency(market.estimated_value_min)}
+                                                                placeholder="Min value"
+                                                                onChange={(e) => updateMarket(market.id, { estimated_value_min: parseCurrency(e.target.value) })}
+                                                                className="w-24 px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                                            />
+                                                            <span className="text-gray-500">to</span>
+                                                            <input
+                                                                type="text"
+                                                                value={formatCurrency(market.estimated_value_max)}
+                                                                placeholder="Max value"
+                                                                onChange={(e) => updateMarket(market.id, { estimated_value_max: parseCurrency(e.target.value) })}
                                                                 className="w-24 px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
                                                             />
                                                         </div>

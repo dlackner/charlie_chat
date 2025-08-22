@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useAuth } from "@/contexts/AuthContext"; // Add this import
+import { useModal } from "@/contexts/ModalContext"; // Add this import
 import { useRouter } from "next/navigation"; // Add this import
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
@@ -25,8 +26,9 @@ export default function PricingPage() {
   const [showDowngradeModal, setShowDowngradeModal] = useState(false);
   const [showDowngradeInstructions, setShowDowngradeInstructions] = useState(false);
   
-  // ✅ Add auth context and router
+  // ✅ Add auth context, modal context, and router
   const { user: currentUser, supabase, session } = useAuth();
+  const { setShowSignUpModal } = useModal();
   const router = useRouter();
 
   // Fetch user class
@@ -55,7 +57,7 @@ export default function PricingPage() {
     if (!sessionToUse || !sessionToUse.access_token) {
       console.error("🚫 No valid session or access token");
       alert("You must be logged in to complete this purchase.");
-      router.push("/signup");
+      setShowSignUpModal(true);
       return;
     }
 
@@ -93,7 +95,7 @@ export default function PricingPage() {
     if (!sessionToUse || !sessionToUse.access_token) {
       console.error("🚫 No valid session or access token");
       alert("You must be logged in to complete this purchase.");
-      router.push("/signup");
+      setShowSignUpModal(true);
       return;
     }
 
@@ -125,7 +127,7 @@ export default function PricingPage() {
   const handleCharlieChatConversion = async () => {
     // Check if user is logged in
     if (!currentUser) {
-      router.push("/signup");
+      setShowSignUpModal(true);
       return;
     }
 
@@ -139,7 +141,7 @@ export default function PricingPage() {
         if (!sessionToUse || !sessionToUse.access_token) {
           console.error("🚫 No valid session or access token");
           alert("You must be logged in to complete this conversion.");
-          router.push("/signup");
+          setShowSignUpModal(true);
           return;
         }
 
@@ -172,7 +174,7 @@ export default function PricingPage() {
         setShowPremiumUserModal(true);
       } else {
         // For non-logged-in users, redirect to signup
-        router.push("/signup");
+        setShowSignUpModal(true);
       }
     }
   };
@@ -187,7 +189,7 @@ export default function PricingPage() {
   const handleCheckout = async (productId: string, plan: "monthly" | "annual") => {
     // Check if user is logged in
     if (!currentUser) {
-      router.push("/signup");
+      setShowSignUpModal(true);
       return;
     }
 
@@ -265,7 +267,7 @@ export default function PricingPage() {
             It's me, Charles Dobens—my multifamily lessons and stories, my multifamily legal and operational know-how—delivered to you through my Charlie Chat AI assistant.
           </p>
           <ul className="text-sm space-y-1 text-gray-800 mb-4 flex flex-col">
-            <li>✔️ Unlimited Charlie Chat searches</li>
+            <li>✔️ Unlimited Charlie Chats</li>
             <li>✔️ Full Access to my entire knowledge base</li>
             <li>✔️ Deal tactics</li>
             <li>✔️ Closing strategies</li>
@@ -275,7 +277,7 @@ export default function PricingPage() {
             onClick={handleCharlieChatConversion}
             className="mt-auto w-full bg-gray-800 text-white py-2 rounded font-semibold transition duration-200 transform hover:scale-105 hover:bg-gray-900 hover:shadow-xl"
           >
-            {currentUser && (userClass === 'trial' || userClass === 'disabled') ? 'Get Access' : 'Get Started Free'}
+            Get Started For Free
           </button>
         </div>
 
@@ -302,7 +304,7 @@ export default function PricingPage() {
           </p>
           <ul className="text-sm space-y-1 text-gray-800 mb-4 flex flex-col">
             <li className="flex items-baseline">
-              <span className="text-lg font-semibold text-orange-500">Everything in Charlie Chat, Plus</span>
+              <span className="text-lg font-semibold text-orange-500">Everything in Charlie Chat, PLUS:</span>
             </li>
             <li>✔️ AI analysis of broker documents and offer memorandums</li>
             <li>✔️ Best practice marketing tools & LOI's</li>
@@ -376,7 +378,7 @@ export default function PricingPage() {
             <li>✔️ UNLIMITED national property matches every month for your first 6 months</li>
           </ul>
           <button
-            onClick={() => window.location.href = "https://multifamilyos.com/multifamilyos-cohort-program/"}
+            onClick={() => window.open("https://multifamilyos.com/multifamilyos-cohort-program/", "_blank")}
             className="mt-auto w-full bg-black text-white py-2 rounded font-semibold transition duration-200 transform hover:scale-105 hover:bg-orange-600 hover:shadow-xl"
           >
             Apply Now

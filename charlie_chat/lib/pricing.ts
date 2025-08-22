@@ -13,9 +13,9 @@ function publicNum(key: string, fallback: number): number {
 
 export const PACKAGES: Record<UserClass, PropertyPackage[]> = {
   charlie_chat: [
-    { amount:  25, price: publicNum('NEXT_PUBLIC_APP_CHARLIE_CHAT_25_PACK_PRICE', 29) },
-    { amount:  50, price: publicNum('NEXT_PUBLIC_APP_CHARLIE_CHAT_50_PACK_PRICE', 39) },
-    { amount: 100, price: publicNum('NEXT_PUBLIC_APP_CHARLIE_CHAT_100_PACK_PRICE',49) },
+    { amount:  25, price: publicNum('NEXT_PUBLIC_APP_CHARLIE_CHAT_25_PACK_PRICE', 12) },
+    { amount:  50, price: publicNum('NEXT_PUBLIC_APP_CHARLIE_CHAT_50_PACK_PRICE', 20) },
+    { amount: 100, price: publicNum('NEXT_PUBLIC_APP_CHARLIE_CHAT_100_PACK_PRICE', 35) },
   ],
   charlie_chat_plus: [
     { amount: 100, price: publicNum('NEXT_PUBLIC_APP_CHARLIE_CHAT_PRO_100_PACK_PRICE',29) },

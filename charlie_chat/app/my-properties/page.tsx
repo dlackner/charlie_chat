@@ -17,6 +17,8 @@ import { RentDataProcessor } from './components/rentDataProcessor';
 import { CharlieAlert } from './components/CharlieAlert';
 import TrialDecisionModal from "@/components/ui/trial-decision-modal";
 import { FavoriteStatus } from './constants';
+import { parseRemindersFromNotes, ReminderData } from '@/lib/reminderUtils';
+import { EnhancedReminderBanner } from './components/ReminderBanner';
 
 import {
     Star,
@@ -82,6 +84,8 @@ export default function MyPropertiesPage() {
     const [isLoadingRentData, setIsLoadingRentData] = useState(true);
     const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
     const [clusterFilteredIds, setClusterFilteredIds] = useState<Set<string>>(new Set());
+    const [todaysReminders, setTodaysReminders] = useState<ReminderData[]>([]);
+    const [isLoadingReminders, setIsLoadingReminders] = useState(true);
     
     // CharlieAlert state
     const [charlieAlert, setCharlieAlert] = useState<{
@@ -226,6 +230,61 @@ export default function MyPropertiesPage() {
         };
     }, [showDeleteConfirmation]);
 
+    // Load today's reminders by parsing notes in real-time
+    const loadTodaysReminders = () => {
+        if (!user) {
+            setIsLoadingReminders(false);
+            return;
+        }
+
+        try {
+            const today = new Date();
+            const todayStr = today.toISOString().split('T')[0]; // YYYY-MM-DD format
+            
+            // Get dismissed reminders for today from localStorage
+            const dismissedKey = `dismissed_reminders_${todayStr}`;
+            const dismissed = JSON.parse(localStorage.getItem(dismissedKey) || '[]');
+            
+            const reminders: any[] = [];
+            
+            // Parse all properties for today's reminders
+            savedProperties.forEach(property => {
+                if (!property.notes) return;
+                
+                const parsedReminders = parseRemindersFromNotes(property.notes);
+                
+                parsedReminders.forEach((reminder, index) => {
+                    const reminderDateStr = reminder.date.toISOString().split('T')[0];
+                    
+                    // Only include if it's due today
+                    if (reminderDateStr === todayStr) {
+                        const reminderId = `${property.property_id}_${index}`;
+                        
+                        // Skip if dismissed today
+                        if (!dismissed.includes(reminderId)) {
+                            reminders.push({
+                                id: reminderId,
+                                user_id: user.id,
+                                property_id: property.property_id,
+                                reminder_text: property.notes, // Show full notes instead of parsed text
+                                reminder_date: reminderDateStr,
+                                property_address: property.address_full,
+                                property_city: property.address_city,
+                                property_state: property.address_state,
+                            });
+                        }
+                    }
+                });
+            });
+            
+            setTodaysReminders(reminders);
+        } catch (error) {
+            console.error("Error parsing today's reminders:", error);
+        } finally {
+            setIsLoadingReminders(false);
+        }
+    };
+
     // Load saved properties
     useEffect(() => {
         const loadSavedProperties = async () => {
@@ -240,7 +299,8 @@ export default function MyPropertiesPage() {
                     .select(`
             saved_at,
             favorite_status,
-            saved_properties (*, owner_first_name, owner_last_name, notes)
+            notes,
+            saved_properties (*, owner_first_name, owner_last_name)
           `)
                     .eq("user_id", user.id)
                     .eq("is_active", true);
@@ -255,6 +315,7 @@ export default function MyPropertiesPage() {
                             ...prop,
                             saved_at: item.saved_at,
                             favorite_status: item.favorite_status,
+                            notes: item.notes, // Get notes from user_favorites, not saved_properties
                             skipTraceData: prop.skip_trace_data,
                             mailAddress: {
                                 street: prop.owner_street || '',
@@ -279,8 +340,16 @@ export default function MyPropertiesPage() {
             loadSavedProperties();
         } else if (!isLoadingAccess) {
             setIsLoadingProperties(false);
+            setIsLoadingReminders(false);
         }
     }, [user, supabase, hasAccess, isLoadingAccess]);
+
+    // Load reminders whenever properties change
+    useEffect(() => {
+        if (savedProperties.length > 0) {
+            loadTodaysReminders();
+        }
+    }, [savedProperties, user]);
 
     // Handle property selection
     const togglePropertySelection = (propertyId: string) => {
@@ -328,28 +397,6 @@ export default function MyPropertiesPage() {
         ? filteredProperties.filter(property => selectedProperties.has(property.property_id))
         : filteredProperties;
 
-    // Helper functions
-    const calculateAge = (yearBuilt: number) => {
-        return new Date().getFullYear() - yearBuilt;
-    };
-
-    const formatDate = (dateString: string) => {
-        if (!dateString) return 'N/A';
-        return new Date(dateString).toLocaleDateString('en-US', {
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric'
-        });
-    };
-
-    const formatCurrency = (amount: number | null | undefined) => {
-        if (!amount) return 'N/A';
-        return new Intl.NumberFormat('en-US', {
-            style: 'currency',
-            currency: 'USD',
-            maximumFractionDigits: 0
-        }).format(amount);
-    };
 
     // Status dropdown control
     const handleStatusDropdownToggle = (propertyId: string, isOpen: boolean) => {
@@ -420,30 +467,90 @@ export default function MyPropertiesPage() {
         setViewMode(newMode);
     };
 
-    // Notes update handler
+    // Notes update handler - simplified to just save notes
     const handleUpdateNotes = async (propertyId: string, notes: string) => {
+        if (!user || !supabase) {
+            console.error('Missing user or supabase client');
+            return;
+        }
+
         try {
+            // Simply save the notes to user_favorites table
             const { error } = await supabase
-                .from('saved_properties')
+                .from('user_favorites')
                 .update({ notes })
-                .eq('property_id', propertyId);
+                .eq('property_id', propertyId)
+                .eq('user_id', user.id);
 
             if (error) {
                 console.error('Error updating notes:', error);
-                // Optional: Add toast notification for error
-            } else {
-                // Update local state
-                setSavedProperties(prev =>
-                    prev.map(p =>
-                        p.property_id === propertyId
-                            ? { ...p, notes }
-                            : p
-                    )
-                );
+                showCharlieAlert(`Failed to save notes: ${error.message}`, { type: 'error' });
+                return;
             }
+
+            // Update local state
+            setSavedProperties(prev =>
+                prev.map(p =>
+                    p.property_id === propertyId
+                        ? { ...p, notes }
+                        : p
+                )
+            );
+
+            // Refresh today's reminders since notes may have changed
+            loadTodaysReminders();
+
         } catch (error) {
-            console.error('Error saving notes:', error);
+            console.error('Unexpected error saving notes:', error);
+            showCharlieAlert(`Unexpected error: ${error}`, { type: 'error' });
         }
+    };
+
+    // Reminder handlers
+    const handleDismissReminder = (reminderId: string) => {
+        try {
+            const today = new Date().toISOString().split('T')[0];
+            const dismissedKey = `dismissed_reminders_${today}`;
+            
+            // Get current dismissed reminders for today
+            const dismissed = JSON.parse(localStorage.getItem(dismissedKey) || '[]');
+            
+            // Add this reminder to dismissed list
+            if (!dismissed.includes(reminderId)) {
+                dismissed.push(reminderId);
+                localStorage.setItem(dismissedKey, JSON.stringify(dismissed));
+            }
+            
+            // Remove from local state immediately
+            setTodaysReminders(prev => prev.filter(r => r.id !== reminderId));
+            
+        } catch (error) {
+            console.error('Error dismissing reminder:', error);
+        }
+    };
+
+    const handleViewProperty = (propertyId: string) => {
+        // Switch to cards view if not already there
+        if (viewMode !== 'cards') {
+            setViewMode('cards');
+        }
+
+        // Scroll to the property card after a short delay to allow view change
+        setTimeout(() => {
+            const propertyElement = document.querySelector(`[data-property-id="${propertyId}"]`);
+            if (propertyElement) {
+                propertyElement.scrollIntoView({ 
+                    behavior: 'smooth', 
+                    block: 'center' 
+                });
+                
+                // Add a brief highlight effect
+                propertyElement.classList.add('ring-4', 'ring-blue-300', 'ring-opacity-50');
+                setTimeout(() => {
+                    propertyElement.classList.remove('ring-4', 'ring-blue-300', 'ring-opacity-50');
+                }, 2000);
+            }
+        }, 100);
     };
 
     // Bulk actions
@@ -839,6 +946,13 @@ export default function MyPropertiesPage() {
                         }
                     </p>
                 </div>
+
+                {/* Reminder Banner */}
+                <EnhancedReminderBanner
+                    reminders={todaysReminders}
+                    onDismissReminder={handleDismissReminder}
+                    onViewProperty={handleViewProperty}
+                />
 
                 {/* Fixed spacing - always maintain the height */}
                 <div className="mb-6">

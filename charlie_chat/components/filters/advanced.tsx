@@ -260,7 +260,7 @@ export const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({
             onChange={setLastSalePriceRange}
             min={0}
             max={100000000}
-            step={25000}
+            step={500000}
           />
 
           <div className="grid grid-cols-2 gap-4">
@@ -325,7 +325,7 @@ export const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({
             onChange={setMortgageBalanceRange}
             min={0}
             max={100000000}
-            step={25000}
+            step={500000}
           />
 
           <FilterRange
@@ -334,7 +334,7 @@ export const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({
             onChange={setAssessedValueRange}
             min={0}
             max={100000000}
-            step={25000}
+            step={500000}
           />
 
           <FilterRange
@@ -343,7 +343,7 @@ export const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({
             onChange={setEstimatedValueRange}
             min={0}
             max={100000000}
-            step={25000}
+            step={500000}
           />
 
           <FilterRange
@@ -352,7 +352,7 @@ export const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({
             onChange={setEstimatedEquityRange}
             min={0}
             max={100000000}
-            step={25000}
+            step={500000}
           />
         </div>
       </div>

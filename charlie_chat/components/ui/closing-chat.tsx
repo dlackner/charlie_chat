@@ -5,7 +5,9 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { Sidebar } from "@/components/ui/sidebar";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
-import { WeeklyRecommendationsModal } from "@/components/WeeklyRecommendationsModal";
+import { useModal } from "@/contexts/ModalContext";
+// import { WeeklyRecommendationsModalMMR } from "@/components/WeeklyRecommendationsModalMMR";
+// import { CharlieRecommendationWidgetMMR } from "@/components/CharlieRecommendationWidgetMMR";
 import { Listing } from "@/components/ui/listingTypes";
 import { PropertyBatchState } from './chatServices';
 import { PACKAGES, getPackagesFor } from '@/lib/pricing';
@@ -73,6 +75,7 @@ export function ClosingChat() {
   } = useUserCredits();
 
   const { isLoading: isLoadingAuth, supabase } = useAuth() as { isLoading: boolean; supabase: any };
+  const { setShowSignUpModal } = useModal();
   const stripeCustomerId = (currentUser as any)?.stripe_customer_id;
 
   const availablePackages = userClass === 'trial' || userClass === 'disabled' ? [] : getPackagesFor(userClass);
@@ -109,14 +112,8 @@ export function ClosingChat() {
   const { listings, setListings, toggleListingSelect: toggleListingSelectFn } = useListings();
   const batchSize = BATCH_SIZE;
   
-  // Weekly recommendations state - DISABLED
-  // TO RE-ENABLE: Uncomment the 3 lines below
+  // MMR Weekly recommendations state
   // const [showRecommendationsModal, setShowRecommendationsModal] = useState(false);
-  // const [weeklyRecommendations, setWeeklyRecommendations] = useState<Array<{
-  //   name: string;
-  //   msa_name?: string;
-  //   properties: Listing[];
-  // }>>([]);
   // const [hasNewRecommendations, setHasNewRecommendations] = useState(false);
   const {
     selectedListings,
@@ -580,7 +577,10 @@ export function ClosingChat() {
               </Dialog.Description>
 
               <button
-                onClick={() => router.push("/signup")}
+                onClick={() => {
+                  setShowModal(false);
+                  setShowSignUpModal(true);
+                }}
                 className="w-full bg-black text-white px-4 py-2 rounded hover:bg-gray-800 transition"
               >
                 Sign Up For Free
@@ -768,15 +768,18 @@ export function ClosingChat() {
         </Dialog>
 
 
-        {/* Weekly Recommendations Modal - DISABLED */}
-        {/* TO RE-ENABLE: Uncomment the entire WeeklyRecommendationsModal component below */}
-        {/*<WeeklyRecommendationsModal
+        {/* MMR Weekly Recommendations Modal - Hidden for now */}
+        {/* <WeeklyRecommendationsModalMMR
           isOpen={showRecommendationsModal}
           onClose={() => setShowRecommendationsModal(false)}
-          markets={weeklyRecommendations}
-          onFavoriteProperty={handleFavoriteProperty}
-          onDismissProperty={handleDismissProperty}
-        />*/}
+          forceRefresh={false}
+        /> */}
+
+        {/* Charlie Recommendation Widget - Hidden for now */}
+        {/* <CharlieRecommendationWidgetMMR
+          onOpenRecommendations={() => setShowRecommendationsModal(true)}
+          checkInterval={60}
+        /> */}
       </>
     </AssistantRuntimeProvider>
   );

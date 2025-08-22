@@ -1,0 +1,258 @@
+'use client';
+import React, { useState, useEffect, useRef } from 'react';
+import { X, Send } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
+import { useModal } from '@/contexts/ModalContext';
+
+const SubscriptionSupportModal = () => {
+  const { user, supabase } = useAuth();
+  const { showSubscriptionSupport, setShowSubscriptionSupport } = useModal();
+  const [message, setMessage] = useState('');
+  const [isSubmitted, setIsSubmitted] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [userProfile, setUserProfile] = useState<{first_name?: string, last_name?: string} | null>(null);
+  const modalRef = useRef<HTMLDivElement>(null);
+
+  // Fetch user profile when user is available
+  useEffect(() => {
+    const fetchUserProfile = async () => {
+      if (user && supabase) {
+        try {
+          const { data, error } = await supabase
+            .from("profiles")
+            .select("first_name, last_name")
+            .eq("user_id", user.id)
+            .single();
+
+          if (!error && data) {
+            setUserProfile(data);
+          }
+        } catch (error) {
+          console.log('Could not fetch user profile for subscription modal:', error);
+        }
+      }
+    };
+
+    fetchUserProfile();
+  }, [user, supabase]);
+
+  // Handle click outside to close modal
+  useEffect(() => {
+    if (!showSubscriptionSupport) return;
+
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Element;
+      
+      // Don't close if clicking inside the modal
+      if (modalRef.current?.contains(target)) {
+        return;
+      }
+      
+      // Don't close if clicking on input/textarea elements anywhere
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') {
+        return;
+      }
+      
+      // Close the modal for clicks outside
+      setShowSubscriptionSupport(false);
+    };
+
+    // Add a delay to prevent immediate closing when modal opens
+    const timer = setTimeout(() => {
+      document.addEventListener('click', handleClickOutside);
+    }, 200);
+    
+    return () => {
+      clearTimeout(timer);
+      document.removeEventListener('click', handleClickOutside);
+    };
+  }, [showSubscriptionSupport, setShowSubscriptionSupport]);
+
+  const handleSendMessage = async () => {
+    if (message.trim()) {
+      setIsLoading(true);
+      try {
+        // Prepend subscription context to the message
+        const subscriptionMessage = `SUBSCRIPTION SUPPORT REQUEST: ${message.trim()}`;
+        
+        const response = await fetch('https://fgdonkzncrncxnunljev.supabase.co/functions/v1/contact-form', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ 
+            message: subscriptionMessage,
+            userEmail: user?.email || 'anonymous@charlieus.ai',
+            userName: userProfile?.first_name && userProfile?.last_name 
+              ? `${userProfile.first_name} ${userProfile.last_name}` 
+              : null
+          })
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const result = await response.json();
+
+        if (result.success) {
+          setIsSubmitted(true);
+          setMessage('');
+          
+          setTimeout(() => {
+            setIsSubmitted(false);
+            setShowSubscriptionSupport(false);
+          }, 3000);
+        } else {
+          console.error('Function returned error:', result);
+          alert(`Failed to send message: ${result.error || 'Please try again.'}`);
+        }
+      } catch (error) {
+        console.error('Error sending message:', error);
+        
+        if (error instanceof Error && error.message.includes('failed to fetch')) {
+          alert('Network error - please check your connection and try again.');
+        } else if (error instanceof Error && error.message.includes('CORS')) {
+          alert('CORS error - please contact support.');
+        }
+      } finally {
+        setIsLoading(false);
+      }
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSendMessage();
+    }
+  };
+
+  if (!showSubscriptionSupport) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div 
+        ref={modalRef}
+        className="bg-white rounded-2xl shadow-2xl overflow-hidden border border-gray-200 w-full max-w-md"
+      >
+        {/* Close Button */}
+        <button
+          onClick={() => setShowSubscriptionSupport(false)}
+          className="absolute top-3 right-3 text-gray-400 hover:text-gray-600 transition-colors duration-200 z-10"
+        >
+          <X size={20} />
+        </button>
+
+        {/* Header */}
+        <div className="p-6 text-white" style={{ 
+          backgroundColor: '#1C599F'
+        }}>
+          <div className="flex items-center gap-3 mb-3">
+            {/* Building icon SVG */}
+            <div className="w-8 h-6 flex items-center justify-center">
+              <svg viewBox="0 0 100 60" className="w-full h-full">
+                {/* Left building (orange/red) */}
+                <polygon points="0,60 0,15 15,0 25,10 25,60" fill="#F97316" />
+                <rect x="5" y="20" width="3" height="3" fill="white" opacity="0.8" />
+                <rect x="5" y="28" width="3" height="3" fill="white" opacity="0.8" />
+                <rect x="5" y="36" width="3" height="3" fill="white" opacity="0.8" />
+                <rect x="12" y="25" width="3" height="3" fill="white" opacity="0.8" />
+                <rect x="12" y="33" width="3" height="3" fill="white" opacity="0.8" />
+                <rect x="18" y="30" width="3" height="3" fill="white" opacity="0.8" />
+                
+                {/* Right building (blue) */}
+                <rect x="25" y="10" width="50" height="50" fill="#3B82F6" />
+                <rect x="30" y="18" width="4" height="4" fill="white" opacity="0.8" />
+                <rect x="38" y="18" width="4" height="4" fill="white" opacity="0.8" />
+                <rect x="46" y="18" width="4" height="4" fill="white" opacity="0.8" />
+                <rect x="54" y="18" width="4" height="4" fill="white" opacity="0.8" />
+                <rect x="62" y="18" width="4" height="4" fill="white" opacity="0.8" />
+                
+                <rect x="30" y="28" width="4" height="4" fill="white" opacity="0.8" />
+                <rect x="38" y="28" width="4" height="4" fill="white" opacity="0.8" />
+                <rect x="46" y="28" width="4" height="4" fill="white" opacity="0.8" />
+                <rect x="54" y="28" width="4" height="4" fill="white" opacity="0.8" />
+                <rect x="62" y="28" width="4" height="4" fill="white" opacity="0.8" />
+                
+                <rect x="30" y="38" width="4" height="4" fill="white" opacity="0.8" />
+                <rect x="38" y="38" width="4" height="4" fill="white" opacity="0.8" />
+                <rect x="46" y="38" width="4" height="4" fill="white" opacity="0.8" />
+                <rect x="54" y="38" width="4" height="4" fill="white" opacity="0.8" />
+                <rect x="62" y="38" width="4" height="4" fill="white" opacity="0.8" />
+                
+                <rect x="30" y="48" width="4" height="4" fill="white" opacity="0.8" />
+                <rect x="38" y="48" width="4" height="4" fill="white" opacity="0.8" />
+                <rect x="46" y="48" width="4" height="4" fill="white" opacity="0.8" />
+                <rect x="54" y="48" width="4" height="4" fill="white" opacity="0.8" />
+                <rect x="62" y="48" width="4" height="4" fill="white" opacity="0.8" />
+              </svg>
+            </div>
+          </div>
+          <h3 className="text-xl font-semibold mb-1">Subscription Support</h3>
+          <p className="text-blue-100 opacity-90">Need help with canceling, downgrading, or changing your subscription?</p>
+        </div>
+
+        {/* Content */}
+        <div className="p-4 max-h-96 overflow-y-auto">
+          {!isSubmitted ? (
+            /* Message Form */
+            <div className="bg-gray-50 rounded-xl p-4">
+                <h4 className="font-medium text-gray-900 mb-2">Tell us what you need</h4>
+                <div className="space-y-3">
+                  <textarea
+                    value={message}
+                    onChange={(e) => setMessage(e.target.value)}
+                    onKeyDown={handleKeyDown}
+                    placeholder="Please describe what you'd like to do with your subscription..."
+                    className="w-full px-3 py-3 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 resize-none"
+                    style={{
+                      ['--tw-ring-color' as any]: '#1C599F'
+                    }}
+                    onFocus={(e) => e.target.style.borderColor = '#1C599F'}
+                    onBlur={(e) => e.target.style.borderColor = '#E5E7EB'}
+                    rows={3}
+                    disabled={isLoading}
+                  />
+                  <button
+                    onClick={handleSendMessage}
+                    disabled={!message.trim() || isLoading}
+                    className="w-full px-4 py-2 text-white rounded-lg font-medium transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                    style={{ 
+                      background: message.trim() && !isLoading
+                        ? 'linear-gradient(135deg, #F97316 0%, #EA580C 100%)'
+                        : '#D1D5DB'
+                    }}
+                  >
+                    <Send size={16} />
+                    {isLoading ? 'Sending...' : 'Send Request'}
+                  </button>
+                </div>
+              </div>
+          ) : (
+            /* Success Message */
+            <div className="bg-green-50 border border-green-200 rounded-xl p-4 text-center">
+              <div className="text-green-600 text-2xl mb-2">✓</div>
+              <h4 className="font-medium text-green-900 mb-1">Request Sent!</h4>
+              <p className="text-sm text-green-700">
+                We've received your subscription request and will respond within a few hours on weekdays to help you with your account changes.
+              </p>
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="border-t border-gray-100 p-4">
+          <div className="flex justify-center">
+            <div className="flex items-center gap-2 text-xs text-gray-500">
+              <div className="w-4 h-4 rounded" style={{ background: 'linear-gradient(135deg, #F97316 0%, #3B82F6 100%)' }}></div>
+              <span>Charlie Chat Support</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default SubscriptionSupportModal;
