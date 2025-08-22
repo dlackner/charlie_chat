@@ -7,6 +7,10 @@ interface ModalContextType {
   setShowSignUpModal: (show: boolean) => void;
   showLoginModal: boolean;
   setShowLoginModal: (show: boolean) => void;
+  showHelpWidget: boolean;
+  setShowHelpWidget: (show: boolean) => void;
+  showSubscriptionSupport: boolean;
+  setShowSubscriptionSupport: (show: boolean) => void;
 }
 
 const ModalContext = createContext<ModalContextType | undefined>(undefined);
@@ -14,6 +18,8 @@ const ModalContext = createContext<ModalContextType | undefined>(undefined);
 export function ModalProvider({ children }: { children: ReactNode }) {
   const [showSignUpModal, setShowSignUpModal] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
+  const [showHelpWidget, setShowHelpWidget] = useState(false);
+  const [showSubscriptionSupport, setShowSubscriptionSupport] = useState(false);
 
   return (
     <ModalContext.Provider value={{
@@ -21,6 +27,10 @@ export function ModalProvider({ children }: { children: ReactNode }) {
       setShowSignUpModal,
       showLoginModal,
       setShowLoginModal,
+      showHelpWidget,
+      setShowHelpWidget,
+      showSubscriptionSupport,
+      setShowSubscriptionSupport,
     }}>
       {children}
     </ModalContext.Provider>

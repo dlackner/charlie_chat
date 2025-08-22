@@ -6,7 +6,8 @@ import { Sidebar } from "@/components/ui/sidebar";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { useModal } from "@/contexts/ModalContext";
-import { WeeklyRecommendationsModal } from "@/components/WeeklyRecommendationsModal";
+// import { WeeklyRecommendationsModalMMR } from "@/components/WeeklyRecommendationsModalMMR";
+// import { CharlieRecommendationWidgetMMR } from "@/components/CharlieRecommendationWidgetMMR";
 import { Listing } from "@/components/ui/listingTypes";
 import { PropertyBatchState } from './chatServices';
 import { PACKAGES, getPackagesFor } from '@/lib/pricing';
@@ -111,14 +112,8 @@ export function ClosingChat() {
   const { listings, setListings, toggleListingSelect: toggleListingSelectFn } = useListings();
   const batchSize = BATCH_SIZE;
   
-  // Weekly recommendations state - DISABLED
-  // TO RE-ENABLE: Uncomment the 3 lines below
+  // MMR Weekly recommendations state
   // const [showRecommendationsModal, setShowRecommendationsModal] = useState(false);
-  // const [weeklyRecommendations, setWeeklyRecommendations] = useState<Array<{
-  //   name: string;
-  //   msa_name?: string;
-  //   properties: Listing[];
-  // }>>([]);
   // const [hasNewRecommendations, setHasNewRecommendations] = useState(false);
   const {
     selectedListings,
@@ -773,15 +768,18 @@ export function ClosingChat() {
         </Dialog>
 
 
-        {/* Weekly Recommendations Modal - DISABLED */}
-        {/* TO RE-ENABLE: Uncomment the entire WeeklyRecommendationsModal component below */}
-        {/*<WeeklyRecommendationsModal
+        {/* MMR Weekly Recommendations Modal - Hidden for now */}
+        {/* <WeeklyRecommendationsModalMMR
           isOpen={showRecommendationsModal}
           onClose={() => setShowRecommendationsModal(false)}
-          markets={weeklyRecommendations}
-          onFavoriteProperty={handleFavoriteProperty}
-          onDismissProperty={handleDismissProperty}
-        />*/}
+          forceRefresh={false}
+        /> */}
+
+        {/* Charlie Recommendation Widget - Hidden for now */}
+        {/* <CharlieRecommendationWidgetMMR
+          onOpenRecommendations={() => setShowRecommendationsModal(true)}
+          checkInterval={60}
+        /> */}
       </>
     </AssistantRuntimeProvider>
   );

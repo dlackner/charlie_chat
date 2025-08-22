@@ -1,55 +1,58 @@
-// actions.tsx - Property Actions/Download Buttons Component
+// actions.tsx - Property Action Card Component
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import jsPDF from "jspdf";
-import { saveAs } from 'file-saver';
 import type { Listing } from '../ui/listingTypes';
 import { classifyProperty } from '../property/property-classifier';
-import { useAuth } from '@/contexts/AuthContext';
+import { StreetViewImage } from '../ui/StreetViewImage';
 
 interface PropertyActionsProps {
   listing: Listing;
-  userClass: 'trial' | 'charlie_chat' | 'charlie_chat_pro' | 'cohort';
-}
-
-interface UserProfile {
-  first_name: string;
-  last_name: string;
-  street_address: string;
-  city: string;
-  state: string;
-  zipcode: string;
-  phone_number: string;
-  business_name?: string;
-  job_title?: string;
+  userClass?: 'trial' | 'charlie_chat' | 'charlie_chat_pro' | 'cohort';
 }
 
 export const PropertyActions = ({ listing }: PropertyActionsProps) => {
-  const { user, supabase } = useAuth();
-  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [cardSide, setCardSide] = useState<'front' | 'back'>('front');
 
-  useEffect(() => {
-    const loadProfile = async () => {
-      if (!user || !supabase) return;
+  // Helper functions
+  const calculateAge = (yearBuilt: number) => {
+    return new Date().getFullYear() - yearBuilt;
+  };
 
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("first_name, last_name, street_address, city, state, zipcode, phone_number, business_name, job_title")
-        .eq("user_id", user.id)
-        .single();
+  const formatDate = (dateString: string | undefined) => {
+    if (!dateString) return 'N/A';
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    });
+  };
 
-      if (data) {
-        setUserProfile(data as UserProfile);
-      }
-    };
+  const formatCurrency = (amount: number | undefined) => {
+    if (!amount) return 'N/A';
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      maximumFractionDigits: 0
+    }).format(amount);
+  };
 
-    if (user) loadProfile();
-  }, [user, supabase]);
+  const getInvestmentFlags = (listing: Listing) => {
+    const flags = [];
+    if (listing.auction) flags.push('Auction');
+    if (listing.reo) flags.push('REO');
+    if (listing.tax_lien) flags.push('Tax Lien');
+    if (listing.pre_foreclosure) flags.push('Pre-Foreclosure');
+    if (listing.private_lender) flags.push('Private Lender');
+    if (listing.out_of_state_absentee_owner) flags.push('Absentee Owner');
+    return flags;
+  };
 
-  const formatCurrency = (val: number | undefined) =>
-    val ? `$${val.toLocaleString()}` : "N/A";
+  const handleCardClick = () => {
+    setCardSide(cardSide === 'front' ? 'back' : 'front');
+  };
 
   const downloadProfile = (listing: Listing) => {
     const doc = new jsPDF({ orientation: "landscape" });
@@ -151,15 +154,168 @@ export const PropertyActions = ({ listing }: PropertyActionsProps) => {
     doc.save(`Property_Profile_${safeAddress}.pdf`);
   };
 
+  // Component state
+  const investmentFlags = getInvestmentFlags(listing);
+
+  // Card styles matching PropertyCard
+  const cardStyles = `
+    relative bg-white rounded-lg border shadow-sm transition-all
+    border-gray-200 hover:border-gray-300 cursor-pointer
+  `;
+
   return (
-    <div className="mt-6 flex gap-4">
-      <button
-        onClick={() => downloadProfile(listing)}
-        className="text-white px-4 py-2 rounded-lg font-medium hover:opacity-80 transition"
-        style={{ backgroundColor: '#1C599F' }}
-      >
-        Download Profile
-      </button>
+    <div 
+      className={cardStyles}
+      onClick={handleCardClick}
+    >
+      {/* FRONT SIDE */}
+      {cardSide === 'front' && (
+        <div className="p-3">
+          <div className="flex gap-3">
+            {/* Left side - Property details */}
+            <div className="flex-1">
+              <div className="flex items-start justify-between mb-2">
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-medium text-gray-900">
+                    <div className="truncate">
+                      {listing.address?.address || listing.address_street || listing.address_full}
+                    </div>
+                    <div className="text-xs text-gray-600 truncate">
+                      {[listing.address_city, listing.address_state, listing.address_zip].filter(Boolean).join(', ')}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-1 text-xs text-gray-600 mb-3">
+                <div className="flex">
+                  <span>Units:&nbsp;</span>
+                  <span className="font-medium">{listing.units_count || 'N/A'}</span>
+                </div>
+                <div className="flex">
+                  <span>Built:&nbsp;</span>
+                  <span className="font-medium">
+                    {listing.year_built ? `${listing.year_built} (${calculateAge(listing.year_built)} years old)` : 'N/A'}
+                  </span>
+                </div>
+                <div className="flex">
+                  <span>Assessed:&nbsp;</span>
+                  <span className="font-medium text-green-600">{formatCurrency(listing.assessed_value)}</span>
+                </div>
+                <div className="flex">
+                  <span>Est. Equity:&nbsp;</span>
+                  <span className="font-medium text-blue-600">{formatCurrency(listing.estimated_equity)}</span>
+                </div>
+              </div>
+
+              {/* Investment flags */}
+              <div className="mb-2 min-h-[24px]">
+                {investmentFlags.length > 0 && (
+                  <div className="flex flex-wrap gap-1">
+                    {investmentFlags.map(flag => (
+                      <span
+                        key={flag}
+                        className="inline-block px-1 py-0.5 text-xs rounded bg-orange-100 text-orange-800"
+                      >
+                        {flag}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Download button */}
+              <div className="flex items-center justify-center pt-2 border-t border-gray-100">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    downloadProfile(listing);
+                  }}
+                  className="text-white px-4 py-2 rounded-lg font-medium hover:opacity-80 transition w-full"
+                  style={{ backgroundColor: '#1C599F' }}
+                >
+                  Download Profile
+                </button>
+              </div>
+            </div>
+
+            {/* Right side - Street View */}
+            <div className="w-32 flex-shrink-0 min-w-0">
+              <StreetViewImage
+                address={`${listing.address?.address || listing.address_street || listing.address_full}, ${listing.address_city}, ${listing.address_state}`}
+                latitude={listing.latitude}
+                longitude={listing.longitude}
+                className="h-[120px]"
+                width={300}
+                height={200}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* BACK SIDE - Property Details */}
+      {cardSide === 'back' && (
+        <div className="p-3">
+          <div className="mb-3">
+            <h4 className="text-xs font-medium text-gray-800 mb-1">Current Ownership</h4>
+            <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs text-gray-600">
+              <div className="flex">
+                <span>Last Sale:&nbsp;</span>
+                <span className="font-medium">{formatDate(listing.last_sale_date)}</span>
+              </div>
+              <div className="flex">
+                <span>Years Owned:&nbsp;</span>
+                <span className="font-medium">{listing.years_owned || 'N/A'}</span>
+              </div>
+              <div className="flex">
+                <span>Out-of-State Owner:&nbsp;</span>
+                <span className="font-medium">{listing.out_of_state_absentee_owner ? 'Yes' : 'No'}</span>
+              </div>
+              <div className="flex">
+                <span>Last Sale Amount:&nbsp;</span>
+                <span className="font-medium">{formatCurrency(listing.last_sale_amount)}</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="mb-3">
+            <h4 className="text-xs font-medium text-gray-800 mb-1">Property Flags</h4>
+            <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs text-gray-600">
+              <div className="flex">
+                <span>Auction:&nbsp;</span>
+                <span className="font-medium">{listing.auction ? 'Yes' : 'No'}</span>
+              </div>
+              <div className="flex">
+                <span>REO:&nbsp;</span>
+                <span className="font-medium">{listing.reo ? 'Yes' : 'No'}</span>
+              </div>
+              <div className="flex">
+                <span>Tax Lien:&nbsp;</span>
+                <span className="font-medium">{listing.tax_lien ? 'Yes' : 'No'}</span>
+              </div>
+              <div className="flex">
+                <span>Pre-Foreclosure:&nbsp;</span>
+                <span className="font-medium">{listing.pre_foreclosure ? 'Yes' : 'No'}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Download button on back side too */}
+          <div className="flex items-center justify-center pt-2 border-t border-gray-100 mt-4">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                downloadProfile(listing);
+              }}
+              className="text-white px-4 py-2 rounded-lg font-medium hover:opacity-80 transition w-full"
+              style={{ backgroundColor: '#1C599F' }}
+            >
+              Download Profile
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

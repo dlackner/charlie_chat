@@ -4,7 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useState, useRef, useEffect } from "react";
-import { User, ChevronDown, Settings, Heart, LogOut, Star } from "lucide-react";
+import { User, ChevronDown, Settings, Heart, LogOut, Star, CreditCard, Target } from "lucide-react";
 
 import { useAuth } from "@/contexts/AuthContext";
 import { useModal } from "@/contexts/ModalContext";
@@ -322,14 +322,24 @@ export default function Header() {
                     <span>Profile</span>
                   </button>
 
-                  {/* My Buy Box - commented out to disable feature */}
-                  {/*<button
+                  {/* Buy Box - Hidden for now */}
+                  {/* <button
                     onClick={() => handleMenuItemClick(() => router.push('/my-buy-box'))}
                     className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center space-x-2"
                   >
-                    <Home size={16} />
-                    <span>My Buy Box</span>
-                  </button>*/}
+                    <Target size={16} />
+                    <span>Buy Box</span>
+                  </button> */}
+
+                  {/* Subscription */}
+                  <button
+                    onClick={() => handleMenuItemClick(() => router.push('/subscription'))}
+                    className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center space-x-2"
+                  >
+                    <CreditCard size={16} />
+                    <span>Subscription</span>
+                  </button>
+
 
                   {/* Divider */}
                   <div className="border-t border-gray-200 my-1"></div>

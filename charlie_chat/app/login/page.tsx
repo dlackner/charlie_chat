@@ -1,6 +1,7 @@
 "use client";
 
 import FeaturesShowcase from '@/components/ui/FeaturesShowcase';
+import TypewriterChatDemo from '@/components/ui/TypewriterChatDemo';
 
 export default function LoginPage() {
 
@@ -19,18 +20,23 @@ export default function LoginPage() {
           </div>
           
           <h1 className="text-5xl md:text-6xl font-light text-gray-900 mb-4">
-            Let's find your next <span className="text-orange-500">great investment</span>
+            Let's find your next <span className="text-orange-500">great multifamily investment</span>
           </h1>
           
           <div className="mb-16 max-w-2xl mx-auto">
-            <p className="text-lg text-gray-600 mb-4">
+            <p className="text-lg text-gray-900 mb-4">
               With Charlie Chat, you can search our database of every multifamily property in the United States, use AI to identify the best ones, conduct rigorous investment analyses, generate marketing letters and LOI's, and track your favorites every step of the way. I'm here to help you make smarter real estate investment decisions.
             </p>
-            <p className="text-right text-gray-500 italic">
+            <p className="text-right text-gray-800 italic">
               -- Charles Dobens
             </p>
           </div>
         </div>
+      </div>
+
+      {/* Interactive Chat Demo */}
+      <div className="px-6 pb-8">
+        <TypewriterChatDemo />
       </div>
 
       {/* Features Showcase */}

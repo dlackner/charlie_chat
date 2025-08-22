@@ -1,22 +1,18 @@
 'use client';
 
 import React from 'react';
-import FeatureTile from './FeatureTile';
+import FullWidthFeatureTile from './FullWidthFeatureTile';
 import { Search, BarChart3, Calculator, MapPin, MessageSquare, GitBranch, Mail, ChevronLeft, ChevronRight } from 'lucide-react';
 
 const FeaturesShowcase = () => {
-  const scrollRef = React.useRef<HTMLDivElement>(null);
+  const [currentFeatureIndex, setCurrentFeatureIndex] = React.useState(0);
 
-  const scrollLeft = () => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollBy({ left: -300, behavior: 'smooth' });
-    }
+  const goToPrevious = () => {
+    setCurrentFeatureIndex((prev) => (prev === 0 ? features.length - 1 : prev - 1));
   };
 
-  const scrollRight = () => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollBy({ left: 300, behavior: 'smooth' });
-    }
+  const goToNext = () => {
+    setCurrentFeatureIndex((prev) => (prev === features.length - 1 ? 0 : prev + 1));
   };
   const features = [
     {
@@ -25,7 +21,7 @@ const FeaturesShowcase = () => {
       icon: <Search size={24} />,
       image: "/feature-images/search.png",
       imageAlt: "Property search interface",
-      gradient: "linear-gradient(135deg, oklch(0.646 0.222 41.116), oklch(0.6 0.2 35))", // Chart-1 based (orange)
+      gradient: "linear-gradient(135deg, #1C599F, #164a87)", // Brand blue
       badge: undefined
     },
     {
@@ -34,18 +30,19 @@ const FeaturesShowcase = () => {
       icon: <MessageSquare size={24} />,
       image: "/feature-images/AI chat.png",
       imageAlt: "AI chat interface",
-      gradient: "linear-gradient(135deg, oklch(0.21 0.006 285.885), oklch(0.18 0.008 280))", // Primary based
-      badge: undefined
+      gradient: "linear-gradient(135deg, #1C599F, #164a87)", // Brand blue
+      badge: undefined,
+      imagePosition: "object-bottom"
     },
     {
       title: "Location Intel",
-      description: "Unlock neighborhood insights, demographics, and market trends to make smarter investment decisions",
+      description: "Unlock neighborhood insights, property details and ownership information to make smarter investment decisions",
       icon: <MapPin size={24} />,
       image: "/feature-images/cards.png",
       imageAlt: "Location intelligence",
-      gradient: "linear-gradient(135deg, oklch(0.828 0.189 84.429), oklch(0.78 0.17 80))", // Chart-4 based
+      gradient: "linear-gradient(135deg, #1C599F, #164a87)", // Brand blue
       badge: undefined,
-      textColor: "text-black"
+      textColor: "text-white"
     },
     {
       title: "Mapping",
@@ -53,7 +50,7 @@ const FeaturesShowcase = () => {
       icon: <MapPin size={24} />,
       image: "/feature-images/mapping.png",
       imageAlt: "Property mapping interface",
-      gradient: "linear-gradient(135deg, oklch(0.6 0.118 184.704), oklch(0.55 0.13 180))", // Chart-2 based
+      gradient: "linear-gradient(135deg, #1C599F, #164a87)", // Brand blue
       badge: undefined
     },
     {
@@ -62,7 +59,7 @@ const FeaturesShowcase = () => {
       icon: <Calculator size={24} />,
       image: "/feature-images/investment.png",
       imageAlt: "Offer analytics tool",
-      gradient: "linear-gradient(135deg, oklch(0.398 0.07 227.392), oklch(0.35 0.09 230))", // Chart-3 based
+      gradient: "linear-gradient(135deg, #1C599F, #164a87)", // Brand blue
       badge: undefined
     },
     {
@@ -71,7 +68,7 @@ const FeaturesShowcase = () => {
       icon: <BarChart3 size={24} />,
       image: "/feature-images/financial.png",
       imageAlt: "Investment analysis dashboard",
-      gradient: "linear-gradient(135deg, oklch(0.769 0.188 70.08), oklch(0.72 0.17 65))", // Chart-5 based
+      gradient: "linear-gradient(135deg, #1C599F, #164a87)", // Brand blue
       badge: undefined
     },
     {
@@ -89,53 +86,75 @@ const FeaturesShowcase = () => {
       icon: <GitBranch size={24} />,
       image: "/feature-images/pipeline.png",
       imageAlt: "Pipeline tracking interface",
-      gradient: "white",
+      gradient: "linear-gradient(135deg, #1C599F, #164a87)", // Brand blue
       badge: undefined,
-      border: "border-2 border-teal-500",
-      textColor: "text-teal-600"
+      textColor: "text-white"
     }
   ];
 
   return (
-    <section className="py-16 bg-gray-50 overflow-visible">
-      <div className="max-w-7xl mx-auto px-6">
+    <section className="py-16 bg-gray-50">
+      <div className="max-w-6xl mx-auto px-6">
+        {/* Large heading text */}
+        <div className="text-center mb-16">
+          <h2 className="text-4xl lg:text-5xl font-light text-gray-900 leading-tight">
+            Discover, analyze, and acquire multifamily properties with confidence
+          </h2>
+        </div>
 
-        {/* Features Carousel */}
-        <div className="relative pt-16">
-          {/* Left Arrow */}
+        {/* Full-Width Feature Display */}
+        <div className="relative">
+          {/* Navigation Arrows */}
           <button
-            onClick={scrollLeft}
-            className="absolute left-0 top-1/2 -translate-y-1/2 z-10 w-12 h-12 bg-white border border-gray-200 rounded-full shadow-lg flex items-center justify-center hover:bg-gray-50 transition-colors duration-200"
+            onClick={goToPrevious}
+            className="absolute left-4 top-1/2 -translate-y-1/2 z-10 w-12 h-12 bg-white border border-gray-200 rounded-full shadow-lg flex items-center justify-center hover:bg-gray-50 transition-colors duration-200"
           >
-            <ChevronLeft size={20} className="text-gray-600" />
+            <ChevronLeft size={20} className="text-gray-800" />
           </button>
 
-          {/* Right Arrow */}
           <button
-            onClick={scrollRight}
-            className="absolute right-0 top-1/2 -translate-y-1/2 z-10 w-12 h-12 bg-white border border-gray-200 rounded-full shadow-lg flex items-center justify-center hover:bg-gray-50 transition-colors duration-200"
+            onClick={goToNext}
+            className="absolute right-4 top-1/2 -translate-y-1/2 z-10 w-12 h-12 bg-white border border-gray-200 rounded-full shadow-lg flex items-center justify-center hover:bg-gray-50 transition-colors duration-200"
           >
-            <ChevronRight size={20} className="text-gray-600" />
+            <ChevronRight size={20} className="text-gray-800" />
           </button>
 
-          <div 
-            ref={scrollRef}
-            className="flex gap-6 overflow-x-auto overflow-y-visible pb-12 pt-8 scrollbar-hide px-14"
-          >
-            {features.map((feature, index) => (
-              <FeatureTile
+          {/* Single Full-Width Tile */}
+          <div className="w-full flex justify-center">
+            <FullWidthFeatureTile
+              title={features[currentFeatureIndex].title}
+              description={features[currentFeatureIndex].description}
+              icon={features[currentFeatureIndex].icon}
+              image={features[currentFeatureIndex].image}
+              imageAlt={features[currentFeatureIndex].imageAlt}
+              gradient={features[currentFeatureIndex].gradient}
+              badge={features[currentFeatureIndex].badge}
+              border={(features[currentFeatureIndex] as any).border}
+              textColor={features[currentFeatureIndex].textColor}
+              imagePosition={(features[currentFeatureIndex] as any).imagePosition}
+            />
+          </div>
+
+          {/* Dot Indicators */}
+          <div className="flex justify-center mt-8 gap-2">
+            {features.map((_, index) => (
+              <button
                 key={index}
-                title={feature.title}
-                description={feature.description}
-                icon={feature.icon}
-                image={feature.image}
-                imageAlt={feature.imageAlt}
-                gradient={feature.gradient}
-                badge={feature.badge}
-                border={feature.border}
-                textColor={feature.textColor}
+                onClick={() => setCurrentFeatureIndex(index)}
+                className={`w-3 h-3 rounded-full transition-colors duration-200 ${
+                  index === currentFeatureIndex
+                    ? 'bg-orange-500'
+                    : 'bg-gray-300 hover:bg-gray-400'
+                }`}
               />
             ))}
+          </div>
+
+          {/* Feature Counter */}
+          <div className="text-center mt-4">
+            <span className="text-sm text-gray-800">
+              {currentFeatureIndex + 1} of {features.length}
+            </span>
           </div>
         </div>
       </div>

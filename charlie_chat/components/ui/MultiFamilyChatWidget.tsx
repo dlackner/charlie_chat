@@ -2,15 +2,17 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { X, Send } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useModal } from '@/contexts/ModalContext';
 
 const MultiFamilyChatWidget = () => {
   const { user, supabase } = useAuth();
-  const [isOpen, setIsOpen] = useState(false);
+  const { showHelpWidget, setShowHelpWidget } = useModal();
   const [message, setMessage] = useState('');
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [userProfile, setUserProfile] = useState<{first_name?: string, last_name?: string} | null>(null);
   const widgetRef = useRef<HTMLDivElement>(null);
+  const ignoreNextClickRef = useRef(false);
 
   // Fetch user profile when user is available
   useEffect(() => {
@@ -37,32 +39,50 @@ const MultiFamilyChatWidget = () => {
 
   // Handle click outside to close widget
   useEffect(() => {
+    if (!showHelpWidget) return;
+
     const handleClickOutside = (event: MouseEvent) => {
-      if (widgetRef.current && !widgetRef.current.contains(event.target as Node) && isOpen) {
-        setIsOpen(false);
+      const target = event.target as Element;
+      
+      // Don't close if clicking inside the widget
+      if (widgetRef.current?.contains(target)) {
+        return;
       }
+      
+      // Don't close if clicking on input/textarea elements anywhere
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') {
+        return;
+      }
+      
+      // Close the widget for clicks outside
+      setShowHelpWidget(false);
     };
 
-    if (isOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
-    }
-
+    // Add a delay to prevent immediate closing when widget opens
+    const timer = setTimeout(() => {
+      document.addEventListener('click', handleClickOutside);
+    }, 200);
+    
     return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
+      clearTimeout(timer);
+      document.removeEventListener('click', handleClickOutside);
     };
-  }, [isOpen]);
+  }, [showHelpWidget, setShowHelpWidget]);
 
   const handleSendMessage = async () => {
     if (message.trim()) {
       setIsLoading(true);
       try {
+        // Prepend customer support context to the message
+        const customerSupportMessage = `CUSTOMER SUPPORT REQUEST: ${message.trim()}`;
+        
         const response = await fetch('https://fgdonkzncrncxnunljev.supabase.co/functions/v1/contact-form', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({ 
-            message: message.trim(),
+            message: customerSupportMessage,
             userEmail: user?.email || 'anonymous@charlieus.ai',
             userName: userProfile?.first_name && userProfile?.last_name 
               ? `${userProfile.first_name} ${userProfile.last_name}` 
@@ -121,18 +141,18 @@ const MultiFamilyChatWidget = () => {
       {/* Help Button - Integrated into header */}
       <div className="relative" ref={widgetRef}>
         <button
-          onClick={() => setIsOpen(!isOpen)}
+          onClick={() => setShowHelpWidget(!showHelpWidget)}
           className="text-gray-800 hover:bg-gray-100 transition rounded-md px-3 py-1 font-medium"
         >
           <span className="text-sm font-medium">Help</span>
         </button>
 
         {/* Chat Widget */}
-        {isOpen && (
+        {showHelpWidget && (
           <div className="absolute top-12 right-0 w-80 bg-white rounded-2xl shadow-2xl overflow-hidden border border-gray-200 z-50">
           {/* Close Button */}
           <button
-            onClick={() => setIsOpen(false)}
+            onClick={() => setShowHelpWidget(false)}
             className="absolute top-3 right-3 text-gray-400 hover:text-gray-600 transition-colors duration-200 z-10"
           >
             <X size={20} />

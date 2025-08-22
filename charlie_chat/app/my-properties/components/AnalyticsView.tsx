@@ -271,7 +271,6 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
 
       {/* Status Distribution Pie Chart */}
       <div className="bg-white rounded-lg border border-gray-200 p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Pipeline Breakdown</h3>
         
         {statusCounts.length === 0 ? (
           <div className="text-center py-8 text-gray-500">

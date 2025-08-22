@@ -288,6 +288,7 @@ async function handleCreditPurchase(session, profile, supabase, stripe) {
           credit_amount: amount,
           stripe_price_id: priceId,
           stripe_session_id: session.id,
+          stripe_customer_id: session.customer,
           status: session.payment_status || 'paid',
           metadata: session.metadata ?? {}
         }
@@ -326,6 +327,7 @@ async function handleCreditPurchase(session, profile, supabase, stripe) {
       credit_amount: amount,
       stripe_price_id: priceId,
       stripe_session_id: session.id,
+      stripe_customer_id: session.customer,
       status: session.payment_status || 'paid',
       metadata: session.metadata ?? {}
     }
