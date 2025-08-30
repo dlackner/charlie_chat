@@ -60,23 +60,31 @@ export const CharlieRecommendationWidgetMMR: React.FC<CharlieRecommendationWidge
         if (!user || !supabase) return;
 
         try {
-            // First check if user has weekly recommendations enabled
-            const { data: userPrefs } = await supabase
-                .from('user_buy_box_preferences')
-                .select('weekly_recommendations_enabled, target_markets')
-                .eq('user_id', user.id)
+            // Check if user has weekly recommendations enabled from profiles table
+            const { data: profileData } = await supabase
+                .from('profiles')
+                .select('weekly_recommendations_enabled')
+                .eq('id', user.id)
                 .single();
 
-            if (!userPrefs?.weekly_recommendations_enabled) {
+            if (!profileData?.weekly_recommendations_enabled) {
                 setIsVisible(false);
                 return;
             }
 
-            // Check if user has target markets set up
-            if (!userPrefs.target_markets || userPrefs.target_markets.length === 0) {
+            // Get user markets to check if any are configured
+            const { data: userMarkets } = await supabase
+                .from('user_markets')
+                .select('id')
+                .eq('user_id', user.id)
+                .limit(1);
+
+            if (!userMarkets || userMarkets.length === 0) {
                 setIsVisible(false);
                 return;
             }
+
+            // Already checked if user has markets above
 
             const weekStart = getWeekStart(new Date());
             

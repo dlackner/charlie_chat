@@ -5,6 +5,12 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useState, useRef, useEffect } from "react";
 import { User, ChevronDown, Settings, Heart, LogOut, Star, CreditCard, Target } from "lucide-react";
+import { RecommendationsIconModal } from '@/components/ui/RecommendationsIconModal';
+import { WeeklyRecommendationsModalMMR } from "@/components/WeeklyRecommendationsModalMMR";
+import { ProfileModal } from "@/components/ProfileModal";
+import { BuyBoxModal } from "@/components/BuyBoxModal";
+import { SubscriptionModal } from "@/components/SubscriptionModal";
+import SubscriptionSupportModal from "@/components/ui/SubscriptionSupportModal";
 
 import { useAuth } from "@/contexts/AuthContext";
 import { useModal } from "@/contexts/ModalContext";
@@ -34,6 +40,14 @@ export default function Header() {
   const [loginOtpSent, setLoginOtpSent] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  
+  // Weekly recommendations modal state
+  const [showRecommendationsModal, setShowRecommendationsModal] = useState(false);
+  
+  // Profile, Buy Box, and Subscription modal states
+  const [showProfileModal, setShowProfileModal] = useState(false);
+  const [showBuyBoxModal, setShowBuyBoxModal] = useState(false);
+  const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
 
   const isLoggedIn = !!currentUser;
   const supabaseClient = createSupabaseBrowserClient();
@@ -226,11 +240,20 @@ export default function Header() {
             alt="Logo"
             width={192}
             height={48}
-            className="mr-8 cursor-pointer"
+            className="mr-4 cursor-pointer"
             style={{ width: '192px', height: 'auto' }}
             priority
           />
         </Link>
+        
+        {/* Recommendations Bell Icon - only show for logged in users */}
+        {isLoggedIn && (
+          <div className="mr-4">
+            <RecommendationsIconModal 
+              onOpenRecommendations={() => setShowRecommendationsModal(true)}
+            />
+          </div>
+        )}
       </div>
 
       {/* Centered Navigation */}
@@ -315,25 +338,25 @@ export default function Header() {
                 <div className="py-2">
                   {/* Profile */}
                   <button
-                    onClick={() => handleMenuItemClick(() => router.push('/profile'))}
+                    onClick={() => handleMenuItemClick(() => setShowProfileModal(true))}
                     className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center space-x-2"
                   >
                     <Settings size={16} />
                     <span>Profile</span>
                   </button>
 
-                  {/* Buy Box - Hidden for now */}
-                  {/* <button
-                    onClick={() => handleMenuItemClick(() => router.push('/my-buy-box'))}
+                  {/* Buy Box */}
+                  <button
+                    onClick={() => handleMenuItemClick(() => setShowBuyBoxModal(true))}
                     className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center space-x-2"
                   >
                     <Target size={16} />
                     <span>Buy Box</span>
-                  </button> */}
+                  </button>
 
                   {/* Subscription */}
                   <button
-                    onClick={() => handleMenuItemClick(() => router.push('/subscription'))}
+                    onClick={() => handleMenuItemClick(() => setShowSubscriptionModal(true))}
                     className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center space-x-2"
                   >
                     <CreditCard size={16} />
@@ -556,6 +579,33 @@ export default function Header() {
           </Dialog.Panel>
         </div>
       </Dialog>
+
+      {/* Weekly Recommendations Modal */}
+      <WeeklyRecommendationsModalMMR
+        isOpen={showRecommendationsModal}
+        onClose={() => setShowRecommendationsModal(false)}
+      />
+
+      {/* Profile Modal */}
+      <ProfileModal
+        isOpen={showProfileModal}
+        onClose={() => setShowProfileModal(false)}
+      />
+
+      {/* Buy Box Modal */}
+      <BuyBoxModal
+        isOpen={showBuyBoxModal}
+        onClose={() => setShowBuyBoxModal(false)}
+      />
+
+      {/* Subscription Modal */}
+      <SubscriptionModal
+        isOpen={showSubscriptionModal}
+        onClose={() => setShowSubscriptionModal(false)}
+      />
+
+      {/* Subscription Support Modal - Global */}
+      <SubscriptionSupportModal />
     </header>
   );
 }

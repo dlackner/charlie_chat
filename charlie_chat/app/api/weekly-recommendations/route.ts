@@ -4,9 +4,18 @@ import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 import { generateWeeklyRecommendations, BuyBoxMarket } from '@/lib/weeklyRecommendations';
 import type { Listing } from '@/components/ui/listingTypes';
 
+// Utility function for capitalizing words (for case-insensitive city searches)
+const capitalizeWords = (str: string) =>
+    str.replace(/\b\w/g, (c) => c.toUpperCase());
+
 export async function POST(req: NextRequest) {
   try {
     console.log('🚀 Weekly recommendations API called');
+    
+    // Parse request body to check for forceRefresh
+    const requestBody = await req.json();
+    const forceRefresh = requestBody.forceRefresh || false;
+    console.log('🔄 Force refresh requested:', forceRefresh);
     
     const supabase = createSupabaseAdminClient();
     let user: any = null;
@@ -52,34 +61,75 @@ export async function POST(req: NextRequest) {
       user = authUser;
     }
     
-    // Fetch user's Buy Box preferences with cached property IDs
-    const { data: preferences, error: prefsError } = await supabase
-      .from('user_buy_box_preferences')
-      .select('*, cached_property_ids, cache_updated_at, cache_criteria_hash')
+    // Debug: Log user info
+    console.log('API User ID:', user.id);
+    console.log('API User email:', user.email);
+
+    // Check if user has weekly recommendations enabled
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('weekly_recommendations_enabled')
       .eq('user_id', user.id)
       .single();
 
-    if (prefsError || !preferences) {
+    console.log('Profile query result:', { profile, profileError });
+
+    if (profileError || !profile) {
       return NextResponse.json(
-        { error: 'No Buy Box preferences found. Please set up your criteria first.' },
+        { error: `No profile found for user ${user.id}.` },
         { status: 404 }
       );
     }
 
-    if (!preferences.weekly_recommendations_enabled) {
+    if (!profile.weekly_recommendations_enabled) {
       return NextResponse.json(
         { error: 'Weekly recommendations are disabled for this user.' },
         { status: 403 }
       );
     }
 
-    // Get user's existing favorites for deduplication
-    console.log('🔍 Fetching user existing favorites for deduplication...');
+    // Run market assignment for manual properties before generating recommendations
+    console.log('🎯 Running market assignment for manual properties...');
+    try {
+      const { data: assignmentResults, error: assignmentError } = await supabase.rpc(
+        'assign_manual_properties_to_markets_for_user', 
+        { target_user_id: user.id }
+      );
+      
+      if (assignmentError) {
+        console.warn('⚠️ Market assignment warning:', assignmentError);
+      } else if (assignmentResults && assignmentResults.length > 0) {
+        console.log(`✅ Market assignment completed: ${assignmentResults.length} properties updated`);
+        assignmentResults.forEach((result: any) => {
+          console.log(`  - ${result.updated_property_id}: ${result.old_market_key || 'NULL'} → ${result.new_market_key} (${Number(result.distance_miles).toFixed(2)} miles)`);
+        });
+      } else {
+        console.log('✅ Market assignment completed: no updates needed');
+      }
+    } catch (marketError) {
+      console.error('⚠️ Market assignment error (continuing anyway):', marketError);
+    }
+
+    // Fetch user's markets
+    const { data: userMarkets, error: marketsError } = await supabase
+      .from('user_markets')
+      .select('*')
+      .eq('user_id', user.id);
+
+    if (marketsError || !userMarkets || userMarkets.length === 0) {
+      return NextResponse.json(
+        { error: `No markets found for user ${user.id}. Please set up your Buy Box first.` },
+        { status: 404 }
+      );
+    }
+
+    // Get user's existing active favorites for deduplication
+    console.log('🔍 Fetching user existing active favorites for deduplication...');
     const { data: existingFavorites, error: favError } = await supabase
       .from('user_favorites')
       .select('property_id')
       .eq('user_id', user.id)
-      .eq('is_active', true);
+      .eq('status', 'active'); // Only exclude active favorites, not pending
 
     if (favError) {
       console.error('❌ Error fetching existing favorites:', favError);
@@ -89,101 +139,102 @@ export async function POST(req: NextRequest) {
       existingFavorites?.map(fav => fav.property_id) || []
     );
     
-    console.log(`📋 User has ${existingPropertyIds.size} existing favorites to exclude`);
+    console.log(`📋 User has ${existingPropertyIds.size} existing active favorites to exclude`);
 
-    // Convert JSONB target_markets to BuyBoxMarket format
-    const userMarkets: BuyBoxMarket[] = preferences.target_markets || [];
+    // Use user_markets data directly with all fields
+    const convertedMarkets = userMarkets.map(market => ({
+      ...market,
+      marketKey: market.market_key,
+      type: market.market_type as 'city' | 'zip',
+      customName: market.market_name,
+      unitsMin: market.units_min,
+      unitsMax: market.units_max,
+      priceMin: market.assessed_value_min,
+      priceMax: market.assessed_value_max,
+      yearMin: market.year_built_min,
+      yearMax: market.year_built_max,
+    }));
 
-    console.log('📋 User markets from database:', JSON.stringify(userMarkets, null, 2));
+    console.log('📋 User markets from database:', JSON.stringify(convertedMarkets, null, 2));
 
-    if (userMarkets.length === 0) {
-      return NextResponse.json(
-        { error: 'No target markets configured in your Buy Box preferences.' },
-        { status: 400 }
-      );
-    }
+    // Fetch available properties using new market-specific cache
+    const propertySearchRequests = convertedMarkets.map(async (market) => {
+      // Use stable Market1-5 key from buy box
+      const marketKey = market.marketKey;
 
-    // Check if we can use cached property IDs for efficient deduplication
-    const canUseCachedIds = preferences.cached_property_ids && 
-                           preferences.cache_updated_at &&
-                           preferences.cached_property_ids.length > 0;
+      console.log(`🔍 Using property IDs from user_markets for market: ${marketKey}`);
 
-    console.log(`💾 Cache available: ${canUseCachedIds}, IDs: ${preferences.cached_property_ids?.length || 0}`);
-
-    // Fetch available properties from external API
-    const propertySearchRequests = userMarkets.map(async (market) => {
-      // If we have cached IDs, use them for efficient deduplication
-      if (canUseCachedIds) {
-        console.log(`🎯 Using cached IDs for market ${market.id} with deduplication`);
-        
-        // Filter cached IDs to exclude user's existing favorites
-        const availableIds = preferences.cached_property_ids.filter((id: string) => 
-          !existingPropertyIds.has(id)
-        );
-
-        if (availableIds.length === 0) {
-          console.log(`⚠️ No new properties available for market ${market.id} after deduplication`);
-          return { market, properties: [] };
-        }
-
-        // Fetch full property details for the deduplicated IDs (limit to 50 for performance)
-        const searchPayload = {
-          ids: availableIds.slice(0, 50),
-          obfuscate: false,
-          summary: false
+      // Get property IDs directly from the user_markets table (already fetched)
+      if (!market.property_ids || market.property_ids.length === 0) {
+        console.log(`❌ No property IDs found for market ${market.id}: property_ids is empty`);
+        return { 
+          market, 
+          properties: [],
+          rentalData: null,
+          message: `No properties found for ${market.customName || marketKey}. Please re-save this market in your Buy Box.`
         };
-
-        console.log(`🔍 Fetching details for ${availableIds.slice(0, 50).length} deduplicated properties`);
-
-        const response = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/realestateapi`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(searchPayload),
-        });
-
-        if (!response.ok) {
-          console.error(`❌ Failed to fetch cached properties for market ${market.id}`);
-          return { market, properties: [] };
-        }
-
-        const data = await response.json();
-        const properties: Listing[] = data.data || [];
-        
-        console.log(`📊 Retrieved ${properties.length} cached properties for market ${market.id}`);
-        
-        return { market, properties };
       }
 
-      // Fallback to original search method if no cache available
-      const searchPayload: any = {
-        size: 50, // Reduce size since we'll filter afterwards
-        resultIndex: 0,
+      // Randomly select a subset of property IDs for efficiency (max 100 properties per market)
+      const allPropertyIds = market.property_ids as string[];
+      const maxPropertiesToProcess = 100;
+      
+      let cachedIds: string[];
+      if (allPropertyIds.length <= maxPropertiesToProcess) {
+        cachedIds = allPropertyIds;
+      } else {
+        // Shuffle array and take first N elements for random selection
+        const shuffled = [...allPropertyIds].sort(() => 0.5 - Math.random());
+        cachedIds = shuffled.slice(0, maxPropertiesToProcess);
+      }
+      
+      console.log(`🎲 Randomly selected ${cachedIds.length} properties from ${allPropertyIds.length} total for processing`);
+      
+      // Get rental data if rental_region_id exists
+      let rentalData = null;
+      if (market.rental_region_id) {
+        const { data: rental } = await supabase
+          .from('market_rental_data')
+          .select('region_id, city_state, monthly_rental_average, yoy_growth_numeric, market_tier')
+          .eq('region_id', market.rental_region_id)
+          .single();
+        rentalData = rental;
+      }
+
+      console.log(`💾 Found ${cachedIds.length} cached property IDs for market ${market.id}`);
+      console.log(`🏢 Rental data:`, rentalData);
+
+      // Filter cached IDs to exclude user's existing active favorites
+      const availableIds = cachedIds.filter(id => !existingPropertyIds.has(id));
+
+      if (availableIds.length === 0) {
+        console.log(`⚠️ No new properties available for market ${market.id} after deduplication`);
+        return { 
+          market, 
+          properties: [],
+          rentalData,
+          message: `All cached properties are already in your favorites`
+        };
+      }
+
+      // Determine sample size based on market tier (if available)
+      const marketTier = rentalData?.market_tier || 4;
+      const sampleSizes = { 1: 15, 2: 12, 3: 10, 4: 8 }; // Recommendation sample sizes
+      const maxSample = sampleSizes[marketTier as keyof typeof sampleSizes] || 10;
+      
+      // Random sampling for diversity
+      const shuffled = availableIds.sort(() => Math.random() - 0.5);
+      const sampleIds = shuffled.slice(0, Math.min(maxSample, 50)); // Cap at 50 for cost control
+
+      console.log(`🎯 Sampling ${sampleIds.length} properties from ${availableIds.length} available (Tier ${marketTier} market)`);
+
+      // Fetch full property details for sample
+      const searchPayload = {
+        ids: sampleIds,
+        size: sampleIds.length, // Request exactly the number of properties we want
         obfuscate: false,
-        summary: false,
-        ids_only: false
+        summary: false
       };
-
-      // Add market-specific filters
-      if (market.type === 'city') {
-        searchPayload.city = market.city;
-        searchPayload.state = market.state;
-      } else if (market.type === 'zip' && market.zip) {
-        searchPayload.zip = market.zip; // Send as string, realestateapi will split it
-      }
-
-      // Add unit constraints with 50% expansion for exploration
-      const unitsExpansion = Math.ceil((market.units_max - market.units_min) * 0.5);
-      searchPayload.units_min = Math.max(1, market.units_min - unitsExpansion);
-      searchPayload.units_max = market.units_max + unitsExpansion;
-
-      // Add value constraints with 50% expansion
-      const valueExpansion = Math.ceil((market.assessed_value_max - market.assessed_value_min) * 0.5);
-      searchPayload.assessed_value_min = Math.max(0, market.assessed_value_min - valueExpansion);
-      searchPayload.assessed_value_max = market.assessed_value_max + valueExpansion;
-
-      console.log(`🔍 Fetching properties for market ${market.id}:`, JSON.stringify(searchPayload, null, 2));
 
       const response = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/realestateapi`, {
         method: 'POST',
@@ -195,41 +246,50 @@ export async function POST(req: NextRequest) {
 
       if (!response.ok) {
         console.error(`❌ Failed to fetch properties for market ${market.id}`);
-        return { market, properties: [] };
+        return { market, properties: [], rentalData, message: 'Failed to fetch property details' };
       }
 
       const data = await response.json();
-      let properties: Listing[] = data.data || [];
+      const properties: Listing[] = data.data || [];
       
-      // Apply deduplication to fallback search results
-      const propertiesBeforeDedup = properties.length;
-      properties = properties.filter(property => !existingPropertyIds.has(property.id));
+      console.log(`📊 Retrieved ${properties.length} properties for market ${market.id}`);
       
-      console.log(`📊 Found ${propertiesBeforeDedup} properties for market ${market.id}, ${properties.length} after deduplication`);
-      
-      return { market, properties };
+      return { market, properties, rentalData };
     });
 
     // Wait for all property searches to complete
     const marketResults = await Promise.all(propertySearchRequests);
 
     // Generate recommendations for each market
-    const recommendations = marketResults.map(({ market, properties }) => {
+    const recommendations = marketResults.map(({ market, properties, rentalData, message }) => {
       if (properties.length === 0) {
         return {
           market,
           recommendations: [],
           count: 0,
-          message: 'No properties found matching expanded criteria'
+          message: message || 'No properties found',
+          rentalData
         };
       }
 
       const weeklyRecs = generateWeeklyRecommendations([market], properties, 3);
-      return weeklyRecs[0]; // Only one market per call
+      const result = weeklyRecs[0]; // Only one market per call
+      return {
+        ...result,
+        rentalData // Include rental market data for enhanced explanations
+      };
     });
 
     // Filter out empty markets and format response
     const validRecommendations = recommendations.filter(rec => rec.count > 0);
+    
+    console.log(`🔍 DEBUG: Found ${validRecommendations.length} valid recommendations`);
+    console.log(`🔍 DEBUG: validRecommendations structure:`, JSON.stringify(validRecommendations.map(r => ({
+      marketKey: r.market?.marketKey,
+      count: r.count,
+      hasRecommendations: !!r.recommendations,
+      recommendationsLength: r.recommendations?.length
+    })), null, 2));
 
     if (validRecommendations.length === 0) {
       return NextResponse.json({
@@ -247,9 +307,8 @@ export async function POST(req: NextRequest) {
     const allRecommendedProperties = validRecommendations.flatMap(rec => 
       rec.recommendations.map(scored => ({
         property: scored.property,
-        marketName: rec.market.type === 'city' 
-          ? `${rec.market.city}, ${rec.market.state}`
-          : `ZIP ${rec.market.zip}`,
+        marketName: getMarketDisplayName(rec.market),
+        marketKey: rec.market.marketKey, // Stable identifier for recommendation tracking
         fitScore: scored.fitScore,
         diversityScore: scored.diversityScore,
         totalScore: scored.totalScore,
@@ -261,7 +320,7 @@ export async function POST(req: NextRequest) {
 
     // Save to database in parallel
     try {
-      await Promise.all(allRecommendedProperties.map(async ({ property, marketName, fitScore, diversityScore, totalScore, reasons }) => {
+      await Promise.all(allRecommendedProperties.map(async ({ property, marketName, marketKey, fitScore, diversityScore, totalScore, reasons }) => {
         // First, upsert to saved_properties table (bypass RLS with admin client)
         const { data: savedProperty, error: propertyError } = await supabase
           .from('saved_properties')
@@ -329,15 +388,17 @@ export async function POST(req: NextRequest) {
           return;
         }
 
-        // Then, add to user_favorites as weekly recommendation
+        // Then, add to user_favorites as pending recommendation (user must choose to activate)
         const { error: favoriteError } = await supabase
           .from('user_favorites')
           .upsert({
             user_id: user.id,
             property_id: property.id,
-            is_active: true,
+            market_key: marketKey, // Add market key for tracking
+            is_active: true, // Keep existing field for backward compatibility
+            status: 'pending', // New status field - pending until user chooses
             saved_at: generatedAt,
-            recommendation_type: 'weekly_recommendation',
+            recommendation_type: 'algorithm',
             recommendation_batch_id: batchId,
             fit_score: fitScore,
             diversity_score: diversityScore,
@@ -363,9 +424,7 @@ export async function POST(req: NextRequest) {
 
     // Format for frontend consumption (matching WeeklyRecommendationsModal expected structure)
     const formattedRecommendations = validRecommendations.map(rec => ({
-      name: rec.market.type === 'city' 
-        ? `${rec.market.city}, ${rec.market.state}`
-        : `ZIP ${rec.market.zip}`,
+      name: getMarketDisplayName(rec.market),
       msa_name: rec.market.type === 'city' 
         ? `${rec.market.city} Metro Area`
         : undefined,
@@ -392,6 +451,25 @@ export async function POST(req: NextRequest) {
       { error: 'Failed to generate recommendations. Please try again.' },
       { status: 500 }
     );
+  }
+}
+
+// Helper function to get market display name
+function getMarketDisplayName(market: BuyBoxMarket): string {
+  // Use custom name if user has set one
+  if (market.customName?.trim()) {
+    return market.customName.trim();
+  }
+  
+  // Auto-generate from location
+  if (market.type === 'city' && market.city && market.state) {
+    return `${market.city}, ${market.state}`;
+  } else if (market.type === 'zip' && market.zip) {
+    // Show first zip if multiple zips
+    const firstZip = market.zip.split(',')[0].trim();
+    return `ZIP ${firstZip}`;
+  } else {
+    return `Market ${market.marketKey}`;
   }
 }
 

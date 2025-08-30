@@ -21,6 +21,13 @@ interface PropertyCardsViewProps {
     onStatusChange?: (propertyId: string, status: FavoriteStatus | null) => void;
     openStatusDropdown?: string | null;
     onStatusDropdownToggle?: (propertyId: string, isOpen: boolean) => void;
+    
+    // Market assignment props
+    onMarketChange?: (propertyId: string, marketKey: string | null) => void;
+    userMarkets?: Array<{ market_key: string; market_name: string }>;
+    openMarketDropdown?: string | null;
+    onMarketDropdownToggle?: (propertyId: string, isOpen: boolean) => void;
+    
     isLoading: boolean;
 }
 
@@ -40,6 +47,10 @@ export const PropertyCardsView: React.FC<PropertyCardsViewProps> = ({
     onStatusChange,
     openStatusDropdown,
     onStatusDropdownToggle,
+    onMarketChange,
+    userMarkets,
+    openMarketDropdown,
+    onMarketDropdownToggle,
     isLoading
 }) => {
     if (isLoading) {
@@ -104,6 +115,10 @@ export const PropertyCardsView: React.FC<PropertyCardsViewProps> = ({
                     onStatusChange={onStatusChange}
                     openStatusDropdown={openStatusDropdown}
                     onStatusDropdownToggle={onStatusDropdownToggle}
+                    onMarketChange={onMarketChange}
+                    userMarkets={userMarkets}
+                    openMarketDropdown={openMarketDropdown}
+                    onMarketDropdownToggle={onMarketDropdownToggle}
                     displayMode="grid"
                     showStreetView={true}
                     showSelection={true}

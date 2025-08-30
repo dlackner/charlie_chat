@@ -27,8 +27,8 @@ BEGIN
     FOR user_record IN 
         SELECT DISTINCT u.id, u.email::TEXT as email, u.raw_user_meta_data
         FROM auth.users u
-        INNER JOIN user_buy_box_preferences bp ON u.id = bp.user_id
-        WHERE bp.weekly_recommendations_enabled = true
+        INNER JOIN profiles p ON u.id = p.user_id
+        WHERE p.weekly_recommendations_enabled = true
         AND u.email IS NOT NULL
         AND u.deleted_at IS NULL
         ORDER BY u.email

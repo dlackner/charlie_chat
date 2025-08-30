@@ -27,7 +27,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "docx": "^9.5.0",
-    "dotenv": "^17.1.0",
+    "dotenv": "^17.2.1",
     "file-saver": "^2.0.5",
     "jspdf": "^3.0.1",
     "leaflet": "^1.9.4",

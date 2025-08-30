@@ -74,6 +74,8 @@ export default function MyPropertiesPage() {
     const [selectedStatuses, setSelectedStatuses] = useState<Set<FavoriteStatus | 'ALL' | 'NO_STATUS'>>(new Set(['ALL']));
     const [showDocumentDropdown, setShowDocumentDropdown] = useState(false);
     const [openStatusDropdown, setOpenStatusDropdown] = useState<string | null>(null);
+    const [openMarketDropdown, setOpenMarketDropdown] = useState<string | null>(null);
+    const [userMarkets, setUserMarkets] = useState<Array<{ market_key: string; market_name: string }>>([]);
     const [errorMessage, setErrorMessage] = useState('');
     const [skipTraceLoading, setSkipTraceLoading] = useState<Set<string>>(new Set());
     const [skipTraceErrors, setSkipTraceErrors] = useState<{ [key: string]: string }>({});
@@ -300,6 +302,8 @@ export default function MyPropertiesPage() {
             saved_at,
             favorite_status,
             notes,
+            recommendation_type,
+            market_key,
             saved_properties (*, owner_first_name, owner_last_name)
           `)
                     .eq("user_id", user.id)
@@ -316,6 +320,8 @@ export default function MyPropertiesPage() {
                             saved_at: item.saved_at,
                             favorite_status: item.favorite_status,
                             notes: item.notes, // Get notes from user_favorites, not saved_properties
+                            recommendation_type: item.recommendation_type,
+                            market_key: item.market_key,
                             skipTraceData: prop.skip_trace_data,
                             mailAddress: {
                                 street: prop.owner_street || '',
@@ -338,11 +344,33 @@ export default function MyPropertiesPage() {
 
         if (hasAccess && user && supabase && !isLoadingAccess) {
             loadSavedProperties();
+            loadUserMarkets();
         } else if (!isLoadingAccess) {
             setIsLoadingProperties(false);
             setIsLoadingReminders(false);
         }
     }, [user, supabase, hasAccess, isLoadingAccess]);
+
+    // Load user's markets for the market dropdown
+    const loadUserMarkets = async () => {
+        if (!user || !supabase) return;
+
+        try {
+            const { data: markets, error } = await supabase
+                .from('user_markets')
+                .select('market_key, market_name')
+                .eq('user_id', user.id)
+                .order('market_name');
+
+            if (error) {
+                console.error('Error loading user markets:', error);
+            } else if (markets) {
+                setUserMarkets(markets);
+            }
+        } catch (error) {
+            console.error('Error fetching user markets:', error);
+        }
+    };
 
     // Load reminders whenever properties change
     useEffect(() => {
@@ -433,6 +461,42 @@ export default function MyPropertiesPage() {
         } catch (error) {
             console.error('Error saving status:', error);
         }
+    };
+
+    const handleMarketChange = async (propertyId: string, marketKey: string | null) => {
+        if (!user || !supabase) return;
+
+        try {
+            const { error } = await supabase
+                .from("user_favorites")
+                .update({ 
+                    market_key: marketKey,
+                    saved_at: new Date().toISOString() 
+                })
+                .eq("user_id", user.id)
+                .eq("property_id", propertyId);
+
+            if (error) {
+                console.error('Error updating market:', error);
+            } else {
+                // Update local state
+                setSavedProperties(prev =>
+                    prev.map(p =>
+                        p.property_id === propertyId
+                            ? { ...p, market_key: marketKey }
+                            : p
+                    )
+                );
+                console.log(`Updated market for property ${propertyId} to ${marketKey || 'NULL'}`);
+            }
+        } catch (error) {
+            console.error('Error saving market assignment:', error);
+        }
+    };
+
+
+    const handleMarketDropdownToggle = (propertyId: string, isOpen: boolean) => {
+        setOpenMarketDropdown(isOpen ? propertyId : null);
     };
 
     // Analytics status filter handler
@@ -750,7 +814,7 @@ export default function MyPropertiesPage() {
                         completed++;
                         setBulkSkipTraceProgress({ completed, total: propertiesToTrace.length });
                     },
-                    (propertyId: string, error: string) => {
+                    (_propertyId: string, error: string) => {
                         errors.push(`${property.address_full}: ${error}`);
                         completed++;
                         setBulkSkipTraceProgress({ completed, total: propertiesToTrace.length });
@@ -1248,6 +1312,10 @@ export default function MyPropertiesPage() {
                         onStatusChange={handleStatusChange}
                         openStatusDropdown={openStatusDropdown}
                         onStatusDropdownToggle={handleStatusDropdownToggle}
+                        onMarketChange={handleMarketChange}
+                        userMarkets={userMarkets}
+                        openMarketDropdown={openMarketDropdown}
+                        onMarketDropdownToggle={handleMarketDropdownToggle}
                         isLoading={isLoadingProperties}
                     />
                 ) : viewMode === 'map' ? (

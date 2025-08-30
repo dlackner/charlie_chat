@@ -9,10 +9,30 @@ export interface BuyBoxMarket {
   city?: string;
   state?: string;
   zip?: string;
+  customName?: string; // User-editable display name (DISPLAY ONLY)
+  marketKey: string; // STABLE identifier for recommendation system mapping (NEVER changes even if user renames)
   units_min: number;
   units_max: number;
   assessed_value_min: number;
   assessed_value_max: number;
+  estimated_value_min: number;
+  estimated_value_max: number;
+  year_built_min: number;
+  year_built_max: number;
+  isExpanded?: boolean;
+  propertyCount?: number;
+  propertyCountChecked?: boolean;
+  marketTier?: {
+    tier: number;
+    name: string;
+    description: string;
+    minRank: number;
+    maxRank: number;
+    recommendedMin: number;
+    recommendedMax: number;
+    sweetSpotMin: number;
+    sweetSpotMax: number;
+  };
 }
 
 export interface PropertyRecommendationCriteria {
@@ -75,8 +95,8 @@ export class PropertyRecommendationEngine {
     propertiesPerMarket = 3
   ): PropertyScore[] {
     
-    // Step 1: Filter to properties within ±25% variance of criteria
-    const candidateProperties = this.filterByCriteriaWithVariance(market, availableProperties);
+    // Step 1: Use all available properties (API search already handled filtering with OR logic)
+    const candidateProperties = availableProperties;
     
     // Step 2: Score each property for fit and diversity
     const scoredProperties = candidateProperties.map(property => 
@@ -89,58 +109,7 @@ export class PropertyRecommendationEngine {
     return selectedProperties;
   }
 
-  /**
-   * Filter properties to ±25% of user's stated criteria
-   */
-  private filterByCriteriaWithVariance(market: BuyBoxMarket, properties: Listing[]): Listing[] {
-    return properties.filter(property => {
-      // Units count variance check
-      const unitsVariance = this.calculateVariance(market.units_min, market.units_max);
-      if (property.units_count && 
-          (property.units_count < market.units_min - unitsVariance.min || 
-           property.units_count > market.units_max + unitsVariance.max)) {
-        return false;
-      }
 
-      // Assessed value variance check  
-      const valueVariance = this.calculateVariance(market.assessed_value_min, market.assessed_value_max);
-      if (property.assessed_value && 
-          (property.assessed_value < market.assessed_value_min - valueVariance.min || 
-           property.assessed_value > market.assessed_value_max + valueVariance.max)) {
-        return false;
-      }
-
-      // Geographic filtering
-      if (market.type === 'city' && market.city && market.state) {
-        if (property.address_city?.toLowerCase() !== market.city.toLowerCase() || 
-            property.address_state?.toLowerCase() !== market.state.toLowerCase()) {
-          return false;
-        }
-      }
-
-      if (market.type === 'zip' && market.zip) {
-        const targetZips = market.zip.split(',').map(z => z.trim());
-        if (!targetZips.includes(property.address_zip || '')) {
-          return false;
-        }
-      }
-
-      return true;
-    });
-  }
-
-  /**
-   * Calculate ±variance amounts for min/max ranges
-   */
-  private calculateVariance(min: number, max: number) {
-    const range = max - min;
-    const variance = range * (this.variancePercentage / 100);
-    
-    return {
-      min: Math.max(0, variance), // Don't go below 0
-      max: variance
-    };
-  }
 
   /**
    * Score a property for both fit to criteria and diversity value
@@ -170,17 +139,39 @@ export class PropertyRecommendationEngine {
     let score = 100;
     
     // Units fit
-    if (property.units_count) {
+    if (property.units_count && (market.units_min > 0 || market.units_max > 0)) {
       const unitsCenter = (market.units_min + market.units_max) / 2;
-      const unitsDeviation = Math.abs(property.units_count - unitsCenter) / unitsCenter;
-      score -= Math.min(unitsDeviation * 30, 30); // Max 30 point penalty
+      if (unitsCenter > 0) {
+        const unitsDeviation = Math.abs(property.units_count - unitsCenter) / unitsCenter;
+        score -= Math.min(unitsDeviation * 20, 20); // Max 20 point penalty
+      }
     }
 
-    // Value fit  
-    if (property.assessed_value) {
+    // Assessed value fit  
+    if (property.assessed_value && (market.assessed_value_min > 0 || market.assessed_value_max > 0)) {
       const valueCenter = (market.assessed_value_min + market.assessed_value_max) / 2;
-      const valueDeviation = Math.abs(property.assessed_value - valueCenter) / valueCenter;
-      score -= Math.min(valueDeviation * 30, 30); // Max 30 point penalty
+      if (valueCenter > 0) {
+        const valueDeviation = Math.abs(property.assessed_value - valueCenter) / valueCenter;
+        score -= Math.min(valueDeviation * 20, 20); // Max 20 point penalty
+      }
+    }
+
+    // Estimated value fit
+    if (property.estimated_value && (market.estimated_value_min > 0 || market.estimated_value_max > 0)) {
+      const estimatedCenter = (market.estimated_value_min + market.estimated_value_max) / 2;
+      if (estimatedCenter > 0) {
+        const estimatedDeviation = Math.abs(property.estimated_value - estimatedCenter) / estimatedCenter;
+        score -= Math.min(estimatedDeviation * 15, 15); // Max 15 point penalty
+      }
+    }
+
+    // Year built fit
+    if (property.year_built && (market.year_built_min > 0 || market.year_built_max > 0)) {
+      const yearCenter = (market.year_built_min + market.year_built_max) / 2;
+      if (yearCenter > 0) {
+        const yearDeviation = Math.abs(property.year_built - yearCenter) / yearCenter;
+        score -= Math.min(yearDeviation * 15, 15); // Max 15 point penalty
+      }
     }
 
     // Bonus for attractive investment characteristics

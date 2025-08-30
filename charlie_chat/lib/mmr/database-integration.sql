@@ -1,16 +1,19 @@
 -- MMR Integration with Existing Charlie Chat Schema
 -- This enhances your current system rather than replacing it
 
--- 1. Add MMR-specific columns to existing user_buy_box_preferences
-ALTER TABLE user_buy_box_preferences 
-ADD COLUMN IF NOT EXISTS lambda_value DECIMAL(3,2) DEFAULT 0.7,
-ADD COLUMN IF NOT EXISTS exploration_score DECIMAL(3,2) DEFAULT 0.5,
-ADD COLUMN IF NOT EXISTS price_min NUMERIC,
-ADD COLUMN IF NOT EXISTS price_max NUMERIC,
-ADD COLUMN IF NOT EXISTS units_min INTEGER,
-ADD COLUMN IF NOT EXISTS units_max INTEGER,
-ADD COLUMN IF NOT EXISTS year_min INTEGER,
-ADD COLUMN IF NOT EXISTS year_max INTEGER;
+-- 1. DEPRECATED: Originally added MMR columns to user_buy_box_preferences table
+-- The system now uses user_markets table structure instead
+-- Keeping this for historical reference only
+
+-- ALTER TABLE user_buy_box_preferences 
+-- ADD COLUMN IF NOT EXISTS lambda_value DECIMAL(3,2) DEFAULT 0.7,
+-- ADD COLUMN IF NOT EXISTS exploration_score DECIMAL(3,2) DEFAULT 0.5,
+-- ADD COLUMN IF NOT EXISTS price_min NUMERIC,
+-- ADD COLUMN IF NOT EXISTS price_max NUMERIC,
+-- ADD COLUMN IF NOT EXISTS units_min INTEGER,
+-- ADD COLUMN IF NOT EXISTS units_max INTEGER,
+-- ADD COLUMN IF NOT EXISTS year_min INTEGER,
+-- ADD COLUMN IF NOT EXISTS year_max INTEGER;
 
 -- 2. Add last_shown tracking to saved_properties (for re-surface policies)
 ALTER TABLE saved_properties 
