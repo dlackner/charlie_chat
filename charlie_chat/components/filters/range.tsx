@@ -22,6 +22,18 @@ export const FilterRange: React.FC<FilterRangeProps> = ({
   step = 1,
   formatValue
 }) => {
+  // Clamp values to be within min/max bounds
+  const clampedValues: [number, number] = [
+    Math.max(min, Math.min(max, values[0])),
+    Math.max(min, Math.min(max, values[1]))
+  ];
+  
+  // If values were clamped, update the parent state
+  React.useEffect(() => {
+    if (clampedValues[0] !== values[0] || clampedValues[1] !== values[1]) {
+      onChange(clampedValues);
+    }
+  }, [clampedValues[0], clampedValues[1], values[0], values[1], onChange]);
   const formatDisplayValue = (value: number): string => {
     if (formatValue) {
       return formatValue(value);
@@ -54,10 +66,10 @@ export const FilterRange: React.FC<FilterRangeProps> = ({
   return (
     <div className="col-span-2">
       <label className="text-sm block mb-1">
-        {label}: {formatDisplayValue(values[0])} – {formatDisplayValue(values[1])}
+        {label}: {formatDisplayValue(clampedValues[0])} – {formatDisplayValue(clampedValues[1])}
       </label>
       <Range
-        values={values}
+        values={clampedValues}
         step={step}
         min={min}
         max={max}
@@ -76,7 +88,7 @@ export const FilterRange: React.FC<FilterRangeProps> = ({
               height: 8,
               borderRadius: 4,
               background: getTrackBackground({
-                values: values,
+                values: clampedValues,
                 colors: ["#d1d5db", "#2563eb", "#d1d5db"],
                 min,
                 max,

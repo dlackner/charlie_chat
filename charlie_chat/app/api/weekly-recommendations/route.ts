@@ -20,16 +20,18 @@ export async function POST(req: NextRequest) {
     const supabase = createSupabaseAdminClient();
     let user: any = null;
     
-    // Check if this is an automated trigger (with x-user-id header)
+    // Check for automated triggers in different ways
     const automatedUserId = req.headers.get('x-user-id');
+    const cronUserId = requestBody.userId; // For PostgreSQL cron calls
     
-    if (automatedUserId) {
-      console.log('🤖 Automated trigger detected for user:', automatedUserId);
+    if (automatedUserId || cronUserId) {
+      const userId = automatedUserId || cronUserId;
+      console.log('🤖 Automated trigger detected for user:', userId);
       
       // For automated triggers, create a simple user object
       user = {
-        id: automatedUserId,
-        email: `user-${automatedUserId}@automated.trigger` // Placeholder email for automated triggers
+        id: userId,
+        email: `user-${userId}@automated.trigger` // Placeholder email for automated triggers
       };
       
       console.log('👤 Automated trigger user:', { userId: user.id, email: user.email });

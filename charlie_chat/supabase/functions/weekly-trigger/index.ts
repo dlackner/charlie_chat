@@ -33,6 +33,8 @@ serve(async (req) => {
   }
 
   const startTime = Date.now();
+  console.log('🚀 Weekly trigger started at:', new Date().toISOString());
+  
   const supabase = createClient(
     Deno.env.get('SUPABASE_URL')!,
     Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
@@ -169,12 +171,13 @@ serve(async (req) => {
           continue;
         }
 
-        // Check if current week's recommendations already exist
+        // Check if current week's pending recommendations already exist
         const { data: currentWeekRecs } = await supabase
           .from('user_favorites')
           .select('id, recommendation_batch_id')
           .eq('user_id', userId)
           .eq('recommendation_type', 'algorithm')
+          .eq('status', 'pending')
           .gte('generated_at', currentWeekStart)
           .limit(1);
 
@@ -183,7 +186,7 @@ serve(async (req) => {
             success: true,
             userId,
             userEmail,
-            message: 'Current week recommendations already exist',
+            message: 'Current week pending recommendations already exist',
             skipped: true
           });
           continue;
@@ -192,7 +195,7 @@ serve(async (req) => {
         console.log(`🎯 Generating recommendations for ${userEmail}`);
 
         // Call the weekly recommendations API
-        const appUrl = Deno.env.get('APP_URL') || Deno.env.get('NEXT_PUBLIC_BASE_URL') || 'http://localhost:3000';
+        const appUrl = Deno.env.get('APP_URL') || 'https://multifamilyos.ai';
         
         const response = await fetch(`${appUrl}/api/weekly-recommendations`, {
           method: 'POST',

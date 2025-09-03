@@ -5,7 +5,7 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useState, useRef, useEffect } from "react";
 import { User, ChevronDown, Settings, Heart, LogOut, Star, CreditCard, Target } from "lucide-react";
-import { RecommendationsIconModal } from '@/components/ui/RecommendationsIconModal';
+import { RecommendationsIconModal, RecommendationsIconModalRef } from '@/components/ui/RecommendationsIconModal';
 import { WeeklyRecommendationsModalMMR } from "@/components/WeeklyRecommendationsModalMMR";
 import { ProfileModal } from "@/components/ProfileModal";
 import { BuyBoxModal } from "@/components/BuyBoxModal";
@@ -26,6 +26,7 @@ export default function Header() {
   const [showAccountMenu, setShowAccountMenu] = useState(false);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const { showSignUpModal, setShowSignUpModal, showLoginModal, setShowLoginModal } = useModal();
+  const recommendationsIconRef = useRef<RecommendationsIconModalRef>(null);
   
   // Sign up modal states
   const [signupEmail, setSignupEmail] = useState("");
@@ -231,7 +232,7 @@ export default function Header() {
   }, []);
 
   return (
-    <header className="w-full px-6 py-4 flex items-center bg-white border-b border-gray-200 shadow-sm">
+    <header className="sticky top-0 z-50 w-full px-6 py-4 flex items-center bg-white border-b border-gray-200 shadow-sm">
       {/* Logo */}
       <div className="flex items-center">
         <Link href="/">
@@ -250,6 +251,7 @@ export default function Header() {
         {isLoggedIn && (
           <div className="mr-4">
             <RecommendationsIconModal 
+              ref={recommendationsIconRef}
               onOpenRecommendations={() => setShowRecommendationsModal(true)}
             />
           </div>
@@ -384,14 +386,13 @@ export default function Header() {
           <>
             <button 
               onClick={() => setShowSignUpModal(true)}
-              className="border border-gray-300 hover:border-gray-400 text-gray-700 text-sm px-4 py-2 rounded-lg font-medium transition-all duration-200 hover:bg-gray-50"
+              className="border border-gray-300 hover:border-gray-400 text-gray-700 hover:text-gray-800 text-sm px-4 py-2 rounded-lg font-medium transition-colors duration-150 hover:bg-gray-50"
             >
               Sign up
             </button>
             <button 
               onClick={() => setShowLoginModal(true)}
-              className="text-white text-sm px-4 py-2 rounded-lg font-medium transition-all duration-200"
-              style={{ backgroundColor: '#1C599F' }}
+              className="bg-orange-600 hover:bg-orange-700 text-white text-sm px-4 py-2 rounded-lg font-medium transition-colors duration-150"
             >
               Log in
             </button>
@@ -483,7 +484,7 @@ export default function Header() {
                 
                 <button
                   type="submit"
-                  className="w-full bg-orange-500 hover:bg-orange-600 text-white py-3 px-4 rounded-lg font-medium transition-all duration-200"
+                  className="w-full bg-orange-600 hover:bg-orange-700 text-white py-3 px-4 rounded-lg font-medium transition-colors duration-150"
                 >
                   Send Confirmation Link
                 </button>
@@ -570,8 +571,7 @@ export default function Header() {
               
               <button
                 type="submit"
-                className="w-full text-white py-3 px-4 rounded-lg font-medium transition-all duration-200"
-                style={{ backgroundColor: '#1C599F' }}
+                className="w-full bg-orange-600 hover:bg-orange-700 text-white py-3 px-4 rounded-lg font-medium transition-colors duration-150"
               >
                 {!loginOtpSent ? "Send Login Code" : "Verify Code"}
               </button>
@@ -583,7 +583,13 @@ export default function Header() {
       {/* Weekly Recommendations Modal */}
       <WeeklyRecommendationsModalMMR
         isOpen={showRecommendationsModal}
-        onClose={() => setShowRecommendationsModal(false)}
+        onClose={async () => {
+          setShowRecommendationsModal(false);
+          // Re-check recommendations status to hide bell if all are completed
+          if (recommendationsIconRef.current) {
+            await recommendationsIconRef.current.recheckRecommendations();
+          }
+        }}
       />
 
       {/* Profile Modal */}

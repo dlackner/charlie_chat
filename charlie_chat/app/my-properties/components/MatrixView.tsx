@@ -189,7 +189,7 @@ export const MatrixView: React.FC<MatrixViewProps> = ({
                             Properties positioned by Property Age vs Assessed Value ({matrixPropertiesWithPositions.length} plotted)
                         </p>
                         <p className="text-sm text-gray-500 mt-1">
-                            Circle size represents value per unit (larger = more expensive per unit)
+                            Circle size represents value per unit (larger = more expensive per unit). Right click on a circle to remove it.
                         </p>
                     </div>
 

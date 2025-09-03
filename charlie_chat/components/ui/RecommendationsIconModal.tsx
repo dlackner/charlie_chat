@@ -1,16 +1,22 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useImperativeHandle, forwardRef } from 'react';
 import { Bell, X } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 
 interface RecommendationsIconModalProps {
     onOpenRecommendations: () => void;
+    onRecommendationsModalClosed?: () => void;
 }
 
-export const RecommendationsIconModal: React.FC<RecommendationsIconModalProps> = ({
-    onOpenRecommendations
-}) => {
+export interface RecommendationsIconModalRef {
+    recheckRecommendations: () => Promise<void>;
+}
+
+export const RecommendationsIconModal = forwardRef<RecommendationsIconModalRef, RecommendationsIconModalProps>(({
+    onOpenRecommendations,
+    onRecommendationsModalClosed
+}, ref) => {
     const { user, supabase } = useAuth();
     const [isVisible, setIsVisible] = useState(false);
     const [showModal, setShowModal] = useState(false);
@@ -61,6 +67,11 @@ export const RecommendationsIconModal: React.FC<RecommendationsIconModalProps> =
             const count = data?.length || 0;
             setRecommendationCount(count);
             setIsVisible(count > 0);
+            
+            // Auto-open the modal if there are recommendations
+            if (count > 0) {
+                setShowModal(true);
+            }
         } catch (error) {
             console.error('Error fetching recommendations:', error);
         } finally {
@@ -80,9 +91,19 @@ export const RecommendationsIconModal: React.FC<RecommendationsIconModalProps> =
 
     const handleViewRecommendations = () => {
         setShowModal(false);
-        setIsVisible(false);
+        // Keep the bell visible - it will disappear when recommendations are actually completed
         onOpenRecommendations();
     };
+
+    // Function to re-check recommendations status (can be called externally)
+    const recheckRecommendations = async () => {
+        await checkForRecommendations();
+    };
+
+    // Expose the recheck function via ref
+    useImperativeHandle(ref, () => ({
+        recheckRecommendations
+    }), []);
 
     if (isLoading || !isVisible || recommendationCount === 0) {
         return null;
@@ -121,29 +142,35 @@ export const RecommendationsIconModal: React.FC<RecommendationsIconModalProps> =
 
                         {/* Content */}
                         <div className="pr-6">
-                            <div className="flex items-center mb-3">
-                                <Bell className="text-blue-600 mr-2" size={20} />
-                                <h3 className="text-lg font-semibold text-gray-900">
-                                    Weekly Recommendations
+                            <div className="flex items-start gap-3 mb-2">
+                                <img
+                                    src="/charlie.png"
+                                    alt="Charlie"
+                                    className="w-10 h-10 rounded-full shadow-md border flex-shrink-0"
+                                />
+                                <h3 className="text-lg font-semibold text-gray-900 leading-tight">
+                                    Your Weekly Buy Box Opportunities Are Ready
                                 </h3>
                             </div>
                             
-                            <p className="text-gray-700 mb-4">
-                                Your weekly recommendations are ready! Charlie found some properties matching your preferences.
-                            </p>
+                            <div className="mb-4">
+                                <p className="text-gray-700 text-sm">
+                                    I completed my analysis over the weekend and identified <strong>{recommendationCount}</strong> multifamily properties that align with your investment criteria. These recommendations are based on your preferences and market activity in your target areas. They'll get better and better every week.
+                                </p>
+                            </div>
 
                             <div className="flex space-x-3">
                                 <button
                                     onClick={handleViewRecommendations}
-                                    className="flex-1 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                                    className="flex-1 bg-orange-600 text-white px-4 py-2 rounded-lg hover:bg-orange-700 transition-colors duration-150 font-medium text-sm"
                                 >
-                                    Review
+                                    Review Now
                                 </button>
                                 <button
                                     onClick={handleDismiss}
-                                    className="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors"
+                                    className="px-4 py-2 border border-gray-300 hover:border-gray-400 text-gray-700 hover:text-gray-800 rounded-lg font-medium transition-colors duration-150 hover:bg-gray-50 text-sm"
                                 >
-                                    Maybe later
+                                    Review Later
                                 </button>
                             </div>
                         </div>
@@ -167,4 +194,6 @@ export const RecommendationsIconModal: React.FC<RecommendationsIconModalProps> =
             `}</style>
         </div>
     );
-};
+});
+
+RecommendationsIconModal.displayName = 'RecommendationsIconModal';

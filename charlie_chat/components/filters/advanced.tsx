@@ -259,7 +259,7 @@ export const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({
             values={lastSalePriceRange}
             onChange={setLastSalePriceRange}
             min={0}
-            max={100000000}
+            max={50000000}
             step={500000}
           />
 
@@ -324,7 +324,7 @@ export const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({
             values={mortgageBalanceRange}
             onChange={setMortgageBalanceRange}
             min={0}
-            max={100000000}
+            max={50000000}
             step={500000}
           />
 
@@ -333,7 +333,7 @@ export const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({
             values={assessedValueRange}
             onChange={setAssessedValueRange}
             min={0}
-            max={100000000}
+            max={50000000}
             step={500000}
           />
 
@@ -342,7 +342,7 @@ export const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({
             values={estimatedValueRange}
             onChange={setEstimatedValueRange}
             min={0}
-            max={100000000}
+            max={50000000}
             step={500000}
           />
 
@@ -351,7 +351,7 @@ export const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({
             values={estimatedEquityRange}
             onChange={setEstimatedEquityRange}
             min={0}
-            max={100000000}
+            max={50000000}
             step={500000}
           />
         </div>

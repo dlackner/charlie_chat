@@ -41,26 +41,26 @@ serve(async (req) => {
     // STEP 1: TRIAL USER MANAGEMENT - Handle expired users
     // ===========================================
     // Find trial users whose trial + grace period has expired
-    // MAX_TRIAL_DAYS (7) + 3-day grace period = 17 days total
+    // MAX_TRIAL_DAYS (7) + 3-day grace period = 10 days total
     const maxTrialDays = parseInt(Deno.env.get('MAX_TRIAL_DAYS') || '7');
     const gracePeriodDays = 3;
-    const totalDaysBeforeDisable = maxTrialDays + gracePeriodDays;
+    const totalDaysBeforeConvert = maxTrialDays + gracePeriodDays;
     
     const cutoffDate = new Date();
-    cutoffDate.setDate(cutoffDate.getDate() - totalDaysBeforeDisable);
+    cutoffDate.setDate(cutoffDate.getDate() - totalDaysBeforeConvert);
+    cutoffDate.setHours(23, 59, 59, 999); // End of day to be inclusive
 
     const { data: expiredTrialUsers, error: expiredError } = await supabaseClient
       .from('profiles')
       .select('user_id, email, credits_depleted_at, created_at')
       .eq('user_class', 'trial')
-      .not('credits_depleted_at', 'is', null)
-      .lt('credits_depleted_at', new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString());
+      .lt('created_at', cutoffDate.toISOString());
 
     if (expiredError) {
       console.error('Error fetching expired trial users:', expiredError);
     }
 
-    console.log(`Found ${expiredTrialUsers?.length || 0} trial users with expired grace periods`);
+    console.log(`Found ${expiredTrialUsers?.length || 0} trial users past ${totalDaysBeforeConvert}-day conversion period (${maxTrialDays} trial + ${gracePeriodDays} grace)`);
 
     // Process expired trial users
     let convertedUserCount = 0;
@@ -154,7 +154,8 @@ serve(async (req) => {
       emailsSent: emailResult.success ? 1 : 0,
       usersConverted: convertedUserCount,
       maxTrialDays: maxTrialDays,
-      gracePeriodDays: gracePeriodDays
+      gracePeriodDays: gracePeriodDays,
+      totalDaysBeforeConvert: totalDaysBeforeConvert
     }), {
       status: 200,
       headers: {
@@ -183,7 +184,7 @@ async function convertTrialToCharlieChatUser(supabaseClient, user) {
     .from('profiles')
     .update({
       user_class: 'charlie_chat',
-      trial_expired_at: new Date().toISOString()
+      trial_end_date: new Date().toISOString()
     })
     .eq('user_id', user.user_id);
     

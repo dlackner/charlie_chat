@@ -608,17 +608,9 @@ export const WeeklyRecommendationsModalMMR: React.FC<WeeklyRecommendationsModalM
                         
                     </div>
                     <button
-                            onClick={handleClose}
-                        className={`${
-                            recommendations.slice(0, currentIndex + 1).some(prop => !propertyDecisions[prop.property_id])
-                                ? 'text-gray-300 cursor-not-allowed' 
-                                : 'text-gray-400 hover:text-gray-600'
-                        }`}
-                        title={
-                            recommendations.slice(0, currentIndex + 1).some(prop => !propertyDecisions[prop.property_id])
-                                ? 'Please make decisions on all viewed properties before closing'
-                                : 'Close recommendations'
-                        }
+                        onClick={handleClose}
+                        className="text-gray-400 hover:text-gray-600"
+                        title="Close recommendations"
                     >
                         <X size={24} />
                     </button>
@@ -815,7 +807,7 @@ export const WeeklyRecommendationsModalMMR: React.FC<WeeklyRecommendationsModalM
                             <div className="flex space-x-1.5">
                                 <button
                                     onClick={() => handleFavorite(currentProperty.property_id)}
-                                    className={`flex items-center space-x-0.5 px-2 py-1 rounded text-xs transition-all duration-200 transform hover:scale-105 ${
+                                    className={`flex items-center space-x-1 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 transform hover:scale-105 ${
                                         propertyDecisions[currentProperty.property_id] === 'favorite'
                                             ? 'bg-green-500 text-white hover:bg-green-600'
                                             : 'bg-gray-500 text-white hover:bg-gray-600'
@@ -828,14 +820,14 @@ export const WeeklyRecommendationsModalMMR: React.FC<WeeklyRecommendationsModalM
                                         </>
                                     ) : (
                                         <>
-                                            <Heart size={12} />
+                                            <Heart size={16} />
                                             <span>Add to Favorites</span>
                                         </>
                                     )}
                                 </button>
                                 <button
                                     onClick={() => handleDismiss(currentProperty.property_id)}
-                                    className={`flex items-center space-x-0.5 px-2 py-1 rounded text-xs transition-all duration-200 transform hover:scale-105 ${
+                                    className={`flex items-center space-x-1 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 transform hover:scale-105 ${
                                         propertyDecisions[currentProperty.property_id] === 'not_interested'
                                             ? 'bg-green-500 text-white hover:bg-green-600'
                                             : 'bg-gray-500 text-white hover:bg-gray-600'
@@ -848,7 +840,7 @@ export const WeeklyRecommendationsModalMMR: React.FC<WeeklyRecommendationsModalM
                                         </>
                                     ) : (
                                         <>
-                                            <X size={12} />
+                                            <X size={16} />
                                             <span>Not Interested</span>
                                         </>
                                     )}

@@ -3,8 +3,8 @@
 // DAILY CHARLIE CHAT PRO WELCOME EMAIL FUNCTION
 // ============================================
 // 
-// This function runs twice daily (8:00 AM and 5:00 PM) via cron job and:
-// 1. Finds users who became Charlie Chat Pro in the last 12 hours
+// This function runs once daily at 8:00 AM ET via cron job and:
+// 1. Finds users who became Charlie Chat Pro in the last 24 hours
 // 2. Sends welcome emails with Master Class Training access
 // 3. Sends copy to dlackner@hotmail.com for monitoring
 // 
@@ -30,24 +30,24 @@ serve(async (req) => {
     // ===========================================
     // FIND NEW PRO SUBSCRIBERS
     // ===========================================
-    // Look for users who became Pro in the last 12 hours
-    // (since we run twice daily, 12 hours ensures we don't miss anyone)
-    const twelveHoursAgo = new Date();
-    twelveHoursAgo.setHours(twelveHoursAgo.getHours() - 12);
+    // Look for users who became Pro in the last 24 hours
+    // (since we run once daily, 24 hours ensures we don't miss anyone)
+    const twentyFourHoursAgo = new Date();
+    twentyFourHoursAgo.setHours(twentyFourHoursAgo.getHours() - 24);
 
     const { data: newProUsers, error: proUsersError } = await supabaseClient
       .from('profiles')
       .select('user_id, email, charlie_chat_pro_start_date')
       .eq('user_class', 'charlie_chat_pro')
       .not('charlie_chat_pro_start_date', 'is', null)
-      .gte('charlie_chat_pro_start_date', twelveHoursAgo.toISOString());
+      .gte('charlie_chat_pro_start_date', twentyFourHoursAgo.toISOString());
 
     if (proUsersError) {
       console.error('Error fetching new Pro users:', proUsersError);
       throw proUsersError;
     }
 
-    console.log(`Found ${newProUsers?.length || 0} new Charlie Chat Pro users in the last 12 hours`);
+    console.log(`Found ${newProUsers?.length || 0} new Charlie Chat Pro users in the last 24 hours`);
 
     // ===========================================
     // SEND WELCOME EMAILS
@@ -144,11 +144,10 @@ async function sendProWelcomeEmail(email: string) {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        from: 'Charles Dobens <onboarding@resend.dev>',
-        to: email,
-        cc: 'dlackner@hotmail.com', // Copy to you
-        subject: subject,
-        html: htmlBody
+        from: 'Charlie Chat <onboarding@resend.dev>',
+        to: 'dlackner@hotmail.com',
+        subject: `FORWARD TO ${email}: ${subject}`,
+        html: `<p><strong>Please forward this welcome email to: ${email}</strong></p><hr>${htmlBody}`,
       })
     });
 
@@ -201,7 +200,7 @@ async function sendSummaryEmail(processedUsers: any[], emailsSent: number) {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        from: 'Charlie Chat <onboarding@resend.dev>',
+        from: 'dlackner@hotmail.com',
         to: 'dlackner@hotmail.com',
         subject: subject,
         html: htmlBody
@@ -314,7 +313,7 @@ function createSummaryEmailHtml(processedUsers: any[], emailsSent: number, dateS
   `;
 
   if (processedUsers.length === 0) {
-    html += '<p>No new Charlie Chat Pro subscribers found in the last 12 hours.</p>';
+    html += '<p>No new Charlie Chat Pro subscribers found in the last 24 hours.</p>';
   } else {
     html += '<h3>📧 Pro Welcome Emails Processed</h3><ul>';
     
@@ -338,7 +337,7 @@ function createSummaryEmailHtml(processedUsers: any[], emailsSent: number, dateS
   }
 
   html += `<hr><p><em>Generated automatically by Charlie Chat Pro welcome system</em></p>`;
-  html += `<p><em>Runs twice daily at 8:00 AM and 5:00 PM ET</em></p>`;
+  html += `<p><em>Runs daily at 8:00 AM ET</em></p>`;
   
   return html;
 }

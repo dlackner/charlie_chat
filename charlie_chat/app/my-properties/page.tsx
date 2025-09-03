@@ -10,7 +10,7 @@ import { generateMarketingLetter } from '@/app/templates/generateMarketingLetter
 import { exportPropertiesToCSV } from './components/csvExport';
 import { handleSkipTraceForProperty } from './components/skipTraceIntegration';
 import { PropertyMapView } from './components/PropertyMapView';
-import { StatusFilter } from './components/StatusFilter';
+import { MultiCriteriaFilter, FilterCriteria } from './components/MultiCriteriaFilter';
 import { AnalyticsView } from './components/AnalyticsView';
 import { PageSavedProperty as SavedProperty } from './types';
 import { RentDataProcessor } from './components/rentDataProcessor';
@@ -71,7 +71,12 @@ export default function MyPropertiesPage() {
     const [selectedProperties, setSelectedProperties] = useState<Set<string>>(new Set());
     const [viewMode, setViewMode] = useState<ViewMode>('cards');
     const [searchTerm, setSearchTerm] = useState('');
-    const [selectedStatuses, setSelectedStatuses] = useState<Set<FavoriteStatus | 'ALL' | 'NO_STATUS'>>(new Set(['ALL']));
+    const [filterCriteria, setFilterCriteria] = useState<FilterCriteria>({
+        statuses: new Set(),
+        markets: new Set(),
+        sources: new Set(),
+        hasClusterFilter: false
+    });
     const [showDocumentDropdown, setShowDocumentDropdown] = useState(false);
     const [openStatusDropdown, setOpenStatusDropdown] = useState<string | null>(null);
     const [openMarketDropdown, setOpenMarketDropdown] = useState<string | null>(null);
@@ -401,7 +406,7 @@ export default function MyPropertiesPage() {
         }
     };
 
-    // Filter properties based on search, status, and cluster
+    // Filter properties based on search, status, market, source, and cluster
     const filteredProperties = savedProperties.filter(property => {
         // Cluster filter (if active, only show properties in the selected cluster)
         const matchesCluster = clusterFilteredIds.size === 0 || clusterFilteredIds.has(property.property_id);
@@ -412,12 +417,21 @@ export default function MyPropertiesPage() {
             property.address_city?.toLowerCase().includes(searchTerm.toLowerCase()) ||
             property.address_state?.toLowerCase().includes(searchTerm.toLowerCase());
         
-        // Status filter
-        const matchesStatus = selectedStatuses.has('ALL') || 
-            (property.favorite_status && selectedStatuses.has(property.favorite_status)) ||
-            (!property.favorite_status && selectedStatuses.has('NO_STATUS'));
+        // Status filter - if no statuses selected, show all
+        const matchesStatus = filterCriteria.statuses.size === 0 ||
+            (property.favorite_status && filterCriteria.statuses.has(property.favorite_status)) ||
+            (!property.favorite_status && filterCriteria.statuses.has('NO_STATUS'));
         
-        return matchesCluster && matchesSearch && matchesStatus;
+        // Market filter - if no markets selected, show all
+        const matchesMarket = filterCriteria.markets.size === 0 ||
+            (property.market_key && filterCriteria.markets.has(property.market_key));
+        
+        // Source filter - if no sources selected, show all
+        const matchesSource = filterCriteria.sources.size === 0 ||
+            (property.recommendation_type && filterCriteria.sources.has(property.recommendation_type as 'manual' | 'algorithm')) ||
+            (!property.recommendation_type && filterCriteria.sources.has('manual')); // Default to manual if no recommendation_type
+        
+        return matchesCluster && matchesSearch && matchesStatus && matchesMarket && matchesSource;
     });
 
     // For map view: show selected properties if any are selected, otherwise show all filtered properties
@@ -503,20 +517,40 @@ export default function MyPropertiesPage() {
     const handleAnalyticsStatusChange = (status: FavoriteStatus | 'NO_STATUS' | null) => {
         if (status === null) {
             // Clear all filters - show all statuses
-            setSelectedStatuses(new Set(['ALL']));
+            setFilterCriteria(prev => ({
+                ...prev,
+                statuses: new Set()
+            }));
         } else {
             // Filter to show only the selected status
-            setSelectedStatuses(new Set([status]));
+            setFilterCriteria(prev => ({
+                ...prev,
+                statuses: new Set([status])
+            }));
         }
     };
 
     // Cluster filter handler
     const handleClusterFilter = (propertyIds: string[]) => {
         setClusterFilteredIds(new Set(propertyIds));
-        // Clear status filter to show all statuses within the cluster
-        setSelectedStatuses(new Set(['ALL']));
+        // Update filter criteria to indicate cluster filter is active
+        setFilterCriteria(prev => ({
+            ...prev,
+            hasClusterFilter: propertyIds.length > 0
+        }));
         // Clear search term to focus on cluster properties
         setSearchTerm('');
+        // Switch to cards view to show the cluster
+        setViewMode('cards');
+    };
+
+    // Clear cluster filter handler
+    const handleClearClusterFilter = () => {
+        setClusterFilteredIds(new Set());
+        setFilterCriteria(prev => ({
+            ...prev,
+            hasClusterFilter: false
+        }));
     };
 
     // Clear cluster filter when changing views (except when going to cards from analytics)
@@ -1228,11 +1262,13 @@ export default function MyPropertiesPage() {
                     )}
                 </div>
 
-                {/* Status Filter and View Mode Tabs */}
+                {/* Multi-Criteria Filter and View Mode Tabs */}
                 <div className="flex items-center space-x-4 mb-6">
-                    <StatusFilter 
-                        selectedStatuses={selectedStatuses}
-                        onStatusChange={setSelectedStatuses}
+                    <MultiCriteriaFilter 
+                        selectedCriteria={filterCriteria}
+                        onFilterChange={setFilterCriteria}
+                        onClearClusterFilter={handleClearClusterFilter}
+                        userMarkets={userMarkets}
                     />
                     
                     <div className="flex bg-gray-100 rounded-lg p-1">
@@ -1300,7 +1336,7 @@ export default function MyPropertiesPage() {
                         properties={savedProperties.length === 0 ? [] : filteredProperties}
                         totalPropertiesCount={savedProperties.length}
                         searchTerm={searchTerm}
-                        selectedStatuses={selectedStatuses}
+                        selectedStatuses={filterCriteria.statuses}
                         selectedProperties={selectedProperties}
                         onToggleSelection={togglePropertySelection}
                         onRemoveFromFavorites={handleRemoveFromFavorites}
@@ -1346,7 +1382,7 @@ export default function MyPropertiesPage() {
                     /* Analytics View */
                     <AnalyticsView
                         properties={filteredProperties}
-                        selectedStatuses={selectedStatuses}
+                        selectedStatuses={filterCriteria.statuses}
                         onStatusFilterChange={handleAnalyticsStatusChange}
                         onViewChange={handleViewModeChange}
                         onClusterFilter={handleClusterFilter}

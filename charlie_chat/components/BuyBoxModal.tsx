@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useMyPropertiesAccess } from "@/app/my-properties/components/useMyPropertiesAccess";
-import { Home, X, Star, Plus, Trash2 } from "lucide-react";
+import { Home, X, Star, Plus, Trash2, Info } from "lucide-react";
 import { Dialog } from "@headlessui/react";
 import { PropertyCountRangeIndicator } from "@/components/ui/PropertyCountRangeIndicator";
 import { getPropertyCountStatus, MarketTier, MARKET_TIERS } from "@/lib/marketSizeUtil";
@@ -138,6 +138,14 @@ export const BuyBoxModal: React.FC<BuyBoxModalProps> = ({ isOpen, onClose }) => 
     const [errorMessage, setErrorMessage] = useState("");
     const [savingMarkets, setSavingMarkets] = useState<Set<string>>(new Set());
     const [successMessage, setSuccessMessage] = useState("");
+    const [showLearningPhasesModal, setShowLearningPhasesModal] = useState(false);
+    const [maxMarkets, setMaxMarkets] = useState(5); // Default for Pro users
+
+    // Memoized function to close learning phases modal
+    const handleCloseLearningPhases = useCallback(() => {
+        console.log('Closing learning phases modal');
+        setShowLearningPhasesModal(false);
+    }, []);
 
     // Load existing buy box data when modal opens
     useEffect(() => {
@@ -214,6 +222,7 @@ export const BuyBoxModal: React.FC<BuyBoxModalProps> = ({ isOpen, onClose }) => 
 
         loadBuyBoxData();
         loadMarketConvergence();
+        checkUserMarketLimit();
     }, [isOpen, user, supabase, hasAccess]);
 
     // Reset form when modal closes
@@ -237,8 +246,31 @@ export const BuyBoxModal: React.FC<BuyBoxModalProps> = ({ isOpen, onClose }) => 
         return isNaN(parsed) ? 0 : parsed;
     };
 
+    // Check user's market limit based on user class
+    const checkUserMarketLimit = async () => {
+        if (!user || !supabase) return;
+        
+        try {
+            const { data: profile } = await supabase
+                .from('profiles')
+                .select('user_class')
+                .eq('user_id', user.id)
+                .single();
+            
+            // Limit trial and charlie_chat users to 1 market
+            if (profile?.user_class === 'trial' || profile?.user_class === 'charlie_chat') {
+                setMaxMarkets(1);
+            } else {
+                setMaxMarkets(5); // Default for Pro users
+            }
+        } catch (error) {
+            console.error('Error checking user class:', error);
+            setMaxMarkets(5); // Default on error
+        }
+    };
+
     const addMarket = async () => {
-        if (buyBoxData.markets.length < 5 && user) {
+        if (buyBoxData.markets.length < maxMarkets && user) {
             // Query database to get all existing market keys for this user
             const { data: existingMarkets } = await supabase
                 .from("user_markets")
@@ -810,6 +842,7 @@ export const BuyBoxModal: React.FC<BuyBoxModalProps> = ({ isOpen, onClose }) => 
     }
 
     return (
+        <>
         <Dialog open={isOpen} onClose={onClose} className="relative z-50">
             <div className="fixed inset-0 bg-black/50" aria-hidden="true" />
             <div className="fixed inset-0 flex items-center justify-center p-4">
@@ -859,11 +892,11 @@ export const BuyBoxModal: React.FC<BuyBoxModalProps> = ({ isOpen, onClose }) => 
                                 <div>
                                     <div className="flex items-center justify-between mb-4">
                                         <label className="block text-sm font-medium text-gray-700">
-                                            Target Markets (up to 5)
+                                            Target Markets (up to {maxMarkets})
                                         </label>
                                         <button
                                             onClick={addMarket}
-                                            disabled={buyBoxData.markets.length >= 5}
+                                            disabled={buyBoxData.markets.length >= maxMarkets}
                                             className="flex items-center px-3 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                                         >
                                             <Plus size={16} className="mr-1" />
@@ -943,30 +976,31 @@ export const BuyBoxModal: React.FC<BuyBoxModalProps> = ({ isOpen, onClose }) => 
                                                                     const convergence = marketConvergence[marketKey] || { phase: 'discovery', progress: 1 };
                                                                     
                                                                     return (
-                                                                        <div className="flex items-center space-x-1.5 group relative mt-2">
-                                                                            {[1, 2, 3].map((dotNumber) => (
-                                                                                <div
-                                                                                    key={dotNumber}
-                                                                                    className={`w-4 h-4 rounded-full transition-all duration-300 shadow-sm ${
-                                                                                        dotNumber <= convergence.progress
-                                                                                            ? 'bg-gradient-to-br from-blue-400 to-blue-700 shadow-blue-300/50'
-                                                                                            : 'bg-gradient-to-br from-gray-200 to-gray-400 shadow-gray-200/50'
-                                                                                    }`}
-                                                                                    style={{
-                                                                                        boxShadow: dotNumber <= convergence.progress 
-                                                                                            ? '0 3px 6px rgba(59, 130, 246, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.3)' 
-                                                                                            : '0 2px 4px rgba(156, 163, 175, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.3)'
-                                                                                    }}
-                                                                                />
-                                                                            ))}
-                                                                            
-                                                                            {/* Tooltip */}
-                                                                            <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-50">
-                                                                                <div className="bg-gray-900 text-white text-xs rounded-lg py-2 px-3 whitespace-nowrap text-center">
-                                                                                    <div className="font-medium capitalize">{convergence.phase}</div>
-                                                                                    <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-2 border-r-2 border-t-2 border-transparent border-t-gray-900"></div>
-                                                                                </div>
-                                                                            </div>
+                                                                        <div className="flex items-center space-x-1.5 mt-2">
+                                                                            {[1, 2, 3, 4].map((dotNumber) => {
+                                                                                const isActive = dotNumber <= convergence.progress;
+                                                                                const isProduction = dotNumber === 4 && convergence.phase === 'production';
+                                                                                
+                                                                                return (
+                                                                                    <div
+                                                                                        key={dotNumber}
+                                                                                        className={`w-4 h-4 rounded-full transition-all duration-300 shadow-sm ${
+                                                                                            isActive
+                                                                                                ? isProduction
+                                                                                                    ? 'bg-gradient-to-br from-green-400 to-green-700 shadow-green-300/50'
+                                                                                                    : 'bg-gradient-to-br from-blue-400 to-blue-700 shadow-blue-300/50'
+                                                                                                : 'bg-gradient-to-br from-gray-200 to-gray-400 shadow-gray-200/50'
+                                                                                        }`}
+                                                                                        style={{
+                                                                                            boxShadow: isActive
+                                                                                                ? isProduction
+                                                                                                    ? '0 3px 6px rgba(34, 197, 94, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.3)'
+                                                                                                    : '0 3px 6px rgba(59, 130, 246, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.3)'
+                                                                                                : '0 2px 4px rgba(156, 163, 175, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.3)'
+                                                                                        }}
+                                                                                    />
+                                                                                );
+                                                                            })}
                                                                         </div>
                                                                     );
                                                                 })()}
@@ -1291,7 +1325,17 @@ export const BuyBoxModal: React.FC<BuyBoxModalProps> = ({ isOpen, onClose }) => 
                                             className="mr-3 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                                         />
                                         <div>
-                                            <span className="text-sm font-medium text-gray-900">Enable weekly property recommendations</span>
+                                            <span className="text-sm font-medium text-gray-900">
+                                                Enable weekly property recommendations
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setShowLearningPhasesModal(true)}
+                                                    className="text-gray-400 hover:text-blue-600 transition-colors ml-1 inline-flex"
+                                                    title="How I learn your preferences"
+                                                >
+                                                    <Info size={14} />
+                                                </button>
+                                            </span>
                                             <p className="text-xs text-gray-500 mt-1">
                                                 Get curated properties per market every Monday, delivered right to your home page!
                                             </p>
@@ -1314,5 +1358,113 @@ export const BuyBoxModal: React.FC<BuyBoxModalProps> = ({ isOpen, onClose }) => 
                 </Dialog.Panel>
             </div>
         </Dialog>
+
+        {/* Learning Phases Explanation Modal */}
+        <Dialog open={showLearningPhasesModal} onClose={handleCloseLearningPhases} className="relative z-[70]">
+            <div className="fixed inset-0 bg-black/50" aria-hidden="true" />
+            <div className="fixed inset-0 flex items-center justify-center p-4">
+                <Dialog.Panel className="w-full max-w-4xl rounded-lg bg-white p-6 shadow-xl">
+                    {/* Header with Charlie */}
+                    <div className="flex items-start gap-4 mb-4">
+                        <img
+                            src="/charlie.png"
+                            alt="Charlie"
+                            className="w-12 h-12 rounded-full shadow-md border flex-shrink-0"
+                        />
+                        <div>
+                            <h3 className="text-xl font-semibold text-gray-900 mb-2">
+                                How I Learn Your Investment Style
+                            </h3>
+                            <p className="text-gray-700 text-sm">
+                                Plot twist: I'm actually getting smarter! My machine learning algorithms are always watching and learning, getting better at predicting what makes you say "YES!" to a property.
+                            </p>
+                        </div>
+                    </div>
+                    
+                    {/* Learning Phase Explanations */}
+                    <div className="grid grid-cols-2 gap-4">
+                        {/* Discovery Phase */}
+                        <div className="flex items-start gap-3 p-3 bg-blue-50 rounded-lg">
+                            <div className="flex items-center space-x-1.5 flex-shrink-0 mt-0.5">
+                                <div className="w-4 h-4 rounded-full bg-gradient-to-br from-blue-400 to-blue-700 shadow-sm"></div>
+                                <div className="w-4 h-4 rounded-full bg-gradient-to-br from-gray-200 to-gray-400 shadow-sm"></div>
+                                <div className="w-4 h-4 rounded-full bg-gradient-to-br from-gray-200 to-gray-400 shadow-sm"></div>
+                                <div className="w-4 h-4 rounded-full bg-gradient-to-br from-gray-200 to-gray-400 shadow-sm"></div>
+                            </div>
+                            <div>
+                                <h4 className="font-medium text-gray-900 mb-1">Discovery Phase</h4>
+                                <p className="text-sm text-gray-700">
+                                    I'm just getting started! I'm watching your early property choices to understand what catches your eye. 
+                                    Every property you favorite teaches me something new about your investment style.
+                                </p>
+                            </div>
+                        </div>
+
+                        {/* Learning Phase */}
+                        <div className="flex items-start gap-3 p-3 bg-blue-50 rounded-lg">
+                            <div className="flex items-center space-x-1.5 flex-shrink-0 mt-0.5">
+                                <div className="w-4 h-4 rounded-full bg-gradient-to-br from-blue-400 to-blue-700 shadow-sm"></div>
+                                <div className="w-4 h-4 rounded-full bg-gradient-to-br from-blue-400 to-blue-700 shadow-sm"></div>
+                                <div className="w-4 h-4 rounded-full bg-gradient-to-br from-gray-200 to-gray-400 shadow-sm"></div>
+                                <div className="w-4 h-4 rounded-full bg-gradient-to-br from-gray-200 to-gray-400 shadow-sm"></div>
+                            </div>
+                            <div>
+                                <h4 className="font-medium text-gray-900 mb-1">Learning Phase</h4>
+                                <p className="text-sm text-gray-700">
+                                    Getting smarter! I'm analyzing patterns in your favorites and building your unique investment profile. 
+                                    I'm starting to understand your preferred neighborhoods, property types, and price ranges.
+                                </p>
+                            </div>
+                        </div>
+
+                        {/* Mastery Phase */}
+                        <div className="flex items-start gap-3 p-3 bg-blue-50 rounded-lg">
+                            <div className="flex items-center space-x-1.5 flex-shrink-0 mt-0.5">
+                                <div className="w-4 h-4 rounded-full bg-gradient-to-br from-blue-400 to-blue-700 shadow-sm"></div>
+                                <div className="w-4 h-4 rounded-full bg-gradient-to-br from-blue-400 to-blue-700 shadow-sm"></div>
+                                <div className="w-4 h-4 rounded-full bg-gradient-to-br from-blue-400 to-blue-700 shadow-sm"></div>
+                                <div className="w-4 h-4 rounded-full bg-gradient-to-br from-gray-200 to-gray-400 shadow-sm"></div>
+                            </div>
+                            <div>
+                                <h4 className="font-medium text-gray-900 mb-1">Mastery Phase</h4>
+                                <p className="text-sm text-gray-700">
+                                    I've got it! I understand your preferences and can recommend properties that match your investment style. 
+                                    My recommendations are becoming more targeted and relevant to your goals.
+                                </p>
+                            </div>
+                        </div>
+
+                        {/* Production Phase */}
+                        <div className="flex items-start gap-3 p-3 bg-green-50 rounded-lg">
+                            <div className="flex items-center space-x-1.5 flex-shrink-0 mt-0.5">
+                                <div className="w-4 h-4 rounded-full bg-gradient-to-br from-blue-400 to-blue-700 shadow-sm"></div>
+                                <div className="w-4 h-4 rounded-full bg-gradient-to-br from-blue-400 to-blue-700 shadow-sm"></div>
+                                <div className="w-4 h-4 rounded-full bg-gradient-to-br from-blue-400 to-blue-700 shadow-sm"></div>
+                                <div className="w-4 h-4 rounded-full bg-gradient-to-br from-green-400 to-green-700 shadow-sm"></div>
+                            </div>
+                            <div>
+                                <h4 className="font-medium text-gray-900 mb-1">Production Phase</h4>
+                                <p className="text-sm text-gray-700">
+                                    I'm in the zone! Using everything I've learned to find you the perfect investment opportunities. 
+                                    My recommendations are now highly personalized and optimized for your specific investment criteria.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    {/* Close Button */}
+                    <div className="flex justify-center pt-4">
+                        <button
+                            type="button"
+                            onClick={handleCloseLearningPhases}
+                            className="bg-orange-600 hover:bg-orange-700 text-white font-medium py-2 px-6 rounded-lg transition-colors duration-150"
+                        >
+                            Got it, Charlie!
+                        </button>
+                    </div>
+                </Dialog.Panel>
+            </div>
+        </Dialog>
+        </>
     );
 };

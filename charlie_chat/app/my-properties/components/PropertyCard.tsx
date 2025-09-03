@@ -272,7 +272,7 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
                                                 title={`Remove from favorites${property.recommendation_type ? ` (${property.recommendation_type === 'manual' ? 'Manually added' : 'Algorithm recommendation'})` : ''}`}
                                             >
                                                 <div className="relative inline-block">
-                                                    <Heart size={14} className="text-red-500 fill-current" />
+                                                    <Heart size={18} className="text-red-500 fill-current" />
                                                     {/* Recommendation type indicator inside heart */}
                                                     {property.recommendation_type && (
                                                         <span 

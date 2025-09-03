@@ -9,23 +9,21 @@ import { Dialog } from "@headlessui/react";
 // Product ID to plan name mapping
 const PRODUCT_NAMES: { [key: string]: string } = {
   // Charlie Chat Plans
-  "prod_SJk5uclY4sjcVf": "Charlie Chat",
-  "prod_SNCAgPFEuFgHXB": "Charlie Chat",
+  [process.env.NEXT_PUBLIC_CHARLIE_CHAT_MONTHLY_PRODUCT!]: "Charlie Chat",
+  [process.env.NEXT_PUBLIC_CHARLIE_CHAT_ANNUAL_PRODUCT!]: "Charlie Chat",
   
   // Charlie Chat Plus Plans  
-  "prod_SpuZifjtwF8NSH": "Charlie Chat Plus",
-  "prod_SpuTmZiD4DuAyu": "Charlie Chat Plus",
+  [process.env.NEXT_PUBLIC_CHARLIE_CHAT_PLUS_MONTHLY_PRODUCT!]: "Charlie Chat Plus",
+  [process.env.NEXT_PUBLIC_CHARLIE_CHAT_PLUS_ANNUAL_PRODUCT!]: "Charlie Chat Plus",
   
   // Charlie Chat Pro Plans
-  "prod_SNCAEB0ei9CC1x": "Charlie Chat Professional", 
-  "prod_SNCA1Fm32NHWHV": "Charlie Chat Professional",
+  [process.env.NEXT_PUBLIC_CHARLIE_CHAT_PRO_MONTHLY_PRODUCT!]: "Charlie Chat Professional", 
+  [process.env.NEXT_PUBLIC_CHARLIE_CHAT_PRO_ANNUAL_PRODUCT!]: "Charlie Chat Professional",
   
   // Credit Packs
-  "prod_SRuje4DrGXPK55": "25 Credit Pack",
-  "prod_SRukbL4DQIF38D": "50 Credit Pack", 
-  "prod_SRukoTGa4ppRp2": "100 Credit Pack",
-  "prod_SRulfgXxlqI2HY": "Pro 100 Credit Pack",
-  "prod_SVNvpCgtXVsq0R": "Cohort 250 Credit Pack",
+  [process.env.NEXT_PUBLIC_CHARLIE_CHAT_25_PACK_PRODUCT!]: "25 Credit Pack",
+  [process.env.NEXT_PUBLIC_CHARLIE_CHAT_50_PACK_PRODUCT!]: "50 Credit Pack", 
+  [process.env.NEXT_PUBLIC_CHARLIE_CHAT_100_PACK_PRODUCT!]: "100 Credit Pack",
 };
 
 interface Subscription {
