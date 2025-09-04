@@ -5,7 +5,6 @@ import "./globals.css";
 import { SessionProvider } from "next-auth/react";
 import Providers from "./providers";
 import Header from "@/components/ui/header";
-import MultiFamilyChatWidget from "@/components/ui/MultiFamilyChatWidget";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -52,7 +51,6 @@ export default function RootLayout({
         <Providers>
           <Header />
           <main>{children}</main>
-          <MultiFamilyChatWidget />
         </Providers>
       </body>
     </html>

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Heart, CheckSquare, Square, ChevronDown } from 'lucide-react';
 import { PageSavedProperty as SavedProperty } from '../types';
 import { FavoriteStatus, STATUS_OPTIONS } from '../constants';
@@ -65,6 +65,11 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
     const [notesModalOpen, setNotesModalOpen] = useState(false);
     const [localNotes, setLocalNotes] = useState(property.notes || '');
     const [confirmRemove, setConfirmRemove] = useState(false);
+
+    // Sync localNotes with property.notes when it changes (e.g., from email reminders)
+    useEffect(() => {
+        setLocalNotes(property.notes || '');
+    }, [property.notes]);
 
     // Helper functions
     const calculateAge = (yearBuilt: number) => {

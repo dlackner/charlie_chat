@@ -1146,6 +1146,170 @@ export default function MyPropertiesPage() {
                                                         &gt; Marketing Letter
                                                     </button>
 
+                                                    {/* ── Send Email (mailto) ─────────────────────── */}
+                                                    <button
+                                                        onClick={async () => {
+                                                            setShowDocumentDropdown(false);
+
+                                                            // Get the selected property IDs
+                                                            const selectedPropertyIds = Array.from(selectedProperties);
+
+                                                            // Check if exactly one property is selected
+                                                            if (selectedPropertyIds.length === 0) {
+                                                                showCharlieAlert('Please select a property first to send an email.', { 
+                                                                    type: 'warning',
+                                                                    title: 'No Property Selected'
+                                                                });
+                                                                return;
+                                                            }
+
+                                                            if (selectedPropertyIds.length > 1) {
+                                                                showCharlieAlert('Please select only ONE property at a time to send an email.', { 
+                                                                    type: 'warning',
+                                                                    title: 'Multiple Properties Selected'
+                                                                });
+                                                                return;
+                                                            }
+
+                                                            // Find the selected property
+                                                            const propertyId = selectedPropertyIds[0];
+                                                            const property = savedProperties.find(p => p.property_id === propertyId);
+                                                            
+                                                            if (!property) {
+                                                                showCharlieAlert('Property not found. Please refresh and try again.', {
+                                                                    type: 'error',
+                                                                    title: 'Property Error'
+                                                                });
+                                                                return;
+                                                            }
+
+                                                            // Extract email from skip trace data
+                                                            let recipientEmail = null;
+                                                            if (property.skipTraceData) {
+                                                                recipientEmail = property.skipTraceData.email;
+                                                            }
+
+                                                            if (!recipientEmail) {
+                                                                showCharlieAlert('No email address found for this property. Make sure it has been skip traced and contains an email address.', {
+                                                                    type: 'warning',
+                                                                    title: 'Email Not Available'
+                                                                });
+                                                                return;
+                                                            }
+
+                                                            // Get user profile for signature
+                                                            if (!user) {
+                                                                showCharlieAlert('Please log in to send emails.', {
+                                                                    type: 'error',
+                                                                    title: 'Authentication Required'
+                                                                });
+                                                                return;
+                                                            }
+
+                                                            // Fetch user profile data to get phone number and other details
+                                                            const { data: profileData, error: profileError } = await supabase
+                                                                .from("profiles")
+                                                                .select("first_name, last_name, phone_number, business_name, job_title")
+                                                                .eq("user_id", user.id)
+                                                                .single();
+
+                                                            if (profileError || !profileData) {
+                                                                console.error("Profile error:", profileError);
+                                                                showCharlieAlert('Please complete your profile to send emails. Profile information is needed for the email signature.', {
+                                                                    type: 'warning',
+                                                                    title: 'Profile Required'
+                                                                });
+                                                                return;
+                                                            }
+
+                                                            // Create mailto link with email template content
+                                                            const ownerName = property.owner_first_name || 'Property Owner';
+                                                            const subject = 'Interest in Your Property';
+                                                            const propertyAddress = property.address_full;
+                                                            const userPhone = profileData.phone_number?.replace(/(\d{3})(\d{3})(\d{4})/, "$1.$2.$3") || 'Phone not provided';
+                                                            const userEmail = user.email;
+                                                            const userName = profileData.first_name && profileData.last_name 
+                                                                ? `${profileData.first_name} ${profileData.last_name}` 
+                                                                : user.email;
+                                                            const userTitle = profileData.job_title || '';
+                                                            const userBusiness = profileData.business_name || '';
+                                                            
+                                                            const body = `Dear ${ownerName},
+
+I hope this note finds you well. I'm reaching out to express sincere interest in your property located at ${propertyAddress}. I focus on acquiring multifamily properties in ${property.address_state || 'the area'}, and this building stood out due to its location, character, and the strength of the local rental market.
+
+Whether or not you've ever considered selling, I understand that owning and managing multifamily assets can be demanding – especially in today's environment. Rising operating costs, shifting tenant expectations, and market volatility have prompted many property owners to explore their options.
+
+I'm not a broker, and this isn't a listing solicitation. I'm a direct buyer looking to engage in a straightforward, respectful conversation about a potential off-market purchase. My goal is to understand your situation and see if there's a way to align my interest with your goal – on your timeline.
+
+In past acquisitions, we've structured deals with flexible terms including delayed closings, continued property management, partial seller financing, and even 1031 exchange participation for owners looking to defer capital gains taxes. Depending on your goals, there may be creative options available that help maximize value while minimizing tax exposure.
+
+If you'd simply like to know what your property might be worth in today's market, I'd be happy to offer an informal valuation – no pressure, no obligation.
+
+You can reach me directly at ${userPhone} or ${userEmail}. Even if now isn't the right time, I'd welcome the opportunity to stay in touch.
+
+Thank you,
+
+${userName}
+${userTitle}
+${userBusiness}
+${userPhone}
+${userEmail}`;
+
+                                                            // URL encode the content
+                                                            const encodedSubject = encodeURIComponent(subject);
+                                                            const encodedBody = encodeURIComponent(body);
+                                                            
+                                                            const mailtoLink = `mailto:${recipientEmail}?subject=${encodedSubject}&body=${encodedBody}`;
+                                                            
+                                                            // Open email client
+                                                            window.open(mailtoLink, '_self');
+                                                            
+                                                            // Add reminder note 7 days in the future
+                                                            try {
+                                                                // Calculate 7 days from now
+                                                                const reminderDate = new Date();
+                                                                reminderDate.setDate(reminderDate.getDate() + 7);
+                                                                const formattedDate = `@${(reminderDate.getMonth() + 1).toString().padStart(2, '0')}/${reminderDate.getDate().toString().padStart(2, '0')}/${reminderDate.getFullYear().toString().slice(-2)}`;
+                                                                
+                                                                // Get current notes
+                                                                const currentNotes = property.notes || '';
+                                                                const reminderText = `${formattedDate} Reminder to follow up on email`;
+                                                                
+                                                                // Add reminder to notes (append with newline if notes exist)
+                                                                const updatedNotes = currentNotes 
+                                                                    ? `${currentNotes}\n${reminderText}`
+                                                                    : reminderText;
+                                                                
+                                                                // Save updated notes to database
+                                                                const { error: notesError } = await supabase
+                                                                    .from("user_favorites")
+                                                                    .update({ notes: updatedNotes })
+                                                                    .eq("user_id", user.id)
+                                                                    .eq("property_id", property.property_id);
+                                                                
+                                                                if (notesError) {
+                                                                    console.error('Error adding email reminder note:', notesError);
+                                                                } else {
+                                                                    // Update local state
+                                                                    setSavedProperties(prev =>
+                                                                        prev.map(p =>
+                                                                            p.property_id === property.property_id
+                                                                                ? { ...p, notes: updatedNotes }
+                                                                                : p
+                                                                        )
+                                                                    );
+                                                                    console.log(`Added email reminder note for ${formattedDate}`);
+                                                                }
+                                                            } catch (reminderError) {
+                                                                console.error('Error adding reminder note:', reminderError);
+                                                            }
+                                                        }}
+                                                        className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                                    >
+                                                        &gt; Email
+                                                    </button>
+
                                                     <div className="border-t border-gray-200 my-1"></div>
 
                                                     {/* ── Letter of Intent ────────────────────────── */}

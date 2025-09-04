@@ -598,6 +598,17 @@ export const BuyBoxModal: React.FC<BuyBoxModalProps> = ({ isOpen, onClose }) => 
                 return;
             }
 
+            // Validate that at least one filter criteria is set
+            const hasUnitsFilter = (market.units_min > 0 || market.units_max > 0);
+            const hasAssessedValueFilter = (market.assessed_value_min > 0 || market.assessed_value_max > 0);
+            const hasEstimatedValueFilter = (market.estimated_value_min > 0 || market.estimated_value_max > 0);
+            const hasYearBuiltFilter = (market.year_built_min > 0 || market.year_built_max > 0);
+
+            if (!hasUnitsFilter && !hasAssessedValueFilter && !hasEstimatedValueFilter && !hasYearBuiltFilter) {
+                setErrorMessage("Please set at least one filter criteria (Units, Year Built, Assessed Value, or Estimated Value) before saving");
+                return;
+            }
+
             // If market is locked, skip property count check and tier recalculation
             // Just save the current state as-is to preserve locked configuration
             if (market.is_locked) {
