@@ -987,31 +987,24 @@ export const BuyBoxModal: React.FC<BuyBoxModalProps> = ({ isOpen, onClose }) => 
                                                                     const convergence = marketConvergence[marketKey] || { phase: 'discovery', progress: 1 };
                                                                     
                                                                     return (
-                                                                        <div className="flex items-center space-x-1.5 mt-2">
-                                                                            {[1, 2, 3, 4].map((dotNumber) => {
-                                                                                const isActive = dotNumber <= convergence.progress;
-                                                                                const isProduction = dotNumber === 4 && convergence.phase === 'production';
-                                                                                
-                                                                                return (
-                                                                                    <div
-                                                                                        key={dotNumber}
-                                                                                        className={`w-4 h-4 rounded-full transition-all duration-300 shadow-sm ${
-                                                                                            isActive
-                                                                                                ? isProduction
-                                                                                                    ? 'bg-gradient-to-br from-green-400 to-green-700 shadow-green-300/50'
-                                                                                                    : 'bg-gradient-to-br from-blue-400 to-blue-700 shadow-blue-300/50'
-                                                                                                : 'bg-gradient-to-br from-gray-200 to-gray-400 shadow-gray-200/50'
-                                                                                        }`}
-                                                                                        style={{
-                                                                                            boxShadow: isActive
-                                                                                                ? isProduction
-                                                                                                    ? '0 3px 6px rgba(34, 197, 94, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.3)'
-                                                                                                    : '0 3px 6px rgba(59, 130, 246, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.3)'
-                                                                                                : '0 2px 4px rgba(156, 163, 175, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.3)'
-                                                                                        }}
-                                                                                    />
-                                                                                );
-                                                                            })}
+                                                                        <div className="mt-2">
+                                                                            {/* Progress Bar with Label */}
+                                                                            <div className="relative w-full bg-gray-200 rounded-full h-6 shadow-inner">
+                                                                                <div 
+                                                                                    className={`h-6 rounded-full transition-all duration-300 relative overflow-hidden ${
+                                                                                        convergence.phase === 'production'
+                                                                                            ? 'bg-gradient-to-r from-green-400 to-green-600'
+                                                                                            : 'bg-gradient-to-r from-blue-400 to-blue-600'
+                                                                                    }`}
+                                                                                    style={{
+                                                                                        width: `${(convergence.progress / 4) * 100}%`
+                                                                                    }}
+                                                                                >
+                                                                                    <span className="absolute inset-0 flex items-center justify-center text-xs font-medium text-white capitalize">
+                                                                                        {convergence.phase}
+                                                                                    </span>
+                                                                                </div>
+                                                                            </div>
                                                                         </div>
                                                                     );
                                                                 })()}
@@ -1396,11 +1389,10 @@ export const BuyBoxModal: React.FC<BuyBoxModalProps> = ({ isOpen, onClose }) => 
                     <div className="grid grid-cols-2 gap-4">
                         {/* Discovery Phase */}
                         <div className="flex items-start gap-3 p-3 bg-blue-50 rounded-lg">
-                            <div className="flex items-center space-x-1.5 flex-shrink-0 mt-0.5">
-                                <div className="w-4 h-4 rounded-full bg-gradient-to-br from-blue-400 to-blue-700 shadow-sm"></div>
-                                <div className="w-4 h-4 rounded-full bg-gradient-to-br from-gray-200 to-gray-400 shadow-sm"></div>
-                                <div className="w-4 h-4 rounded-full bg-gradient-to-br from-gray-200 to-gray-400 shadow-sm"></div>
-                                <div className="w-4 h-4 rounded-full bg-gradient-to-br from-gray-200 to-gray-400 shadow-sm"></div>
+                            <div className="flex-shrink-0 mt-0.5 w-20">
+                                <div className="w-full bg-gray-200 rounded-full h-2 shadow-inner">
+                                    <div className="h-2 rounded-full bg-gradient-to-r from-blue-400 to-blue-600 transition-all duration-300" style={{ width: '25%' }} />
+                                </div>
                             </div>
                             <div>
                                 <h4 className="font-medium text-gray-900 mb-1">Discovery Phase</h4>
@@ -1413,11 +1405,10 @@ export const BuyBoxModal: React.FC<BuyBoxModalProps> = ({ isOpen, onClose }) => 
 
                         {/* Learning Phase */}
                         <div className="flex items-start gap-3 p-3 bg-blue-50 rounded-lg">
-                            <div className="flex items-center space-x-1.5 flex-shrink-0 mt-0.5">
-                                <div className="w-4 h-4 rounded-full bg-gradient-to-br from-blue-400 to-blue-700 shadow-sm"></div>
-                                <div className="w-4 h-4 rounded-full bg-gradient-to-br from-blue-400 to-blue-700 shadow-sm"></div>
-                                <div className="w-4 h-4 rounded-full bg-gradient-to-br from-gray-200 to-gray-400 shadow-sm"></div>
-                                <div className="w-4 h-4 rounded-full bg-gradient-to-br from-gray-200 to-gray-400 shadow-sm"></div>
+                            <div className="flex-shrink-0 mt-0.5 w-20">
+                                <div className="w-full bg-gray-200 rounded-full h-2 shadow-inner">
+                                    <div className="h-2 rounded-full bg-gradient-to-r from-blue-400 to-blue-600 transition-all duration-300" style={{ width: '50%' }} />
+                                </div>
                             </div>
                             <div>
                                 <h4 className="font-medium text-gray-900 mb-1">Learning Phase</h4>
@@ -1430,11 +1421,10 @@ export const BuyBoxModal: React.FC<BuyBoxModalProps> = ({ isOpen, onClose }) => 
 
                         {/* Mastery Phase */}
                         <div className="flex items-start gap-3 p-3 bg-blue-50 rounded-lg">
-                            <div className="flex items-center space-x-1.5 flex-shrink-0 mt-0.5">
-                                <div className="w-4 h-4 rounded-full bg-gradient-to-br from-blue-400 to-blue-700 shadow-sm"></div>
-                                <div className="w-4 h-4 rounded-full bg-gradient-to-br from-blue-400 to-blue-700 shadow-sm"></div>
-                                <div className="w-4 h-4 rounded-full bg-gradient-to-br from-blue-400 to-blue-700 shadow-sm"></div>
-                                <div className="w-4 h-4 rounded-full bg-gradient-to-br from-gray-200 to-gray-400 shadow-sm"></div>
+                            <div className="flex-shrink-0 mt-0.5 w-20">
+                                <div className="w-full bg-gray-200 rounded-full h-2 shadow-inner">
+                                    <div className="h-2 rounded-full bg-gradient-to-r from-blue-400 to-blue-600 transition-all duration-300" style={{ width: '75%' }} />
+                                </div>
                             </div>
                             <div>
                                 <h4 className="font-medium text-gray-900 mb-1">Mastery Phase</h4>
@@ -1447,11 +1437,10 @@ export const BuyBoxModal: React.FC<BuyBoxModalProps> = ({ isOpen, onClose }) => 
 
                         {/* Production Phase */}
                         <div className="flex items-start gap-3 p-3 bg-green-50 rounded-lg">
-                            <div className="flex items-center space-x-1.5 flex-shrink-0 mt-0.5">
-                                <div className="w-4 h-4 rounded-full bg-gradient-to-br from-blue-400 to-blue-700 shadow-sm"></div>
-                                <div className="w-4 h-4 rounded-full bg-gradient-to-br from-blue-400 to-blue-700 shadow-sm"></div>
-                                <div className="w-4 h-4 rounded-full bg-gradient-to-br from-blue-400 to-blue-700 shadow-sm"></div>
-                                <div className="w-4 h-4 rounded-full bg-gradient-to-br from-green-400 to-green-700 shadow-sm"></div>
+                            <div className="flex-shrink-0 mt-0.5 w-20">
+                                <div className="w-full bg-gray-200 rounded-full h-2 shadow-inner">
+                                    <div className="h-2 rounded-full bg-gradient-to-r from-green-400 to-green-600 transition-all duration-300" style={{ width: '100%' }} />
+                                </div>
                             </div>
                             <div>
                                 <h4 className="font-medium text-gray-900 mb-1">Production Phase</h4>
