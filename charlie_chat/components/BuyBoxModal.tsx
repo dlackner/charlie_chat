@@ -112,6 +112,7 @@ interface Market {
     isExpanded?: boolean;
     propertyCountChecked?: boolean;
     marketTier?: MarketTier;
+    weekly_recommendations_enabled?: boolean;
 }
 
 interface BuyBoxData {
@@ -127,9 +128,10 @@ const initialBuyBoxData: BuyBoxData = {
 interface BuyBoxModalProps {
     isOpen: boolean;
     onClose: () => void;
+    focusedMarket?: string | null; // Market name to focus on, null for add mode, undefined for show all
 }
 
-export const BuyBoxModal: React.FC<BuyBoxModalProps> = ({ isOpen, onClose }) => {
+export const BuyBoxModal: React.FC<BuyBoxModalProps> = ({ isOpen, onClose, focusedMarket }) => {
     const { user, supabase } = useAuth();
     const { hasAccess } = useMyPropertiesAccess();
     const [buyBoxData, setBuyBoxData] = useState<BuyBoxData>(initialBuyBoxData);
@@ -189,7 +191,9 @@ export const BuyBoxModal: React.FC<BuyBoxModalProps> = ({ isOpen, onClose }) => 
                     customName: market.market_name,
                     marketKey: market.market_key,
                     // Convert market_tier integer to MarketTier object
-                    marketTier: market.market_tier ? MARKET_TIERS.find(tier => tier.tier === market.market_tier) || MARKET_TIERS[3] : null
+                    marketTier: market.market_tier ? MARKET_TIERS.find(tier => tier.tier === market.market_tier) || MARKET_TIERS[3] : null,
+                    // Load per-market weekly recommendations setting (fallback to global if not set)
+                    weekly_recommendations_enabled: market.weekly_recommendations_enabled ?? profileData?.weekly_recommendations_enabled ?? false
                 }));
 
                 setBuyBoxData({
@@ -224,6 +228,17 @@ export const BuyBoxModal: React.FC<BuyBoxModalProps> = ({ isOpen, onClose }) => 
         loadMarketConvergence();
         checkUserMarketLimit();
     }, [isOpen, user, supabase, hasAccess]);
+
+    // Auto-add market when in add mode
+    useEffect(() => {
+        if (isOpen && focusedMarket === null && buyBoxData.markets.length < maxMarkets) {
+            // Find if there's already an empty market
+            const hasEmptyMarket = buyBoxData.markets.some(market => !market.market_name && !market.city);
+            if (!hasEmptyMarket) {
+                addMarket();
+            }
+        }
+    }, [isOpen, focusedMarket, buyBoxData.markets.length, maxMarkets]);
 
     // Reset form when modal closes
     useEffect(() => {
@@ -591,6 +606,10 @@ export const BuyBoxModal: React.FC<BuyBoxModalProps> = ({ isOpen, onClose }) => 
                 return;
             }
 
+            // If this is a template market, generate a new ID for database storage
+            const isTemplate = market.id.startsWith('template-');
+            const actualMarketId = isTemplate ? crypto.randomUUID() : market.id;
+
             // Validate that market has a name before saving
             const marketName = market.customName?.trim() || market.market_name?.trim();
             if (!marketName) {
@@ -613,7 +632,7 @@ export const BuyBoxModal: React.FC<BuyBoxModalProps> = ({ isOpen, onClose }) => 
             // Just save the current state as-is to preserve locked configuration
             if (market.is_locked) {
                 const marketToSave = {
-                    id: market.id,
+                    id: actualMarketId,
                     user_id: user.id,
                     market_key: market.market_key,
                     market_name: market.market_name || null,
@@ -722,7 +741,7 @@ export const BuyBoxModal: React.FC<BuyBoxModalProps> = ({ isOpen, onClose }) => 
             if (marketToSave) {
                 // Validate and prepare data for upsert
                 const marketData = {
-                    id: marketToSave.id,
+                    id: actualMarketId,
                     user_id: user.id,
                     market_key: marketToSave.market_key,
                     market_name: marketToSave.market_name || null,
@@ -903,28 +922,92 @@ export const BuyBoxModal: React.FC<BuyBoxModalProps> = ({ isOpen, onClose }) => 
                                 <div>
                                     <div className="flex items-center justify-between mb-4">
                                         <label className="block text-sm font-medium text-gray-700">
-                                            Target Markets (up to {maxMarkets})
+                                            {focusedMarket === null 
+                                                ? "Add New Market" 
+                                                : focusedMarket 
+                                                    ? `Edit ${focusedMarket} Market` 
+                                                    : `Target Markets (up to ${maxMarkets})`
+                                            }
                                         </label>
-                                        <button
-                                            onClick={addMarket}
-                                            disabled={buyBoxData.markets.length >= maxMarkets}
-                                            className="flex items-center px-3 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                                        >
-                                            <Plus size={16} className="mr-1" />
-                                            Add Market
-                                        </button>
+                                        {focusedMarket === undefined && (
+                                            <button
+                                                onClick={addMarket}
+                                                disabled={buyBoxData.markets.length >= maxMarkets}
+                                                className="flex items-center px-3 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                            >
+                                                <Plus size={16} className="mr-1" />
+                                                Add Market
+                                            </button>
+                                        )}
                                     </div>
 
-                                    {buyBoxData.markets.length === 0 && (
-                                        <div className="text-center py-8 text-gray-500 border border-dashed border-gray-300 rounded-lg">
-                                            No markets added yet. Click "Add Market" to get started.
-                                        </div>
-                                    )}
-
+                                    {/* Market List */}
                                     <div className="space-y-4">
-                                        {buyBoxData.markets.map((market, index) => {
+                                        {(() => {
+                                            // Filter markets based on focusedMarket prop
+                                            console.log('🎯 Modal Debug:', { focusedMarket, allMarkets: buyBoxData.markets });
+                                            let marketsToShow = buyBoxData.markets;
+                                            
+                                            if (focusedMarket === null) {
+                                                // Add new market mode - show only new/empty markets
+                                                marketsToShow = buyBoxData.markets.filter(market => !market.market_name && !market.city);
+                                            } else if (focusedMarket) {
+                                                // Focus on specific market - find by name with flexible matching
+                                                marketsToShow = buyBoxData.markets.filter(market => {
+                                                    const marketName = market.market_name || market.customName || `${market.city}, ${market.state}`;
+                                                    console.log('🔍 Matching market:', { marketName, focusedMarket, market });
+                                                    return marketName === focusedMarket;
+                                                });
+                                                console.log('📋 Markets to show:', marketsToShow);
+                                            }
+                                            // If focusedMarket is undefined, show all markets (original behavior)
+
+                                            // If no market found but we're in focused mode, create a template market to edit
+                                            if (marketsToShow.length === 0 && focusedMarket) {
+                                                // Create a template market based on the focused market name
+                                                const [city, state] = focusedMarket.split(', ');
+                                                const templateMarket = {
+                                                    id: 'template-' + focusedMarket.replace(/[^a-zA-Z0-9]/g, '-'),
+                                                    user_id: user?.id || '',
+                                                    market_key: 'Market1',
+                                                    market_name: focusedMarket,
+                                                    market_type: 'city' as 'city',
+                                                    city: city || '',
+                                                    state: state || '',
+                                                    zip: '',
+                                                    units_min: 15,
+                                                    units_max: 35,
+                                                    assessed_value_min: 1000000,
+                                                    assessed_value_max: 2500000,
+                                                    estimated_value_min: 1200000,
+                                                    estimated_value_max: 2800000,
+                                                    year_built_min: 1990,
+                                                    year_built_max: 2010,
+                                                    total_decisions_made: 0,
+                                                    learning_phase: 'discovery' as 'discovery',
+                                                    is_locked: false,
+                                                    type: 'city' as 'city',
+                                                    customName: focusedMarket,
+                                                    marketKey: 'Market1',
+                                                    isExpanded: true,
+                                                    propertyCountChecked: false,
+                                                    weekly_recommendations_enabled: true
+                                                };
+                                                marketsToShow = [templateMarket];
+                                            }
+
+                                            if (marketsToShow.length === 0 && focusedMarket === undefined) {
+                                                return (
+                                                    <div className="text-center py-8 text-gray-500 border border-dashed border-gray-300 rounded-lg">
+                                                        No markets added yet. Click "Add Market" to get started.
+                                                    </div>
+                                                );
+                                            }
+
+                                            return marketsToShow.map((market, index) => {
                                             const isSavingThis = savingMarkets.has(market.id);
-                                            const isExpanded = market.isExpanded !== false;
+                                            // Auto-expand when in focused market mode
+                                            const isExpanded = focusedMarket ? true : (market.isExpanded !== false);
                                             
                                             return (
                                                 <div key={market.id} className={`border rounded-lg transition-all duration-200 ${
@@ -933,8 +1016,8 @@ export const BuyBoxModal: React.FC<BuyBoxModalProps> = ({ isOpen, onClose }) => 
                                                         : 'border-gray-200'
                                                 }`}>
                                                     <div 
-                                                        className="p-4 cursor-pointer hover:bg-gray-50 transition-colors"
-                                                        onClick={() => toggleMarketExpansion(market.id)}
+                                                        className={`p-4 transition-colors ${focusedMarket ? '' : 'cursor-pointer hover:bg-gray-50'}`}
+                                                        onClick={focusedMarket ? undefined : () => toggleMarketExpansion(market.id)}
                                                     >
                                                         <div className="flex items-center justify-between">
                                                             <div className="flex flex-col">
@@ -1035,7 +1118,7 @@ export const BuyBoxModal: React.FC<BuyBoxModalProps> = ({ isOpen, onClose }) => 
                                                                         className={`px-4 py-2 rounded text-sm font-medium transition-colors ${
                                                                             market.is_locked 
                                                                                 ? 'bg-blue-500 text-white hover:bg-blue-600' 
-                                                                                : 'bg-orange-500 text-white hover:bg-orange-600'
+                                                                                : 'bg-blue-500 text-white hover:bg-blue-600'
                                                                         } disabled:opacity-50 disabled:cursor-not-allowed`}
                                                                         title={market.is_locked ? 'Click to edit market criteria' : 'Click to save changes and lock market'}
                                                                     >
@@ -1055,9 +1138,11 @@ export const BuyBoxModal: React.FC<BuyBoxModalProps> = ({ isOpen, onClose }) => 
                                                                         <Trash2 size={16} />
                                                                     </button>
                                                                 )}
-                                                                <span className={`transform transition-transform duration-200 text-gray-400 ${isExpanded ? 'rotate-180' : ''}`}>
-                                                                    ▼
-                                                                </span>
+                                                                {!focusedMarket && (
+                                                                    <span className={`transform transition-transform duration-200 text-gray-400 ${isExpanded ? 'rotate-180' : ''}`}>
+                                                                        ▼
+                                                                    </span>
+                                                                )}
                                                             </div>
                                                         </div>
                                                         <div className="flex items-center space-x-2">
@@ -1296,16 +1381,63 @@ export const BuyBoxModal: React.FC<BuyBoxModalProps> = ({ isOpen, onClose }) => 
                                                                     />
                                                                 );
                                                             })()}
+
+                                                            {/* Per-Market Weekly Recommendations Toggle - shown when in focused mode */}
+                                                            {focusedMarket && (
+                                                                <div className="mt-4 pt-4 border-t border-gray-200">
+                                                                    <label className="flex items-center">
+                                                                        <input
+                                                                            type="checkbox"
+                                                                            checked={market.weekly_recommendations_enabled ?? buyBoxData.weekly_recommendations_enabled}
+                                                                            onChange={async (e) => {
+                                                                                const enabled = e.target.checked;
+                                                                                // Update the specific market
+                                                                                updateMarket(market.id, { weekly_recommendations_enabled: enabled });
+                                                                                
+                                                                                // Auto-save to database
+                                                                                if (user && supabase) {
+                                                                                    try {
+                                                                                        const { error } = await supabase
+                                                                                            .from("user_markets")
+                                                                                            .update({
+                                                                                                weekly_recommendations_enabled: enabled,
+                                                                                                updated_at: new Date().toISOString(),
+                                                                                            })
+                                                                                            .eq("id", market.id);
+                                                                                        
+                                                                                        if (error) {
+                                                                                            console.error('Error saving market weekly recommendations:', error);
+                                                                                        }
+                                                                                    } catch (error) {
+                                                                                        console.error('Error saving market weekly recommendations:', error);
+                                                                                    }
+                                                                                }
+                                                                            }}
+                                                                            className="mr-3 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                                                                        />
+                                                                        <div>
+                                                                            <span className="text-sm font-medium text-gray-900">
+                                                                                Enable weekly recommendations for this market
+                                                                            </span>
+                                                                            <p className="text-xs text-gray-500 mt-1">
+                                                                                Get curated properties for this market delivered every Monday
+                                                                            </p>
+                                                                        </div>
+                                                                    </label>
+                                                                </div>
+                                                            )}
                                                         </div>
                                                     )}
                                                 </div>
                                             );
-                                        })}
+                                            });
+                                        })()}
                                     </div>
                                 </div>
 
-                                {/* Weekly Recommendations Toggle */}
-                                <div className="border-t border-gray-200 pt-6">
+                                {/* Global Weekly Recommendations Toggle - only show when not in focused mode */}
+                                {!focusedMarket && (
+                                    <div className="border-t border-gray-200 pt-6">
                                     <label className="flex items-center">
                                         <input
                                             type="checkbox"
@@ -1352,7 +1484,8 @@ export const BuyBoxModal: React.FC<BuyBoxModalProps> = ({ isOpen, onClose }) => 
                                             </p>
                                         </div>
                                     </label>
-                                </div>
+                                    </div>
+                                )}
                             </div>
                         )}
                     </div>
@@ -1468,7 +1601,7 @@ export const BuyBoxModal: React.FC<BuyBoxModalProps> = ({ isOpen, onClose }) => 
                         <button
                             type="button"
                             onClick={handleCloseLearningPhases}
-                            className="bg-orange-600 hover:bg-orange-700 text-white font-medium py-2 px-6 rounded-lg transition-colors duration-150"
+                            className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-6 rounded-lg transition-colors duration-150"
                         >
                             Got it, Charlie!
                         </button>

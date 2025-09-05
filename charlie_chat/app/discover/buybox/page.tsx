@@ -1,14 +1,40 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Settings, Heart, X, Star, ArrowLeft, ArrowRight, Grid3x3, Map } from 'lucide-react';
+import { BuyBoxModal } from '@/components/BuyBoxModal';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function BuyBoxPage() {
+  const { user } = useAuth();
   const [selectedMarket, setSelectedMarket] = useState('Denver, CO');
   const [flippedCards, setFlippedCards] = useState<{ [key: number]: boolean }>({});
   const [viewMode, setViewMode] = useState<'grid' | 'map'>('grid');
+  const [showBuyBoxModal, setShowBuyBoxModal] = useState(false);
+  const [realMarkets, setRealMarkets] = useState<any[]>([]);
+  const [focusedMarket, setFocusedMarket] = useState<string | null>(null);
+
+  // Load real market data from database
+  useEffect(() => {
+    const loadMarkets = async () => {
+      if (!user || !user.id) return;
+      
+      try {
+        const { supabase } = await import('@/contexts/AuthContext');
+        // This is not the right way to get supabase, but for now let's use mock data
+        // In a real implementation, we'd use useAuth's supabase instance
+        
+        // For now, we'll use the mock data but this will be replaced with real data
+        console.log('Would load real markets for user:', user.id);
+      } catch (error) {
+        console.error('Error loading markets:', error);
+      }
+    };
+
+    loadMarkets();
+  }, [user]);
   
-  // Sample market-specific buy box criteria - would come from API/state
+  // Sample market-specific buy box criteria - will be replaced with real data
   const marketCriteria = {
     'Denver, CO': {
       minUnits: 15,
@@ -254,7 +280,7 @@ export default function BuyBoxPage() {
           <p className="text-gray-600">Weekly personalized recommendations based on your criteria</p>
         </div>
 
-        {/* Market Tabs */}
+        {/* Market Tabs with Add Market */}
         <div className="mb-6">
           <div className="border-b border-gray-200">
             <nav className="-mb-px flex space-x-8">
@@ -283,6 +309,18 @@ export default function BuyBoxPage() {
                   </button>
                 );
               })}
+              
+              {/* Add Market Tab */}
+              <button
+                onClick={() => {
+                  setFocusedMarket(null); // null means add new market mode
+                  setShowBuyBoxModal(true);
+                }}
+                className="whitespace-nowrap py-2 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 font-medium text-sm transition-colors flex items-center"
+              >
+                <span className="text-lg mr-1">+</span>
+                Add Market
+              </button>
             </nav>
           </div>
         </div>
@@ -320,7 +358,13 @@ export default function BuyBoxPage() {
                 </button>
               </div>
               
-              <button className="flex items-center text-blue-600 hover:text-blue-700 font-medium">
+              <button 
+                onClick={() => {
+                  setFocusedMarket(selectedMarket); // Focus on the currently selected market
+                  setShowBuyBoxModal(true);
+                }}
+                className="flex items-center text-blue-600 hover:text-blue-700 font-medium"
+              >
                 <Settings className="h-4 w-4 mr-2" />
                 Edit Criteria
               </button>
@@ -395,6 +439,16 @@ export default function BuyBoxPage() {
           </div>
         )}
       </div>
+
+      {/* Buy Box Modal */}
+      <BuyBoxModal
+        isOpen={showBuyBoxModal}
+        onClose={() => {
+          setShowBuyBoxModal(false);
+          setFocusedMarket(null); // Reset focus when closing
+        }}
+        focusedMarket={focusedMarket}
+      />
     </div>
   );
 }
