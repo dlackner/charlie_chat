@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import Script from "next/script";
 import "./globals.css";
 import { SessionProvider } from "next-auth/react";
 import Providers from "./providers";
@@ -29,25 +28,6 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased bg-gray-50`}>
-        <Script id="reditus-tracking" strategy="afterInteractive">
-          {`
-            (function (w, d, s, p, t) { 
-              w.gr = w.gr || function () { 
-                w.gr.ce = 60; 
-                w.gr.q = w.gr.q || []; 
-                w.gr.q.push(arguments); 
-              }; 
-              p = d.getElementsByTagName(s)[0]; 
-              t = d.createElement(s); 
-              t.async = true; 
-              t.src = "https://script.getreditus.com/v2.js"; 
-              p.parentNode.insertBefore(t, p); 
-            })(window, document, "script"); 
-            gr("initCustomer", "2ccb8f8c-64d4-4653-b7d0-9b45825678ce"); 
-            gr("track", "pageview");
-          `}
-        </Script>
-        
         <Providers>
           <div className="min-h-screen flex flex-col">
             {/* Mobile-First Navigation */}
