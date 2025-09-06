@@ -10,12 +10,12 @@ export interface StatusOption {
 export const STATUS_OPTIONS: StatusOption[] = [
   {
     value: 'REVIEWED',
-    label: 'Reviewed',
+    label: 'Reviewing',
     description: 'Initial review to determine suitability'
   },
   {
     value: 'COMMUNICATED',
-    label: 'Communicated',
+    label: 'Communicating',
     description: 'Sent email or called them'
   },
   {
@@ -25,7 +25,7 @@ export const STATUS_OPTIONS: StatusOption[] = [
   },
   {
     value: 'ANALYZED',
-    label: 'Analyzed',
+    label: 'Analyzing',
     description: 'Detailed analysis, document review and site visit in progress'
   },
   {

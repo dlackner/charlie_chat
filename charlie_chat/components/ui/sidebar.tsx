@@ -445,37 +445,41 @@ export const Sidebar = ({
                 setLastSearchParameters(searchParameters);
                 setHasMoreProperties(data.resultIndex < data.resultCount);
 
-                const { data: newCreditBalance, error: rpcError } = await supabase.rpc(
-                    "decrement_search_credits",
-                    {
-                        amount_to_decrement: data.recordCount || 0,
-                    }
-                );
+                // Only check credits for users with limited credits (trial and charlie_chat)
+                // Pro, Plus, and Cohort users have unlimited searches
+                if (userClass === "trial" || userClass === "charlie_chat") {
+                    const { data: newCreditBalance, error: rpcError } = await supabase.rpc(
+                        "decrement_search_credits",
+                        {
+                            amount_to_decrement: data.recordCount || 0,
+                        }
+                    );
 
-                if (rpcError) {
-                    const errorMessage =
-                        typeof rpcError === "object" && rpcError !== null && "message" in rpcError
-                            ? String(rpcError.message)
-                            : String(rpcError);
+                    if (rpcError) {
+                        const errorMessage =
+                            typeof rpcError === "object" && rpcError !== null && "message" in rpcError
+                                ? String(rpcError.message)
+                                : String(rpcError);
 
-                    if (errorMessage.includes("Insufficient credits") || errorMessage.includes("No credits remaining")) {
-                        if (userClass === "trial") {
-                            window.location.href = '/';
-                        } else {
-                            triggerBuyCreditsModal();
+                        if (errorMessage.includes("Insufficient credits") || errorMessage.includes("No credits remaining")) {
+                            if (userClass === "trial") {
+                                window.location.href = '/';
+                            } else {
+                                triggerBuyCreditsModal();
+                            }
+
+                            setIsSearching(false);
+                            return;
                         }
 
+                        setCreditsError("There was a problem with your account. Please log in again.");
                         setIsSearching(false);
                         return;
                     }
 
-                    setCreditsError("There was a problem with your account. Please log in again.");
-                    setIsSearching(false);
-                    return;
-                }
-
-                if (onCreditsUpdate && typeof newCreditBalance === "number") {
-                    onCreditsUpdate(newCreditBalance);
+                    if (onCreditsUpdate && typeof newCreditBalance === "number") {
+                        onCreditsUpdate(newCreditBalance);
+                    }
                 }
 
                 await onSearch({
@@ -645,37 +649,41 @@ export const Sidebar = ({
             setLastSearchParameters(searchParameters);
             setHasMoreProperties(data.resultIndex < data.resultCount);
 
-            const { data: newCreditBalance, error: rpcError } = await supabase.rpc(
-                "decrement_search_credits",
-                {
-                    amount_to_decrement: data.recordCount || 0,
-                }
-            );
+            // Only check credits for users with limited credits (trial and charlie_chat)
+            // Pro, Plus, and Cohort users have unlimited searches
+            if (userClass === "trial" || userClass === "charlie_chat") {
+                const { data: newCreditBalance, error: rpcError } = await supabase.rpc(
+                    "decrement_search_credits",
+                    {
+                        amount_to_decrement: data.recordCount || 0,
+                    }
+                );
 
-            if (rpcError) {
-                const errorMessage =
-                    typeof rpcError === "object" && rpcError !== null && "message" in rpcError
-                        ? String(rpcError.message)
-                        : String(rpcError);
+                if (rpcError) {
+                    const errorMessage =
+                        typeof rpcError === "object" && rpcError !== null && "message" in rpcError
+                            ? String(rpcError.message)
+                            : String(rpcError);
 
-                if (errorMessage.includes("Insufficient credits") || errorMessage.includes("No credits remaining")) {
-                    if (userClass === "trial") {
-                        window.location.href = '/';
-                    } else {
-                        triggerBuyCreditsModal();
+                    if (errorMessage.includes("Insufficient credits") || errorMessage.includes("No credits remaining")) {
+                        if (userClass === "trial") {
+                            window.location.href = '/';
+                        } else {
+                            triggerBuyCreditsModal();
+                        }
+
+                        setIsSearching(false);
+                        return;
                     }
 
+                    setCreditsError("There was a problem with your account. Please log in again.");
                     setIsSearching(false);
                     return;
                 }
 
-                setCreditsError("There was a problem with your account. Please log in again.");
-                setIsSearching(false);
-                return;
-            }
-
-            if (onCreditsUpdate && typeof newCreditBalance === "number") {
-                onCreditsUpdate(newCreditBalance);
+                if (onCreditsUpdate && typeof newCreditBalance === "number") {
+                    onCreditsUpdate(newCreditBalance);
+                }
             }
 
             await onSearch({
@@ -724,33 +732,36 @@ export const Sidebar = ({
 
             const data = await response.json();
 
-            // Charge credits for this batch
-            const { data: newCreditBalance, error: rpcError } = await supabase.rpc(
-                "decrement_search_credits",
-                {
-                    amount_to_decrement: data.recordCount || 0,
-                }
-            );
-
-            if (rpcError) {
-                const errorMessage = typeof rpcError === "object" && rpcError !== null && "message" in rpcError
-                    ? String(rpcError.message)
-                    : String(rpcError);
-
-                if (errorMessage.includes("Insufficient credits") || errorMessage.includes("No credits remaining")) {
-                    if (userClass === "trial") {
-                        window.location.href = '/';
-                    } else {
-                        triggerBuyCreditsModal();
+            // Only charge credits for users with limited credits (trial and charlie_chat)
+            // Pro, Plus, and Cohort users have unlimited searches
+            if (userClass === "trial" || userClass === "charlie_chat") {
+                const { data: newCreditBalance, error: rpcError } = await supabase.rpc(
+                    "decrement_search_credits",
+                    {
+                        amount_to_decrement: data.recordCount || 0,
                     }
+                );
+
+                if (rpcError) {
+                    const errorMessage = typeof rpcError === "object" && rpcError !== null && "message" in rpcError
+                        ? String(rpcError.message)
+                        : String(rpcError);
+
+                    if (errorMessage.includes("Insufficient credits") || errorMessage.includes("No credits remaining")) {
+                        if (userClass === "trial") {
+                            window.location.href = '/';
+                        } else {
+                            triggerBuyCreditsModal();
+                        }
+                        return;
+                    }
+                    setCreditsError("There was a problem with your account. Please log in again.");
                     return;
                 }
-                setCreditsError("There was a problem with your account. Please log in again.");
-                return;
-            }
 
-            if (onCreditsUpdate && typeof newCreditBalance === "number") {
-                onCreditsUpdate(newCreditBalance);
+                if (onCreditsUpdate && typeof newCreditBalance === "number") {
+                    onCreditsUpdate(newCreditBalance);
+                }
             }
 
             // Update state

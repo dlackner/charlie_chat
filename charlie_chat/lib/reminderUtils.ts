@@ -136,14 +136,3 @@ export function generateReminderDisplayText(context: string, reminderText: strin
   return cleanReminderText;
 }
 
-// Example usage and test cases
-if (typeof window === 'undefined') {
-  // Only run tests in Node.js environment (not in browser)
-  const testNotes = `
-    Called seller, they want $450k. Need to @12/15/24 follow up after they talk to spouse. 
-    Also mentioned @01/03/25 check if they reduced price after holidays.
-    Property needs @02/28/24 schedule inspection with contractor.
-  `;
-
-  console.log('Test parsing:', parseRemindersFromNotes(testNotes));
-}

@@ -34,33 +34,43 @@ export class RecommendationEngine {
     buyBox: BuyBox;
     weeklyEnabled: boolean;
   }> {
-    const { data, error } = await this.supabase
-      .from('user_buy_box_preferences')
-      .select('*')
-      .eq('user_id', userId)
+    // Get user preferences from profiles table and markets from user_markets table
+    const { data: profileData, error: profileError } = await this.supabase
+      .from('profiles')
+      .select('weekly_recommendations_enabled')
+      .eq('id', userId)
       .single();
 
-    if (error || !data) {
+    const { data: marketsData, error: marketsError } = await this.supabase
+      .from('user_markets')
+      .select('*')
+      .eq('user_id', userId);
+
+    if (profileError || marketsError || !marketsData) {
       // Return sensible defaults
       return {
         lambda: this.config.lambda,
         buyBox: { markets: [] },
-        weeklyEnabled: true
+        weeklyEnabled: false
       };
     }
 
+    // Convert user_markets data to market strings for BuyBox
+    // BuyBox expects markets as string[] representing market identifiers
+    const marketStrings = marketsData.map(market => {
+      if (market.market_type === 'city' && market.city && market.state) {
+        return `${market.city}, ${market.state}`;
+      } else if (market.market_type === 'zip' && market.zip) {
+        return market.zip;
+      } else {
+        return market.market_key || market.id; // fallback to key or id
+      }
+    }).filter(Boolean); // Remove any empty/null values
+
     return {
-      lambda: data.lambda_value || this.config.lambda,
-      buyBox: {
-        markets: data.target_markets || [],
-        priceMin: data.price_min,
-        priceMax: data.price_max,
-        unitsMin: data.units_min,
-        unitsMax: data.units_max,
-        yearMin: data.year_min,
-        yearMax: data.year_max
-      },
-      weeklyEnabled: data.weekly_recommendations_enabled !== false
+      lambda: marketsData[0]?.lambda_value || this.config.lambda,
+      buyBox: { markets: marketStrings },
+      weeklyEnabled: profileData?.weekly_recommendations_enabled !== false
     };
   }
 
@@ -106,15 +116,14 @@ export class RecommendationEngine {
 
     const explorationScore = 1 - newLambda; // inverse relationship
 
+    // Update lambda value in the user_markets table for all user markets
     await this.supabase
-      .from('user_buy_box_preferences')
-      .upsert({
-        user_id: userId,
+      .from('user_markets')
+      .update({
         lambda_value: newLambda,
-        exploration_score: explorationScore,
-        total_saves: totalSaves,
         updated_at: new Date().toISOString()
-      });
+      })
+      .eq('user_id', userId);
   }
 
   // Get market statistics for relevance scoring

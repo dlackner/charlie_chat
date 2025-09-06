@@ -5,15 +5,15 @@ import nodemailer from 'nodemailer';
 
 // Product ID mapping
 const PRODUCT_LOOKUP: Record<string, string> = {
-    'prod_SJk5uclY4sjcVf': 'Charlie Chat Monthly',
-    'prod_SNCAgPFEuFgHXB': 'Charlie Chat Annual',
-    'prod_SNCAEB0ei9CC1x': 'Charlie Chat Pro Monthly',
-    'prod_SNCA1Fm32NHWHV': 'Charlie Chat Pro Annual',
-    'prod_SRuje4DrGXPK55': 'Charlie Chat 25 Pack',
-    'prod_SRukbL4DQIF38D': 'Charlie Chat 50 Pack',
-    'prod_SRukoTGa4ppRp2': 'Charlie Chat 100 Pack',
-    'prod_SRulfgXxlqI2HY': 'Charlie Chat Pro 100 Pack',
-    'prod_SVNvpCgtXVsq0R': 'MultiFamilyOS Cohort 250 Pack'
+    [process.env.NEXT_PUBLIC_CHARLIE_CHAT_MONTHLY_PRODUCT!]: 'Charlie Chat Monthly',
+    [process.env.NEXT_PUBLIC_CHARLIE_CHAT_ANNUAL_PRODUCT!]: 'Charlie Chat Annual',
+    [process.env.NEXT_PUBLIC_CHARLIE_CHAT_PLUS_MONTHLY_PRODUCT!]: 'Charlie Chat Plus Monthly',
+    [process.env.NEXT_PUBLIC_CHARLIE_CHAT_PLUS_ANNUAL_PRODUCT!]: 'Charlie Chat Plus Annual',
+    [process.env.NEXT_PUBLIC_CHARLIE_CHAT_PRO_MONTHLY_PRODUCT!]: 'Charlie Chat Pro Monthly',
+    [process.env.NEXT_PUBLIC_CHARLIE_CHAT_PRO_ANNUAL_PRODUCT!]: 'Charlie Chat Pro Annual',
+    [process.env.NEXT_PUBLIC_CHARLIE_CHAT_25_PACK_PRODUCT!]: 'Charlie Chat 25 Pack',
+    [process.env.NEXT_PUBLIC_CHARLIE_CHAT_50_PACK_PRODUCT!]: 'Charlie Chat 50 Pack',
+    [process.env.NEXT_PUBLIC_CHARLIE_CHAT_100_PACK_PRODUCT!]: 'Charlie Chat 100 Pack'
 };
 
 // Email recipients - update this list as needed

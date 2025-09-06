@@ -66,22 +66,24 @@ export interface SavedProperty {
   last_shown_to_users?: Record<string, string>; // user_id -> ISO date
 }
 
-// Extends your existing user_buy_box_preferences table
+// DEPRECATED: This interface referenced the old user_buy_box_preferences table
+// The system now uses the user_markets table structure instead
+// Keeping this interface for backwards compatibility with old MMR code
 export interface UserBuyBoxPreferences {
   id: string;
   user_id?: string;
-  target_markets?: string[]; // JSONB array
-  weekly_recommendations_enabled?: boolean;
+  target_markets?: string[]; // JSONB array - DEPRECATED
+  weekly_recommendations_enabled?: boolean; // DEPRECATED - now in profiles table
   created_at?: string;
   updated_at?: string;
-  cached_property_ids?: string[]; // JSONB array
-  cache_updated_at?: string;
-  cache_criteria_hash?: string;
-  // New MMR fields
-  lambda_value?: number;
-  exploration_score?: number;
-  total_saves?: number;
-  price_min?: number;
+  cached_property_ids?: string[]; // JSONB array - DEPRECATED
+  cache_updated_at?: string; // DEPRECATED
+  cache_criteria_hash?: string; // DEPRECATED
+  // New MMR fields - DEPRECATED
+  lambda_value?: number; // DEPRECATED - now in user_markets table
+  exploration_score?: number; // DEPRECATED
+  total_saves?: number; // DEPRECATED
+  price_min?: number; // DEPRECATED
   price_max?: number;
   units_min?: number;
   units_max?: number;

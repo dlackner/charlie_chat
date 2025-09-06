@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Heart, CheckSquare, Square, ChevronDown } from 'lucide-react';
 import { PageSavedProperty as SavedProperty } from '../types';
 import { FavoriteStatus, STATUS_OPTIONS } from '../constants';
@@ -16,6 +16,12 @@ export interface PropertyCardProps {
     onStatusChange?: (propertyId: string, status: FavoriteStatus | null) => void;
     openStatusDropdown?: string | null;
     onStatusDropdownToggle?: (propertyId: string, isOpen: boolean) => void;
+    
+    // Market assignment
+    onMarketChange?: (propertyId: string, marketKey: string | null) => void;
+    userMarkets?: Array<{ market_key: string; market_name: string }>;
+    openMarketDropdown?: string | null;
+    onMarketDropdownToggle?: (propertyId: string, isOpen: boolean) => void;
     
     // Display configuration
     displayMode?: 'grid' | 'modal' | 'list';
@@ -42,6 +48,10 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
     onStatusChange,
     openStatusDropdown,
     onStatusDropdownToggle,
+    onMarketChange,
+    userMarkets = [],
+    openMarketDropdown,
+    onMarketDropdownToggle,
     displayMode = 'grid',
     showStreetView = true,
     showSelection = true,
@@ -55,6 +65,11 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
     const [notesModalOpen, setNotesModalOpen] = useState(false);
     const [localNotes, setLocalNotes] = useState(property.notes || '');
     const [confirmRemove, setConfirmRemove] = useState(false);
+
+    // Sync localNotes with property.notes when it changes (e.g., from email reminders)
+    useEffect(() => {
+        setLocalNotes(property.notes || '');
+    }, [property.notes]);
 
     // Helper functions
     const calculateAge = (yearBuilt: number) => {
@@ -179,6 +194,15 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
         }
     };
 
+    const handleMarketChange = (marketKey: string | null) => {
+        if (onMarketChange) {
+            onMarketChange(property.property_id, marketKey);
+        }
+        if (onMarketDropdownToggle) {
+            onMarketDropdownToggle(property.property_id, false);
+        }
+    };
+
     const getStatusDisplay = () => {
         if (!property.favorite_status) {
             return 'Set Status';
@@ -187,12 +211,21 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
         return option?.label || property.favorite_status;
     };
 
+    const getMarketDisplay = () => {
+        if (!property.market_key) {
+            return 'Set Market';
+        }
+        const market = userMarkets.find(m => m.market_key === property.market_key);
+        return market?.market_name || property.market_key;
+    };
+
     // Component state
     const isSelected = selectedProperties.has(property.property_id);
     const hasSkipTrace = !!property.skipTraceData;
     const investmentFlags = getInvestmentFlags(property);
     const skipTraceState = getSkipTraceButtonState();
     const isStatusDropdownOpen = openStatusDropdown === property.property_id;
+    const isMarketDropdownOpen = openMarketDropdown === property.property_id;
 
     // Base card styles
     const cardStyles = `
@@ -234,16 +267,26 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
                                     </div>
                                 </div>
 
-                                {/* Heart icon with tooltip confirmation */}
+                                {/* Heart icon with recommendation type indicator and tooltip confirmation */}
                                 {showRemoveFavorite && (
                                     <div className="relative ml-2 flex-shrink-0">
                                         {!confirmRemove ? (
                                             <button
                                                 onClick={handleShowRemoveConfirm}
-                                                className="p-1"
-                                                title="Remove from favorites"
+                                                className="p-1 relative"
+                                                title={`Remove from favorites${property.recommendation_type ? ` (${property.recommendation_type === 'manual' ? 'Manually added' : 'Algorithm recommendation'})` : ''}`}
                                             >
-                                                <Heart size={14} className="text-red-500 fill-current" />
+                                                <div className="relative inline-block">
+                                                    <Heart size={18} className="text-red-500 fill-current" />
+                                                    {/* Recommendation type indicator inside heart */}
+                                                    {property.recommendation_type && (
+                                                        <span 
+                                                            className="absolute inset-0 flex items-center justify-center text-[8px] font-bold text-white -mt-0.5"
+                                                        >
+                                                            {property.recommendation_type === 'manual' ? 'M' : 'A'}
+                                                        </span>
+                                                    )}
+                                                </div>
                                             </button>
                                         ) : (
                                             <div className="absolute right-0 top-0 bg-white border border-gray-300 rounded-lg shadow-lg px-2 py-1 z-10 whitespace-nowrap">
@@ -301,95 +344,129 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
                                 )}
                             </div>
 
-                            {/* Action buttons */}
-                            <div className="flex items-center justify-between pt-2 border-t border-gray-100">
-                                {showSelection && (
-                                    <button
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            onToggleSelection(property.property_id);
-                                        }}
-                                        className="flex items-center space-x-1"
-                                        title="Select"
-                                    >
-                                        {isSelected ? (
-                                            <CheckSquare size={20} className="text-blue-600" />
-                                        ) : (
-                                            <Square size={20} className="text-gray-400" />
-                                        )}
-                                    </button>
-                                )}
+                            {/* Action buttons - Single row: checkbox, status, market */}
+                            <div className="pt-2 border-t border-gray-100">
+                                <div className="flex items-center gap-2">
+                                    {/* Selection checkbox */}
+                                    {showSelection && (
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                onToggleSelection(property.property_id);
+                                            }}
+                                            className="flex items-center"
+                                            title="Select"
+                                        >
+                                            {isSelected ? (
+                                                <CheckSquare size={18} className="text-blue-600" />
+                                            ) : (
+                                                <Square size={18} className="text-gray-400" />
+                                            )}
+                                        </button>
+                                    )}
 
-                                {/* Status dropdown */}
-                                <div className="relative">
-                                    <button
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            if (onStatusDropdownToggle) {
-                                                onStatusDropdownToggle(property.property_id, !isStatusDropdownOpen);
-                                            }
-                                        }}
-                                        className="flex items-center space-x-1 px-2 py-1 text-xs rounded transition-colors bg-gray-100 hover:bg-gray-200 whitespace-nowrap"
-                                        title="Change status"
-                                    >
-                                        <span className="text-gray-700">{getStatusDisplay()}</span>
-                                        <ChevronDown size={12} className="text-gray-500" />
-                                    </button>
+                                    {/* Status dropdown */}
+                                    <div className="relative flex-1">
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                if (onStatusDropdownToggle) {
+                                                    onStatusDropdownToggle(property.property_id, !isStatusDropdownOpen);
+                                                }
+                                            }}
+                                            className="w-full flex items-center justify-between px-2 py-1 text-xs rounded transition-colors bg-gray-100 hover:bg-gray-200"
+                                            title="Change status"
+                                        >
+                                            <span className="text-gray-700 truncate">{getStatusDisplay()}</span>
+                                            <ChevronDown size={12} className="text-gray-500 flex-shrink-0 ml-1" />
+                                        </button>
 
-                                    {isStatusDropdownOpen && (
-                                        <div className="absolute bottom-full left-0 mb-1 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
-                                            <div className="py-1">
-                                                <button
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        handleStatusChange(null);
-                                                    }}
-                                                    className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                                                >
-                                                    Clear Status
-                                                </button>
-                                                <div className="border-t border-gray-200"></div>
-                                                {STATUS_OPTIONS.map((option) => (
+                                        {isStatusDropdownOpen && (
+                                            <div className="absolute bottom-full left-0 mb-1 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
+                                                <div className="py-1">
                                                     <button
-                                                        key={option.value}
                                                         onClick={(e) => {
                                                             e.stopPropagation();
-                                                            handleStatusChange(option.value);
+                                                            handleStatusChange(null);
                                                         }}
-                                                        className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-50 ${
-                                                            property.favorite_status === option.value 
-                                                                ? 'bg-blue-50 text-blue-700' 
-                                                                : 'text-gray-700'
-                                                        }`}
+                                                        className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
                                                     >
-                                                        {option.label}
+                                                        Clear Status
                                                     </button>
-                                                ))}
+                                                    <div className="border-t border-gray-200"></div>
+                                                    {STATUS_OPTIONS.map((option) => (
+                                                        <button
+                                                            key={option.value}
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                handleStatusChange(option.value);
+                                                            }}
+                                                            className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-50 ${
+                                                                property.favorite_status === option.value 
+                                                                    ? 'bg-blue-50 text-blue-700' 
+                                                                    : 'text-gray-700'
+                                                            }`}
+                                                        >
+                                                            {option.label}
+                                                        </button>
+                                                    ))}
+                                                </div>
                                             </div>
+                                        )}
+                                    </div>
+
+                                    {/* Market dropdown */}
+                                    {onMarketChange && userMarkets.length > 0 && (
+                                        <div className="relative flex-1">
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    if (onMarketDropdownToggle) {
+                                                        onMarketDropdownToggle(property.property_id, !isMarketDropdownOpen);
+                                                    }
+                                                }}
+                                                className="w-full flex items-center justify-between px-2 py-1 text-xs rounded transition-colors bg-gray-100 hover:bg-gray-200"
+                                                title="Change market assignment"
+                                            >
+                                                <span className="text-gray-700 truncate">{getMarketDisplay()}</span>
+                                                <ChevronDown size={12} className="text-gray-500 flex-shrink-0 ml-1" />
+                                            </button>
+
+                                            {isMarketDropdownOpen && (
+                                                <div className="absolute bottom-full left-0 mb-1 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
+                                                    <div className="py-1">
+                                                        <button
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                handleMarketChange(null);
+                                                            }}
+                                                            className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                                                        >
+                                                            Clear Market
+                                                        </button>
+                                                        <div className="border-t border-gray-200"></div>
+                                                        {userMarkets.map((market) => (
+                                                            <button
+                                                                key={market.market_key}
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    handleMarketChange(market.market_key);
+                                                                }}
+                                                                className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-50 ${
+                                                                    property.market_key === market.market_key 
+                                                                        ? 'bg-blue-50 text-blue-700' 
+                                                                        : 'text-gray-700'
+                                                                }`}
+                                                            >
+                                                                {market.market_name}
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            )}
                                         </div>
                                     )}
                                 </div>
-
-                                {showSkipTrace && onSkipTrace && (
-                                    <button
-                                        onClick={handleSkipTrace}
-                                        disabled={skipTraceState.disabled}
-                                        className="flex items-center space-x-1 px-2 py-1 text-xs rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed bg-gray-100 hover:bg-gray-200 whitespace-nowrap"
-                                        title={skipTraceState.text}
-                                    >
-                                        {(() => {
-                                            switch (skipTraceState.icon) {
-                                                case 'checked':
-                                                    return <CheckSquare size={14} className="text-green-600" />;
-                                                case 'disabled':
-                                                    return <Square size={14} className="text-gray-400" />;
-                                                default:
-                                                    return <Square size={14} className="text-blue-600" />;
-                                            }
-                                        })()}
-                                        <span className="text-xs text-gray-600 whitespace-nowrap">{skipTraceState.text}</span>
-                                    </button>
-                                )}
                             </div>
                         </div>
 
@@ -404,6 +481,27 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
                                     width={300}
                                     height={200}
                                 />
+                                {/* Skip trace button below image - with extra spacing for street view message */}
+                                {showSkipTrace && onSkipTrace && (
+                                    <button
+                                        onClick={handleSkipTrace}
+                                        disabled={skipTraceState.disabled}
+                                        className="w-full mt-6 flex items-center justify-center space-x-1 px-2 py-1 text-xs rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed bg-gray-100 hover:bg-gray-200"
+                                        title={skipTraceState.text}
+                                    >
+                                        {(() => {
+                                            switch (skipTraceState.icon) {
+                                                case 'checked':
+                                                    return <CheckSquare size={12} className="text-green-600" />;
+                                                case 'disabled':
+                                                    return <Square size={12} className="text-gray-400" />;
+                                                default:
+                                                    return <Square size={12} className="text-blue-600" />;
+                                            }
+                                        })()}
+                                        <span className="text-xs text-gray-600 whitespace-nowrap">{skipTraceState.text}</span>
+                                    </button>
+                                )}
                             </div>
                         )}
                     </div>

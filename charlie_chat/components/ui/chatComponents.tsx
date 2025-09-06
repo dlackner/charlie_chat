@@ -1,6 +1,6 @@
 import { useState } from "react";
 import ReactMarkdown from "react-markdown";
-import { Plus, SendHorizonal } from "lucide-react";
+import { Plus, SendHorizonal, Bell } from "lucide-react";
 import { ComposerAddAttachment } from "@/components/attachment";
 import { ChatMessage, EXAMPLES, BATCH_SIZE } from './chatTypes';
 import { Listing } from './chatTypes';
@@ -111,7 +111,8 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({ hasMessages, hasNewRecom
             ? "py-2" // Minimal padding when chat is active
             : "py-8"  // Full padding when no messages
             }`}>
-            <div className="flex justify-center">
+            <div className="flex justify-center items-center relative">
+                {/* Charlie Logo - Center */}
                 <div className="relative group">
                     <img
                         src="/charlie.png"
@@ -147,6 +148,7 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({ hasMessages, hasNewRecom
                     </div>
                 )}
                 </div>
+
             </div>
             
             {/* Custom CSS for animations */}

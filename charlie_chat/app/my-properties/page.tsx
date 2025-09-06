@@ -10,7 +10,7 @@ import { generateMarketingLetter } from '@/app/templates/generateMarketingLetter
 import { exportPropertiesToCSV } from './components/csvExport';
 import { handleSkipTraceForProperty } from './components/skipTraceIntegration';
 import { PropertyMapView } from './components/PropertyMapView';
-import { StatusFilter } from './components/StatusFilter';
+import { MultiCriteriaFilter, FilterCriteria } from './components/MultiCriteriaFilter';
 import { AnalyticsView } from './components/AnalyticsView';
 import { PageSavedProperty as SavedProperty } from './types';
 import { RentDataProcessor } from './components/rentDataProcessor';
@@ -71,9 +71,16 @@ export default function MyPropertiesPage() {
     const [selectedProperties, setSelectedProperties] = useState<Set<string>>(new Set());
     const [viewMode, setViewMode] = useState<ViewMode>('cards');
     const [searchTerm, setSearchTerm] = useState('');
-    const [selectedStatuses, setSelectedStatuses] = useState<Set<FavoriteStatus | 'ALL' | 'NO_STATUS'>>(new Set(['ALL']));
+    const [filterCriteria, setFilterCriteria] = useState<FilterCriteria>({
+        statuses: new Set(),
+        markets: new Set(),
+        sources: new Set(),
+        hasClusterFilter: false
+    });
     const [showDocumentDropdown, setShowDocumentDropdown] = useState(false);
     const [openStatusDropdown, setOpenStatusDropdown] = useState<string | null>(null);
+    const [openMarketDropdown, setOpenMarketDropdown] = useState<string | null>(null);
+    const [userMarkets, setUserMarkets] = useState<Array<{ market_key: string; market_name: string }>>([]);
     const [errorMessage, setErrorMessage] = useState('');
     const [skipTraceLoading, setSkipTraceLoading] = useState<Set<string>>(new Set());
     const [skipTraceErrors, setSkipTraceErrors] = useState<{ [key: string]: string }>({});
@@ -300,6 +307,8 @@ export default function MyPropertiesPage() {
             saved_at,
             favorite_status,
             notes,
+            recommendation_type,
+            market_key,
             saved_properties (*, owner_first_name, owner_last_name)
           `)
                     .eq("user_id", user.id)
@@ -316,6 +325,8 @@ export default function MyPropertiesPage() {
                             saved_at: item.saved_at,
                             favorite_status: item.favorite_status,
                             notes: item.notes, // Get notes from user_favorites, not saved_properties
+                            recommendation_type: item.recommendation_type,
+                            market_key: item.market_key,
                             skipTraceData: prop.skip_trace_data,
                             mailAddress: {
                                 street: prop.owner_street || '',
@@ -338,11 +349,33 @@ export default function MyPropertiesPage() {
 
         if (hasAccess && user && supabase && !isLoadingAccess) {
             loadSavedProperties();
+            loadUserMarkets();
         } else if (!isLoadingAccess) {
             setIsLoadingProperties(false);
             setIsLoadingReminders(false);
         }
     }, [user, supabase, hasAccess, isLoadingAccess]);
+
+    // Load user's markets for the market dropdown
+    const loadUserMarkets = async () => {
+        if (!user || !supabase) return;
+
+        try {
+            const { data: markets, error } = await supabase
+                .from('user_markets')
+                .select('market_key, market_name')
+                .eq('user_id', user.id)
+                .order('market_name');
+
+            if (error) {
+                console.error('Error loading user markets:', error);
+            } else if (markets) {
+                setUserMarkets(markets);
+            }
+        } catch (error) {
+            console.error('Error fetching user markets:', error);
+        }
+    };
 
     // Load reminders whenever properties change
     useEffect(() => {
@@ -373,7 +406,7 @@ export default function MyPropertiesPage() {
         }
     };
 
-    // Filter properties based on search, status, and cluster
+    // Filter properties based on search, status, market, source, and cluster
     const filteredProperties = savedProperties.filter(property => {
         // Cluster filter (if active, only show properties in the selected cluster)
         const matchesCluster = clusterFilteredIds.size === 0 || clusterFilteredIds.has(property.property_id);
@@ -384,12 +417,21 @@ export default function MyPropertiesPage() {
             property.address_city?.toLowerCase().includes(searchTerm.toLowerCase()) ||
             property.address_state?.toLowerCase().includes(searchTerm.toLowerCase());
         
-        // Status filter
-        const matchesStatus = selectedStatuses.has('ALL') || 
-            (property.favorite_status && selectedStatuses.has(property.favorite_status)) ||
-            (!property.favorite_status && selectedStatuses.has('NO_STATUS'));
+        // Status filter - if no statuses selected, show all
+        const matchesStatus = filterCriteria.statuses.size === 0 ||
+            (property.favorite_status && filterCriteria.statuses.has(property.favorite_status)) ||
+            (!property.favorite_status && filterCriteria.statuses.has('NO_STATUS'));
         
-        return matchesCluster && matchesSearch && matchesStatus;
+        // Market filter - if no markets selected, show all
+        const matchesMarket = filterCriteria.markets.size === 0 ||
+            (property.market_key && filterCriteria.markets.has(property.market_key));
+        
+        // Source filter - if no sources selected, show all
+        const matchesSource = filterCriteria.sources.size === 0 ||
+            (property.recommendation_type && filterCriteria.sources.has(property.recommendation_type as 'manual' | 'algorithm')) ||
+            (!property.recommendation_type && filterCriteria.sources.has('manual')); // Default to manual if no recommendation_type
+        
+        return matchesCluster && matchesSearch && matchesStatus && matchesMarket && matchesSource;
     });
 
     // For map view: show selected properties if any are selected, otherwise show all filtered properties
@@ -435,24 +477,80 @@ export default function MyPropertiesPage() {
         }
     };
 
+    const handleMarketChange = async (propertyId: string, marketKey: string | null) => {
+        if (!user || !supabase) return;
+
+        try {
+            const { error } = await supabase
+                .from("user_favorites")
+                .update({ 
+                    market_key: marketKey,
+                    saved_at: new Date().toISOString() 
+                })
+                .eq("user_id", user.id)
+                .eq("property_id", propertyId);
+
+            if (error) {
+                console.error('Error updating market:', error);
+            } else {
+                // Update local state
+                setSavedProperties(prev =>
+                    prev.map(p =>
+                        p.property_id === propertyId
+                            ? { ...p, market_key: marketKey }
+                            : p
+                    )
+                );
+                console.log(`Updated market for property ${propertyId} to ${marketKey || 'NULL'}`);
+            }
+        } catch (error) {
+            console.error('Error saving market assignment:', error);
+        }
+    };
+
+
+    const handleMarketDropdownToggle = (propertyId: string, isOpen: boolean) => {
+        setOpenMarketDropdown(isOpen ? propertyId : null);
+    };
+
     // Analytics status filter handler
     const handleAnalyticsStatusChange = (status: FavoriteStatus | 'NO_STATUS' | null) => {
         if (status === null) {
             // Clear all filters - show all statuses
-            setSelectedStatuses(new Set(['ALL']));
+            setFilterCriteria(prev => ({
+                ...prev,
+                statuses: new Set()
+            }));
         } else {
             // Filter to show only the selected status
-            setSelectedStatuses(new Set([status]));
+            setFilterCriteria(prev => ({
+                ...prev,
+                statuses: new Set([status])
+            }));
         }
     };
 
     // Cluster filter handler
     const handleClusterFilter = (propertyIds: string[]) => {
         setClusterFilteredIds(new Set(propertyIds));
-        // Clear status filter to show all statuses within the cluster
-        setSelectedStatuses(new Set(['ALL']));
+        // Update filter criteria to indicate cluster filter is active
+        setFilterCriteria(prev => ({
+            ...prev,
+            hasClusterFilter: propertyIds.length > 0
+        }));
         // Clear search term to focus on cluster properties
         setSearchTerm('');
+        // Switch to cards view to show the cluster
+        setViewMode('cards');
+    };
+
+    // Clear cluster filter handler
+    const handleClearClusterFilter = () => {
+        setClusterFilteredIds(new Set());
+        setFilterCriteria(prev => ({
+            ...prev,
+            hasClusterFilter: false
+        }));
     };
 
     // Clear cluster filter when changing views (except when going to cards from analytics)
@@ -750,7 +848,7 @@ export default function MyPropertiesPage() {
                         completed++;
                         setBulkSkipTraceProgress({ completed, total: propertiesToTrace.length });
                     },
-                    (propertyId: string, error: string) => {
+                    (_propertyId: string, error: string) => {
                         errors.push(`${property.address_full}: ${error}`);
                         completed++;
                         setBulkSkipTraceProgress({ completed, total: propertiesToTrace.length });
@@ -1048,6 +1146,170 @@ export default function MyPropertiesPage() {
                                                         &gt; Marketing Letter
                                                     </button>
 
+                                                    {/* ── Send Email (mailto) ─────────────────────── */}
+                                                    <button
+                                                        onClick={async () => {
+                                                            setShowDocumentDropdown(false);
+
+                                                            // Get the selected property IDs
+                                                            const selectedPropertyIds = Array.from(selectedProperties);
+
+                                                            // Check if exactly one property is selected
+                                                            if (selectedPropertyIds.length === 0) {
+                                                                showCharlieAlert('Please select a property first to send an email.', { 
+                                                                    type: 'warning',
+                                                                    title: 'No Property Selected'
+                                                                });
+                                                                return;
+                                                            }
+
+                                                            if (selectedPropertyIds.length > 1) {
+                                                                showCharlieAlert('Please select only ONE property at a time to send an email.', { 
+                                                                    type: 'warning',
+                                                                    title: 'Multiple Properties Selected'
+                                                                });
+                                                                return;
+                                                            }
+
+                                                            // Find the selected property
+                                                            const propertyId = selectedPropertyIds[0];
+                                                            const property = savedProperties.find(p => p.property_id === propertyId);
+                                                            
+                                                            if (!property) {
+                                                                showCharlieAlert('Property not found. Please refresh and try again.', {
+                                                                    type: 'error',
+                                                                    title: 'Property Error'
+                                                                });
+                                                                return;
+                                                            }
+
+                                                            // Extract email from skip trace data
+                                                            let recipientEmail = null;
+                                                            if (property.skipTraceData) {
+                                                                recipientEmail = property.skipTraceData.email;
+                                                            }
+
+                                                            if (!recipientEmail) {
+                                                                showCharlieAlert('No email address found for this property. Make sure it has been skip traced and contains an email address.', {
+                                                                    type: 'warning',
+                                                                    title: 'Email Not Available'
+                                                                });
+                                                                return;
+                                                            }
+
+                                                            // Get user profile for signature
+                                                            if (!user) {
+                                                                showCharlieAlert('Please log in to send emails.', {
+                                                                    type: 'error',
+                                                                    title: 'Authentication Required'
+                                                                });
+                                                                return;
+                                                            }
+
+                                                            // Fetch user profile data to get phone number and other details
+                                                            const { data: profileData, error: profileError } = await supabase
+                                                                .from("profiles")
+                                                                .select("first_name, last_name, phone_number, business_name, job_title")
+                                                                .eq("user_id", user.id)
+                                                                .single();
+
+                                                            if (profileError || !profileData) {
+                                                                console.error("Profile error:", profileError);
+                                                                showCharlieAlert('Please complete your profile to send emails. Profile information is needed for the email signature.', {
+                                                                    type: 'warning',
+                                                                    title: 'Profile Required'
+                                                                });
+                                                                return;
+                                                            }
+
+                                                            // Create mailto link with email template content
+                                                            const ownerName = property.owner_first_name || 'Property Owner';
+                                                            const subject = 'Interest in Your Property';
+                                                            const propertyAddress = property.address_full;
+                                                            const userPhone = profileData.phone_number?.replace(/(\d{3})(\d{3})(\d{4})/, "$1.$2.$3") || 'Phone not provided';
+                                                            const userEmail = user.email;
+                                                            const userName = profileData.first_name && profileData.last_name 
+                                                                ? `${profileData.first_name} ${profileData.last_name}` 
+                                                                : user.email;
+                                                            const userTitle = profileData.job_title || '';
+                                                            const userBusiness = profileData.business_name || '';
+                                                            
+                                                            const body = `Dear ${ownerName},
+
+I hope this note finds you well. I'm reaching out to express sincere interest in your property located at ${propertyAddress}. I focus on acquiring multifamily properties in ${property.address_state || 'the area'}, and this building stood out due to its location, character, and the strength of the local rental market.
+
+Whether or not you've ever considered selling, I understand that owning and managing multifamily assets can be demanding – especially in today's environment. Rising operating costs, shifting tenant expectations, and market volatility have prompted many property owners to explore their options.
+
+I'm not a broker, and this isn't a listing solicitation. I'm a direct buyer looking to engage in a straightforward, respectful conversation about a potential off-market purchase. My goal is to understand your situation and see if there's a way to align my interest with your goal – on your timeline.
+
+In past acquisitions, we've structured deals with flexible terms including delayed closings, continued property management, partial seller financing, and even 1031 exchange participation for owners looking to defer capital gains taxes. Depending on your goals, there may be creative options available that help maximize value while minimizing tax exposure.
+
+If you'd simply like to know what your property might be worth in today's market, I'd be happy to offer an informal valuation – no pressure, no obligation.
+
+You can reach me directly at ${userPhone} or ${userEmail}. Even if now isn't the right time, I'd welcome the opportunity to stay in touch.
+
+Thank you,
+
+${userName}
+${userTitle}
+${userBusiness}
+${userPhone}
+${userEmail}`;
+
+                                                            // URL encode the content
+                                                            const encodedSubject = encodeURIComponent(subject);
+                                                            const encodedBody = encodeURIComponent(body);
+                                                            
+                                                            const mailtoLink = `mailto:${recipientEmail}?subject=${encodedSubject}&body=${encodedBody}`;
+                                                            
+                                                            // Open email client
+                                                            window.open(mailtoLink, '_self');
+                                                            
+                                                            // Add reminder note 7 days in the future
+                                                            try {
+                                                                // Calculate 7 days from now
+                                                                const reminderDate = new Date();
+                                                                reminderDate.setDate(reminderDate.getDate() + 7);
+                                                                const formattedDate = `@${(reminderDate.getMonth() + 1).toString().padStart(2, '0')}/${reminderDate.getDate().toString().padStart(2, '0')}/${reminderDate.getFullYear().toString().slice(-2)}`;
+                                                                
+                                                                // Get current notes
+                                                                const currentNotes = property.notes || '';
+                                                                const reminderText = `${formattedDate} Reminder to follow up on email`;
+                                                                
+                                                                // Add reminder to notes (append with newline if notes exist)
+                                                                const updatedNotes = currentNotes 
+                                                                    ? `${currentNotes}\n${reminderText}`
+                                                                    : reminderText;
+                                                                
+                                                                // Save updated notes to database
+                                                                const { error: notesError } = await supabase
+                                                                    .from("user_favorites")
+                                                                    .update({ notes: updatedNotes })
+                                                                    .eq("user_id", user.id)
+                                                                    .eq("property_id", property.property_id);
+                                                                
+                                                                if (notesError) {
+                                                                    console.error('Error adding email reminder note:', notesError);
+                                                                } else {
+                                                                    // Update local state
+                                                                    setSavedProperties(prev =>
+                                                                        prev.map(p =>
+                                                                            p.property_id === property.property_id
+                                                                                ? { ...p, notes: updatedNotes }
+                                                                                : p
+                                                                        )
+                                                                    );
+                                                                    console.log(`Added email reminder note for ${formattedDate}`);
+                                                                }
+                                                            } catch (reminderError) {
+                                                                console.error('Error adding reminder note:', reminderError);
+                                                            }
+                                                        }}
+                                                        className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                                    >
+                                                        &gt; Email
+                                                    </button>
+
                                                     <div className="border-t border-gray-200 my-1"></div>
 
                                                     {/* ── Letter of Intent ────────────────────────── */}
@@ -1164,11 +1426,13 @@ export default function MyPropertiesPage() {
                     )}
                 </div>
 
-                {/* Status Filter and View Mode Tabs */}
+                {/* Multi-Criteria Filter and View Mode Tabs */}
                 <div className="flex items-center space-x-4 mb-6">
-                    <StatusFilter 
-                        selectedStatuses={selectedStatuses}
-                        onStatusChange={setSelectedStatuses}
+                    <MultiCriteriaFilter 
+                        selectedCriteria={filterCriteria}
+                        onFilterChange={setFilterCriteria}
+                        onClearClusterFilter={handleClearClusterFilter}
+                        userMarkets={userMarkets}
                     />
                     
                     <div className="flex bg-gray-100 rounded-lg p-1">
@@ -1236,7 +1500,7 @@ export default function MyPropertiesPage() {
                         properties={savedProperties.length === 0 ? [] : filteredProperties}
                         totalPropertiesCount={savedProperties.length}
                         searchTerm={searchTerm}
-                        selectedStatuses={selectedStatuses}
+                        selectedStatuses={filterCriteria.statuses}
                         selectedProperties={selectedProperties}
                         onToggleSelection={togglePropertySelection}
                         onRemoveFromFavorites={handleRemoveFromFavorites}
@@ -1248,6 +1512,10 @@ export default function MyPropertiesPage() {
                         onStatusChange={handleStatusChange}
                         openStatusDropdown={openStatusDropdown}
                         onStatusDropdownToggle={handleStatusDropdownToggle}
+                        onMarketChange={handleMarketChange}
+                        userMarkets={userMarkets}
+                        openMarketDropdown={openMarketDropdown}
+                        onMarketDropdownToggle={handleMarketDropdownToggle}
                         isLoading={isLoadingProperties}
                     />
                 ) : viewMode === 'map' ? (
@@ -1278,7 +1546,7 @@ export default function MyPropertiesPage() {
                     /* Analytics View */
                     <AnalyticsView
                         properties={filteredProperties}
-                        selectedStatuses={selectedStatuses}
+                        selectedStatuses={filterCriteria.statuses}
                         onStatusFilterChange={handleAnalyticsStatusChange}
                         onViewChange={handleViewModeChange}
                         onClusterFilter={handleClusterFilter}

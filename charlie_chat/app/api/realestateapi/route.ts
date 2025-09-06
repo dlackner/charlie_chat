@@ -32,7 +32,7 @@ function transformListingToSnakeCase(listing: any) {
     
     // Sale history
     last_sale_date: listing.lastSaleDate,
-    last_sale_amount: listing.lastSaleAmount,
+    last_sale_amount: listing.LastSalePrice,
     last_sale_arms_length: listing.lastSaleArmsLength,
     
     // Ownership information
@@ -133,6 +133,7 @@ export async function POST(req: NextRequest) {
       resultIndex,
       count,
       ids_only,
+      ids, // ADD MISSING IDS FIELD
       // MLS fields
       mls_cancelled,
       mls_days_on_market_min,
@@ -173,9 +174,10 @@ export async function POST(req: NextRequest) {
       stories_min,
       stories_max,
       ids_only: ids_only ?? false,
+      ids: ids, // Pass through the ids array
       obfuscate: false,
       summary: false,
-      size: size ?? 10,
+      size: size ?? 1,
       resultIndex: resultIndex ?? 0,
       count: count ?? false,
       in_state_owner,

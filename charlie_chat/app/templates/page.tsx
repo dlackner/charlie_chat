@@ -280,6 +280,7 @@ function Home() {
 
     interface SavedProperty {
       address_full: string | null;
+      address_street: string | null;
       address_city: string | null;
       address_state: string | null;
       address_zip: string | null;
@@ -297,6 +298,7 @@ function Home() {
         .from('saved_properties')
         .select(`
         address_full,
+        address_street,
         address_city,
         address_state,
         address_zip,
@@ -315,12 +317,34 @@ function Home() {
         return;
       }
 
-      const propAddr = [
-        data.address_full,
-        data.address_city,
-        data.address_state,
-        data.address_zip,
-      ].filter(Boolean).join(', ');
+      // Build complete property address with street, city, state, zip
+      const propertyStreet = data.address_street ?? '[Property Street]';
+      const propertyCity = data.address_city ?? '[Property City]';
+      const propertyState = data.address_state ?? "[Property's State]";
+      const propertyZip = data.address_zip ?? '';
+
+      // Check if address_full already contains complete address (includes commas)
+      // If so, use it directly to avoid duplication
+      let propAddr = '';
+      
+      if (data.address_full && data.address_full.includes(',')) {
+        // address_full likely contains complete address already
+        propAddr = data.address_full;
+      } else {
+        // Build complete address from individual components
+        const streetPart = data.address_full || propertyStreet;
+        
+        propAddr = streetPart;
+        if (propertyCity && propertyCity !== '[Property City]') {
+          propAddr += `, ${propertyCity}`;
+        }
+        if (propertyState && propertyState !== "[Property's State]") {
+          propAddr += `, ${propertyState}`;
+        }
+        if (propertyZip) {
+          propAddr += ` ${propertyZip}`;
+        }
+      }
 
       setFormData(prev => ({
         ...prev,

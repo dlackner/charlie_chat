@@ -1,9 +1,12 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { X, ChevronLeft, ChevronRight, Heart, ExternalLink, Star } from 'lucide-react';
+import { X, ChevronLeft, ChevronRight, Heart, Star } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { createClient } from '@supabase/supabase-js';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
+import { StreetViewImage } from '@/components/ui/StreetViewImage';
+
 
 // Enhanced interfaces for MMR integration
 interface MMRProperty {
@@ -48,13 +51,11 @@ interface RecommendationBatch {
 interface WeeklyRecommendationsModalMMRProps {
     isOpen: boolean;
     onClose: () => void;
-    forceRefresh?: boolean;
 }
 
 export const WeeklyRecommendationsModalMMR: React.FC<WeeklyRecommendationsModalMMRProps> = ({
     isOpen,
     onClose,
-    forceRefresh = false,
 }) => {
     const { user, supabase } = useAuth();
     const [recommendations, setRecommendations] = useState<MMRProperty[]>([]);
@@ -67,18 +68,60 @@ export const WeeklyRecommendationsModalMMR: React.FC<WeeklyRecommendationsModalM
     
     // UI state
     const [cardSide, setCardSide] = useState<'front' | 'back'>('front');
-    const [loadingStates, setLoadingStates] = useState<{ [key: string]: 'favoriting' | 'dismissing' | null }>({});
-    const [actionConfirmations, setActionConfirmations] = useState<{ [key: string]: 'favorited' | 'dismissed' | null }>({});
-    const [showFeedback, setShowFeedback] = useState(false);
-    const [feedbackReason, setFeedbackReason] = useState('');
-    const [dismissedCount, setDismissedCount] = useState(0);
+    
+    // Forced decision tracking
+    const [propertyDecisions, setPropertyDecisions] = useState<{ [propertyId: string]: 'favorite' | 'not_interested' | null }>({});
+    const [viewingStartTime, setViewingStartTime] = useState<number>(Date.now());
+    const [cardFlips, setCardFlips] = useState<number>(0);
+    
+    // Learning progress tracking
+    const [learningProgress, setLearningProgress] = useState<{
+        totalDecisions: number;
+        targetDecisions: number;
+        progressPercentage: number;
+        isComplete: boolean;
+    } | null>(null);
 
-    // Load recommendations when modal opens
-    useEffect(() => {
-        if (isOpen && user) {
-            loadRecommendations();
+
+    // Helper function to get Market1-5 key for a property location
+    const getMarketKeyForProperty = async (city: string, state: string): Promise<string> => {
+        if (!user || !supabase) return 'Market1';
+
+        try {
+            // Get user's markets from user_markets table
+            const { data: userMarkets, error } = await supabase
+                .from('user_markets')
+                .select('market_key, market_type, city, state, zip')
+                .eq('user_id', user.id);
+
+            if (error || !userMarkets || userMarkets.length === 0) {
+                return 'Market1';
+            }
+
+            // Find the market that matches this property's location
+            const matchingMarket = userMarkets.find((market: any) => {
+                if (market.market_type === 'city') {
+                    return market.city?.toLowerCase() === city?.toLowerCase() && 
+                           market.state?.toLowerCase() === state?.toLowerCase();
+                }
+                return false;
+            });
+
+            // Return the market's key, or default to first market or Market1
+            return matchingMarket?.market_key || userMarkets[0]?.market_key || 'Market1';
+        } catch (error) {
+            console.error('Error getting market key for property:', error);
+            return 'Market1';
         }
-    }, [isOpen, user, forceRefresh]);
+    };
+
+    // Load recommendations when modal opens - but only once per session
+    useEffect(() => {
+        if (isOpen && user && recommendations.length === 0) {
+            loadRecommendations();
+            loadLearningProgress();
+        }
+    }, [isOpen, user]);
 
     // Reset state when modal opens
     useEffect(() => {
@@ -86,12 +129,19 @@ export const WeeklyRecommendationsModalMMR: React.FC<WeeklyRecommendationsModalM
             setCurrentIndex(0);
             setCardSide('front');
             setError(null);
-            setActionConfirmations({});
-            setLoadingStates({});
-            setDismissedCount(0);
-            setShowFeedback(false);
+            setPropertyDecisions({});
+            setViewingStartTime(Date.now());
+            setCardFlips(0);
         }
     }, [isOpen]);
+    
+    // Track viewing time and reset when changing properties
+    useEffect(() => {
+        if (recommendations.length > 0 && recommendations[currentIndex]) {
+            setViewingStartTime(Date.now());
+            setCardFlips(0);
+        }
+    }, [currentIndex, recommendations]);
 
     const loadRecommendations = async () => {
         if (!user || !supabase) return;
@@ -100,48 +150,21 @@ export const WeeklyRecommendationsModalMMR: React.FC<WeeklyRecommendationsModalM
         setError(null);
 
         try {
-            // First, try to get existing recommendations from this week
+            // Only load existing recommendations - never generate new ones
+            // New recommendations should only come from cron job + edge functions
             const weekStart = getWeekStart(new Date());
             
-            if (!forceRefresh) {
-                const existingRecs = await loadExistingRecommendations(weekStart);
-                if (existingRecs && existingRecs.length > 0) {
-                    setRecommendations(existingRecs);
-                    setLoading(false);
-                    return;
-                }
-            }
-
-            // Generate new recommendations using Edge Function
-            const { data: functionResponse, error: functionError } = await supabase.functions.invoke('generate-recommendations', {
-                body: { 
-                    userId: user.id,
-                    forceRefresh 
-                }
-            });
-
-            if (functionError) {
-                throw new Error(functionError.message);
-            }
-
-            if (!functionResponse.success) {
-                throw new Error(functionResponse.error || 'Failed to generate recommendations');
-            }
-
-            // Set metadata
-            setBatchId(functionResponse.batchId);
-            setLambda(functionResponse.lambda);
-            setTotalCandidates(functionResponse.totalCandidates);
-
-            if (functionResponse.recommendationCount === 0) {
-                setRecommendations([]);
-                setError('No properties found matching your criteria. Consider expanding your buy box.');
+            console.log('Loading existing recommendations for week:', weekStart);
+            const existingRecs = await loadExistingRecommendations(weekStart);
+            if (existingRecs && existingRecs.length > 0) {
+                setRecommendations(existingRecs);
+                setLoading(false);
                 return;
             }
 
-            // Load the full recommendation data
-            const fullRecs = await loadRecommendationsByBatchId(functionResponse.batchId);
-            setRecommendations(fullRecs);
+            // No existing recommendations found - show appropriate message
+            setRecommendations([]);
+            setError('No new recommendations available. Weekly recommendations are generated automatically each Monday morning.');
 
         } catch (err: any) {
             setError(err.message || 'Failed to load recommendations');
@@ -150,6 +173,51 @@ export const WeeklyRecommendationsModalMMR: React.FC<WeeklyRecommendationsModalM
             setLoading(false);
         }
     };
+
+    const loadLearningProgress = async () => {
+        if (!user || !supabase) return;
+
+        try {
+            // Get current user's total decisions from user_property_decisions table
+            const { data, error } = await supabase
+                .from('user_property_decisions')
+                .select('id')
+                .eq('user_id', user.id);
+
+            if (error) {
+                console.error('Error loading learning progress:', error);
+                return;
+            }
+
+            const totalDecisions = data?.length || 0;
+            const isComplete = totalDecisions >= 50; // Consider complete after 50 decisions
+            
+            // Dynamic learning target - check convergence every 10 decisions
+            let targetDecisions: number;
+            let progressPercentage: number;
+            
+            if (isComplete) {
+                targetDecisions = totalDecisions; // Show as 100% complete
+                progressPercentage = 100;
+            } else {
+                // Next checkpoint is the next multiple of 10
+                targetDecisions = Math.max(10, Math.ceil(totalDecisions / 10) * 10);
+                progressPercentage = Math.min(Math.round((totalDecisions / targetDecisions) * 100), 100);
+            }
+
+            setLearningProgress({
+                totalDecisions,
+                targetDecisions,
+                progressPercentage,
+                isComplete
+            });
+
+            console.log(`📊 Learning Progress: ${totalDecisions}/${targetDecisions} (${progressPercentage}%)`);
+        } catch (error) {
+            console.error('Error fetching learning progress:', error);
+        }
+    };
+
 
     const loadExistingRecommendations = async (weekStart: string): Promise<MMRProperty[]> => {
         if (!user || !supabase) return [];
@@ -166,7 +234,7 @@ export const WeeklyRecommendationsModalMMR: React.FC<WeeklyRecommendationsModalM
             `)
             .eq('user_id', user.id)
             .eq('recommendation_type', 'algorithm')
-            .eq('is_active', true)
+            .eq('status', 'pending')
             .gte('generated_at', weekStart)
             .order('saved_at', { ascending: true });
 
@@ -175,12 +243,12 @@ export const WeeklyRecommendationsModalMMR: React.FC<WeeklyRecommendationsModalM
         setBatchId(data[0].recommendation_batch_id);
 
         return data.map((item: any) => ({
+            ...item.saved_properties,
             property_id: item.saved_properties.property_id,
             fit_score: item.fit_score || 0,
             diversity_score: item.diversity_score || 0,
             total_score: item.total_score || 0,
-            selection_reasons: item.selection_reasons || [],
-            ...item.saved_properties
+            selection_reasons: item.selection_reasons || []
         }));
     };
 
@@ -197,7 +265,7 @@ export const WeeklyRecommendationsModalMMR: React.FC<WeeklyRecommendationsModalM
                 saved_properties!inner (*)
             `)
             .eq('recommendation_batch_id', batchId)
-            .eq('is_active', true)
+            .eq('status', 'pending')
             .order('saved_at', { ascending: true });
 
         if (error || !data) {
@@ -205,75 +273,196 @@ export const WeeklyRecommendationsModalMMR: React.FC<WeeklyRecommendationsModalM
         }
 
         return data.map((item: any) => ({
+            ...item.saved_properties,
             property_id: item.saved_properties.property_id,
             fit_score: item.fit_score || 0,
             diversity_score: item.diversity_score || 0,
             total_score: item.total_score || 0,
-            selection_reasons: item.selection_reasons || [],
-            ...item.saved_properties
+            selection_reasons: item.selection_reasons || []
         }));
     };
 
-    const handleFavorite = async (propertyId: string) => {
-        if (!user || !supabase || !batchId) return;
-
-        setLoadingStates(prev => ({ ...prev, [propertyId]: 'favoriting' }));
+    const logPropertyDecision = async (propertyId: string, decision: 'favorite' | 'not_interested') => {
+        if (!user || !supabase || !currentProperty) return;
+        
+        const timeSpent = Date.now() - viewingStartTime;
+        
+        // Find the specific property in the recommendations array
+        const specificProperty = recommendations.find(rec => rec.property_id === propertyId);
         
         try {
-            // The property is already in user_favorites from the recommendation generation
-            // We just need to log the interaction
-            await logInteraction(propertyId, 'save');
             
-            setActionConfirmations(prev => ({ ...prev, [propertyId]: 'favorited' }));
-            
-            // Move to next property after a brief delay
-            setTimeout(() => {
-                if (currentIndex < recommendations.length - 1) {
-                    setCurrentIndex(currentIndex + 1);
-                    setCardSide('front');
-                }
+            const { error } = await supabase
+                .from('user_property_decisions')
+                .insert({
+                    user_id: user.id,
+                    property_id: propertyId,
+                    decision: decision,
+                    recommendation_batch_id: batchId,
+                    property_characteristics: {
+                        units_count: currentProperty.units_count,
+                        year_built: currentProperty.year_built,
+                        assessed_value: currentProperty.assessed_value,
+                        estimated_value: currentProperty.estimated_value,
+                        estimated_equity: currentProperty.estimated_equity,
+                        address_city: currentProperty.address_city,
+                        address_state: currentProperty.address_state,
+                        years_owned: currentProperty.years_owned,
+                        out_of_state_absentee_owner: currentProperty.out_of_state_absentee_owner,
+                        reo: currentProperty.reo,
+                        tax_lien: currentProperty.tax_lien,
+                        auction: currentProperty.auction,
+                        pre_foreclosure: currentProperty.pre_foreclosure
+                    },
+                    market_key: await getMarketKeyForProperty(currentProperty.address_city || '', currentProperty.address_state || ''),
+                    fit_score: specificProperty?.fit_score || currentProperty.fit_score,
+                    decided_at: new Date().toISOString()
+                });
                 
-                setLoadingStates(prev => ({ ...prev, [propertyId]: null }));
-                setActionConfirmations(prev => ({ ...prev, [propertyId]: null }));
-            }, 1500);
+            if (error) {
+                console.error('Error logging decision:', error);
+            } else {
+                console.log(`✅ Logged ${decision} decision for property ${propertyId}`);
+                
+                // Increment total_decisions_made for this market
+                try {
+                    const marketKey = await getMarketKeyForProperty(currentProperty.address_city || '', currentProperty.address_state || '');
+                    
+                    // First get current count
+                    const { data: marketData, error: fetchError } = await supabase
+                        .from('user_markets')
+                        .select('total_decisions_made')
+                        .eq('user_id', user.id)
+                        .eq('market_key', marketKey)
+                        .single();
+
+                    if (fetchError) {
+                        console.error('Error fetching current decision count:', fetchError);
+                        return;
+                    }
+
+                    // Increment and update
+                    const currentCount = marketData?.total_decisions_made || 0;
+                    const { error: updateError } = await supabase
+                        .from('user_markets')
+                        .update({ 
+                            total_decisions_made: currentCount + 1,
+                            updated_at: new Date().toISOString()
+                        })
+                        .eq('user_id', user.id)
+                        .eq('market_key', marketKey);
+
+                    if (updateError) {
+                        console.error('Error updating market decision count:', updateError);
+                    } else {
+                        console.log(`📊 Incremented decision count for market ${marketKey}: ${currentCount} → ${currentCount + 1}`);
+                    }
+                } catch (marketUpdateError) {
+                    console.error('Error incrementing market decision count:', marketUpdateError);
+                }
+            }
         } catch (error) {
-            console.error('Error favoriting property:', error);
-            setLoadingStates(prev => ({ ...prev, [propertyId]: null }));
+            console.error('Error logging property decision:', error);
         }
     };
 
-    const handleDismiss = async (propertyId: string) => {
-        if (!user || !supabase || !batchId) return;
+    const handleFavorite = (propertyId: string) => {
+        // Only update local state - don't commit to database yet
+        setPropertyDecisions(prev => ({ 
+            ...prev, 
+            [propertyId]: prev[propertyId] === 'favorite' ? null : 'favorite' 
+        }));
+        
+        // Auto-advance to next property if not the last one
+        if (currentIndex < recommendations.length - 1) {
+            setTimeout(() => {
+                setCurrentIndex(currentIndex + 1);
+                setCardSide('front');
+            }, 300); // Small delay for visual feedback
+        }
+    };
 
-        setLoadingStates(prev => ({ ...prev, [propertyId]: 'dismissing' }));
+    const handleDismiss = (propertyId: string) => {
+        // Only update local state - don't commit to database yet
+        setPropertyDecisions(prev => ({ 
+            ...prev, 
+            [propertyId]: prev[propertyId] === 'not_interested' ? null : 'not_interested' 
+        }));
+        
+        // Auto-advance to next property if not the last one
+        if (currentIndex < recommendations.length - 1) {
+            setTimeout(() => {
+                setCurrentIndex(currentIndex + 1);
+                setCardSide('front');
+            }, 300); // Small delay for visual feedback
+        }
+    };
+
+    const commitAllDecisions = async () => {
+        if (!user || !supabase || !batchId) return;
+        
+        // Validate that ALL recommendations have decisions before proceeding
+        const unreviewed = recommendations.filter(property => !propertyDecisions[property.property_id]);
+        if (unreviewed.length > 0) {
+            console.error('Cannot commit: Found unreviewed properties:', unreviewed);
+            alert(`Please make a decision on all ${recommendations.length} properties before saving. ${unreviewed.length} properties still need your review.`);
+            return;
+        }
+        
+        console.log(`✅ Validation passed: All ${recommendations.length} properties have decisions`);
+        
+        // Close modal immediately to avoid showing confusing loading state
+        onClose();
         
         try {
-            // Mark as inactive in user_favorites
-            await supabase
-                .from('user_favorites')
-                .update({ is_active: false })
-                .eq('user_id', user.id)
-                .eq('property_id', propertyId)
-                .eq('recommendation_batch_id', batchId);
-
-            await logInteraction(propertyId, 'remove');
-            
-            setActionConfirmations(prev => ({ ...prev, [propertyId]: 'dismissed' }));
-            setDismissedCount(prev => prev + 1);
-            
-            // Move to next property after a brief delay
-            setTimeout(() => {
-                if (currentIndex < recommendations.length - 1) {
-                    setCurrentIndex(currentIndex + 1);
-                    setCardSide('front');
+            // Process each property (all are guaranteed to have decisions)
+            for (const property of recommendations) {
+                const decision = propertyDecisions[property.property_id];
+                
+                // Update user_favorites status
+                if (decision === 'favorite') {
+                    await supabase
+                        .from('user_favorites')
+                        .update({ status: 'active' })
+                        .eq('user_id', user.id)
+                        .eq('property_id', property.property_id)
+                        .eq('recommendation_batch_id', batchId);
+                } else if (decision === 'not_interested') {
+                    await supabase
+                        .from('user_favorites')
+                        .update({ 
+                            status: 'rejected',
+                            is_active: false 
+                        })
+                        .eq('user_id', user.id)
+                        .eq('property_id', property.property_id)
+                        .eq('recommendation_batch_id', batchId);
+                } else {
+                    // This should never happen due to validation, but log it if it does
+                    console.error('Unexpected: Property has no decision despite validation:', property.property_id, decision);
                 }
                 
-                setLoadingStates(prev => ({ ...prev, [propertyId]: null }));
-                setActionConfirmations(prev => ({ ...prev, [propertyId]: null }));
-            }, 1500);
+                // Log the decision for learning (decision is guaranteed to exist due to validation)
+                if (decision) {
+                    await logPropertyDecision(property.property_id, decision);
+                }
+            }
+            
+            console.log(`✅ Committed ${Object.keys(propertyDecisions).length} decisions to database`);
+            
+            // Update market convergence analysis after all decisions are committed
+            try {
+                const { updateMarketConvergence } = await import('@/lib/convergenceAnalysis');
+                const convergenceData = await updateMarketConvergence(user.id, supabase);
+                console.log('📊 Updated market convergence after weekly recommendations:', convergenceData);
+            } catch (convergenceError) {
+                console.error('Error updating market convergence (non-critical):', convergenceError);
+                // Don't fail the whole operation if convergence update fails
+            }
+            
         } catch (error) {
-            console.error('Error dismissing property:', error);
-            setLoadingStates(prev => ({ ...prev, [propertyId]: null }));
+            console.error('Error committing decisions:', error);
+            // Could show a toast notification here instead of modal error
         }
     };
 
@@ -314,21 +503,19 @@ export const WeeklyRecommendationsModalMMR: React.FC<WeeklyRecommendationsModalM
     };
 
     const handleClose = () => {
-        if (dismissedCount > 2) {
-            setShowFeedback(true);
-        } else {
-            onClose();
+        // Check if there are unsaved decisions
+        if (Object.keys(propertyDecisions).length > 0) {
+            // Could add a confirmation dialog here if needed
+            // For now, just warn in console
+            console.warn('User closed modal with unsaved decisions');
         }
-    };
-
-    const handleFeedbackSubmit = () => {
-        // TODO: Send feedback to improve recommendations
-        console.log('Feedback reason:', feedbackReason);
         onClose();
     };
 
+
     const handleCardClick = () => {
         setCardSide(cardSide === 'front' ? 'back' : 'front');
+        setCardFlips(prev => prev + 1);
     };
 
     // Helper functions
@@ -361,16 +548,9 @@ export const WeeklyRecommendationsModalMMR: React.FC<WeeklyRecommendationsModalM
         });
     };
 
-    const getGoogleMapsLink = (property: MMRProperty): string => {
-        const address = property.address_street || property.address_full || '';
-        const city = property.address_city || '';
-        const state = property.address_state || '';
-        const fullAddress = `${address}, ${city}, ${state}`.trim();
-        return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(fullAddress)}`;
-    };
 
     const getRelevanceStars = (score: number) => {
-        const stars = Math.round(score * 5);
+        const stars = Math.round((score / 100) * 5); // Convert 0-100 to 0-5 stars
         return Array.from({ length: 5 }, (_, i) => (
             <Star 
                 key={i} 
@@ -384,119 +564,86 @@ export const WeeklyRecommendationsModalMMR: React.FC<WeeklyRecommendationsModalM
 
     const currentProperty = recommendations[currentIndex];
 
-    // Feedback modal
-    if (showFeedback) {
-        return (
-            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
-                    <h3 className="text-lg font-semibold mb-4">Help us improve your recommendations</h3>
-                    <p className="text-sm text-gray-600 mb-4">
-                        What made some properties less appealing?
-                    </p>
-                    <select
-                        value={feedbackReason}
-                        onChange={(e) => setFeedbackReason(e.target.value)}
-                        className="w-full p-2 border border-gray-300 rounded-md mb-4"
-                    >
-                        <option value="">Select a reason (optional)</option>
-                        <option value="too-expensive">Too expensive</option>
-                        <option value="wrong-location">Wrong location/area</option>
-                        <option value="wrong-units">Too many/few units</option>
-                        <option value="condition-concerns">Property condition concerns</option>
-                        <option value="not-diverse-enough">Too similar properties</option>
-                        <option value="too-diverse">Properties too different from my interests</option>
-                        <option value="other">Other</option>
-                    </select>
-                    <div className="flex justify-end space-x-3">
-                        <button
-                            onClick={handleFeedbackSubmit}
-                            className="px-4 py-2 text-gray-600 hover:text-gray-800"
-                        >
-                            Skip
-                        </button>
-                        <button
-                            onClick={handleFeedbackSubmit}
-                            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-                        >
-                            Submit
-                        </button>
-                    </div>
-                </div>
-            </div>
-        );
-    }
 
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg max-w-lg w-full mx-4 max-h-[90vh] overflow-hidden">
+            <div className="bg-white rounded-lg max-w-lg w-full mx-4 max-h-[90vh] relative z-10">
                 {/* Header */}
                 <div className="flex items-center justify-between p-6 border-b border-gray-200">
-                    <div>
+                    <div className="flex-1">
                         <h2 className="text-xl font-semibold text-gray-900">Your Weekly Picks</h2>
                         <div className="text-sm text-gray-600 mt-1">
-                            {recommendations.length} properties • λ={lambda.toFixed(2)} • {totalCandidates} candidates screened
+                            {recommendations.length} personalized recommendations
                         </div>
+                        
+                        {/* Local Progress Tracking */}
+                        {recommendations.length > 0 && (
+                            <div className="mt-3">
+                                <div className="flex items-center justify-between mb-1">
+                                    <span className="text-xs font-medium text-blue-600">Review Progress</span>
+                                </div>
+                                <div className="w-full bg-gray-200 rounded-full h-2">
+                                    <div 
+                                        className="bg-blue-600 h-2 rounded-full transition-all duration-300 ease-out"
+                                        style={{ width: `${recommendations.length > 0 ? (Object.keys(propertyDecisions).length / recommendations.length) * 100 : 0}%` }}
+                                    ></div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Confirm Decisions Button - only show when ALL properties have decisions */}
+                        {recommendations.length > 0 && 
+                         Object.keys(propertyDecisions).length === recommendations.length &&
+                         recommendations.every(prop => propertyDecisions[prop.property_id]) && (
+                            <div className="mt-3">
+                                <button
+                                    onClick={commitAllDecisions}
+                                    disabled={loading}
+                                    className="w-full px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium text-sm"
+                                >
+                                    {loading ? 'Saving...' : `Confirm All ${Object.keys(propertyDecisions).length} Decisions`}
+                                </button>
+                            </div>
+                        )}
+                        
                     </div>
                     <button
                         onClick={handleClose}
                         className="text-gray-400 hover:text-gray-600"
+                        title="Close recommendations"
                     >
                         <X size={24} />
                     </button>
                 </div>
 
                 {/* Content */}
-                <div className="p-6">
+                <div className="p-6 overflow-hidden">
                     {loading ? (
                         <div className="text-center py-8">
                             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-                            <p className="text-gray-600">Generating your personalized recommendations...</p>
+                            <p className="text-gray-600">Loading your weekly recommendations...</p>
                         </div>
                     ) : error ? (
                         <div className="text-center py-8">
-                            <p className="text-red-600 mb-4">{error}</p>
-                            <button
-                                onClick={() => loadRecommendations()}
-                                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-                            >
-                                Try Again
-                            </button>
+                            <div className="text-gray-600 mb-4">{error}</div>
+                            <p className="text-sm text-gray-500">
+                                Check back later for new recommendations, or adjust your buy box settings to get more targeted results.
+                            </p>
                         </div>
                     ) : recommendations.length === 0 ? (
                         <div className="text-center py-8">
                             <p className="text-gray-600 mb-4">No recommendations available.</p>
-                            <button
-                                onClick={() => loadRecommendations()}
-                                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-                            >
-                                Generate Recommendations
-                            </button>
+                            <p className="text-sm text-gray-500">
+                                Weekly recommendations are generated automatically each Monday morning based on your buy box criteria.
+                            </p>
                         </div>
                     ) : currentProperty ? (
                         <>
-                            {/* Property Navigation */}
-                            <div className="flex items-center justify-between mb-4">
-                                <button
-                                    onClick={() => navigateProperty('prev')}
-                                    disabled={currentIndex === 0}
-                                    className="flex items-center space-x-1 text-gray-600 hover:text-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
-                                >
-                                    <ChevronLeft size={20} />
-                                    <span>Previous</span>
-                                </button>
-                                
-                                <span className="text-sm text-gray-600">
+                            {/* Property Counter */}
+                            <div className="text-center mb-4">
+                                <div className="text-sm text-gray-600">
                                     Property {currentIndex + 1} of {recommendations.length}
-                                </span>
-                                
-                                <button
-                                    onClick={() => navigateProperty('next')}
-                                    disabled={currentIndex === recommendations.length - 1}
-                                    className="flex items-center space-x-1 text-gray-600 hover:text-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
-                                >
-                                    <span>Next</span>
-                                    <ChevronRight size={20} />
-                                </button>
+                                </div>
                             </div>
 
                             {/* MMR Score and Why Recommended */}
@@ -506,12 +653,13 @@ export const WeeklyRecommendationsModalMMR: React.FC<WeeklyRecommendationsModalM
                                     <div className="flex items-center space-x-1">
                                         {getRelevanceStars(currentProperty.fit_score)}
                                         <span className="text-xs text-blue-700 ml-1">
-                                            {Math.round(currentProperty.fit_score * 100)}% match
+                                            {Math.round(currentProperty.fit_score)}% match
                                         </span>
                                     </div>
                                 </div>
-                                <ul className="text-sm text-blue-800 space-y-1">
-                                    {currentProperty.selection_reasons.map((reason, i) => (
+                                {/* Fixed height container for consistent card size - exact height for 5 bullet points */}
+                                <ul className="text-xs text-blue-800 space-y-1 h-[95px] flex flex-col justify-start overflow-hidden">
+                                    {currentProperty.selection_reasons.slice(0, 5).map((reason, i) => (
                                         <li key={i} className="flex items-start">
                                             <span className="text-blue-600 mr-2">•</span>
                                             {reason}
@@ -529,52 +677,49 @@ export const WeeklyRecommendationsModalMMR: React.FC<WeeklyRecommendationsModalM
                                 {/* Front and back content same as your existing modal */}
                                 {cardSide === 'front' ? (
                                     <>
-                                        <div className="flex items-start justify-between mb-4">
+                                        <div className="flex gap-4 mb-3">
+                                            {/* Left side - Property details */}
                                             <div className="flex-1">
-                                                <div className="text-lg font-medium text-gray-900 mb-1">
+                                                <div className="text-sm font-medium text-gray-900 mb-1">
                                                     {currentProperty.address_street || currentProperty.address_full}
                                                 </div>
-                                                <div className="text-sm text-gray-600">
+                                                <div className="text-sm text-gray-600 mb-3">
                                                     {currentProperty.address_city}, {currentProperty.address_state} {currentProperty.address_zip}
                                                 </div>
-                                            </div>
-                                        </div>
 
-                                        <div className="grid grid-cols-2 gap-4 mb-3">
-                                            <div className="space-y-1 text-xs text-gray-600">
-                                                <div className="flex">
-                                                    <span>Units:&nbsp;</span>
-                                                    <span className="font-medium">{currentProperty.units_count || 'N/A'}</span>
-                                                </div>
-                                                <div className="flex">
-                                                    <span>Built:&nbsp;</span>
-                                                    <span className="font-medium">
-                                                        {currentProperty.year_built ? `${currentProperty.year_built} (${calculateAge(currentProperty.year_built)} years old)` : 'N/A'}
-                                                    </span>
-                                                </div>
-                                                <div className="flex">
-                                                    <span>Assessed:&nbsp;</span>
-                                                    <span className="font-medium text-green-600">{formatCurrency(currentProperty.assessed_value)}</span>
-                                                </div>
-                                                <div className="flex">
-                                                    <span>Est. Equity:&nbsp;</span>
-                                                    <span className="font-medium text-blue-600">{formatCurrency(currentProperty.estimated_equity)}</span>
+                                                <div className="space-y-1 text-xs text-gray-600">
+                                                    <div className="flex">
+                                                        <span>Units:&nbsp;</span>
+                                                        <span className="font-medium">{currentProperty.units_count || 'N/A'}</span>
+                                                    </div>
+                                                    <div className="flex">
+                                                        <span>Built:&nbsp;</span>
+                                                        <span className="font-medium">
+                                                            {currentProperty.year_built ? `${currentProperty.year_built} (${calculateAge(currentProperty.year_built)} years old)` : 'N/A'}
+                                                        </span>
+                                                    </div>
+                                                    <div className="flex">
+                                                        <span>Assessed:&nbsp;</span>
+                                                        <span className="font-medium text-green-600">{formatCurrency(currentProperty.assessed_value)}</span>
+                                                    </div>
+                                                    <div className="flex">
+                                                        <span>Est. Equity:&nbsp;</span>
+                                                        <span className="font-medium text-blue-600">{formatCurrency(currentProperty.estimated_equity)}</span>
+                                                    </div>
                                                 </div>
                                             </div>
 
-                                            <div className="space-y-1 text-xs text-gray-600">
-                                                <div className="flex items-center">
-                                                    <a 
-                                                        href={getGoogleMapsLink(currentProperty)}
-                                                        target="_blank"
-                                                        rel="noopener noreferrer"
-                                                        className="text-blue-600 hover:text-blue-800 flex items-center text-xs"
-                                                        onClick={(e) => e.stopPropagation()}
-                                                    >
-                                                        <ExternalLink size={10} className="mr-1" />
-                                                        View on Google Maps
-                                                    </a>
-                                                </div>
+                                            {/* Right side - Clickable Street View Image */}
+                                            <div 
+                                                className="w-32 flex-shrink-0" 
+                                                onClick={(e) => e.stopPropagation()}
+                                            >
+                                                <StreetViewImage
+                                                    address={`${currentProperty.address_street || currentProperty.address_full}, ${currentProperty.address_city}, ${currentProperty.address_state}`}
+                                                    className="h-[120px] w-full"
+                                                    width={128}
+                                                    height={120}
+                                                />
                                             </div>
                                         </div>
 
@@ -587,7 +732,7 @@ export const WeeklyRecommendationsModalMMR: React.FC<WeeklyRecommendationsModalM
                                     <>
                                         <div className="flex items-start justify-between mb-2">
                                             <div className="flex-1">
-                                                <div className="text-lg font-medium text-gray-900 mb-1">
+                                                <div className="text-sm font-medium text-gray-900 mb-1">
                                                     Property Details
                                                 </div>
                                             </div>
@@ -644,55 +789,75 @@ export const WeeklyRecommendationsModalMMR: React.FC<WeeklyRecommendationsModalM
                     ) : null}
                 </div>
 
-                {/* Action Buttons */}
+                {/* Action Buttons with Navigation */}
                 {currentProperty && (
-                    <div className="border-t border-gray-200 p-2 flex justify-center space-x-1.5">
-                        <button
-                            onClick={() => handleFavorite(currentProperty.property_id)}
-                            disabled={loadingStates[currentProperty.property_id] === 'favoriting'}
-                            className={`flex items-center space-x-0.5 px-2 py-1 rounded text-xs transition-all duration-200 transform ${
-                                actionConfirmations[currentProperty.property_id] === 'favorited'
-                                    ? 'bg-green-500 text-white scale-105'
-                                    : loadingStates[currentProperty.property_id] === 'favoriting'
-                                    ? 'bg-orange-500 text-white scale-110'
-                                    : 'bg-orange-500 text-white hover:bg-orange-600 hover:scale-105'
-                            }`}
-                        >
-                            {actionConfirmations[currentProperty.property_id] === 'favorited' ? (
-                                <>
-                                    <span>✓</span>
-                                    <span>Added!</span>
-                                </>
-                            ) : (
-                                <>
-                                    <Heart size={12} />
-                                    <span>Add to Pipeline</span>
-                                </>
-                            )}
-                        </button>
-                        <button
-                            onClick={() => handleDismiss(currentProperty.property_id)}
-                            disabled={loadingStates[currentProperty.property_id] === 'dismissing'}
-                            className={`flex items-center space-x-0.5 px-2 py-1 rounded text-xs transition-all duration-200 transform ${
-                                actionConfirmations[currentProperty.property_id] === 'dismissed'
-                                    ? 'bg-green-500 text-white scale-105'
-                                    : loadingStates[currentProperty.property_id] === 'dismissing'
-                                    ? 'bg-gray-500 text-white scale-110'
-                                    : 'bg-gray-500 text-white hover:bg-gray-600 hover:scale-105'
-                            }`}
-                        >
-                            {actionConfirmations[currentProperty.property_id] === 'dismissed' ? (
-                                <>
-                                    <span>✓</span>
-                                    <span>Dismissed!</span>
-                                </>
-                            ) : (
-                                <>
-                                    <X size={12} />
-                                    <span>Not Interested</span>
-                                </>
-                            )}
-                        </button>
+                    <div className="border-t border-gray-200 p-2">
+                        <div className="flex items-center justify-between mb-2">
+                            {/* Previous Button */}
+                            <button
+                                onClick={() => navigateProperty('prev')}
+                                disabled={currentIndex === 0}
+                                className="flex items-center space-x-1 text-gray-500 hover:text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed px-2 py-1"
+                            >
+                                <ChevronLeft size={16} />
+                                <span className="text-xs">Previous</span>
+                            </button>
+
+                            {/* Decision Buttons */}
+                            <div className="flex space-x-1.5">
+                                <button
+                                    onClick={() => handleFavorite(currentProperty.property_id)}
+                                    className={`flex items-center space-x-1 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 transform hover:scale-105 ${
+                                        propertyDecisions[currentProperty.property_id] === 'favorite'
+                                            ? 'bg-green-500 text-white hover:bg-green-600'
+                                            : 'bg-gray-500 text-white hover:bg-gray-600'
+                                    }`}
+                                >
+                                    {propertyDecisions[currentProperty.property_id] === 'favorite' ? (
+                                        <>
+                                            <span>✓</span>
+                                            <span>Favorited</span>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Heart size={16} />
+                                            <span>Add to Favorites</span>
+                                        </>
+                                    )}
+                                </button>
+                                <button
+                                    onClick={() => handleDismiss(currentProperty.property_id)}
+                                    className={`flex items-center space-x-1 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 transform hover:scale-105 ${
+                                        propertyDecisions[currentProperty.property_id] === 'not_interested'
+                                            ? 'bg-green-500 text-white hover:bg-green-600'
+                                            : 'bg-gray-500 text-white hover:bg-gray-600'
+                                    }`}
+                                >
+                                    {propertyDecisions[currentProperty.property_id] === 'not_interested' ? (
+                                        <>
+                                            <span>✓</span>
+                                            <span>Not Interested</span>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <X size={16} />
+                                            <span>Not Interested</span>
+                                        </>
+                                    )}
+                                </button>
+                            </div>
+
+                            {/* Next Button */}
+                            <button
+                                onClick={() => navigateProperty('next')}
+                                disabled={currentIndex === recommendations.length - 1}
+                                className="flex items-center space-x-1 text-gray-500 hover:text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed px-2 py-1"
+                            >
+                                <span className="text-xs">Next</span>
+                                <ChevronRight size={16} />
+                            </button>
+                        </div>
+                        
                     </div>
                 )}
             </div>

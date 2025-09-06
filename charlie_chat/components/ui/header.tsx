@@ -5,6 +5,12 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useState, useRef, useEffect } from "react";
 import { User, ChevronDown, Settings, Heart, LogOut, Star, CreditCard, Target } from "lucide-react";
+import { RecommendationsIconModal, RecommendationsIconModalRef } from '@/components/ui/RecommendationsIconModal';
+import { WeeklyRecommendationsModalMMR } from "@/components/WeeklyRecommendationsModalMMR";
+import { ProfileModal } from "@/components/ProfileModal";
+import { BuyBoxModal } from "@/components/BuyBoxModal";
+import { SubscriptionModal } from "@/components/SubscriptionModal";
+import SubscriptionSupportModal from "@/components/ui/SubscriptionSupportModal";
 
 import { useAuth } from "@/contexts/AuthContext";
 import { useModal } from "@/contexts/ModalContext";
@@ -20,6 +26,7 @@ export default function Header() {
   const [showAccountMenu, setShowAccountMenu] = useState(false);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const { showSignUpModal, setShowSignUpModal, showLoginModal, setShowLoginModal } = useModal();
+  const recommendationsIconRef = useRef<RecommendationsIconModalRef>(null);
   
   // Sign up modal states
   const [signupEmail, setSignupEmail] = useState("");
@@ -34,6 +41,14 @@ export default function Header() {
   const [loginOtpSent, setLoginOtpSent] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  
+  // Weekly recommendations modal state
+  const [showRecommendationsModal, setShowRecommendationsModal] = useState(false);
+  
+  // Profile, Buy Box, and Subscription modal states
+  const [showProfileModal, setShowProfileModal] = useState(false);
+  const [showBuyBoxModal, setShowBuyBoxModal] = useState(false);
+  const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
 
   const isLoggedIn = !!currentUser;
   const supabaseClient = createSupabaseBrowserClient();
@@ -217,7 +232,7 @@ export default function Header() {
   }, []);
 
   return (
-    <header className="w-full px-6 py-4 flex items-center bg-white border-b border-gray-200 shadow-sm">
+    <header className="sticky top-0 z-50 w-full px-6 py-4 flex items-center bg-white border-b border-gray-200 shadow-sm">
       {/* Logo */}
       <div className="flex items-center">
         <Link href="/">
@@ -226,11 +241,21 @@ export default function Header() {
             alt="Logo"
             width={192}
             height={48}
-            className="mr-8 cursor-pointer"
+            className="mr-4 cursor-pointer"
             style={{ width: '192px', height: 'auto' }}
             priority
           />
         </Link>
+        
+        {/* Recommendations Bell Icon - only show for logged in users */}
+        {isLoggedIn && (
+          <div className="mr-4">
+            <RecommendationsIconModal 
+              ref={recommendationsIconRef}
+              onOpenRecommendations={() => setShowRecommendationsModal(true)}
+            />
+          </div>
+        )}
       </div>
 
       {/* Centered Navigation */}
@@ -315,25 +340,25 @@ export default function Header() {
                 <div className="py-2">
                   {/* Profile */}
                   <button
-                    onClick={() => handleMenuItemClick(() => router.push('/profile'))}
+                    onClick={() => handleMenuItemClick(() => setShowProfileModal(true))}
                     className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center space-x-2"
                   >
                     <Settings size={16} />
                     <span>Profile</span>
                   </button>
 
-                  {/* Buy Box - Hidden for now */}
-                  {/* <button
-                    onClick={() => handleMenuItemClick(() => router.push('/my-buy-box'))}
+                  {/* Buy Box */}
+                  <button
+                    onClick={() => handleMenuItemClick(() => setShowBuyBoxModal(true))}
                     className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center space-x-2"
                   >
                     <Target size={16} />
                     <span>Buy Box</span>
-                  </button> */}
+                  </button>
 
                   {/* Subscription */}
                   <button
-                    onClick={() => handleMenuItemClick(() => router.push('/subscription'))}
+                    onClick={() => handleMenuItemClick(() => setShowSubscriptionModal(true))}
                     className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center space-x-2"
                   >
                     <CreditCard size={16} />
@@ -361,14 +386,13 @@ export default function Header() {
           <>
             <button 
               onClick={() => setShowSignUpModal(true)}
-              className="border border-gray-300 hover:border-gray-400 text-gray-700 text-sm px-4 py-2 rounded-lg font-medium transition-all duration-200 hover:bg-gray-50"
+              className="border border-gray-300 hover:border-gray-400 text-gray-700 hover:text-gray-800 text-sm px-4 py-2 rounded-lg font-medium transition-colors duration-150 hover:bg-gray-50"
             >
               Sign up
             </button>
             <button 
               onClick={() => setShowLoginModal(true)}
-              className="text-white text-sm px-4 py-2 rounded-lg font-medium transition-all duration-200"
-              style={{ backgroundColor: '#1C599F' }}
+              className="bg-orange-600 hover:bg-orange-700 text-white text-sm px-4 py-2 rounded-lg font-medium transition-colors duration-150"
             >
               Log in
             </button>
@@ -460,7 +484,7 @@ export default function Header() {
                 
                 <button
                   type="submit"
-                  className="w-full bg-orange-500 hover:bg-orange-600 text-white py-3 px-4 rounded-lg font-medium transition-all duration-200"
+                  className="w-full bg-orange-600 hover:bg-orange-700 text-white py-3 px-4 rounded-lg font-medium transition-colors duration-150"
                 >
                   Send Confirmation Link
                 </button>
@@ -547,8 +571,7 @@ export default function Header() {
               
               <button
                 type="submit"
-                className="w-full text-white py-3 px-4 rounded-lg font-medium transition-all duration-200"
-                style={{ backgroundColor: '#1C599F' }}
+                className="w-full bg-orange-600 hover:bg-orange-700 text-white py-3 px-4 rounded-lg font-medium transition-colors duration-150"
               >
                 {!loginOtpSent ? "Send Login Code" : "Verify Code"}
               </button>
@@ -556,6 +579,39 @@ export default function Header() {
           </Dialog.Panel>
         </div>
       </Dialog>
+
+      {/* Weekly Recommendations Modal */}
+      <WeeklyRecommendationsModalMMR
+        isOpen={showRecommendationsModal}
+        onClose={async () => {
+          setShowRecommendationsModal(false);
+          // Re-check recommendations status to hide bell if all are completed
+          if (recommendationsIconRef.current) {
+            await recommendationsIconRef.current.recheckRecommendations();
+          }
+        }}
+      />
+
+      {/* Profile Modal */}
+      <ProfileModal
+        isOpen={showProfileModal}
+        onClose={() => setShowProfileModal(false)}
+      />
+
+      {/* Buy Box Modal */}
+      <BuyBoxModal
+        isOpen={showBuyBoxModal}
+        onClose={() => setShowBuyBoxModal(false)}
+      />
+
+      {/* Subscription Modal */}
+      <SubscriptionModal
+        isOpen={showSubscriptionModal}
+        onClose={() => setShowSubscriptionModal(false)}
+      />
+
+      {/* Subscription Support Modal - Global */}
+      <SubscriptionSupportModal />
     </header>
   );
 }

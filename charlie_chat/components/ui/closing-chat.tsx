@@ -6,7 +6,7 @@ import { Sidebar } from "@/components/ui/sidebar";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { useModal } from "@/contexts/ModalContext";
-// import { WeeklyRecommendationsModalMMR } from "@/components/WeeklyRecommendationsModalMMR";
+import { WeeklyRecommendationsModalMMR } from "@/components/WeeklyRecommendationsModalMMR";
 // import { CharlieRecommendationWidgetMMR } from "@/components/CharlieRecommendationWidgetMMR";
 import { Listing } from "@/components/ui/listingTypes";
 import { PropertyBatchState } from './chatServices';
@@ -74,7 +74,7 @@ export function ClosingChat() {
     currentUser
   } = useUserCredits();
 
-  const { isLoading: isLoadingAuth, supabase } = useAuth() as { isLoading: boolean; supabase: any };
+  const { isLoading: isLoadingAuth, supabase, user } = useAuth() as { isLoading: boolean; supabase: any; user: any };
   const { setShowSignUpModal } = useModal();
   const stripeCustomerId = (currentUser as any)?.stripe_customer_id;
 
@@ -113,8 +113,8 @@ export function ClosingChat() {
   const batchSize = BATCH_SIZE;
   
   // MMR Weekly recommendations state
-  // const [showRecommendationsModal, setShowRecommendationsModal] = useState(false);
-  // const [hasNewRecommendations, setHasNewRecommendations] = useState(false);
+  const [showRecommendationsModal, setShowRecommendationsModal] = useState(false);
+  const [hasNewRecommendations, setHasNewRecommendations] = useState(false);
   const {
     selectedListings,
     setSelectedListings,
@@ -381,7 +381,7 @@ export function ClosingChat() {
             saved_properties (*)
           `)
           .eq('user_id', session.user.id)
-          .eq('recommendation_type', 'weekly_recommendation')
+          .eq('recommendation_type', 'algorithm')
           .eq('is_active', true)
           .limit(10);
 
@@ -768,12 +768,12 @@ export function ClosingChat() {
         </Dialog>
 
 
-        {/* MMR Weekly Recommendations Modal - Hidden for now */}
-        {/* <WeeklyRecommendationsModalMMR
+
+        {/* MMR Weekly Recommendations Modal */}
+        <WeeklyRecommendationsModalMMR
           isOpen={showRecommendationsModal}
           onClose={() => setShowRecommendationsModal(false)}
-          forceRefresh={false}
-        /> */}
+        />
 
         {/* Charlie Recommendation Widget - Hidden for now */}
         {/* <CharlieRecommendationWidgetMMR

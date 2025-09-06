@@ -31,6 +31,7 @@ export interface BaseSavedProperty {
   owner_first_name?: string;
   owner_last_name?: string;
   favorite_status?: FavoriteStatus | null;
+  recommendation_type?: 'manual' | 'algorithm' | string;
 }
 
 /* ================================================================
@@ -81,6 +82,7 @@ export interface PageSavedProperty extends BaseSavedProperty {
   longitude?: number;
   last_skip_trace?: string;
   skipTraceData?: any;
+  market_key?: string | null; // Add market_key for market assignment
   mail_address?: {
     street?: string;
     city?: string;

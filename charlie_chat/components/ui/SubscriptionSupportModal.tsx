@@ -131,7 +131,7 @@ const SubscriptionSupportModal = () => {
   if (!showSubscriptionSupport) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60] p-4">
       <div 
         ref={modalRef}
         className="bg-white rounded-2xl shadow-2xl overflow-hidden border border-gray-200 w-full max-w-md"

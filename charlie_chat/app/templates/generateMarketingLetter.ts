@@ -132,7 +132,7 @@ export async function generateMarketingLetter(
      *  3️⃣  Property address pieces for body text
      * ──────────────────────────────────────────────────────────────── */
     const propertyStreet = listing.address?.address
-      ?? listing.address_full
+      ?? listing.address_street
       ?? '[Property Street]';
 
     const propertyCity = listing.address?.city
@@ -142,6 +142,51 @@ export async function generateMarketingLetter(
     const acquisitionFocusState = listing.address?.state
       ?? listing.address_state
       ?? "[Property's State]";
+
+    const propertyZip = listing.address?.zip
+      ?? listing.address_zip
+      ?? '';
+
+    // Debug logging to see what address data is available
+    console.log('🏠 Property Address Debug:', {
+      propertyStreet,
+      propertyCity,
+      acquisitionFocusState,
+      propertyZip,
+      addressFull: listing.address_full,
+      listingAddress: listing.address,
+      listingFields: {
+        address_street: listing.address_street,
+        address_city: listing.address_city,
+        address_state: listing.address_state,
+        address_zip: listing.address_zip
+      }
+    });
+
+    // Check if address_full already contains complete address (includes commas)
+    // If so, use it directly to avoid duplication
+    let propertyFullAddress = '';
+    
+    if (listing.address_full && listing.address_full.includes(',')) {
+      // address_full likely contains complete address already
+      propertyFullAddress = listing.address_full;
+    } else {
+      // Build complete address from individual components
+      const streetPart = listing.address_full || propertyStreet;
+      
+      propertyFullAddress = streetPart;
+      if (propertyCity && propertyCity !== '[Property City]') {
+        propertyFullAddress += `, ${propertyCity}`;
+      }
+      if (acquisitionFocusState && acquisitionFocusState !== "[Property's State]") {
+        propertyFullAddress += `, ${acquisitionFocusState}`;
+      }
+      if (propertyZip) {
+        propertyFullAddress += ` ${propertyZip}`;
+      }
+    }
+    
+    console.log('🏠 Final propertyFullAddress:', propertyFullAddress);
 
     /* ────────────────────────────────────────────────────────────────
      *  4️⃣  Helper to make styled paragraphs
@@ -289,7 +334,7 @@ export async function generateMarketingLetter(
     letter.push(createStyledParagraph(`Dear ${salutationName},`, { spaceAfterPt: 6 }));
     letter.push(
       createStyledParagraph(
-        `I hope this note finds you well. I'm reaching out to express sincere interest in your property located at ${propertyStreet}${propertyCity ? `, ${propertyCity}` : ''}. I focus on acquiring multifamily properties in ${acquisitionFocusState}, and this building stood out due to its location, character, and the strength of the local rental market.`,
+        `I hope this note finds you well. I'm reaching out to express sincere interest in your property located at ${propertyFullAddress}. I focus on acquiring multifamily properties in ${acquisitionFocusState}, and this building stood out due to its location, character, and the strength of the local rental market.`,
         { spaceAfterPt: 10 }
       )
     );
