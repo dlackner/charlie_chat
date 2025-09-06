@@ -27,7 +27,7 @@ export default function DashboardPage() {
         {/* Key Metrics */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <MetricCard
-            title="Total Portfolio Value"
+            title="Total Pipeline Value"
             value="$24.8M"
             change="+12.5%"
             trend="up"
@@ -67,7 +67,7 @@ export default function DashboardPage() {
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-xl font-semibold text-gray-900">Recent Activity</h2>
-                <Link href="/dashboard/overview" className="text-blue-600 hover:text-blue-700 text-sm font-medium">
+                <Link href="/dashboard/metrics" className="text-blue-600 hover:text-blue-700 text-sm font-medium">
                   View All
                 </Link>
               </div>
@@ -102,7 +102,7 @@ export default function DashboardPage() {
             {/* Performance Chart */}
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
               <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl font-semibold text-gray-900">Portfolio Performance</h2>
+                <h2 className="text-xl font-semibold text-gray-900">Pipeline Performance</h2>
                 <select className="text-sm border border-gray-300 rounded-md px-3 py-1">
                   <option>Last 6 months</option>
                   <option>Last year</option>
@@ -113,7 +113,7 @@ export default function DashboardPage() {
               <div className="h-64 bg-gradient-to-r from-blue-50 to-green-50 rounded-lg flex items-center justify-center">
                 <div className="text-center text-gray-500">
                   <Activity className="h-12 w-12 mx-auto mb-2" />
-                  <p className="font-medium">Portfolio Performance Chart</p>
+                  <p className="font-medium">Pipeline Performance Chart</p>
                   <p className="text-sm">Interactive chart would go here</p>
                 </div>
               </div>
@@ -187,7 +187,7 @@ export default function DashboardPage() {
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-semibold text-gray-900">Deal Pipeline</h3>
-                <Link href="/discover/pipeline" className="text-blue-600 hover:text-blue-700 text-sm">
+                <Link href="/dashboard/pipeline" className="text-blue-600 hover:text-blue-700 text-sm">
                   View All
                 </Link>
               </div>

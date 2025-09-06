@@ -1,11 +1,11 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { Search, Heart, Grid3x3, Map, BarChart3, Grid, Filter, ChevronDown, FileText, MapPin, Calculator } from 'lucide-react';
+import { Search, Heart, Grid3x3, Map, BarChart3, Grid, Filter, ChevronDown, FileText, MapPin, Calculator, StickyNote, Columns } from 'lucide-react';
 import { generate10YearCashFlowReport } from '../offer-analyzer/cash-flow-report';
 
 export default function EngagePage() {
-  const [viewMode, setViewMode] = useState<'cards' | 'map' | 'analysis' | 'matrix'>('cards');
+  const [viewMode, setViewMode] = useState<'cards' | 'map' | 'analysis' | 'matrix' | 'pipeline'>('cards');
   const [selectedStatus, setSelectedStatus] = useState('All');
   const [selectedMarket, setSelectedMarket] = useState('All');
   const [selectedSource, setSelectedSource] = useState('All');
@@ -31,7 +31,8 @@ export default function EngagePage() {
       source: 'A', // A = Auto (weekly recommendations), M = Manual (user saved)
       isFavorited: true,
       isSkipTraced: false,
-      hasPricingScenario: false
+      hasPricingScenario: false,
+      notes: ''
     },
     {
       id: 2,
@@ -48,7 +49,8 @@ export default function EngagePage() {
       source: 'M',
       isFavorited: true,
       isSkipTraced: true,
-      hasPricingScenario: true
+      hasPricingScenario: true,
+      notes: 'Great property, need to follow up @09/15/25'
     },
     {
       id: 3,
@@ -65,7 +67,8 @@ export default function EngagePage() {
       source: 'A',
       isFavorited: true,
       isSkipTraced: false,
-      hasPricingScenario: false
+      hasPricingScenario: false,
+      notes: 'Large complex - schedule site visit @09/20/25'
     },
     {
       id: 4,
@@ -82,7 +85,8 @@ export default function EngagePage() {
       source: 'M',
       isFavorited: true,
       isSkipTraced: false,
-      hasPricingScenario: true
+      hasPricingScenario: true,
+      notes: 'Owner responded - waiting for financials'
     }
   ];
 
@@ -474,6 +478,7 @@ function PropertyCard({
 }) {
   const [pipelineStatus, setPipelineStatus] = useState(property.pipelineStatus);
   const [market, setMarket] = useState(property.market);
+  const [notes, setNotes] = useState(property.notes || '');
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -597,6 +602,25 @@ function PropertyCard({
           <div className="text-sm text-gray-600">
             Est. Equity: <span className="font-medium text-green-600">{property.estEquity}</span>
           </div>
+        </div>
+
+        {/* Notes Section */}
+        <div className="mb-3">
+          <div className="flex items-center mb-2">
+            <StickyNote className="h-3 w-3 text-gray-500 mr-1" />
+            <label className="text-xs font-medium text-gray-700">Notes</label>
+          </div>
+          <textarea
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            placeholder="Add notes... Use @MM/DD/YY for reminders"
+            className="w-full text-xs border border-gray-200 rounded px-2 py-1 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 resize-none"
+            rows={2}
+            onBlur={() => {
+              // In a real app, this would save to database
+              console.log(`Notes updated for ${property.address}:`, notes);
+            }}
+          />
         </div>
 
         {/* Bottom Actions */}

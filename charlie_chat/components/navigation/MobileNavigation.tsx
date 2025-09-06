@@ -29,8 +29,8 @@ const navigation: NavigationItem[] = [
     href: '/dashboard', 
     icon: Home,
     submenu: [
-      { name: 'Overview', href: '/dashboard/overview' },
-      { name: 'Portfolio', href: '/dashboard/portfolio' },
+      { name: 'Metrics', href: '/dashboard/metrics' },
+      { name: 'Pipeline', href: '/dashboard/pipeline' },
       { name: 'Performance', href: '/dashboard/performance' },
       { name: 'Analytics', href: '/dashboard/analytics' }
     ]
