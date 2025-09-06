@@ -1064,40 +1064,6 @@ export const BuyBoxModal: React.FC<BuyBoxModalProps> = ({ isOpen, onClose, focus
                                                                         );
                                                                     })()}
                                                                 </div>
-                                                                {/* Market Convergence Indicator - Moved below city name */}
-                                                                {isExpanded && (() => {
-                                                                    const marketKey = market.market_key || generateMarketKey(index);
-                                                                    const convergence = marketConvergence[marketKey] || { phase: 'discovery', progress: 1 };
-                                                                    
-                                                                    return (
-                                                                        <div className="flex items-center space-x-1.5 mt-2">
-                                                                            {[1, 2, 3, 4].map((dotNumber) => {
-                                                                                const isActive = dotNumber <= convergence.progress;
-                                                                                const isProduction = dotNumber === 4 && convergence.phase === 'production';
-                                                                                
-                                                                                return (
-                                                                                    <div
-                                                                                        key={dotNumber}
-                                                                                        className={`w-4 h-4 rounded-full transition-all duration-300 shadow-sm ${
-                                                                                            isActive
-                                                                                                ? isProduction
-                                                                                                    ? 'bg-gradient-to-br from-green-400 to-green-700 shadow-green-300/50'
-                                                                                                    : 'bg-gradient-to-br from-blue-400 to-blue-700 shadow-blue-300/50'
-                                                                                                : 'bg-gradient-to-br from-gray-200 to-gray-400 shadow-gray-200/50'
-                                                                                        }`}
-                                                                                        style={{
-                                                                                            boxShadow: isActive
-                                                                                                ? isProduction
-                                                                                                    ? '0 3px 6px rgba(34, 197, 94, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.3)'
-                                                                                                    : '0 3px 6px rgba(59, 130, 246, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.3)'
-                                                                                                : '0 2px 4px rgba(156, 163, 175, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.3)'
-                                                                                        }}
-                                                                                    />
-                                                                                );
-                                                                            })}
-                                                                        </div>
-                                                                    );
-                                                                })()}
                                                             </div>
                                                             <div className="flex items-center space-x-2">
                                                                 {/* Edit/Save Toggle - Only visible when expanded */}

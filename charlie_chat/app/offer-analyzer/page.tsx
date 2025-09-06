@@ -1,0 +1,1805 @@
+'use client';
+
+import React, { useState, useEffect, useMemo, useRef, Suspense, useCallback } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { GradeMetrics, MultifamilyMarketBenchmarks, PropertyCharacteristics, MultifamilyGradeMetrics, MULTIFAMILY_BENCHMARKS, detectAssetClass, detectMarketTier, calculateMultifamilyGrade } from './grading-system';
+// Removed PropertySummaryButton - analysis now handled on property details page
+import { useAuth } from '@/contexts/AuthContext';
+import { useOfferAnalyzerAccess } from './usePropertyAnalyzerAccess';
+import { UnsavedChangesModal } from './UnsavedChangesModal';
+import { CharlieTooltip } from './CharlieTooltip';
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+  ReferenceLine
+} from 'recharts';
+
+// Define the structure for data points in the chart
+interface ChartDataPoint {
+  year: number;
+  cumulativeCashFlow: number;
+  noi: number;
+  cashFlowBeforeTax: number;
+}
+
+// Helper function to calculate IRR using Newton's method
+const calculateIRR = (cashFlows: number[], guess: number = 0.1): number => {
+  // Defensive check: Ensure cashFlows is a valid, non-empty array
+  if (!Array.isArray(cashFlows) || cashFlows.length === 0) {
+    console.error("calculateIRR received an invalid or empty cashFlows array:", cashFlows);
+    return 0; // Return a default of 0 if input is invalid
+  }
+  // If only initial investment is present, IRR is not meaningful in standard calculation
+  // Or if all cash flows are 0 after initial investment
+  if (cashFlows.length === 1 && cashFlows[0] < 0) {
+    return 0;
+  }
+
+  const npv = (rate: number) => {
+    let sum = 0;
+    for (let i = 0; i < cashFlows.length; i++) {
+      sum += cashFlows[i] / Math.pow(1 + rate, i);
+    }
+    return sum;
+  };
+
+  const derivativeNpv = (rate: number): number => {
+    let sum = 0;
+    for (let i = 0; i < cashFlows.length; i++) {
+      sum -= i * cashFlows[i] / Math.pow(1 + rate, i + 1);
+    }
+    return sum;
+  };
+
+  let irr = guess;
+  const maxIterations = 100;
+  const tolerance = 0.0001;
+  for (let i = 0; i < maxIterations; i++) {
+    const nextIrr = irr - npv(irr) / derivativeNpv(irr);
+    if (Math.abs(nextIrr - irr) < tolerance) {
+      return nextIrr;
+    }
+    irr = nextIrr;
+  }
+  return irr; // Return the last approximation if not converged
+};
+
+// Component to handle search params
+function SearchParamsHandler({ onParamsLoaded }: { onParamsLoaded: (params: { street: string; city: string; state: string }) => void }) {
+  const searchParams = useSearchParams();
+  
+  useEffect(() => {
+    onParamsLoaded({
+      street: searchParams.get('street') || '',
+      city: searchParams.get('city') || '',
+      state: searchParams.get('state') || ''
+    });
+  }, [searchParams, onParamsLoaded]);
+  
+  return null;
+}
+
+export default function OfferAnalyzerPage() {
+  // Get user authentication and access control
+  const { user: currentUser } = useAuth();
+  const { userClass, hasAccess: hasOfferAnalyzerAccess, isLoading: isLoadingAccess } = useOfferAnalyzerAccess();
+  const router = useRouter();
+
+  // Redirect disabled users to pricing page
+  useEffect(() => {
+    if (!isLoadingAccess && !hasOfferAnalyzerAccess && userClass === 'disabled') {
+      router.replace('/pricing');
+    }
+  }, [isLoadingAccess, hasOfferAnalyzerAccess, userClass, router]);
+
+  // --- Modal State ---
+  const [showUnsavedChangesModal, setShowUnsavedChangesModal] = useState(false);
+  const [pendingNavigation, setPendingNavigation] = useState<(() => void) | null>(null);
+  const allowLeavingRef = useRef(false);
+
+  // --- Property Address State (from URL params, not displayed in UI) ---
+  const [propertyStreet, setPropertyStreet] = useState<string>('');
+  const [propertyCity, setPropertyCity] = useState<string>('');
+  const [propertyState, setPropertyState] = useState<string>('');
+  
+  // Callback to handle search params
+  const handleParamsLoaded = useCallback((params: { street: string; city: string; state: string }) => {
+    setPropertyStreet(params.street);
+    setPropertyCity(params.city);
+    setPropertyState(params.state);
+  }, []);
+
+  // --- Input States: FINANCING ---
+  const [purchasePrice, setPurchasePrice] = useState<number>(7000000);
+  const [downPaymentPercentage, setDownPaymentPercentage] = useState<number>(20); // Percentage
+  const [interestRate, setInterestRate] = useState<number>(7.0); // Percentage
+  const [loanStructure, setLoanStructure] = useState<'amortizing' | 'interest-only'>('amortizing'); // New loan structure selection
+  const [amortizationPeriodYears, setAmortizationPeriodYears] = useState<number>(30); // Years (updated from 24 to 30)
+  const [interestOnlyPeriodYears, setInterestOnlyPeriodYears] = useState<number>(10); // Years for IO period
+  const [refinanceTermYears, setRefinanceTermYears] = useState<number>(25); // Years (0 means sale)
+  const [closingCostsPercentage, setClosingCostsPercentage] = useState<number>(3); // Percentage of Purchase Price
+  const [dispositionCapRate, setDispositionCapRate] = useState<number>(6); // Target cap rate at sale
+
+  // --- Input States: RENTS ---
+  const [numUnits, setNumUnits] = useState<number>(47);
+  const [avgMonthlyRentPerUnit, setAvgMonthlyRentPerUnit] = useState<number>(2500);
+  const [vacancyRate, setVacancyRate] = useState<number>(10); // Percentage
+  const [annualRentalGrowthRate, setAnnualRentalGrowthRate] = useState<number>(2); // Percentage
+  const [otherIncomeAnnual, setOtherIncomeAnnual] = useState<number>(0); // New State for Other Income
+  const [incomeReductionsAnnual, setIncomeReductionsAnnual] = useState<number>(0); // New State for Income Reductions
+
+  // --- Input States: OPERATING EXPENSES (ANNUAL) ---
+  const [propertyTaxes, setPropertyTaxes] = useState<number>(12000);
+  const [insurance, setInsurance] = useState<number>(10000);
+  const [propertyManagementFeePercentage, setPropertyManagementFeePercentage] = useState<number>(6); // Percentage of EGI
+  const [maintenanceRepairsAnnual, setMaintenanceRepairsAnnual] = useState<number>(12000); // Total annual
+  const [utilitiesAnnual, setUtilitiesAnnual] = useState<number>(6000); // Total annual
+  const [contractServicesAnnual, setContractServicesAnnual] = useState<number>(6000); // New expense
+  const [payrollAnnual, setPayrollAnnual] = useState<number>(15000); // New expense
+  const [marketingAnnual, setMarketingAnnual] = useState<number>(2400); // New expense
+  const [gAndAAnnual, setGAndAAnnual] = useState<number>(1200); // New expense
+  const [otherExpensesAnnual, setOtherExpensesAnnual] = useState<number>(5000); // Total annual
+  const [expenseGrowthRate, setExpenseGrowthRate] = useState<number>(2); // Percentage
+
+  // --- Operating Expenses Toggle States ---
+  const [usePercentageMode, setUsePercentageMode] = useState<boolean>(false);
+  const [operatingExpensePercentage, setOperatingExpensePercentage] = useState<number>(45);
+
+  // --- Input States: CAPITAL EXPENDITURES (ANNUAL) ---
+  const [capitalReservePerUnitAnnual, setCapitalReservePerUnitAnnual] = useState<number>(500); // Per unit, annual
+  const [holdingPeriodYears, setHoldingPeriodYears] = useState<number>(10); // Years
+  const [deferredCapitalReservePerUnit, setDeferredCapitalReservePerUnit] = useState<number>(0);
+  // --- Helper function for formatting and parsing numerical inputs with commas ---
+  const formatAndParseNumberInput = (
+    setter: React.Dispatch<React.SetStateAction<number>>
+  ) => (e: React.ChangeEvent<HTMLInputElement>) => {
+    // Remove all non-digit and non-decimal characters (allowing only one decimal point)
+    const cleanedValue = e.target.value.replace(/[^\d.]/g, '');
+    // Parse to float, default to 0 if invalid
+    const parsedValue = parseFloat(cleanedValue) || 0;
+    setter(Math.max(0, parsedValue));
+  };
+
+  // --- Calculated Metrics (Year 1) ---
+
+  // Financing Calculations (Year 1)
+  const downPaymentAmount = useMemo(() => {
+    return purchasePrice * (downPaymentPercentage / 100);
+  }, [purchasePrice, downPaymentPercentage]);
+
+  const loanAmount = useMemo(() => {
+    return purchasePrice - downPaymentAmount;
+  }, [purchasePrice, downPaymentAmount]);
+
+  const totalInitialInvestment = useMemo(() => {
+    return downPaymentAmount + (purchasePrice * (closingCostsPercentage / 100));
+  }, [downPaymentAmount, purchasePrice, closingCostsPercentage]);
+
+  const monthlyInterestRate = useMemo(() => {
+    return (interestRate / 100) / 12;
+  }, [interestRate]);
+
+  const numberOfPayments = useMemo(() => {
+    return amortizationPeriodYears * 12;
+  }, [amortizationPeriodYears]);
+
+  const monthlyMortgagePayment = useMemo(() => {
+    if (loanStructure === 'interest-only') {
+      // For interest-only loans, payment is just the interest
+      return loanAmount * monthlyInterestRate;
+    }
+    
+    // For amortizing loans, use standard amortization formula
+    if (monthlyInterestRate === 0) { // Handle 0% interest rate to avoid division by zero
+      if (numberOfPayments === 0) return 0;
+      return loanAmount / numberOfPayments;
+    }
+    const numerator = monthlyInterestRate * Math.pow(1 + monthlyInterestRate, numberOfPayments);
+    const denominator = Math.pow(1 + monthlyInterestRate, numberOfPayments) - 1;
+
+    if (denominator === 0) return loanAmount;
+    return loanAmount * (numerator / denominator);
+  }, [loanAmount, monthlyInterestRate, numberOfPayments, loanStructure]);
+
+  const annualDebtService = useMemo(() => {
+    return monthlyMortgagePayment * 12;
+  }, [monthlyMortgagePayment]);
+
+  // Rent Calculations (Year 1)
+  const grossPotentialRent = useMemo(() => {
+    return numUnits * avgMonthlyRentPerUnit * 12;
+  }, [numUnits, avgMonthlyRentPerUnit]);
+
+  const effectiveGrossIncome = useMemo(() => {
+    return (grossPotentialRent * (1 - vacancyRate / 100)) + otherIncomeAnnual - incomeReductionsAnnual;
+  }, [grossPotentialRent, vacancyRate, otherIncomeAnnual, incomeReductionsAnnual]);
+
+  // Expense Calculations (Year 1)
+  const propertyManagementFeeAmount = useMemo(() => {
+    if (usePercentageMode) return 0; // Show $0 in percentage mode
+    return effectiveGrossIncome * (propertyManagementFeePercentage / 100);
+  }, [usePercentageMode, effectiveGrossIncome, propertyManagementFeePercentage]);
+
+  const totalOperatingExpenses = useMemo(() => {
+    if (usePercentageMode) {
+      return effectiveGrossIncome * (operatingExpensePercentage / 100);
+    }
+    return propertyTaxes + insurance + propertyManagementFeeAmount + maintenanceRepairsAnnual + utilitiesAnnual + contractServicesAnnual + payrollAnnual + marketingAnnual + gAndAAnnual + otherExpensesAnnual;
+  }, [usePercentageMode, operatingExpensePercentage, effectiveGrossIncome, propertyTaxes, insurance, propertyManagementFeeAmount, maintenanceRepairsAnnual, utilitiesAnnual, contractServicesAnnual, payrollAnnual, marketingAnnual, gAndAAnnual, otherExpensesAnnual]);
+
+  const netOperatingIncome = useMemo(() => {
+    return effectiveGrossIncome - totalOperatingExpenses;
+  }, [effectiveGrossIncome, totalOperatingExpenses]);
+
+  const expenseRatio = useMemo(() => {
+    if (effectiveGrossIncome === 0) return 0;
+    return (totalOperatingExpenses / effectiveGrossIncome) * 100; // Percentage
+  }, [totalOperatingExpenses, effectiveGrossIncome]);
+
+  // Individual Operating Expense Line Items for Display (Year 1)
+  // These show $0 in percentage mode, actual values in detailed mode
+  const displayPropertyTaxes = useMemo(() => usePercentageMode ? 0 : propertyTaxes, [usePercentageMode, propertyTaxes]);
+  const displayInsurance = useMemo(() => usePercentageMode ? 0 : insurance, [usePercentageMode, insurance]);
+  const displayPropertyManagementFeeAmount = useMemo(() => usePercentageMode ? 0 : propertyManagementFeeAmount, [usePercentageMode, propertyManagementFeeAmount]);
+  const displayMaintenanceRepairsAnnual = useMemo(() => usePercentageMode ? 0 : maintenanceRepairsAnnual, [usePercentageMode, maintenanceRepairsAnnual]);
+  const displayUtilitiesAnnual = useMemo(() => usePercentageMode ? 0 : utilitiesAnnual, [usePercentageMode, utilitiesAnnual]);
+  const displayContractServicesAnnual = useMemo(() => usePercentageMode ? 0 : contractServicesAnnual, [usePercentageMode, contractServicesAnnual]);
+  const displayPayrollAnnual = useMemo(() => usePercentageMode ? 0 : payrollAnnual, [usePercentageMode, payrollAnnual]);
+  const displayMarketingAnnual = useMemo(() => usePercentageMode ? 0 : marketingAnnual, [usePercentageMode, marketingAnnual]);
+  const displayGAndAAnnual = useMemo(() => usePercentageMode ? 0 : gAndAAnnual, [usePercentageMode, gAndAAnnual]);
+  const displayOtherExpensesAnnual = useMemo(() => usePercentageMode ? 0 : otherExpensesAnnual, [usePercentageMode, otherExpensesAnnual]);
+
+  // Capital Reserve (Year 1)
+  const annualCapitalReserveTotal = useMemo(() => {
+    return capitalReservePerUnitAnnual * numUnits;
+  }, [capitalReservePerUnitAnnual, numUnits]);
+
+  const totalDeferredCapitalReserve = useMemo(() => {
+    return deferredCapitalReservePerUnit * numUnits;
+  }, [deferredCapitalReservePerUnit, numUnits]);
+
+  // Cash Flow & Returns (Year 1)
+  const cashFlowBeforeTax = useMemo(() => {
+    return netOperatingIncome - annualDebtService;
+  }, [netOperatingIncome, annualDebtService]);
+
+  const cashFlowAfterCapitalReserve = useMemo(() => {
+    return cashFlowBeforeTax - annualCapitalReserveTotal - totalDeferredCapitalReserve;
+  }, [cashFlowBeforeTax, annualCapitalReserveTotal, totalDeferredCapitalReserve]);
+
+  const capRate = useMemo(() => {
+    if (purchasePrice === 0) return 0;
+    return (netOperatingIncome / purchasePrice) * 100; // Percentage
+  }, [netOperatingIncome, purchasePrice]);
+
+  const cashOnCashReturn = useMemo(() => {
+    if (totalInitialInvestment === 0) return 0;
+    return (cashFlowAfterCapitalReserve / totalInitialInvestment) * 100; // Percentage
+  }, [cashFlowAfterCapitalReserve, totalInitialInvestment]);
+
+  // Debt Service Coverage Ratio (DSCR) Calculation
+  const debtServiceCoverageRatio = useMemo(() => {
+    if (annualDebtService === 0) return 0; // Avoid division by zero
+    return netOperatingIncome / annualDebtService;
+  }, [netOperatingIncome, annualDebtService]);
+
+  // --- Chart Data & Projections (Multi-Year) ---
+  const [chartData, setChartData] = useState<ChartDataPoint[]>([]);
+  const [breakEvenYear, setBreakEvenYear] = useState<number | null>(null);
+  const [projectedEquityAtHorizon, setProjectedEquityAtHorizon] = useState<number>(0);
+  const [roiAtHorizon, setRoiAtHorizon] = useState<number>(0);
+  const [irr, setIRR] = useState<number>(0);
+  const [overallGrade, setOverallGrade] = useState<string>('N/A');
+  const [gradeBreakdown, setGradeBreakdown] = useState<Record<string, number>>({});
+  const [detectedClassification, setDetectedClassification] = useState<{ assetClass: string; marketTier: string }>({
+    assetClass: 'b-class',
+    marketTier: 'tier-2'
+  });
+  const [year1LoanBalance, setYear1LoanBalance] = useState<number>(0);
+  const [actualGradingScore, setActualGradingScore] = useState<number>(0);
+  const [showMoreMenu, setShowMoreMenu] = useState(false);
+  const moreMenuRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Function to save settings as blob
+  const saveSettings = () => {
+    // Reset the unsaved changes tracking since we're saving the scenario
+    if ((window as any).propertyAnalyzerSetSavingScenario) {
+      (window as any).propertyAnalyzerSetSavingScenario(true);
+    }
+    
+    const settingsToSave = {
+      purchasePrice,
+      downPaymentPercentage,
+      interestRate,
+      loanStructure,
+      amortizationPeriodYears,
+      interestOnlyPeriodYears,
+      refinanceTermYears,
+      closingCostsPercentage,
+      dispositionCapRate,
+      numUnits,
+      avgMonthlyRentPerUnit,
+      vacancyRate,
+      annualRentalGrowthRate,
+      otherIncomeAnnual,
+      incomeReductionsAnnual,
+      propertyTaxes,
+      insurance,
+      propertyManagementFeePercentage,
+      maintenanceRepairsAnnual,
+      utilitiesAnnual,
+      contractServicesAnnual,
+      payrollAnnual,
+      marketingAnnual,
+      gAndAAnnual,
+      otherExpensesAnnual,
+      expenseGrowthRate,
+      capitalReservePerUnitAnnual,
+      deferredCapitalReservePerUnit,
+      holdingPeriodYears,
+      usePercentageMode,
+      operatingExpensePercentage,
+      savedAt: new Date().toISOString()
+    };
+
+    const blob = new Blob([JSON.stringify(settingsToSave, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    // Prompt user for filename
+    const defaultFilename = `property-analyzer-${new Date().toISOString().split('T')[0]}.json`;
+    const userFilename = prompt('Enter filename:', defaultFilename);
+
+    if (userFilename) {
+      a.download = userFilename.endsWith('.json') ? userFilename : userFilename + '.json';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      
+      // File was successfully saved, permanently reset the interaction flag
+      // This prevents warnings until user makes new changes
+      if ((window as any).propertyAnalyzerResetUserInteraction) {
+        (window as any).propertyAnalyzerResetUserInteraction();
+      }
+    }
+
+    URL.revokeObjectURL(url);
+    
+    // Clean up the saving flag 
+    if ((window as any).propertyAnalyzerSetSavingScenario) {
+      (window as any).propertyAnalyzerSetSavingScenario(false);
+    }
+  };
+
+  // Property data for 10-year cash flow report (moved into Charlie's Analysis)
+  const propertyData = useMemo(() => ({
+    propertyStreet,
+    propertyCity,
+    propertyState,
+    purchasePrice,
+    downPaymentPercentage,
+    closingCostsPercentage,
+    interestRate,
+    amortizationPeriodYears,
+    loanStructure,
+    interestOnlyPeriodYears,
+    numUnits,
+    avgMonthlyRentPerUnit,
+    vacancyRate,
+    annualRentalGrowthRate,
+    otherIncomeAnnual,
+    incomeReductionsAnnual,
+    propertyTaxes: displayPropertyTaxes,
+    insurance: displayInsurance,
+    propertyManagementFeePercentage,
+    maintenanceRepairsAnnual: displayMaintenanceRepairsAnnual,
+    utilitiesAnnual: displayUtilitiesAnnual,
+    contractServicesAnnual: displayContractServicesAnnual,
+    payrollAnnual: displayPayrollAnnual,
+    marketingAnnual: displayMarketingAnnual,
+    gAndAAnnual: displayGAndAAnnual,
+    otherExpensesAnnual: displayOtherExpensesAnnual,
+    expenseGrowthRate,
+    usePercentageMode,
+    operatingExpensePercentage,
+    capitalReservePerUnitAnnual,
+    holdingPeriodYears
+  }), [
+    propertyStreet, propertyCity, propertyState,
+    purchasePrice, downPaymentPercentage, closingCostsPercentage, interestRate,
+    amortizationPeriodYears, loanStructure, interestOnlyPeriodYears, numUnits,
+    avgMonthlyRentPerUnit, vacancyRate, annualRentalGrowthRate, otherIncomeAnnual,
+    incomeReductionsAnnual, displayPropertyTaxes, displayInsurance, propertyManagementFeePercentage,
+    displayMaintenanceRepairsAnnual, displayUtilitiesAnnual, displayContractServicesAnnual, displayPayrollAnnual,
+    displayMarketingAnnual, displayGAndAAnnual, displayOtherExpensesAnnual, expenseGrowthRate,
+    usePercentageMode, operatingExpensePercentage, capitalReservePerUnitAnnual, holdingPeriodYears
+  ]);
+
+  // Function to handle file loading
+  const handleFileLoad = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const content = e.target?.result as string;
+        const parsed = JSON.parse(content);
+
+        if (parsed && typeof parsed === "object") {
+          setPurchasePrice(parsed.purchasePrice ?? 0);
+          setDownPaymentPercentage(parsed.downPaymentPercentage ?? 0);
+          setInterestRate(parsed.interestRate ?? 0);
+          setLoanStructure(parsed.loanStructure ?? 'amortizing');
+          setAmortizationPeriodYears(parsed.amortizationPeriodYears ?? 30);
+          setInterestOnlyPeriodYears(parsed.interestOnlyPeriodYears ?? 10);
+          setRefinanceTermYears(parsed.refinanceTermYears ?? 25);
+          setClosingCostsPercentage(parsed.closingCostsPercentage ?? 0);
+          setDispositionCapRate(parsed.dispositionCapRate ?? 0);
+          setNumUnits(parsed.numUnits ?? 0);
+          setAvgMonthlyRentPerUnit(parsed.avgMonthlyRentPerUnit ?? 0);
+          setVacancyRate(parsed.vacancyRate ?? 0);
+          setAnnualRentalGrowthRate(parsed.annualRentalGrowthRate ?? 0);
+          setOtherIncomeAnnual(parsed.otherIncomeAnnual ?? 0);
+          setIncomeReductionsAnnual(parsed.incomeReductionsAnnual ?? 0);
+          setPropertyTaxes(parsed.propertyTaxes ?? 0);
+          setInsurance(parsed.insurance ?? 0);
+          setPropertyManagementFeePercentage(parsed.propertyManagementFeePercentage ?? 0);
+          setMaintenanceRepairsAnnual(parsed.maintenanceRepairsAnnual ?? 0);
+          setUtilitiesAnnual(parsed.utilitiesAnnual ?? 0);
+          setContractServicesAnnual(parsed.contractServicesAnnual ?? 0);
+          setPayrollAnnual(parsed.payrollAnnual ?? 0);
+          setMarketingAnnual(parsed.marketingAnnual ?? 0);
+          setGAndAAnnual(parsed.gAndAAnnual ?? 0);
+          setOtherExpensesAnnual(parsed.otherExpensesAnnual ?? 0);
+          setExpenseGrowthRate(parsed.expenseGrowthRate ?? 0);
+          setCapitalReservePerUnitAnnual(parsed.capitalReservePerUnitAnnual ?? 0);
+          setDeferredCapitalReservePerUnit(parsed.deferredCapitalReservePerUnit ?? 0);
+          setHoldingPeriodYears(parsed.holdingPeriodYears ?? 1);
+          setUsePercentageMode(parsed.usePercentageMode ?? false);
+          setOperatingExpensePercentage(parsed.operatingExpensePercentage ?? 45);
+
+          alert('Scenario loaded successfully!');
+        } else {
+          alert('Invalid file format');
+        }
+      } catch (error) {
+        alert('Error loading file: Invalid JSON format');
+      }
+    };
+
+    reader.readAsText(file);
+    // Reset the input so the same file can be loaded again if needed
+    event.target.value = '';
+  };
+
+  // Close dropdown menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (moreMenuRef.current && !moreMenuRef.current.contains(e.target as Node)) {
+        setShowMoreMenu(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  // Detect any changes on the page and warn before leaving
+  useEffect(() => {
+    let userInteracted = false;
+    let isResettingToDefaults = false;
+    let isSavingScenario = false;
+
+    const handleUserInteraction = () => {
+      if (!isResettingToDefaults && !isSavingScenario) {
+        userInteracted = true;
+      }
+    };
+
+    const resetUserInteraction = () => {
+      userInteracted = false;
+    };
+
+    const setResettingToDefaults = (resetting: boolean) => {
+      isResettingToDefaults = resetting;
+      if (resetting) {
+        userInteracted = false; // Reset when loading defaults
+      }
+    };
+
+    const setSavingScenario = (saving: boolean) => {
+      isSavingScenario = saving;
+      if (saving) {
+        userInteracted = false; // Reset when saving scenario
+      }
+    };
+
+    // Expose functions to window for button clicks to use
+    (window as any).propertyAnalyzerResetUserInteraction = resetUserInteraction;
+    (window as any).propertyAnalyzerSetResettingToDefaults = setResettingToDefaults;
+    (window as any).propertyAnalyzerSetSavingScenario = setSavingScenario;
+
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (userInteracted && !allowLeavingRef.current) {
+        e.preventDefault();
+        e.returnValue = "Charlie here. I see you've been working on an offer and I don't want you to lose your work! Save your scenario first by clicking 'More' then 'Save scenario'.";
+        return "Charlie here. I see you've been working on an offer and I don't want you to lose your work! Save your scenario first by clicking 'More' then 'Save scenario'.";
+      }
+    };
+
+    // Override the router methods to intercept navigation
+    const originalPush = router.push;
+    const originalReplace = router.replace;
+    
+    router.push = (href: string, options?: any) => {
+      if (userInteracted && href !== '/property-analyzer') {
+        setPendingNavigation(() => () => originalPush.call(router, href, options));
+        setShowUnsavedChangesModal(true);
+        return Promise.resolve(false);
+      }
+      return originalPush.call(router, href, options);
+    };
+
+    router.replace = (href: string, options?: any) => {
+      if (userInteracted && href !== '/property-analyzer') {
+        setPendingNavigation(() => () => originalReplace.call(router, href, options));
+        setShowUnsavedChangesModal(true);
+        return Promise.resolve(false);
+      }
+      return originalReplace.call(router, href, options);
+    };
+
+    // Intercept clicks on links and navigation elements
+    const handleLinkClick = (e: MouseEvent) => {
+      if (!userInteracted) return;
+      
+      const target = e.target as HTMLElement;
+      const link = target.closest('a[href], [data-nextjs-link]');
+      
+      if (link) {
+        const href = link.getAttribute('href');
+        if (href && href !== '/property-analyzer' && !href.startsWith('#')) {
+          e.preventDefault();
+          e.stopPropagation();
+          setPendingNavigation(() => () => {
+            window.location.href = href;
+          });
+          setShowUnsavedChangesModal(true);
+          return false;
+        }
+      }
+    };
+
+    // Listen for any input changes or form changes
+    document.addEventListener('input', handleUserInteraction);
+    document.addEventListener('change', handleUserInteraction);
+    
+    // Listen for link clicks
+    document.addEventListener('click', handleLinkClick, true);
+    
+    // Listen for browser navigation events
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    
+    return () => {
+      // Restore original router methods
+      router.push = originalPush;
+      router.replace = originalReplace;
+      
+      // Clean up window functions
+      delete (window as any).propertyAnalyzerResetUserInteraction;
+      delete (window as any).propertyAnalyzerSetResettingToDefaults;
+      delete (window as any).propertyAnalyzerSetSavingScenario;
+      
+      document.removeEventListener('input', handleUserInteraction);
+      document.removeEventListener('change', handleUserInteraction);
+      document.removeEventListener('click', handleLinkClick, true);
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, [router]);
+
+  // Modal handlers
+  const handleStayAndSave = () => {
+    setShowUnsavedChangesModal(false);
+    setPendingNavigation(null);
+    // User should save manually - they'll stay on the page
+  };
+
+  const handleLeaveWithoutSaving = () => {
+    setShowUnsavedChangesModal(false);
+    
+    // Allow leaving without further warnings
+    allowLeavingRef.current = true;
+    
+    if (pendingNavigation) {
+      pendingNavigation();
+    }
+    setPendingNavigation(null);
+  };
+
+  // FIXED: Function to calculate remaining loan balance correctly
+  const calculateRemainingLoanBalance = (yearsElapsed: number): number => {
+    const monthsPaid = yearsElapsed * 12;
+    
+    if (loanStructure === 'interest-only') {
+      // For interest-only loans, balance stays the same during IO period
+      if (yearsElapsed <= interestOnlyPeriodYears) {
+        return loanAmount; // Full balance remains during IO period
+      } else if (refinanceTermYears === 0) {
+        // Sale scenario - full balance due at end of IO period
+        return 0; // Assume sale pays off loan
+      } else {
+        // Refinance scenario - loan continues amortizing after IO period
+        const monthsIntoAmortization = (yearsElapsed - interestOnlyPeriodYears) * 12;
+        const amortizationMonths = refinanceTermYears * 12;
+        
+        if (monthsIntoAmortization >= amortizationMonths) return 0; // Loan is paid off
+        
+        // Calculate amortizing payment for refinance period
+        let amortizingPayment = 0;
+        if (monthlyInterestRate === 0) {
+          amortizingPayment = loanAmount / amortizationMonths;
+        } else {
+          const numerator = monthlyInterestRate * Math.pow(1 + monthlyInterestRate, amortizationMonths);
+          const denominator = Math.pow(1 + monthlyInterestRate, amortizationMonths) - 1;
+          amortizingPayment = loanAmount * (numerator / denominator);
+        }
+        
+        // Calculate remaining balance using amortization formula
+        if (monthlyInterestRate === 0) {
+          return loanAmount - (amortizingPayment * monthsIntoAmortization);
+        } else {
+          const A = loanAmount;
+          const r = monthlyInterestRate;
+          const n = amortizationMonths;
+          const remainingBalance = A * (Math.pow(1 + r, n) - Math.pow(1 + r, monthsIntoAmortization)) / (Math.pow(1 + r, n) - 1);
+          return Math.max(0, remainingBalance);
+        }
+      }
+    }
+    
+    // For standard amortizing loans
+    if (monthsPaid >= numberOfPayments) return 0; // Loan is paid off
+
+    if (monthlyInterestRate === 0) {
+      // Simple calculation for 0% interest
+      return loanAmount - (monthlyMortgagePayment * monthsPaid);
+    }
+
+    // Standard amortization formula for remaining balance
+    const A = loanAmount;
+    const r = monthlyInterestRate;
+    const n = numberOfPayments;
+
+    const remainingBalance = A * (Math.pow(1 + r, n) - Math.pow(1 + r, monthsPaid)) / (Math.pow(1 + r, n) - 1);
+    return Math.max(0, remainingBalance);
+  };
+
+  useEffect(() => {
+    const data: ChartDataPoint[] = [];
+    let cumulativeCashFlow = -totalInitialInvestment;
+    let currentBreakEvenYear: number | null = null;
+    const cashFlowsForIRR: number[] = [-totalInitialInvestment]; // Year 0 outflow for IRR
+
+    // FIXED: Initialize values for year 0 correctly
+    data.push({
+      year: 0,
+      cumulativeCashFlow: cumulativeCashFlow,
+      noi: 0, // Year 0 has no NOI
+      cashFlowBeforeTax: 0, // Year 0 has no cash flow
+    });
+
+    let currentGrossPotentialRent = grossPotentialRent;
+    let currentEffectiveGrossIncome = effectiveGrossIncome;
+    let currentTotalOperatingExpenses = totalOperatingExpenses;
+    let currentNetOperatingIncome = netOperatingIncome;
+    let currentCashFlowBeforeTax = cashFlowBeforeTax;
+    let currentAnnualCapitalReserveTotal = annualCapitalReserveTotal;
+    let currentOtherIncomeAnnual = otherIncomeAnnual;
+    let currentIncomeReductionsAnnual = incomeReductionsAnnual;
+
+    // FIXED: Calculate Year 1 loan balance correctly
+    const year1Balance = calculateRemainingLoanBalance(1);
+    setYear1LoanBalance(year1Balance);
+
+    for (let y = 1; y <= holdingPeriodYears; y++) {
+      // Project Rent Growth
+      currentGrossPotentialRent *= (1 + annualRentalGrowthRate / 100);
+      currentEffectiveGrossIncome = (currentGrossPotentialRent * (1 - vacancyRate / 100)) + currentOtherIncomeAnnual - currentIncomeReductionsAnnual;
+
+      // Project Expense Growth
+      let currentPropertyManagementFeeAmount;
+      
+      if (usePercentageMode) {
+        // In percentage mode, calculate total operating expenses based on percentage
+        currentPropertyManagementFeeAmount = 0; // Don't show property management fee in percentage mode
+        currentTotalOperatingExpenses = currentEffectiveGrossIncome * (operatingExpensePercentage / 100) * Math.pow(1 + expenseGrowthRate / 100, y - 1);
+      } else {
+        // In detailed mode, calculate property management fee normally
+        currentPropertyManagementFeeAmount = currentEffectiveGrossIncome * (propertyManagementFeePercentage / 100);
+        // In detailed mode, use individual line items
+        const projectedPropertyTaxes = propertyTaxes * Math.pow(1 + expenseGrowthRate / 100, y - 1);
+        const projectedInsurance = insurance * Math.pow(1 + expenseGrowthRate / 100, y - 1);
+        const projectedMaintenanceRepairs = maintenanceRepairsAnnual * Math.pow(1 + expenseGrowthRate / 100, y - 1);
+        const projectedUtilities = utilitiesAnnual * Math.pow(1 + expenseGrowthRate / 100, y - 1);
+        const projectedContractServices = contractServicesAnnual * Math.pow(1 + expenseGrowthRate / 100, y - 1);
+        const projectedPayroll = payrollAnnual * Math.pow(1 + expenseGrowthRate / 100, y - 1);
+        const projectedMarketing = marketingAnnual * Math.pow(1 + expenseGrowthRate / 100, y - 1);
+        const projectedGAndA = gAndAAnnual * Math.pow(1 + expenseGrowthRate / 100, y - 1);
+        const projectedOtherExpenses = otherExpensesAnnual * Math.pow(1 + expenseGrowthRate / 100, y - 1);
+
+        currentTotalOperatingExpenses = projectedPropertyTaxes + projectedInsurance + currentPropertyManagementFeeAmount + projectedMaintenanceRepairs + projectedUtilities + projectedContractServices + projectedPayroll + projectedMarketing + projectedGAndA + projectedOtherExpenses;
+      }
+      currentNetOperatingIncome = currentEffectiveGrossIncome - currentTotalOperatingExpenses;
+      currentCashFlowBeforeTax = currentNetOperatingIncome - annualDebtService;
+
+      currentAnnualCapitalReserveTotal = capitalReservePerUnitAnnual * numUnits;
+      const annualDeferredCapitalReserve = totalDeferredCapitalReserve;
+      const annualCashFlow = currentCashFlowBeforeTax - currentAnnualCapitalReserveTotal - annualDeferredCapitalReserve;
+      cumulativeCashFlow += annualCashFlow;
+
+      if (cumulativeCashFlow >= 0 && currentBreakEvenYear === null) {
+        currentBreakEvenYear = y;
+      }
+
+      data.push({
+        year: y,
+        cumulativeCashFlow: cumulativeCashFlow,
+        noi: currentNetOperatingIncome,
+        cashFlowBeforeTax: currentCashFlowBeforeTax,
+      });
+
+      // Store annual cash flow for IRR calculation
+      cashFlowsForIRR.push(annualCashFlow);
+    }
+
+    setChartData(data);
+    setBreakEvenYear(currentBreakEvenYear);
+
+    // Calculate sale price based on disposition cap rate
+    const finalSalesPrice = currentNetOperatingIncome / (dispositionCapRate / 100);
+    const finalLoanBalanceAtHorizon = calculateRemainingLoanBalance(holdingPeriodYears);
+
+    // FIXED: Calculate net sale proceeds correctly
+    const sellingCosts = finalSalesPrice * 0.02; // 2% selling costs
+    const finalProjectedEquity = finalSalesPrice - finalLoanBalanceAtHorizon - sellingCosts;
+    setProjectedEquityAtHorizon(finalProjectedEquity);
+
+    // FIXED: Simplified ROI calculation
+    const totalReturn = finalProjectedEquity + cumulativeCashFlow;
+    const roi = ((totalReturn / totalInitialInvestment) - 1) * 100;
+    setRoiAtHorizon(roi);
+
+    // FIXED: Add sale proceeds to final year for IRR calculation
+    if (cashFlowsForIRR.length > holdingPeriodYears) {
+      cashFlowsForIRR[holdingPeriodYears] += finalProjectedEquity;
+    }
+
+    // Defensive check before calling calculateIRR
+    if (!Array.isArray(cashFlowsForIRR) || cashFlowsForIRR.length === 0) {
+      console.warn("IRR calculation skipped: Cash flow array is invalid or empty.");
+      setIRR(0);
+      return;
+    }
+
+    const calculatedIRR = calculateIRR(cashFlowsForIRR);
+    setIRR(calculatedIRR * 100); // Convert to percentage
+
+    // --- Calculate Overall Grade ---
+    const adjustedCashFlowForGrading = currentCashFlowBeforeTax - totalDeferredCapitalReserve;
+
+    // Auto-detect property classification
+    const propertyCharacteristics: PropertyCharacteristics = {
+      purchasePrice,
+      numUnits,
+      avgMonthlyRentPerUnit,
+      capRate,
+      expenseRatio
+    };
+
+    const detectedAssetClass = detectAssetClass(propertyCharacteristics);
+    const detectedMarketTier = detectMarketTier(propertyCharacteristics);
+
+    const gradeMetrics: MultifamilyGradeMetrics = {
+      irr: calculatedIRR * 100,
+      roiAtHorizon: roi,
+      cashOnCashReturn: cashOnCashReturn,
+      debtServiceCoverageRatio: debtServiceCoverageRatio,
+      capRate: capRate,
+      breakEvenYear: currentBreakEvenYear,
+      netOperatingIncome: currentNetOperatingIncome,
+      cashFlowBeforeTax: adjustedCashFlowForGrading,
+      purchasePrice: purchasePrice,
+      expenseRatio: expenseRatio,
+      assetClass: detectedAssetClass as any,
+      marketTier: detectedMarketTier as any
+    };
+
+    const gradingResult = calculateMultifamilyGrade(gradeMetrics);
+    setOverallGrade(gradingResult.grade);
+    setGradeBreakdown(gradingResult.breakdown);
+    setDetectedClassification(gradingResult.classification);
+    setActualGradingScore(gradingResult.score);
+
+
+  }, [
+    numUnits, avgMonthlyRentPerUnit, vacancyRate, annualRentalGrowthRate, otherIncomeAnnual, incomeReductionsAnnual,
+    propertyTaxes, insurance, propertyManagementFeePercentage, maintenanceRepairsAnnual, utilitiesAnnual,
+    contractServicesAnnual, payrollAnnual, marketingAnnual, gAndAAnnual,
+    otherExpensesAnnual, expenseGrowthRate,
+    capitalReservePerUnitAnnual, deferredCapitalReservePerUnit, holdingPeriodYears,
+    purchasePrice, downPaymentPercentage, interestRate, loanStructure, amortizationPeriodYears, interestOnlyPeriodYears, refinanceTermYears, closingCostsPercentage,
+    dispositionCapRate, // Target cap rate at sale
+    grossPotentialRent, effectiveGrossIncome, propertyManagementFeeAmount, totalOperatingExpenses, netOperatingIncome,
+    downPaymentAmount, loanAmount, totalInitialInvestment, monthlyInterestRate, numberOfPayments, monthlyMortgagePayment, annualDebtService,
+    cashFlowBeforeTax, annualCapitalReserveTotal, totalDeferredCapitalReserve,
+    capRate, cashOnCashReturn, debtServiceCoverageRatio, expenseRatio,
+  ]);
+
+  // Helper function to format currency
+  const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(value);
+  };
+
+  // Helper function to format percentage
+  const formatPercentage = (value: number) => {
+    return `${value.toFixed(2)}%`;
+  };
+
+  //Clear defaults
+  const resetAllValues = () => {
+    // FINANCING
+    setPurchasePrice(0);
+    setDownPaymentPercentage(0);
+    setInterestRate(0);
+    setLoanStructure('amortizing');
+    setAmortizationPeriodYears(30);
+    setInterestOnlyPeriodYears(10);
+    setRefinanceTermYears(25);
+    setClosingCostsPercentage(0);
+    setDispositionCapRate(0);
+
+    // RENTS
+    setNumUnits(0);
+    setAvgMonthlyRentPerUnit(0);
+    setVacancyRate(0);
+    setAnnualRentalGrowthRate(0);
+    setOtherIncomeAnnual(0);
+    setIncomeReductionsAnnual(0);
+
+    // OPERATING EXPENSES
+    setPropertyTaxes(0);
+    setInsurance(0);
+    setPropertyManagementFeePercentage(0);
+    setMaintenanceRepairsAnnual(0);
+    setUtilitiesAnnual(0);
+    setContractServicesAnnual(0);
+    setPayrollAnnual(0);
+    setMarketingAnnual(0);
+    setGAndAAnnual(0);
+    setOtherExpensesAnnual(0);
+    setExpenseGrowthRate(0);
+
+    // CAPITAL EXPENDITURES
+    setCapitalReservePerUnitAnnual(0);
+    setDeferredCapitalReservePerUnit(0);
+    setHoldingPeriodYears(1);
+  };
+
+  //Reset to defaults
+  const resetToDefaults = () => {
+    // FINANCING
+    setPurchasePrice(7000000);
+    setDownPaymentPercentage(20);
+    setInterestRate(7.0);
+    setLoanStructure('amortizing');
+    setAmortizationPeriodYears(30);
+    setClosingCostsPercentage(3);
+    setDispositionCapRate(6);
+
+    // RENTS
+    setNumUnits(47);
+    setAvgMonthlyRentPerUnit(2500);
+    setVacancyRate(10);
+    setAnnualRentalGrowthRate(2);
+    setOtherIncomeAnnual(0);
+    setIncomeReductionsAnnual(0);
+
+    // OPERATING EXPENSES
+    setPropertyTaxes(12000);
+    setInsurance(10000);
+    setPropertyManagementFeePercentage(6);
+    setMaintenanceRepairsAnnual(12000);
+    setUtilitiesAnnual(6000);
+    setContractServicesAnnual(6000);
+    setPayrollAnnual(15000);
+    setMarketingAnnual(2400);
+    setGAndAAnnual(1200);
+    setOtherExpensesAnnual(5000);
+    setExpenseGrowthRate(2);
+    setOperatingExpensePercentage(45);
+
+    // CAPITAL EXPENDITURES
+    setCapitalReservePerUnitAnnual(500);
+    setDeferredCapitalReservePerUnit(0);
+    setHoldingPeriodYears(10);
+    
+    // Reset the unsaved changes tracking since we just loaded defaults
+    if ((window as any).propertyAnalyzerSetResettingToDefaults) {
+      (window as any).propertyAnalyzerSetResettingToDefaults(true);
+      setTimeout(() => {
+        if ((window as any).propertyAnalyzerSetResettingToDefaults) {
+          (window as any).propertyAnalyzerSetResettingToDefaults(false);
+        }
+      }, 100);
+    }
+  };
+
+  // Custom Tooltip Content for Recharts
+  const CustomTooltip = ({ active, payload, label }: any) => {
+    if (active && payload && payload.length) {
+      const data = payload[0].payload;
+      return (
+        <div className="bg-white/90 p-3 border border-gray-200 rounded-lg shadow-lg">
+          <p className="text-sm text-gray-700 font-semibold">{`Year: ${label}`}</p>
+          <p className="text-sm text-blue-600">{`Cumulative Cash Flow: ${formatCurrency(data.cumulativeCashFlow)}`}</p>
+          <p className="text-sm text-emerald-600">{`Annual NOI: ${formatCurrency(data.noi)}`}</p>
+          <p className="text-sm text-purple-600">{`Annual Cash Flow (BT): ${formatCurrency(data.cashFlowBeforeTax)}`}</p>
+        </div>
+      );
+    }
+    return null;
+  };
+
+  // Show loading while checking access or redirect disabled users
+  if (isLoadingAccess || (userClass === 'disabled' && !hasPropertyAnalyzerAccess)) {
+    return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
+  }
+
+  return (
+    <>
+      <Suspense fallback={null}>
+        <SearchParamsHandler onParamsLoaded={handleParamsLoaded} />
+      </Suspense>
+    <div className="flex flex-col lg:flex-row p-6 bg-gray-50 text-gray-800 min-h-screen">
+      {/* Hidden file input for loading settings */}
+      <input
+        type="file"
+        ref={fileInputRef}
+        accept=".json"
+        style={{ display: 'none' }}
+        onChange={handleFileLoad}
+      />
+      <div className="lg:w-2/3 pr-0 lg:pr-8 mb-8 lg:mb-0">
+
+        <div className="flex justify-between items-end mb-6">
+          {/* Investment Grade Card - Modern Charlie2 Style */}
+          <div className="bg-gradient-to-r from-blue-600 to-blue-700 p-4 rounded-lg shadow-lg flex items-center text-white">
+            <div className="flex items-center space-x-3">
+              <div className="p-2 bg-white/20 rounded-lg">
+                <svg className="w-8 h-8" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clipRule="evenodd" />
+                </svg>
+              </div>
+              <div>
+                <p className="text-sm text-blue-100 font-medium">Investment Grade</p>
+                <p className="text-2xl font-bold">{overallGrade}</p>
+              </div>
+            </div>
+          </div>
+          {/* Offer Analysis button removed - analysis now on property details page */}
+        </div>
+
+        <div className="bg-white p-4 md:p-6 rounded-lg shadow-sm border border-gray-200 h-[400px] md:h-[500px] flex items-center justify-center">
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={chartData} margin={{ top: 10, right: 30, left: 30, bottom: 30 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+              <XAxis
+                dataKey="year"
+                label={{ value: 'Time (Years)', position: 'insideBottom', offset: -20, fill: '#4B5563', dy: 10 }}
+                tickFormatter={(tick) => `Yr ${tick}`}
+                stroke="#9CA3AF"
+                tick={{ fill: '#6B7280', fontSize: 12 }}
+                interval="preserveStartEnd"
+                padding={{ left: 10, right: 10 }}
+              />
+              <YAxis
+                label={{ value: 'Cumulative Cash Flow ($)', angle: -90, position: 'insideLeft', fill: '#4B5563', dx: -25, dy: 50 }}
+                tickFormatter={(value) => `${(value / 1000).toFixed(0)}k`}
+                stroke="#9CA3AF"
+                tick={{ fill: '#6B7280', fontSize: 12 }}
+                domain={['auto', 'auto']}
+                allowDataOverflow={false}
+                width={80}
+              />
+
+              <Tooltip content={<CustomTooltip />} cursor={{ stroke: '#2563EB', strokeWidth: 1, strokeDasharray: '3 3' }} />
+              <Legend
+                verticalAlign="top"
+                height={36}
+                wrapperStyle={{ color: '#4B5563', paddingBottom: '10px' }}
+                payload={[
+                  { value: 'Cumulative Cash Flow', type: 'line', id: 'ID01', color: '#2563EB' },
+                  { value: 'Annual NOI', type: 'line', id: 'ID02', color: '#10B981' },
+                  { value: 'Annual Cash Flow (Before Tax)', type: 'line', id: 'ID03', color: '#8B5CF6' }
+                ]}
+              />
+              <ReferenceLine y={0} stroke="#6B7280" strokeDasharray="2 2" />
+              {breakEvenYear !== null && (
+                <ReferenceLine
+                  x={breakEvenYear}
+                  stroke="#EF4444"
+                  strokeDasharray="4 4"
+                  label={{
+                    value: `Break-Even (Yr ${breakEvenYear})`,
+                    fill: '#EF4444',
+                    position: 'insideTopRight',
+                    fontSize: 12,
+                    dy: -10,
+                    dx: 10
+                  }}
+                />
+              )}
+              <Line
+                type="monotone"
+                dataKey="cumulativeCashFlow"
+                stroke="#2563EB"
+                strokeWidth={2.5}
+                dot={false}
+                activeDot={{ r: 6, strokeWidth: 2, fill: '#2563EB', stroke: '#FFF' }}
+                name="Cumulative Cash Flow"
+              />
+              <Line
+                type="monotone"
+                dataKey="noi"
+                stroke="#10B981"
+                strokeWidth={1.5}
+                dot={false}
+                activeDot={{ r: 4, strokeWidth: 1, fill: '#10B981', stroke: '#FFF' }}
+                name="Annual NOI"
+              />
+              <Line
+                type="monotone"
+                dataKey="cashFlowBeforeTax"
+                stroke="#8B5CF6"
+                strokeWidth={1.5}
+                dot={false}
+                activeDot={{ r: 4, strokeWidth: 1, fill: '#8B5CF6', stroke: '#FFF' }}
+                name="Annual Cash Flow (Before Tax)"
+              />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+
+        <div className="mt-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {/* Column 1 - Row 1 */}
+          <CharlieTooltip message="This is your total rental income after vacancy. The foundation of everything—if this number's wrong, your whole deal is wrong.">
+            <div className="bg-white p-5 rounded-xl shadow-lg border border-gray-200 cursor-pointer">
+              <h3 className="text-md font-semibold text-blue-600 mb-1">Gross Operating Income</h3>
+              <p className="text-2xl font-bold text-gray-900">{formatCurrency(effectiveGrossIncome)}</p>
+            </div>
+          </CharlieTooltip>
+
+          {/* Column 2 - Row 1 */}
+          <CharlieTooltip message="The money left after all operating expenses. This is what pays your mortgage and puts cash in your pocket. Make it count.">
+            <div className="bg-white p-5 rounded-xl shadow-lg border border-gray-200 cursor-pointer">
+              <h3 className="text-md font-semibold text-blue-600 mb-1">Net Operating Income</h3>
+              <p className="text-2xl font-bold text-gray-900">{formatCurrency(netOperatingIncome)}</p>
+            </div>
+          </CharlieTooltip>
+
+          {/* Column 3 - Row 1 */}
+          <CharlieTooltip message="How well your property covers its debt payments. 1.25+ is what lenders want. Below 1.0 means you're paying out of pocket every month.">
+            <div className="bg-white p-5 rounded-xl shadow-lg border border-gray-200 cursor-pointer">
+              <h3 className="text-md font-semibold text-blue-600 mb-1">Debt Service Coverage Ratio</h3>
+              <p className="text-2xl font-bold text-gray-900">{debtServiceCoverageRatio.toFixed(2)}</p>
+            </div>
+          </CharlieTooltip>
+
+          {/* Column 1 - Row 2 */}
+          <CharlieTooltip message="What percentage of your income goes to expenses. Under 50% is good. Over 60% and you're working for your property manager.">
+            <div className="bg-white p-5 rounded-xl shadow-lg border border-gray-200 cursor-pointer">
+              <h3 className="text-md font-semibold text-blue-600 mb-1">Expense Ratio (Year 1)</h3>
+              <p className="text-2xl font-bold text-gray-900">{formatPercentage(expenseRatio)}</p>
+            </div>
+          </CharlieTooltip>
+
+          {/* Column 2 - Row 2 */}
+          <CharlieTooltip message="Money in your pocket each month after debt service. Positive is good, negative means you're feeding the property every month.">
+            <div className="bg-white p-5 rounded-xl shadow-lg border border-gray-200 cursor-pointer">
+              <h3 className="text-md font-semibold text-blue-600 mb-1">Cash Flow (Before Tax)</h3>
+              <p className="text-2xl font-bold text-gray-900">{formatCurrency(cashFlowBeforeTax)}</p>
+            </div>
+          </CharlieTooltip>
+
+          {/* Column 3 - Row 2 */}
+          <CharlieTooltip message="The return on your actual cash invested in year one. This is immediate gratification—what you earn on your down payment right away.">
+            <div className="bg-white p-5 rounded-xl shadow-lg border border-gray-200 cursor-pointer">
+              <h3 className="text-md font-semibold text-blue-600 mb-1">Cash-on-Cash Return (Year 1)</h3>
+              <p className="text-2xl font-bold text-gray-900">{formatPercentage(cashOnCashReturn)}</p>
+            </div>
+          </CharlieTooltip>
+
+          {/* Column 1 - Row 3 */}
+          <CharlieTooltip message="Cash flow after setting aside money for future repairs and improvements. This is your real spendable cash—don't forget the reserves!">
+            <div className="bg-white p-5 rounded-xl shadow-lg border border-gray-200 cursor-pointer">
+              <h3 className="text-md font-semibold text-blue-600 mb-1">Cash Flow (After Capital Reserve)</h3>
+              <p className="text-2xl font-bold text-gray-900">{formatCurrency(cashFlowAfterCapitalReserve)}</p>
+            </div>
+          </CharlieTooltip>
+
+          {/* Column 2 - Row 3 */}
+          <CharlieTooltip message="Your total return if you sell at the end of your holding period. Includes all cash flow plus sale proceeds. This is what really matters.">
+            <div className="bg-white p-5 rounded-xl shadow-lg border border-gray-200 cursor-pointer">
+              <h3 className="text-md font-semibold text-blue-600 mb-1">Total ROI ({holdingPeriodYears} Year)</h3>
+              <p className="text-2xl font-bold text-gray-900">{formatPercentage(roiAtHorizon)}</p>
+            </div>
+          </CharlieTooltip>
+
+          {/* Column 3 - Row 3 */}
+          <CharlieTooltip message="Your annual return including cash flow AND appreciation. This is the gold standard—aim for double digits but be realistic about your market.">
+            <div className="bg-white p-5 rounded-xl shadow-lg border border-gray-200 cursor-pointer">
+              <h3 className="text-md font-semibold text-blue-600 mb-1">Internal Rate of Return ({holdingPeriodYears} Year)</h3>
+              <p className="text-2xl font-bold text-gray-900">{formatPercentage(irr)}</p>
+            </div>
+          </CharlieTooltip>
+
+          {/* Column 1 - Row 4 */}
+          <CharlieTooltip message="Your annual payment to the bank. This comes out of your NOI first—everything else is gravy. Keep this manageable.">
+            <div className="bg-white p-5 rounded-xl shadow-lg border border-gray-200 cursor-pointer">
+              <h3 className="text-md font-semibold text-blue-600 mb-1">
+                {loanStructure === 'interest-only' ? 'Annual IO Payment' : 'Annual Debt Service'}
+              </h3>
+              <p className="text-2xl font-bold text-gray-900">{formatCurrency(annualDebtService)}</p>
+              {loanStructure === 'interest-only' && refinanceTermYears === 0 && (
+                <p className="text-xs text-gray-500 mt-1">
+                  Sale required by Year {interestOnlyPeriodYears}
+                </p>
+              )}
+              {loanStructure === 'interest-only' && refinanceTermYears > 0 && (
+                <p className="text-xs text-gray-500 mt-1">
+                  Refinance required by Year {interestOnlyPeriodYears}
+                </p>
+              )}
+            </div>
+          </CharlieTooltip>
+
+          {/* Column 2 - Row 4 */}
+          <CharlieTooltip message="How much you still owe the bank after one year. With interest-only loans, this doesn't change much. That's the point.">
+            <div className="bg-white p-5 rounded-xl shadow-lg border border-gray-200 cursor-pointer">
+              <h3 className="text-md font-semibold text-blue-600 mb-1">Loan Balance (Year 1)</h3>
+              <p className="text-2xl font-bold text-gray-900">{formatCurrency(year1LoanBalance)}</p>
+            </div>
+          </CharlieTooltip>
+
+          {/* Column 3 - Row 4 */}
+          <CharlieTooltip message="Your NOI divided by purchase price. It's like a stock dividend—higher is better, but don't chase cap rates into bad neighborhoods.">
+            <div className="bg-white p-5 rounded-xl shadow-lg border border-gray-200 cursor-pointer">
+              <h3 className="text-md font-semibold text-blue-600 mb-1">Cap Rate (Year 1)</h3>
+              <p className="text-2xl font-bold text-gray-900">{formatPercentage(capRate)}</p>
+            </div>
+          </CharlieTooltip>
+
+          {/* Column 1 - Row 5 */}
+          <CharlieTooltip message="When your cumulative cash flow turns positive and you stop feeding the deal. The sooner the better—deals that never break even are wealth destroyers.">
+            <div className="bg-white p-5 rounded-xl shadow-lg border border-gray-200 cursor-pointer">
+              <h3 className="text-md font-semibold text-blue-600 mb-1">Break-Even Point</h3>
+              <p className="text-2xl font-bold text-gray-900">
+                {breakEvenYear !== null ? `${breakEvenYear} years` : 'N/A (No positive cash flow within horizon)'}
+              </p>
+            </div>
+          </CharlieTooltip>
+
+          {/* Column 2 - Row 5 */}
+          <CharlieTooltip message="What your property should be worth when you sell, minus remaining debt. This is your payday—appreciation plus principal paydown over time.">
+            <div className="bg-white p-5 rounded-xl shadow-lg border border-gray-200 cursor-pointer">
+              <h3 className="text-md font-semibold text-blue-600 mb-1">Projected Equity (at Year {holdingPeriodYears})</h3>
+              <p className="text-2xl font-bold text-gray-900">{formatCurrency(projectedEquityAtHorizon)}</p>
+            </div>
+          </CharlieTooltip>
+        </div>
+
+      </div>
+
+      <div className="print-assumptions lg:w-1/3 bg-white p-6 rounded-lg shadow-sm border border-gray-200 lg:sticky lg:top-8 self-start max-h-[calc(100vh-4rem)] overflow-y-auto">
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-xl font-semibold text-gray-900">Investment Assumptions</h2>
+          <div className="flex space-x-2 relative" style={{ minHeight: '40px', minWidth: '280px' }}>
+            <button
+              onClick={resetToDefaults}
+              className="px-4 py-2 text-white rounded-lg transform transition-all duration-150 text-sm hover:scale-105 active:scale-95 active:bg-blue-700"
+              style={{ backgroundColor: '#1C599F' }}
+            >
+              Defaults
+            </button>
+            <button
+              onClick={resetAllValues}
+              className="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transform transition-all duration-150 text-sm hover:scale-105 active:scale-95 active:bg-gray-700"
+            >
+              Clear
+            </button>
+            <button
+              onClick={() => setShowMoreMenu(!showMoreMenu)}
+              className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transform transition-all duration-150 text-sm hover:scale-105 active:scale-95 active:bg-blue-700"
+            >
+              More...
+            </button>
+            {showMoreMenu && (
+              <div
+                ref={moreMenuRef}
+                className="absolute w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-50"
+                style={{
+                  top: '100%',
+                  right: '0',
+                  marginTop: '4px',
+                  position: 'absolute'
+                }}
+              >
+                <button
+                  onClick={() => {
+                    saveSettings();
+                    setShowMoreMenu(false);
+                  }}
+                  className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900 rounded-t-lg transition-colors cursor-pointer border-b border-gray-100"
+                >
+                  &gt; Save scenario
+                </button>
+                <button
+                  onClick={() => {
+                    fileInputRef.current?.click();
+                    setShowMoreMenu(false);
+                  }}
+                  className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900 rounded-b-lg transition-colors cursor-pointer"
+                >
+                  &gt; Load scenario
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="border-b border-gray-200 pb-2 mb-6">
+          <h3 className="text-lg font-semibold text-gray-900">Financing</h3>
+        </div>
+        <div className="mb-5">
+          <label htmlFor="purchasePrice" className="block text-sm font-medium text-gray-700 mb-1">Purchase Price ($)</label>
+          <CharlieTooltip message="This is your offer price. Don't get emotional—stick to the numbers. What can you realistically pay and still make money?">
+            <input
+              type="text"
+              id="purchasePrice"
+              value={(purchasePrice ?? 0).toLocaleString('en-US')}
+              onChange={formatAndParseNumberInput(setPurchasePrice)}
+              className="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow duration-150 ease-in-out shadow-sm"
+              step="10000"
+              suppressHydrationWarning={true}
+            />
+          </CharlieTooltip>
+        </div>
+
+        <div className="mb-5">
+          <label htmlFor="downPaymentPercentage" className="block text-sm font-medium text-gray-700 mb-1">Down Payment (%)</label>
+          <CharlieTooltip message="Most deals need 20-25% down. Less down = higher leverage = higher returns IF the deal works. More down = safer but lower returns.">
+            <input
+              type="number"
+              id="downPaymentPercentage"
+              value={downPaymentPercentage || ''}
+              onChange={(e) => setDownPaymentPercentage(Math.max(0, Math.min(100, parseFloat(e.target.value) || 0)))}
+              className="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow duration-150 ease-in-out shadow-sm"
+              step="0.1"
+              min="0"
+              max="100"
+            />
+          </CharlieTooltip>
+        </div>
+
+        <div className="mb-5">
+          <label htmlFor="interestRate" className="block text-sm font-medium text-gray-700 mb-1">Interest Rate (%)</label>
+          <CharlieTooltip message="Shop around! A half percent difference on a million-dollar loan costs you $5,000/year. Your broker relationship matters here.">
+            <input
+              type="number"
+              id="interestRate"
+              value={interestRate || ''}
+              onChange={(e) => setInterestRate(Math.max(0, parseFloat(e.target.value) || 0))}
+              className="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow duration-150 ease-in-out shadow-sm"
+              step="0.1"
+            />
+          </CharlieTooltip>
+        </div>
+
+        {/* Loan Structure Selection */}
+        <div className="mb-5">
+          <label className="block text-sm font-medium text-gray-700 mb-3">Loan Structure</label>
+          <CharlieTooltip message="Interest-only gives you better cash flow early but higher payments later. I use it strategically for value-add deals.">
+            <div className="flex space-x-4">
+              <label className="flex items-center">
+                <input
+                  type="radio"
+                  name="loanStructure"
+                  value="amortizing"
+                  checked={loanStructure === 'amortizing'}
+                  onChange={(e) => setLoanStructure(e.target.value as 'amortizing' | 'interest-only')}
+                  className="mr-2 text-blue-500 focus:ring-blue-500"
+                />
+                <span className="text-sm text-gray-700">Amortizing Loan</span>
+              </label>
+              <label className="flex items-center">
+                <input
+                  type="radio"
+                  name="loanStructure"
+                  value="interest-only"
+                  checked={loanStructure === 'interest-only'}
+                  onChange={(e) => setLoanStructure(e.target.value as 'amortizing' | 'interest-only')}
+                  className="mr-2 text-blue-500 focus:ring-blue-500"
+                />
+                <span className="text-sm text-gray-700">Interest-Only Loan</span>
+              </label>
+            </div>
+          </CharlieTooltip>
+        </div>
+
+        {/* Conditional Fields Based on Loan Structure */}
+        {loanStructure === 'amortizing' ? (
+          <div className="mb-5">
+            <label htmlFor="amortizationPeriodYears" className="block text-sm font-medium text-gray-700 mb-1">Amortization Period (Years)</label>
+            <CharlieTooltip message="30 years = lower payments, more cash flow. 25 years = higher payments but you build equity faster. Pick your poison.">
+              <input
+                type="number"
+                id="amortizationPeriodYears"
+                value={amortizationPeriodYears ?? 0}
+                onChange={(e) => setAmortizationPeriodYears(Math.max(1, parseInt(e.target.value) || 1))}
+                className="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow duration-150 ease-in-out shadow-sm"
+                step="1"
+                min="1"
+              />
+            </CharlieTooltip>
+          </div>
+        ) : (
+          <div className="space-y-5">
+            <div>
+              <label htmlFor="interestOnlyPeriodYears" className="block text-sm font-medium text-gray-700 mb-1">Interest-Only Period (Years)</label>
+              <CharlieTooltip message="Perfect for value-add deals. Use this time to increase rents, then refi. Don't get stuck when the IO period ends!">
+                <input
+                  type="number"
+                  id="interestOnlyPeriodYears"
+                  value={interestOnlyPeriodYears ?? 0}
+                  onChange={(e) => setInterestOnlyPeriodYears(Math.max(1, parseInt(e.target.value) || 1))}
+                  className="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow duration-150 ease-in-out shadow-sm"
+                  step="1"
+                  min="1"
+                />
+              </CharlieTooltip>
+            </div>
+            <div>
+              <label htmlFor="refinanceTermYears" className="block text-sm font-medium text-gray-700 mb-1">Refinance Term (Years)</label>
+              <CharlieTooltip message="Plan your exit strategy now. Will you sell, refi, or hold? This number should match your business plan.">
+                <input
+                  type="number"
+                  id="refinanceTermYears"
+                  value={refinanceTermYears ?? 0}
+                  onChange={(e) => setRefinanceTermYears(Math.max(0, parseInt(e.target.value) || 0))}
+                  className="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow duration-150 ease-in-out shadow-sm"
+                  step="1"
+                  min="0"
+                />
+              </CharlieTooltip>
+              <p className="text-xs text-gray-500 mt-1">Enter 0 if planning to sell at end of interest-only period</p>
+            </div>
+          </div>
+        )}
+
+        <div className="mb-5 mt-3">
+          <label htmlFor="closingCostsPercentage" className="block text-sm font-medium text-gray-700 mb-1">Closing Costs (%)</label>
+          <CharlieTooltip message="Don't forget these! They add up fast. Budget 2-4% depending on your lender and market. Factor them into your returns.">
+            <input
+              type="number"
+              id="closingCostsPercentage"
+              value={closingCostsPercentage || ''}
+              onChange={(e) => setClosingCostsPercentage(Math.max(0, parseFloat(e.target.value) || 0))}
+              className="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow duration-150 ease-in-out shadow-sm"
+              step="0.1"
+              min="0"
+            />
+          </CharlieTooltip>
+        </div>
+
+        {/* Disposition Cap Rate */}
+        <div className="mb-5">
+          <label htmlFor="dispositionCapRate" className="block text-sm font-medium text-gray-700 mb-1">Disposition Cap Rate (%)</label>
+          <CharlieTooltip message="What cap rate will you sell at? Be conservative—markets change. I usually assume 0.5-1% higher than today's rates.">
+            <input
+              type="number"
+              id="dispositionCapRate"
+              value={dispositionCapRate || ''}
+              onChange={(e) => setDispositionCapRate(Math.max(0, parseFloat(e.target.value) || 0))}
+              className="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow duration-150 ease-in-out shadow-sm"
+              step="0.1"
+              min="0"
+            />
+          </CharlieTooltip>
+        </div>
+
+        <div className="border-b border-gray-200 pb-2 mb-6 mt-8">
+          <h3 className="text-lg font-semibold text-gray-900">Rental Income</h3>
+        </div>
+        <div className="mb-5">
+          <label htmlFor="numUnits" className="block text-sm font-medium text-gray-700 mb-1">Number of Units</label>
+          <CharlieTooltip message="More units = more stability. Fewer units = higher risk but potentially higher returns per unit. Know your market.">
+            <input
+              type="text"
+              id="numUnits"
+              value={(numUnits ?? 0).toLocaleString('en-US')}
+              onChange={formatAndParseNumberInput(setNumUnits)}
+              className="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow duration-150 ease-in-out shadow-sm"
+              suppressHydrationWarning={true}
+            />
+          </CharlieTooltip>
+        </div>
+
+        <div className="mb-5">
+          <label htmlFor="avgMonthlyRentPerUnit" className="block text-sm font-medium text-gray-700 mb-1">Avg Monthly Rent (per unit) ($)</label>
+          <CharlieTooltip message="This should be market rent, not current rent. What can you actually get? Drive the comps yourself.">
+            <input
+              type="text"
+              id="avgMonthlyRentPerUnit"
+              value={(avgMonthlyRentPerUnit ?? 0).toLocaleString('en-US')}
+              onChange={formatAndParseNumberInput(setAvgMonthlyRentPerUnit)}
+              className="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow duration-150 ease-in-out shadow-sm"
+              step="100"
+              suppressHydrationWarning={true}
+            />
+          </CharlieTooltip>
+        </div>
+
+        <div className="mb-5">
+          <label htmlFor="vacancyRate" className="block text-sm font-medium text-gray-700 mb-1">Vacancy Rate (%)</label>
+          <CharlieTooltip message="Don't be optimistic! Even the best properties have turnover. I use 5-10% minimum, higher for value-add deals.">
+            <input
+              type="number"
+              id="vacancyRate"
+              value={vacancyRate || ''}
+              onChange={(e) => setVacancyRate(Math.max(0, Math.min(100, parseFloat(e.target.value) || 0)))}
+              className="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow duration-150 ease-in-out shadow-sm"
+              step="0.1"
+              min="0"
+              max="100"
+            />
+          </CharlieTooltip>
+        </div>
+
+        <div className="mb-5">
+          <label htmlFor="annualRentalGrowthRate" className="block text-sm font-medium text-gray-700 mb-1">Annual Rental Growth Rate (%)</label>
+          <CharlieTooltip message="Inflation is your friend in real estate. But don't assume 2008 growth rates. Be realistic—1-3% is usually safe.">
+            <input
+              type="number"
+              id="annualRentalGrowthRate"
+              value={annualRentalGrowthRate || ''}
+              onChange={(e) => setAnnualRentalGrowthRate(Math.max(0, parseFloat(e.target.value) || 0))}
+              className="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow duration-150 ease-in-out shadow-sm"
+              step="0.1"
+              min="0"
+            />
+          </CharlieTooltip>
+        </div>
+
+        <div className="mb-5">
+          <label htmlFor="otherIncomeAnnual" className="block text-sm font-medium text-gray-700 mb-1">Other Income ($)</label>
+          <CharlieTooltip message="Laundry, parking, pet fees, storage—every dollar counts. But don't rely on income that doesn't exist yet.">
+            <input
+              type="text"
+              id="otherIncomeAnnual"
+              value={(otherIncomeAnnual ?? 0).toLocaleString('en-US')}
+              onChange={formatAndParseNumberInput(setOtherIncomeAnnual)}
+              className="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow duration-150 ease-in-out shadow-sm"
+              step="100"
+              suppressHydrationWarning={true}
+            />
+          </CharlieTooltip>
+        </div>
+
+        <div className="mb-5">
+          <label htmlFor="incomeReductionsAnnual" className="block text-sm font-medium text-gray-700 mb-1">Income Reducers ($)</label>
+          <CharlieTooltip message="Concessions, bad debt, employee unit discounts. The stuff that hits your bottom line but isn't an 'expense.'">
+            <input
+              type="text"
+              id="incomeReductionsAnnual"
+              value={(incomeReductionsAnnual ?? 0).toLocaleString('en-US')}
+              onChange={formatAndParseNumberInput(setIncomeReductionsAnnual)}
+              className="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow duration-150 ease-in-out shadow-sm"
+              step="100"
+              suppressHydrationWarning={true}
+            />
+          </CharlieTooltip>
+        </div>
+
+        <div className="border-b border-gray-200 pb-2 mb-6 mt-8">
+          <div className="flex items-center justify-between">
+            <h3 id="operating-expenses-section" className="text-lg font-semibold text-gray-900">Operating Expenses</h3>
+            <button
+              onClick={() => setUsePercentageMode(!usePercentageMode)}
+              className="text-sm px-3 py-1 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              {usePercentageMode ? 'Use Detailed Breakdown' : 'Use % Estimate'}
+            </button>
+          </div>
+        </div>
+
+        {usePercentageMode ? (
+          <div>
+            <div className="mb-5">
+              <label htmlFor="operatingExpensePercentage" className="block text-sm font-medium text-gray-700 mb-1">Operating Expense Ratio (%)</label>
+              <CharlieTooltip message={`Here's my rule of thumb based on 25+ years of experience. These are guidelines - adjust based on your specific property and market conditions.
+
+• All Bills Paid, 1985 or older: 60%+ of gross income
+• Tenant Paid, 1986-2010: 45-55% of gross income
+• Tenant Paid, 2011 and newer: 35-40% of gross income`}>
+                <input
+                  type="text"
+                  id="operatingExpensePercentage"
+                  value={operatingExpensePercentage}
+                  onChange={(e) => {
+                    const value = e.target.value.replace(/[^\d.]/g, ''); // Allow only digits and decimal
+                    const numValue = parseFloat(value);
+                    
+                    if (value === '' || !isNaN(numValue)) {
+                      setOperatingExpensePercentage(numValue || 0);
+                    }
+                  }}
+                  className="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow duration-150 ease-in-out shadow-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                  placeholder="45"
+                />
+              </CharlieTooltip>
+              {(operatingExpensePercentage < 20 || operatingExpensePercentage > 80) && (
+                <p className="text-red-600 text-sm mt-1">Please enter a percentage between 20% and 80%</p>
+              )}
+            </div>
+            
+            <div className="mb-5">
+              <label htmlFor="expenseGrowthRate" className="block text-sm font-medium text-gray-700 mb-1">Expense Growth Rate (%)</label>
+              <CharlieTooltip message="Expenses grow faster than rent in many markets. Don't assume they stay flat—that's rookie mistake #1.">
+                <input
+                  type="number"
+                  id="expenseGrowthRate"
+                  value={expenseGrowthRate ?? 0}
+                  onChange={(e) => setExpenseGrowthRate(Math.max(0, parseFloat(e.target.value) || 0))}
+                  className="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow duration-150 ease-in-out shadow-sm"
+                  step="0.1"
+                  min="0"
+                />
+              </CharlieTooltip>
+            </div>
+          </div>
+        ) : (
+          <div>
+        <div className="mb-5">
+          <label htmlFor="propertyTaxes" className="block text-sm font-medium text-gray-700 mb-1">Property Taxes ($)</label>
+          <CharlieTooltip message="These will go up! Especially after you improve the property. Budget for reassessment—it's coming.">
+            <input
+              type="text"
+              id="propertyTaxes"
+              value={(propertyTaxes ?? 0).toLocaleString('en-US')}
+              onChange={formatAndParseNumberInput(setPropertyTaxes)}
+              className="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow duration-150 ease-in-out shadow-sm"
+              step="100"
+              suppressHydrationWarning={true}
+            />
+          </CharlieTooltip>
+        </div>
+
+        <div className="mb-5">
+          <label htmlFor="insurance" className="block text-sm font-medium text-gray-700 mb-1">Insurance ($)</label>
+          <CharlieTooltip message="Shop this annually. And get the right coverage—don't cheap out on liability. One lawsuit can kill your returns.">
+            <input
+              type="text"
+              id="insurance"
+              value={(insurance ?? 0).toLocaleString('en-US')}
+              onChange={formatAndParseNumberInput(setInsurance)}
+              className="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow duration-150 ease-in-out shadow-sm"
+              step="100"
+              suppressHydrationWarning={true}
+            />
+          </CharlieTooltip>
+        </div>
+
+        <div className="mb-5">
+          <label htmlFor="propertyManagementFeePercentage" className="block text-sm font-medium text-gray-700 mb-1">Property Management Fee (%)</label>
+          <CharlieTooltip message="Good management is worth every penny. Bad management will cost you more than the fee. Interview multiple companies.">
+            <input
+              type="number"
+              id="propertyManagementFeePercentage"
+              value={propertyManagementFeePercentage || ''}
+              onChange={(e) => setPropertyManagementFeePercentage(Math.max(0, parseFloat(e.target.value) || 0))}
+              className="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow duration-150 ease-in-out shadow-sm"
+              step="0.1"
+              min="0"
+            />
+          </CharlieTooltip>
+        </div>
+
+        <div className="mb-5">
+          <label htmlFor="maintenanceRepairsAnnual" className="block text-sm font-medium text-gray-700 mb-1">Maintenance & Repairs ($)</label>
+          <CharlieTooltip message="Deferred maintenance is a profit killer. Budget generously here—better to overestimate than get surprised.">
+            <input
+              type="text"
+              id="maintenanceRepairsAnnual"
+              value={(maintenanceRepairsAnnual ?? 0).toLocaleString('en-US')}
+              onChange={formatAndParseNumberInput(setMaintenanceRepairsAnnual)}
+              className="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow duration-150 ease-in-out shadow-sm"
+              step="100"
+              suppressHydrationWarning={true}
+            />
+          </CharlieTooltip>
+        </div>
+
+        <div className="mb-5">
+          <label htmlFor="utilitiesAnnual" className="block text-sm font-medium text-gray-700 mb-1">Utilities ($)</label>
+          <CharlieTooltip message="Who pays what? Separate meters save you money. Master metered properties need higher budgets.">
+            <input
+              type="text"
+              id="utilitiesAnnual"
+              value={(utilitiesAnnual ?? 0).toLocaleString('en-US')}
+              onChange={formatAndParseNumberInput(setUtilitiesAnnual)}
+              className="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow duration-150 ease-in-out shadow-sm"
+              step="100"
+              suppressHydrationWarning={true}
+            />
+          </CharlieTooltip>
+        </div>
+
+        <div className="mb-5">
+          <label htmlFor="contractServicesAnnual" className="block text-sm font-medium text-gray-700 mb-1">Contract Services ($)</label>
+          <CharlieTooltip message="Landscaping, elevator, HVAC contracts. Lock in good vendors early—they're hard to find and keep.">
+            <input
+              type="text"
+              id="contractServicesAnnual"
+              value={(contractServicesAnnual ?? 0).toLocaleString('en-US')}
+              onChange={formatAndParseNumberInput(setContractServicesAnnual)}
+              className="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow duration-150 ease-in-out shadow-sm"
+              step="100"
+              suppressHydrationWarning={true}
+            />
+          </CharlieTooltip>
+        </div>
+
+        <div className="mb-5">
+          <label htmlFor="payrollAnnual" className="block text-sm font-medium text-gray-700 mb-1">Payroll ($)</label>
+          <CharlieTooltip message="On-site staff for 50+ units usually makes sense. Factor in benefits, not just wages.">
+            <input
+              type="text"
+              id="payrollAnnual"
+              value={(payrollAnnual ?? 0).toLocaleString('en-US')}
+              onChange={formatAndParseNumberInput(setPayrollAnnual)}
+              className="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow duration-150 ease-in-out shadow-sm"
+              step="100"
+              suppressHydrationWarning={true}
+            />
+          </CharlieTooltip>
+        </div>
+
+        <div className="mb-5">
+          <label htmlFor="marketingAnnual" className="block text-sm font-medium text-gray-700 mb-1">Marketing ($)</label>
+          <CharlieTooltip message="Good marketing keeps vacancy low. Apartment finders, online listings, signage—it all adds up but pays for itself.">
+            <input
+              type="text"
+              id="marketingAnnual"
+              value={(marketingAnnual ?? 0).toLocaleString('en-US')}
+              onChange={formatAndParseNumberInput(setMarketingAnnual)}
+              className="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow duration-150 ease-in-out shadow-sm"
+              step="100"
+              suppressHydrationWarning={true}
+            />
+          </CharlieTooltip>
+        </div>
+
+        <div className="mb-5">
+          <label htmlFor="gAndAAnnual" className="block text-sm font-medium text-gray-700 mb-1">G&A ($)</label>
+          <CharlieTooltip message="General & Administrative—the random stuff. Legal, accounting, office supplies. Usually 2-5% of gross income.">
+            <input
+              type="text"
+              id="gAndAAnnual"
+              value={(gAndAAnnual ?? 0).toLocaleString('en-US')}
+              onChange={formatAndParseNumberInput(setGAndAAnnual)}
+              className="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow duration-150 ease-in-out shadow-sm"
+              step="100"
+              suppressHydrationWarning={true}
+            />
+          </CharlieTooltip>
+        </div>
+
+        <div className="mb-5">
+          <label htmlFor="otherExpensesAnnual" className="block text-sm font-medium text-gray-700 mb-1">Other Expenses ($)</label>
+          <CharlieTooltip message="The catch-all category. There's always something. Budget for it or get surprised by it.">
+            <input
+              type="text"
+              id="otherExpensesAnnual"
+              value={(otherExpensesAnnual ?? 0).toLocaleString('en-US')}
+              onChange={formatAndParseNumberInput(setOtherExpensesAnnual)}
+              className="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow duration-150 ease-in-out shadow-sm"
+              step="100"
+              suppressHydrationWarning={true}
+            />
+          </CharlieTooltip>
+        </div>
+
+        <div className="mb-5">
+          <label htmlFor="expenseGrowthRate" className="block text-sm font-medium text-gray-700 mb-1">Expense Growth Rate (%)</label>
+          <CharlieTooltip message="Expenses grow faster than rent in many markets. Don't assume they stay flat—that's rookie mistake #1.">
+            <input
+              type="number"
+              id="expenseGrowthRate"
+              value={expenseGrowthRate ?? 0}
+              onChange={(e) => setExpenseGrowthRate(Math.max(0, parseFloat(e.target.value) || 0))}
+              className="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow duration-150 ease-in-out shadow-sm"
+              step="0.1"
+              min="0"
+            />
+          </CharlieTooltip>
+        </div>
+          </div>
+        )}
+
+        <div className="border-b border-gray-200 pb-2 mb-6 mt-8">
+          <h3 className="text-lg font-semibold text-gray-900">Capital Expenditures</h3>
+        </div>
+        <div className="mb-5">
+          <label htmlFor="capitalReservePerUnitAnnual" className="block text-sm font-medium text-gray-700 mb-1">Capital Reserve (per unit) ($)</label>
+          <CharlieTooltip message="This is your 'stuff breaks' fund. HVAC, roofs, parking lots—big ticket items. I use $300-500/unit minimum.">
+            <input
+              type="text"
+              id="capitalReservePerUnitAnnual"
+              value={(capitalReservePerUnitAnnual ?? 0).toLocaleString('en-US')}
+              onChange={formatAndParseNumberInput(setCapitalReservePerUnitAnnual)}
+              className="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow duration-150 ease-in-out shadow-sm"
+              step="10"
+              suppressHydrationWarning={true}
+            />
+          </CharlieTooltip>
+        </div>
+        <div className="mb-5">
+          <label htmlFor="deferredCapitalReservePerUnit" className="block text-sm font-medium text-gray-700 mb-1">Deferred Capital Reserve (per unit) ($)</label>
+          <CharlieTooltip message="Buying a fixer-upper? This is your renovation budget per unit. Be generous—construction always costs more.">
+            <input
+              type="text"
+              id="deferredCapitalReservePerUnit"
+              value={(deferredCapitalReservePerUnit ?? 0).toLocaleString('en-US')}
+              onChange={formatAndParseNumberInput(setDeferredCapitalReservePerUnit)}
+              className="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow duration-150 ease-in-out shadow-sm"
+              step="10"
+              suppressHydrationWarning={true}
+            />
+          </CharlieTooltip>
+        </div>
+        <div className="mb-6">
+          <label htmlFor="holdingPeriodYears" className="block text-sm font-medium text-gray-700 mb-1">Holding Period (Years)</label>
+          <CharlieTooltip message="How long before you sell or refi? Longer holds smooth out market volatility but tie up your capital.">
+            <div className="flex items-center">
+              <input
+                type="range"
+                id="holdingPeriodYears"
+                min="1"
+                max="50"
+                value={holdingPeriodYears ?? 0}
+                onChange={(e) => setHoldingPeriodYears(parseInt(e.target.value))}
+                className="w-full h-2 bg-gray-300 rounded-lg appearance-none cursor-pointer accent-orange-500"
+              />
+              <span className="ml-3 text-gray-700 font-medium w-10 text-right">{holdingPeriodYears}</span>
+            </div>
+          </CharlieTooltip>
+        </div>
+      </div>
+    </div>
+    
+    {/* Unsaved Changes Modal */}
+    <UnsavedChangesModal
+      isOpen={showUnsavedChangesModal}
+      onStay={handleStayAndSave}
+      onLeave={handleLeaveWithoutSaving}
+    />
+  </>
+  );
+}

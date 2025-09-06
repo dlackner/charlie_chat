@@ -1,13 +1,13 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 
-interface UsePropertyAnalyzerAccessReturn {
+interface UseOfferAnalyzerAccessReturn {
     hasAccess: boolean;
     isLoading: boolean;
     userClass: string | null;
 }
 
-export const usePropertyAnalyzerAccess = (): UsePropertyAnalyzerAccessReturn => {
+export const useOfferAnalyzerAccess = (): UseOfferAnalyzerAccessReturn => {
     const { user: currentUser, supabase } = useAuth();
     const [userClass, setUserClass] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(true);

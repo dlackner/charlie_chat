@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { getGradeFromScore, getGradeThreshold } from './grading-system';
-import { generate10YearCashFlowReport } from './cash-flow-report'; 
+// Cash flow report import removed - now handled in Engage Generate Documents 
 
 // Property Summary Generator
 const generatePropertySummary = (
@@ -336,11 +336,7 @@ const PropertySummaryButton = ({
         setShowSummary(true);
     };
 
-    const handleGenerateCashFlowReport = async () => {
-        if (propertyData) {
-            await generate10YearCashFlowReport(propertyData);
-        }
-    };
+    // handleGenerateCashFlowReport removed - now handled in Engage Generate Documents
     const handlePrintSummary = () => {
         const printWindow = window.open('', '_blank');
         if (!printWindow) return;
@@ -482,15 +478,7 @@ const PropertySummaryButton = ({
                             </div>
 
                             <div className="flex flex-col sm:flex-row sm:space-x-3 space-y-2 sm:space-y-0 mt-6 pt-4 border-t border-gray-200">
-                                <button
-                                    onClick={handleGenerateCashFlowReport}
-                                    className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-5 rounded-lg transition-colors duration-150 flex items-center justify-center space-x-2 shadow-sm"
-                                >
-                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a4 4 0 01-4-4V5a4 4 0 014-4h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a4 4 0 01-4 4z" />
-                                    </svg>
-                                    <span>10-Year Cash Flow Report</span>
-                                </button>
+                                {/* 10-Year Cash Flow Report moved to Engage Generate Documents dropdown */}
                                 <button
                                     onClick={handlePrintSummary}
                                     className="bg-gray-600 hover:bg-gray-700 text-white font-medium py-3 px-5 rounded-lg transition-colors duration-150 flex items-center justify-center space-x-2 shadow-sm"

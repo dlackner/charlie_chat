@@ -328,9 +328,26 @@ export default function BuyBoxPage() {
         {/* Buy Box Criteria Summary - Market Specific */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-8">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-semibold text-gray-900">
-              {selectedMarket} Buy Box Criteria
-            </h2>
+            <div className="flex-1">
+              <h2 className="text-xl font-semibold text-gray-900 mb-3">
+                {selectedMarket} Buy Box Criteria
+              </h2>
+              {/* Learning Progress Bar */}
+              <div className="max-w-xs">
+                <div className="relative w-full bg-gray-200 rounded-full h-6 shadow-inner">
+                  <div 
+                    className="h-6 rounded-full transition-all duration-300 relative overflow-hidden bg-gradient-to-r from-blue-400 to-blue-600"
+                    style={{
+                      width: '25%' // This would be dynamic based on market convergence data
+                    }}
+                  >
+                    <span className="absolute inset-0 flex items-center justify-center text-xs font-medium text-white capitalize">
+                      Discovery
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
             <div className="flex items-center space-x-4">
               {/* View Mode Toggle */}
               <div className="flex items-center bg-gray-100 rounded-lg p-1">

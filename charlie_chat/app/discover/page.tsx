@@ -1,13 +1,16 @@
 'use client';
 
 import { useState } from 'react';
-import { Search, MapPin, SlidersHorizontal, ChevronDown, ChevronUp, X, Heart } from 'lucide-react';
+import { Search, MapPin, SlidersHorizontal, ChevronDown, ChevronUp, X, Heart, Bookmark } from 'lucide-react';
 
 export default function DiscoverPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [showMobileFilters, setShowMobileFilters] = useState(false);
   const [propertyCount, setPropertyCount] = useState(0);
   const [hasSearched, setHasSearched] = useState(false);
+  const [showSaveModal, setShowSaveModal] = useState(false);
+  const [saveSearchName, setSaveSearchName] = useState('');
+  const [saveSearchDescription, setSaveSearchDescription] = useState('');
   
   // Collapsible section states
   const [collapsedSections, setCollapsedSections] = useState({
@@ -31,6 +34,34 @@ export default function DiscoverPage() {
       ...prev,
       [section]: !prev[section as keyof typeof prev]
     }));
+  };
+
+  // Check if any filters have been modified (not default values)
+  const hasFiltersSet = () => {
+    // In a real implementation, this would check actual filter state
+    // For now, return true if search query is set or has searched
+    return searchQuery.trim() !== '' || hasSearched;
+  };
+
+  const handleSaveSearch = async () => {
+    if (!saveSearchName.trim()) return;
+    
+    // TODO: This would call API to save search criteria
+    const searchCriteria = {
+      location: searchQuery,
+      // Add all other filter values here
+      // minUnits, maxUnits, etc.
+    };
+    
+    console.log('Saving search:', { name: saveSearchName, description: saveSearchDescription, criteria: searchCriteria });
+    
+    // Reset modal
+    setShowSaveModal(false);
+    setSaveSearchName('');
+    setSaveSearchDescription('');
+    
+    // Show success message (TODO: implement proper feedback)
+    alert('Search saved successfully!');
   };
 
   return (
@@ -268,7 +299,7 @@ export default function DiscoverPage() {
               </CollapsibleFilterSection>
 
               {/* Search Button */}
-              <div className="pt-6 border-t border-gray-200">
+              <div className="pt-6 border-t border-gray-200 space-y-3">
                 <button 
                   onClick={handleSearch}
                   className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 px-4 rounded-lg font-medium transition-colors flex items-center justify-center"
@@ -276,6 +307,17 @@ export default function DiscoverPage() {
                   <Search className="h-4 w-4 mr-2" />
                   Search Properties
                 </button>
+                
+                {/* Save Search Button - Only show when filters are set */}
+                {hasFiltersSet() && (
+                  <button 
+                    onClick={() => setShowSaveModal(true)}
+                    className="w-full bg-white hover:bg-gray-50 text-gray-700 border border-gray-300 py-3 px-4 rounded-lg font-medium transition-colors flex items-center justify-center"
+                  >
+                    <Bookmark className="h-4 w-4 mr-2" />
+                    Save This Search
+                  </button>
+                )}
               </div>
 
             </div>
@@ -576,7 +618,7 @@ export default function DiscoverPage() {
               </div>
 
               {/* Search Button */}
-              <div className="mt-6 pt-6 border-t border-gray-200">
+              <div className="mt-6 pt-6 border-t border-gray-200 space-y-3">
                 <button 
                   onClick={() => {
                     handleSearch();
@@ -587,8 +629,93 @@ export default function DiscoverPage() {
                   <Search className="h-4 w-4 mr-2" />
                   Search Properties
                 </button>
+                
+                {/* Save Search Button - Only show when filters are set */}
+                {hasFiltersSet() && (
+                  <button 
+                    onClick={() => {
+                      setShowSaveModal(true);
+                      setShowMobileFilters(false);
+                    }}
+                    className="w-full bg-white hover:bg-gray-50 text-gray-700 border border-gray-300 py-3 px-4 rounded-lg font-medium transition-colors flex items-center justify-center"
+                  >
+                    <Bookmark className="h-4 w-4 mr-2" />
+                    Save This Search
+                  </button>
+                )}
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Save Search Modal */}
+      {showSaveModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-900">Save Search</h3>
+              <button
+                onClick={() => setShowSaveModal(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            
+            <div className="mb-4">
+              <p className="text-sm text-gray-600 mb-4">
+                Save your current search criteria so you can easily find similar properties later.
+              </p>
+            </div>
+
+            <form onSubmit={(e) => { e.preventDefault(); handleSaveSearch(); }} className="space-y-4">
+              <div>
+                <label htmlFor="searchName" className="block text-sm font-medium text-gray-700 mb-2">
+                  Search Name *
+                </label>
+                <input
+                  id="searchName"
+                  type="text"
+                  value={saveSearchName}
+                  onChange={(e) => setSaveSearchName(e.target.value)}
+                  placeholder="e.g., Denver Multi-Family Properties"
+                  className="w-full px-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  autoFocus
+                  required
+                />
+              </div>
+
+              <div>
+                <label htmlFor="searchDescription" className="block text-sm font-medium text-gray-700 mb-2">
+                  Description (Optional)
+                </label>
+                <textarea
+                  id="searchDescription"
+                  value={saveSearchDescription}
+                  onChange={(e) => setSaveSearchDescription(e.target.value)}
+                  placeholder="Brief description of this search..."
+                  rows={3}
+                  className="w-full px-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+
+              <div className="flex space-x-3 pt-4">
+                <button
+                  type="submit"
+                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-3 px-4 rounded-lg font-medium transition-colors"
+                >
+                  Save Search
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowSaveModal(false)}
+                  className="flex-1 border border-gray-300 hover:bg-gray-50 text-gray-700 py-3 px-4 rounded-lg font-medium transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
