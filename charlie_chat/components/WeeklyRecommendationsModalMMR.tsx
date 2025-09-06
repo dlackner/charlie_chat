@@ -411,22 +411,25 @@ export const WeeklyRecommendationsModalMMR: React.FC<WeeklyRecommendationsModalM
         
         console.log(`✅ Validation passed: All ${recommendations.length} properties have decisions`);
         
+        // Store recommendations array before any state changes
+        const propertiesToProcess = [...recommendations];
+        
         // Close modal immediately to avoid showing confusing loading state
         onClose();
         
         try {
             // Process each property (all are guaranteed to have decisions)
-            for (const property of recommendations) {
+            for (const property of propertiesToProcess) {
                 const decision = propertyDecisions[property.property_id];
                 
-                // Update user_favorites status
+                // Update user_favorites status (remove batch ID restriction to handle multiple batches)
                 if (decision === 'favorite') {
                     await supabase
                         .from('user_favorites')
                         .update({ status: 'active' })
                         .eq('user_id', user.id)
                         .eq('property_id', property.property_id)
-                        .eq('recommendation_batch_id', batchId);
+                        .eq('status', 'pending'); // Only update pending recommendations
                 } else if (decision === 'not_interested') {
                     await supabase
                         .from('user_favorites')
@@ -436,7 +439,7 @@ export const WeeklyRecommendationsModalMMR: React.FC<WeeklyRecommendationsModalM
                         })
                         .eq('user_id', user.id)
                         .eq('property_id', property.property_id)
-                        .eq('recommendation_batch_id', batchId);
+                        .eq('status', 'pending'); // Only update pending recommendations
                 } else {
                     // This should never happen due to validation, but log it if it does
                     console.error('Unexpected: Property has no decision despite validation:', property.property_id, decision);
@@ -449,6 +452,10 @@ export const WeeklyRecommendationsModalMMR: React.FC<WeeklyRecommendationsModalM
             }
             
             console.log(`✅ Committed ${Object.keys(propertyDecisions).length} decisions to database`);
+            
+            // Clear state after successful processing to ensure fresh data on next load
+            setRecommendations([]);
+            setPropertyDecisions({});
             
             // Update market convergence analysis after all decisions are committed
             try {
