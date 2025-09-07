@@ -1224,8 +1224,8 @@ export default function MyPropertiesPage() {
 
                                                             // Create mailto link with email template content
                                                             const ownerName = property.owner_first_name || 'Property Owner';
-                                                            const subject = 'Interest in Your Property';
                                                             const propertyAddress = property.address_full;
+                                                            const subject = `Your Property at ${propertyAddress}`;
                                                             const userPhone = profileData.phone_number?.replace(/(\d{3})(\d{3})(\d{4})/, "$1.$2.$3") || 'Phone not provided';
                                                             const userEmail = user.email;
                                                             const userName = profileData.first_name && profileData.last_name 
