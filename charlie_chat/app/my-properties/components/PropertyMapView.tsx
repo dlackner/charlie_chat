@@ -6,8 +6,8 @@ import { useState, useEffect, useMemo } from 'react';
 import { Heart, CheckSquare, Square, Info, DollarSign } from "lucide-react";
 import { ProcessedRentData, getRentColorQuintiles } from './rentDataProcessor';
 
-// Dynamically import the map component to avoid SSR issues
-const DynamicMap = dynamic(() => import('./DynamicMapComponent'), {
+// Dynamically import the Mapbox component to avoid SSR issues
+const MapboxMap = dynamic(() => import('./MapboxMapComponent'), {
     ssr: false,
     loading: () => (
         <div className="h-[600px] bg-gray-100 flex items-center justify-center">
@@ -31,6 +31,7 @@ interface PropertyMapViewProps {
 export const PropertyMapView: React.FC<PropertyMapViewProps> = (props) => {
     const [hiddenProperties, setHiddenProperties] = useState<Set<string>>(new Set());
     const [showRentOverlay, setShowRentOverlay] = useState(true);
+    const [selectedPropertyId, setSelectedPropertyId] = useState<string | null>(null);
 
 
     // Type guard function
@@ -97,6 +98,14 @@ const propertiesWithRentData = useMemo(() => {
         setHiddenProperties(new Set());
     };
 
+    const handlePropertySelect = (propertyId: string | null) => {
+        setSelectedPropertyId(propertyId);
+    };
+
+    const toggleRentOverlay = () => {
+        setShowRentOverlay(prev => !prev);
+    };
+
     // Get rent statistics with quintile breakpoints
     const rentStats = useMemo(() => {
         if (!props.rentData) return null;
@@ -159,72 +168,68 @@ const propertiesWithRentData = useMemo(() => {
         );
     }
 
+    // Transform properties to match Mapbox component format
+    const mapboxProperties = propertiesWithRentData.map(p => ({
+        id: p.property_id,
+        address: p.address_full || p.address_street || '',
+        city: p.address_city,
+        state: p.address_state,
+        zip: p.address_zip || '',
+        latitude: p.latitude,
+        longitude: p.longitude,
+        units: p.units_count,
+        year_built: p.year_built,
+        assessed_total: p.assessed_value,
+        estimated_equity: p.estimated_equity,
+        market_rent: (p as any).marketRent || null,
+        investment_flags: {
+            auction: p.auction,
+            reo: p.reo,
+            tax_lien: p.tax_lien,
+            pre_foreclosure: p.pre_foreclosure,
+            distressed: false,
+            high_equity: p.estimated_equity > 100000,
+            wholesale: false,
+            motivated_seller: p.out_of_state_absentee_owner
+        },
+        skip_trace_completed: !!p.last_skip_trace,
+        hidden: false
+    }));
+
+    // Transform rent data to match Mapbox component format
+    const mapboxRentData = props.rentData?.map((r, index) => {
+        // Calculate quintile based on rent amount
+        let quintile = 5;
+        if (r.averageRent < 1000) quintile = 1;
+        else if (r.averageRent < 1400) quintile = 2;
+        else if (r.averageRent < 1800) quintile = 3;
+        else if (r.averageRent < 2400) quintile = 4;
+        
+        return {
+            id: `rent-${index}`,
+            msa_name: r.RegionName,
+            latitude: r.latitude || 0,
+            longitude: r.longitude || 0,
+            average_rent: r.averageRent,
+            yoy_change: typeof r.yoyPercent === 'number' ? r.yoyPercent : parseFloat(r.yoyPercent as string) || 0,
+            market_rank: r.sizeRank,
+            radius_miles: r.radius || 25,
+            quintile: quintile
+        };
+    }) || [];
+
     return (
         <div className="h-[600px] relative">
-            {/* Map Controls */}
-            <div className="absolute top-4 left-16 z-[1000] space-y-2">
-                {hiddenProperties.size > 0 && (
-                    <button
-                        onClick={showAllProperties}
-                        className="bg-white px-3 py-2 rounded-lg shadow-lg border border-gray-200 text-sm font-medium text-gray-700 hover:bg-gray-50 block w-full"
-                    >
-                        Show All Properties ({hiddenProperties.size} hidden)
-                    </button>
-                )}
-
-                {props.rentData && props.rentData.length > 0 && (
-                    <button
-                        onClick={() => setShowRentOverlay(!showRentOverlay)}
-                        className={`px-4 py-2 rounded-lg shadow-lg border text-sm font-medium flex items-center gap-2 transition-all duration-300 ${showRentOverlay
-                            ? 'bg-gray-600 text-white border-gray-600 hover:bg-gray-700'
-                            : 'bg-orange-500 text-white border-orange-500 hover:bg-orange-600'
-                            }`}
-                    >
-                        {showRentOverlay ? 'Hide Rents' : 'Show Rents'}
-                    </button>
-                )}
-            </div>
-
-            {/* Fixed Market-Based Quintile Legend */}
-            {showRentOverlay && (
-                <div className="absolute top-4 right-4 z-[1000] bg-white p-4 rounded-lg shadow-lg border border-gray-200">
-                    <h4 className="text-sm font-semibold text-gray-900 mb-3">Average Rent (Market Segments)</h4>
-                    <div className="space-y-2">
-                        <div className="flex items-center gap-2">
-                            <div className="w-4 h-4 rounded" style={{ backgroundColor: '#10B981' }}></div>
-                            <span className="text-xs text-gray-600">Q1: Very Low Cost (Under $1,000)</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                            <div className="w-4 h-4 rounded" style={{ backgroundColor: '#0EA5E9' }}></div>
-                            <span className="text-xs text-gray-600">Q2: Low Cost ($1,000-$1,399)</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                            <div className="w-4 h-4 rounded" style={{ backgroundColor: '#6B7280' }}></div>
-                            <span className="text-xs text-gray-600">Q3: Moderate Cost ($1,400-$1,799)</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                            <div className="w-4 h-4 rounded" style={{ backgroundColor: '#F97316' }}></div>
-                            <span className="text-xs text-gray-600">Q4: High Cost ($1,800-$2,399)</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                            <div className="w-4 h-4 rounded" style={{ backgroundColor: '#DC2626' }}></div>
-                            <span className="text-xs text-gray-600">Q5: Very High Cost ($2,400+)</span>
-                        </div>
-                    </div>
-                    <div className="text-xs text-gray-500 mt-2 pt-2 border-t">
-                        Rental data available for 489 MSAs
-                    </div>
-                </div>
-            )}
-
-            <DynamicMap
-                properties={propertiesWithRentData}
-                selectedProperties={props.selectedProperties}
-                onToggleSelection={props.onToggleSelection}
-                hideProperty={hideProperty}
+            <MapboxMap
+                properties={mapboxProperties}
+                rentData={mapboxRentData}
                 showRentOverlay={showRentOverlay}
-                rentData={props.rentData}
-                getRentColor={getRentColor}
+                hiddenPropertyIds={hiddenProperties}
+                onHideProperty={hideProperty}
+                onShowAllProperties={showAllProperties}
+                selectedPropertyId={selectedPropertyId}
+                onPropertySelect={handlePropertySelect}
+                onToggleRentOverlay={toggleRentOverlay}
             />
         </div>
     );
