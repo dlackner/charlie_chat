@@ -323,7 +323,7 @@ export default function PricingPage() {
         <div className="border border-gray-300 rounded-lg p-6 bg-white shadow hover:shadow-lg hover:-translate-y-1 transform transition duration-200 ease-in-out flex flex-col relative">
           {/* Best Value Badge */}
           <div className="absolute -top-6 left-6 z-10">
-            <span className="bg-gradient-to-r from-blue-500 to-blue-600 text-white text-xs font-extrabold px-4 py-2 rounded-full shadow-lg border-2 border-white whitespace-nowrap">BEST VALUE</span>
+            <span className="bg-gradient-to-r from-indigo-600 to-indigo-700 text-white text-xs font-extrabold px-4 py-2 rounded-full shadow-lg border-2 border-white whitespace-nowrap">BEST VALUE</span>
           </div>
           <h2 className="text-2xl font-semibold mb-2">Charlie Chat Professional</h2>
           {isAnnual ? (
@@ -342,7 +342,7 @@ export default function PricingPage() {
           </p>
           <ul className="text-sm space-y-1 text-gray-800 mb-4 flex flex-col">
             <li className="flex items-baseline">
-              <span className="text-lg font-semibold text-blue-600">Everything in Charlie Chat Plus, PLUS:</span>
+              <span className="text-lg font-semibold text-indigo-600">Everything in Charlie Chat Plus, PLUS:</span>
             </li>
             <li><a href="#charlie-chat-pro-details" className="text-gray-800 border-b border-dotted border-gray-400 hover:border-gray-600 cursor-pointer transition-colors duration-200">✔️ Access to my Master Class Training Program</a></li>
             <li><a href="#charlie-chat-pro-details" className="text-gray-800 border-b border-dotted border-gray-400 hover:border-gray-600 cursor-pointer transition-colors duration-200">✔️ Weekly group coaching call with Charles Dobens</a></li>
@@ -351,7 +351,7 @@ export default function PricingPage() {
           </ul>
           <button
             onClick={() => handleCheckout(isAnnual ? CHARLIE_CHAT_PRO_ANNUAL : CHARLIE_CHAT_PRO_MONTHLY, isAnnual ? "annual" : "monthly")}
-            className="mt-auto w-full bg-black text-white py-2 rounded font-semibold transition duration-200 transform hover:scale-105 hover:bg-blue-600 hover:shadow-xl"
+            className="mt-auto w-full bg-black text-white py-2 rounded font-semibold transition duration-200 transform hover:scale-105 hover:bg-indigo-600 hover:shadow-xl"
           >
             Get Access
           </button>

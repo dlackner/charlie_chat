@@ -511,15 +511,45 @@ function PropertyCard({
     window.open(`/offer-analyzer?${params.toString()}`, '_blank');
   };
 
+  const getStreetViewImage = () => {
+    const address = `${property.address}, ${property.city}, ${property.state} ${property.zip}`;
+    return `https://maps.googleapis.com/maps/api/streetview?size=400x300&location=${encodeURIComponent(address)}&key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}`;
+  };
+
+  const handleZillowClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const zillowUrl = `https://www.zillow.com/homes/${property.address.replace(/\s+/g, '-')}-${property.city}-${property.state}-${property.zip}_rb/`;
+    window.open(zillowUrl, '_blank');
+  };
+
+  const handleImageClick = () => {
+    const address = `${property.address}, ${property.city}, ${property.state} ${property.zip}`;
+    const mapsUrl = `https://www.google.com/maps/search/${encodeURIComponent(address)}`;
+    window.open(mapsUrl, '_blank');
+  };
+
   return (
     <div className="bg-white rounded-lg border border-gray-200 overflow-hidden hover:shadow-lg transition-all duration-200">
       {/* Property Image */}
-      <div className="relative aspect-[4/3] bg-gradient-to-br from-gray-200 to-gray-300 flex items-center justify-center">
-        <div className="text-gray-500 text-center">
-          <div className="w-12 h-12 mx-auto mb-2 bg-gray-400/30 rounded-lg flex items-center justify-center">
-            <div className="w-6 h-6 bg-gray-400 rounded"></div>
+      <div className="relative aspect-[4/3] bg-gray-200 cursor-pointer" onClick={handleImageClick}>
+        <img 
+          src={getStreetViewImage()}
+          alt={`Street view of ${property.address}`}
+          className="w-full h-full object-cover hover:opacity-95 transition-opacity"
+          onError={(e) => {
+            // Fallback to placeholder if Street View fails
+            e.currentTarget.style.display = 'none';
+            e.currentTarget.nextElementSibling?.classList.remove('hidden');
+          }}
+        />
+        {/* Fallback placeholder */}
+        <div className="hidden absolute inset-0 bg-gradient-to-br from-gray-200 to-gray-300 flex items-center justify-center">
+          <div className="text-gray-500 text-center">
+            <div className="w-12 h-12 mx-auto mb-2 bg-gray-400/30 rounded-lg flex items-center justify-center">
+              <div className="w-6 h-6 bg-gray-400 rounded"></div>
+            </div>
+            <div className="text-sm font-medium">Property Photo</div>
           </div>
-          <div className="text-sm font-medium">Property Photo</div>
         </div>
         
         {/* Selection Checkbox */}
@@ -541,6 +571,17 @@ function PropertyCard({
             </div>
           </div>
         </div>
+
+        {/* Zillow Icon */}
+        <button 
+          onClick={handleZillowClick}
+          className="absolute bottom-3 right-3 bg-white/95 hover:bg-white rounded-lg p-2 shadow-sm transition-colors group"
+          title="View on Zillow"
+        >
+          <svg className="w-6 h-6 text-blue-600" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 2L2 12h3v8h4v-6h6v6h4v-8h3L12 2z"/>
+          </svg>
+        </button>
       </div>
 
       {/* Property Details */}
@@ -631,7 +672,7 @@ function PropertyCard({
             className="flex items-center text-blue-600 hover:text-blue-700 text-sm font-medium"
           >
             <Calculator className="h-3 w-3 mr-1" />
-            {property.hasPricingScenario ? 'Edit Scenario' : 'Offer Analysis'}
+            {property.hasPricingScenario ? 'Modify Offer' : 'Create Offer'}
           </button>
           
           <button 

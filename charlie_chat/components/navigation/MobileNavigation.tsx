@@ -237,7 +237,7 @@ export default function MobileNavigation() {
             {/* Centered Navigation */}
             <nav className="flex-1 flex justify-center">
               <div className="flex space-x-8">
-              {navigation.map((item) => {
+              {navigation.filter(item => item.name !== 'ACCOUNT' && item.name !== 'PRICING').map((item) => {
                 const isActive = pathname.startsWith(item.href);
                 const isSubmenuOpen = openSubmenus[item.name];
                 const Icon = item.icon;
@@ -309,6 +309,107 @@ export default function MobileNavigation() {
               })}
               </div>
             </nav>
+
+            {/* Right-aligned Pricing and Account */}
+            <div className="flex-shrink-0 flex space-x-6">
+              {/* Pricing Button */}
+              {(() => {
+                const pricingItem = navigation.find(item => item.name === 'PRICING');
+                if (!pricingItem) return null;
+                
+                const isActive = pathname.startsWith(pricingItem.href);
+                const Icon = pricingItem.icon;
+                
+                return (
+                  <Link
+                    href={pricingItem.href}
+                    onClick={closeAllSubmenus}
+                    className={`
+                      flex items-center px-3 py-2 rounded-md text-sm font-medium transition-colors
+                      ${isActive 
+                        ? 'text-blue-700 bg-blue-50' 
+                        : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                      }
+                    `}
+                  >
+                    <Icon className="h-4 w-4 mr-2" />
+                    {pricingItem.name}
+                  </Link>
+                );
+              })()}
+
+              {/* Account Button */}
+              {(() => {
+                const accountItem = navigation.find(item => item.name === 'ACCOUNT');
+                if (!accountItem) return null;
+                
+                const isActive = pathname.startsWith(accountItem.href);
+                const isSubmenuOpen = openSubmenus[accountItem.name];
+                const Icon = accountItem.icon;
+                
+                return (
+                  <div className="relative">
+                    {accountItem.submenu ? (
+                      <>
+                        <button
+                          onClick={() => toggleSubmenu(accountItem.name)}
+                          className={`
+                            flex items-center px-3 py-2 rounded-md text-sm font-medium transition-colors
+                            ${isActive 
+                              ? 'text-blue-700 bg-blue-50' 
+                              : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                            }
+                          `}
+                        >
+                          <Icon className="h-4 w-4 mr-2" />
+                          {accountItem.name}
+                          <ChevronDown className={`h-3 w-3 ml-1 transition-transform ${isSubmenuOpen ? 'rotate-180' : ''}`} />
+                        </button>
+                        
+                        {isSubmenuOpen && (
+                          <div className="absolute top-full right-0 mt-1 w-56 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50">
+                            {accountItem.submenu.map((subItem) => {
+                              const isSubActive = pathname === subItem.href;
+                              return (
+                                <Link
+                                  key={subItem.name}
+                                  href={subItem.href}
+                                  onClick={closeAllSubmenus}
+                                  className={`
+                                    block px-4 py-2 text-sm transition-colors
+                                    ${isSubActive 
+                                      ? 'bg-blue-50 text-blue-700 font-medium' 
+                                      : 'text-gray-700 hover:bg-gray-50'
+                                    }
+                                  `}
+                                >
+                                  {subItem.name}
+                                </Link>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      <Link
+                        href={accountItem.href}
+                        onClick={closeAllSubmenus}
+                        className={`
+                          flex items-center px-3 py-2 rounded-md text-sm font-medium transition-colors
+                          ${isActive 
+                            ? 'text-blue-700 bg-blue-50' 
+                            : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                          }
+                        `}
+                      >
+                        <Icon className="h-4 w-4 mr-2" />
+                        {accountItem.name}
+                      </Link>
+                    )}
+                  </div>
+                );
+              })()}
+            </div>
           </div>
         </div>
       </div>
