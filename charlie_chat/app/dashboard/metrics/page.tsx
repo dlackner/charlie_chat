@@ -105,7 +105,7 @@ function ActionCenter() {
     <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-8">
       <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center">
         <AlertCircle className="h-5 w-5 mr-2 text-blue-600" />
-        Action Center
+        Reminders
       </h2>
       
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

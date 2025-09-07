@@ -13,7 +13,8 @@ import {
   Menu, 
   X,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  DollarSign
 } from 'lucide-react';
 
 interface NavigationItem {
@@ -31,8 +32,8 @@ const navigation: NavigationItem[] = [
     submenu: [
       { name: 'Metrics', href: '/dashboard/metrics' },
       { name: 'Pipeline', href: '/dashboard/pipeline' },
-      { name: 'Performance', href: '/dashboard/performance' },
-      { name: 'Analytics', href: '/dashboard/analytics' }
+      { name: 'Community', href: '/dashboard/community' },
+      { name: 'Onboarding', href: '/dashboard/onboarding' }
     ]
   },
   { 
@@ -53,13 +54,12 @@ const navigation: NavigationItem[] = [
   { 
     name: 'AI CHAT', 
     href: '/chat', 
-    icon: MessageCircle,
-    submenu: [
-      { name: 'Property Assistant', href: '/chat/property' },
-      { name: 'Deal Analysis', href: '/chat/deals' },
-      { name: 'Market Insights', href: '/chat/market' },
-      { name: 'Chat History', href: '/chat/history' }
-    ]
+    icon: MessageCircle
+  },
+  { 
+    name: 'PRICING', 
+    href: '/pricing', 
+    icon: DollarSign
   },
   { 
     name: 'ACCOUNT', 
@@ -67,9 +67,7 @@ const navigation: NavigationItem[] = [
     icon: User,
     submenu: [
       { name: 'Profile', href: '/account/profile' },
-      { name: 'Subscription', href: '/account/subscription' },
-      { name: 'Billing', href: '/account/billing' },
-      { name: 'Settings', href: '/account/settings' }
+      { name: 'Subscription', href: '/account/subscription' }
     ]
   },
 ];
@@ -81,9 +79,14 @@ export default function MobileNavigation() {
 
   const toggleSubmenu = (itemName: string) => {
     setOpenSubmenus(prev => ({
-      ...prev,
+      // Close all other submenus and toggle the clicked one
       [itemName]: !prev[itemName]
     }));
+  };
+
+
+  const closeAllSubmenus = () => {
+    setOpenSubmenus({});
   };
 
   return (
@@ -219,7 +222,7 @@ export default function MobileNavigation() {
       {/* Desktop Navigation - Horizontal Bar */}
       <div className="hidden lg:block bg-white border-b border-gray-200 shadow-sm">
         <div className="px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
+          <div className="flex items-center h-16">
             {/* Logo */}
             <div className="flex-shrink-0">
               <Image 
@@ -231,8 +234,9 @@ export default function MobileNavigation() {
               />
             </div>
 
-            {/* Navigation */}
-            <nav className="flex space-x-8">
+            {/* Centered Navigation */}
+            <nav className="flex-1 flex justify-center">
+              <div className="flex space-x-8">
               {navigation.map((item) => {
                 const isActive = pathname.startsWith(item.href);
                 const isSubmenuOpen = openSubmenus[item.name];
@@ -267,7 +271,7 @@ export default function MobileNavigation() {
                                 <Link
                                   key={subItem.name}
                                   href={subItem.href}
-                                  onClick={() => setOpenSubmenus({})}
+                                  onClick={closeAllSubmenus}
                                   className={`
                                     block px-4 py-2 text-sm transition-colors
                                     ${isSubActive 
@@ -287,6 +291,7 @@ export default function MobileNavigation() {
                       // Items without submenu - direct link
                       <Link
                         href={item.href}
+                        onClick={closeAllSubmenus}
                         className={`
                           flex items-center px-3 py-2 rounded-md text-sm font-medium transition-colors
                           ${isActive 
@@ -302,6 +307,7 @@ export default function MobileNavigation() {
                   </div>
                 );
               })}
+              </div>
             </nav>
           </div>
         </div>

@@ -229,7 +229,7 @@ export default function PricingPage() {
 
   return (
     <div className="min-h-screen bg-white text-black px-6 py-12">
-      <h1 className="text-3xl sm:text-5xl font-semibold mb-6 text-orange-600 text-center">Pricing</h1>
+      <h1 className="text-3xl sm:text-5xl font-semibold mb-6 text-blue-600 text-center">Pricing</h1>
 
       {/* Toggle for Monthly/Annual */}
       <div className="flex justify-center mb-8">
@@ -304,7 +304,7 @@ export default function PricingPage() {
           </p>
           <ul className="text-sm space-y-1 text-gray-800 mb-4 flex flex-col">
             <li className="flex items-baseline">
-              <span className="text-lg font-semibold text-orange-500">Everything in Charlie Chat, PLUS:</span>
+              <span className="text-lg font-semibold text-blue-600">Everything in Charlie Chat, PLUS:</span>
             </li>
             <li>✔️ AI analysis of broker documents and offer memorandums</li>
             <li>✔️ Best practice marketing tools & LOI's</li>
@@ -313,7 +313,7 @@ export default function PricingPage() {
           </ul>
           <button
             onClick={() => handleCheckout(isAnnual ? CHARLIE_CHAT_PLUS_ANNUAL : CHARLIE_CHAT_PLUS_MONTHLY, isAnnual ? "annual" : "monthly")}
-            className="mt-auto w-full bg-black text-white py-2 rounded font-semibold transition duration-200 transform hover:scale-105 hover:bg-orange-600 hover:shadow-xl"
+            className="mt-auto w-full bg-black text-white py-2 rounded font-semibold transition duration-200 transform hover:scale-105 hover:bg-blue-600 hover:shadow-xl"
           >
             Get Access
           </button>
@@ -323,7 +323,7 @@ export default function PricingPage() {
         <div className="border border-gray-300 rounded-lg p-6 bg-white shadow hover:shadow-lg hover:-translate-y-1 transform transition duration-200 ease-in-out flex flex-col relative">
           {/* Best Value Badge */}
           <div className="absolute -top-6 left-6 z-10">
-            <span className="bg-gradient-to-r from-orange-500 to-orange-600 text-white text-xs font-extrabold px-4 py-2 rounded-full shadow-lg border-2 border-white whitespace-nowrap">BEST VALUE</span>
+            <span className="bg-gradient-to-r from-blue-500 to-blue-600 text-white text-xs font-extrabold px-4 py-2 rounded-full shadow-lg border-2 border-white whitespace-nowrap">BEST VALUE</span>
           </div>
           <h2 className="text-2xl font-semibold mb-2">Charlie Chat Professional</h2>
           {isAnnual ? (
@@ -342,7 +342,7 @@ export default function PricingPage() {
           </p>
           <ul className="text-sm space-y-1 text-gray-800 mb-4 flex flex-col">
             <li className="flex items-baseline">
-              <span className="text-lg font-semibold text-orange-500">Everything in Charlie Chat Plus, PLUS:</span>
+              <span className="text-lg font-semibold text-blue-600">Everything in Charlie Chat Plus, PLUS:</span>
             </li>
             <li><a href="#charlie-chat-pro-details" className="text-gray-800 border-b border-dotted border-gray-400 hover:border-gray-600 cursor-pointer transition-colors duration-200">✔️ Access to my Master Class Training Program</a></li>
             <li><a href="#charlie-chat-pro-details" className="text-gray-800 border-b border-dotted border-gray-400 hover:border-gray-600 cursor-pointer transition-colors duration-200">✔️ Weekly group coaching call with Charles Dobens</a></li>
@@ -351,7 +351,7 @@ export default function PricingPage() {
           </ul>
           <button
             onClick={() => handleCheckout(isAnnual ? CHARLIE_CHAT_PRO_ANNUAL : CHARLIE_CHAT_PRO_MONTHLY, isAnnual ? "annual" : "monthly")}
-            className="mt-auto w-full bg-black text-white py-2 rounded font-semibold transition duration-200 transform hover:scale-105 hover:bg-orange-600 hover:shadow-xl"
+            className="mt-auto w-full bg-black text-white py-2 rounded font-semibold transition duration-200 transform hover:scale-105 hover:bg-blue-600 hover:shadow-xl"
           >
             Get Access
           </button>
@@ -369,7 +369,7 @@ export default function PricingPage() {
           </p>
           <ul className="text-sm space-y-1 text-gray-800 mb-4 flex flex-col">
             <li className="flex items-baseline">
-              <span className="text-lg font-semibold text-orange-500">Everything in Charlie Chat Pro, PLUS:</span>
+              <span className="text-lg font-semibold text-blue-600">Everything in Charlie Chat Pro, PLUS:</span>
             </li>
             <li>✔️ Weekly expert sessions led by me</li>
             <li>✔️ A supportive community of peers & investors</li>
@@ -379,7 +379,7 @@ export default function PricingPage() {
           </ul>
           <button
             onClick={() => window.open("https://multifamilyos.com/multifamilyos-cohort-program/", "_blank")}
-            className="mt-auto w-full bg-black text-white py-2 rounded font-semibold transition duration-200 transform hover:scale-105 hover:bg-orange-600 hover:shadow-xl"
+            className="mt-auto w-full bg-black text-white py-2 rounded font-semibold transition duration-200 transform hover:scale-105 hover:bg-blue-600 hover:shadow-xl"
           >
             Apply Now
           </button>
@@ -639,7 +639,7 @@ export default function PricingPage() {
                 </div>
               </div>
               <div className="px-6 py-4 text-center border-l border-gray-100">
-                <div className="w-5 h-5 rounded-full bg-orange-500 mx-auto flex items-center justify-center">
+                <div className="w-5 h-5 rounded-full bg-blue-600 mx-auto flex items-center justify-center">
                   <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                   </svg>
@@ -660,7 +660,7 @@ export default function PricingPage() {
                 </div>
               </div>
               <div className="px-6 py-4 text-center border-l border-gray-100">
-                <div className="w-5 h-5 rounded-full bg-orange-500 mx-auto flex items-center justify-center">
+                <div className="w-5 h-5 rounded-full bg-blue-600 mx-auto flex items-center justify-center">
                   <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                   </svg>
@@ -681,7 +681,7 @@ export default function PricingPage() {
                 </div>
               </div>
               <div className="px-6 py-4 text-center border-l border-gray-100">
-                <div className="w-5 h-5 rounded-full bg-orange-500 mx-auto flex items-center justify-center">
+                <div className="w-5 h-5 rounded-full bg-blue-600 mx-auto flex items-center justify-center">
                   <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                   </svg>
@@ -694,11 +694,11 @@ export default function PricingPage() {
 
       {/* FAQ Section */}
       <div className="max-w-4xl mx-auto mt-16">
-        <h2 className="text-3xl font-semibold mb-8 text-orange-600 text-center">Frequently Asked Questions</h2>
+        <h2 className="text-3xl font-semibold mb-8 text-blue-600 text-center">Frequently Asked Questions</h2>
         <div className="space-y-6">
           {/* FAQ Item 1 */}
           <div className="bg-white border border-gray-200 rounded-lg p-6 shadow hover:shadow-lg transition duration-200">
-            <h3 className="text-xl font-bold text-orange-600 mb-3">What can Charlie Chat do for me?</h3>
+            <h3 className="text-xl font-bold text-blue-600 mb-3">What can Charlie Chat do for me?</h3>
             <div className="text-sm text-gray-700">
               <p className="mb-3">Charlie Chat is your AI co‑pilot in multifamily investing. It lets you:</p>
               <ul className="list-disc pl-6 space-y-1">
@@ -715,7 +715,7 @@ export default function PricingPage() {
 
           {/* FAQ Item 2 */}
           <div className="bg-white border border-gray-200 rounded-lg p-6 shadow hover:shadow-lg transition duration-200">
-            <h3 className="text-xl font-bold text-orange-600 mb-3">Who is Charles Dobens?</h3>
+            <h3 className="text-xl font-bold text-blue-600 mb-3">Who is Charles Dobens?</h3>
             <div className="text-sm text-gray-700">
               <p className="mb-3">Charles Dobens—known industry-wide as the Multifamily Attorney—is the founder and visionary behind MultifamilyOS™. With 25+ years of experience, he has:</p>
               <ul className="list-disc pl-6 space-y-1">
@@ -728,7 +728,7 @@ export default function PricingPage() {
 
           {/* FAQ Item 3 */}
           <div className="bg-white border border-gray-200 rounded-lg p-6 shadow hover:shadow-lg transition duration-200">
-            <h3 className="text-xl font-bold text-orange-600 mb-3">Where does your property data come from?</h3>
+            <h3 className="text-xl font-bold text-blue-600 mb-3">Where does your property data come from?</h3>
             <div className="text-sm text-gray-700">
               <p className="mb-3">Charlie Chat compiles insights from public records, MLS feeds, market analytics, and proprietary algorithms. We combine this data with the built-in multifamily expertise of Charles Dobens, giving you:</p>
               <ul className="list-disc pl-6 space-y-1">
@@ -742,7 +742,7 @@ export default function PricingPage() {
 
           {/* FAQ Item 4 */}
           <div id="charlie-chat-pro-details" className="bg-white border border-gray-200 rounded-lg p-6 shadow hover:shadow-lg transition duration-200">
-            <h3 className="text-xl font-bold text-orange-600 mb-3">What's so special about Charlie Chat Pro?</h3>
+            <h3 className="text-xl font-bold text-blue-600 mb-3">What's so special about Charlie Chat Pro?</h3>
             <div className="text-sm text-gray-700">
               <p className="mb-3"><strong>Master Class Training:</strong></p>
               <p className="mb-3">The Charlie Chat Multifamily Video Training is your complete, start-to-finish roadmap for finding, funding, and closing profitable multifamily deals. Across 90+ lessons, you'll learn how to choose the right markets, protect your assets, master sales and marketing, structure irresistible offers, uncover hidden opportunities, analyze deals with precision, raise capital confidently, and navigate due diligence—all the way to a smooth closing. Designed for both new and experienced investors, this program gives you the tools, strategies, and confidence to scale a portfolio that generates long-term wealth.</p>
@@ -754,7 +754,7 @@ export default function PricingPage() {
 
           {/* FAQ Item 5 */}
           <div className="bg-white border border-gray-200 rounded-lg p-6 shadow hover:shadow-lg transition duration-200">
-            <h3 className="text-xl font-bold text-orange-600 mb-3">Can I upgrade or downgrade my plan anytime?</h3>
+            <h3 className="text-xl font-bold text-blue-600 mb-3">Can I upgrade or downgrade my plan anytime?</h3>
             <div className="text-sm text-gray-700">
               <p className="mb-3">Absolutely.</p>
               <ul className="list-disc pl-6 space-y-1">
@@ -767,7 +767,7 @@ export default function PricingPage() {
 
           {/* FAQ Item 7 */}
           <div className="bg-white border border-gray-200 rounded-lg p-6 shadow hover:shadow-lg transition duration-200">
-            <h3 className="text-xl font-bold text-orange-600 mb-3">Is there a free trial?</h3>
+            <h3 className="text-xl font-bold text-blue-600 mb-3">Is there a free trial?</h3>
             <div className="text-sm text-gray-700">
               <p className="mb-3">Yes—get started without paying a dime:</p>
               <ul className="list-disc pl-6 space-y-1">
@@ -780,7 +780,7 @@ export default function PricingPage() {
 
           {/* FAQ Item 9 */}
           <div className="bg-white border border-gray-200 rounded-lg p-6 shadow hover:shadow-lg transition duration-200">
-            <h3 className="text-xl font-bold text-orange-600 mb-3">Can I cancel anytime?</h3>
+            <h3 className="text-xl font-bold text-blue-600 mb-3">Can I cancel anytime?</h3>
             <div className="text-sm text-gray-700">
               <p className="mb-3">You can. Totally.</p>
               <ul className="list-disc pl-6 space-y-1">
@@ -793,7 +793,7 @@ export default function PricingPage() {
 
           {/* FAQ Item 10 */}
           <div className="bg-white border border-gray-200 rounded-lg p-6 shadow hover:shadow-lg transition duration-200">
-            <h3 className="text-xl font-bold text-orange-600 mb-3">Do you offer discounts for annual billing?</h3>
+            <h3 className="text-xl font-bold text-blue-600 mb-3">Do you offer discounts for annual billing?</h3>
             <div className="text-sm text-gray-700">
               <p className="mb-3">Yes—save big when you commit:</p>
               <ul className="list-disc pl-6 space-y-1">
@@ -822,7 +822,7 @@ export default function PricingPage() {
                 <DialogDescription className="text-base mt-2 text-gray-700">
                   You're already on a trial! Your trial will automatically convert to a subscription when it ends.
                   <br/><br/>
-                  <span className="font-semibold text-orange-600">
+                  <span className="font-semibold text-blue-600">
                     Keep exploring all the features - you're all set!
                   </span>
                 </DialogDescription>
@@ -834,7 +834,7 @@ export default function PricingPage() {
 
       {/* Premium User Charlie Modal */}
       <Dialog open={showPremiumUserModal} onOpenChange={setShowPremiumUserModal}>
-        <DialogContent className="sm:max-w-md border-2 border-orange-500">
+        <DialogContent className="sm:max-w-md border-2 border-blue-500">
           <DialogHeader>
             <div className="flex items-start gap-4">
               <Avatar className="size-12 flex-shrink-0">
@@ -862,7 +862,7 @@ export default function PricingPage() {
 
       {/* Pro to Plus Downgrade Modal */}
       <Dialog open={showDowngradeModal} onOpenChange={setShowDowngradeModal}>
-        <DialogContent className="sm:max-w-2xl border-2 border-orange-500">
+        <DialogContent className="sm:max-w-2xl border-2 border-blue-500">
           <DialogHeader>
             <div className="flex items-start gap-4">
               <Avatar className="size-12 flex-shrink-0">
@@ -930,7 +930,7 @@ export default function PricingPage() {
           <div className="flex gap-3 mt-4">
             <button
               onClick={() => setShowDowngradeModal(false)}
-              className="flex-1 px-4 py-2 bg-orange-600 text-white rounded-lg font-semibold hover:bg-orange-700 transition-colors"
+              className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-colors"
             >
               {userClass === 'cohort' ? 'Stay in Cohort' : 'Keep Professional'}
             </button>
@@ -946,7 +946,7 @@ export default function PricingPage() {
 
       {/* Downgrade Instructions Modal */}
       <Dialog open={showDowngradeInstructions} onOpenChange={setShowDowngradeInstructions}>
-        <DialogContent className="sm:max-w-lg border-2 border-orange-500">
+        <DialogContent className="sm:max-w-lg border-2 border-blue-500">
           <DialogHeader>
             <div className="flex items-start gap-4">
               <Avatar className="size-12 flex-shrink-0">
@@ -960,8 +960,8 @@ export default function PricingPage() {
                 <div className="text-base mt-2 text-gray-700">
                   <p className="mb-4">No problem - I understand you'd like to make that change. Here's what to do next:</p>
                   
-                  <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 mb-4">
-                    <p className="font-semibold text-orange-800 mb-2">📧 Contact Our Team:</p>
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+                    <p className="font-semibold text-blue-800 mb-2">📧 Contact Our Team:</p>
                     <p className="text-gray-700">Open up the chat help and send us a message requesting your subscription change. Our team will contact you right away to process the change.</p>
                   </div>
                   
@@ -973,7 +973,7 @@ export default function PricingPage() {
           <div className="flex justify-center mt-4">
             <button
               onClick={() => setShowDowngradeInstructions(false)}
-              className="px-6 py-2 bg-orange-600 text-white rounded-lg font-semibold hover:bg-orange-700 transition-colors"
+              className="px-6 py-2 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-colors"
             >
               Got It
             </button>
