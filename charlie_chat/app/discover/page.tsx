@@ -1,9 +1,18 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useAuth } from "@/contexts/AuthContext";
 import { Search, MapPin, SlidersHorizontal, ChevronDown, ChevronUp, X, Heart, Bookmark } from 'lucide-react';
 
+// Extend Window interface for address validation timeout
+declare global {
+  interface Window {
+    addressValidationTimeout: NodeJS.Timeout;
+  }
+}
+
 export default function DiscoverPage() {
+  const { user, supabase } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
   const [showMobileFilters, setShowMobileFilters] = useState(false);
   const [propertyCount, setPropertyCount] = useState(0);
@@ -11,22 +20,348 @@ export default function DiscoverPage() {
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [saveSearchName, setSaveSearchName] = useState('');
   const [saveSearchDescription, setSaveSearchDescription] = useState('');
+  const [recentProperties, setRecentProperties] = useState<any[]>([]);
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [isLoadingRecent, setIsLoadingRecent] = useState(true);
+  const [isSearching, setIsSearching] = useState(false);
+  const [showAddressSuggestions, setShowAddressSuggestions] = useState(false);
+  const [addressSuggestions, setAddressSuggestions] = useState<any[]>([]);
+  const [isValidatingAddress, setIsValidatingAddress] = useState(false);
   
-  // Collapsible section states
+  // Filter states
+  const [filters, setFilters] = useState({
+    // Location
+    city: '',
+    state: '',
+    zip: '',
+    
+    // Number of Units
+    units_min: '',
+    units_max: '',
+    
+    // Owner Information
+    in_state_owner: null as boolean | null,
+    out_of_state_owner: null as boolean | null,
+    corporate_owned: null as boolean | null,
+    years_owned_min: '',
+    years_owned_max: '',
+    
+    // Sale History
+    last_sale_price_min: '',
+    last_sale_price_max: '',
+    mls_active: null as boolean | null,
+    last_sale_arms_length: null as boolean | null,
+    
+    // Physical Characteristics
+    year_built_min: '',
+    year_built_max: '',
+    flood_zone: null as boolean | null,
+    
+    // Financial Information
+    assessed_value_min: '',
+    assessed_value_max: '',
+    value_min: '',
+    value_max: '',
+    
+    // Distress & Special Conditions
+    assumable: null as boolean | null,
+    reo: null as boolean | null,
+    pre_foreclosure: null as boolean | null
+  });
+  
+  // Collapsible section states - all closed by default
   const [collapsedSections, setCollapsedSections] = useState({
-    units: false,
-    owner: false,
+    units: true,
+    owner: true,
     sale: true,
     physical: true,
     financial: true,
     distress: true
   });
 
-  const handleSearch = () => {
-    // Simulate API call - in real app this would call your backend
-    const mockPropertyCount = Math.floor(Math.random() * 150) + 5; // 5-154 properties
-    setPropertyCount(mockPropertyCount);
-    setHasSearched(true);
+  // Load recent favorited properties on page load
+  useEffect(() => {
+    const loadRecentProperties = async () => {
+      if (!user || !supabase) {
+        setIsLoadingRecent(false);
+        return;
+      }
+
+      try {
+        // First, let's try a simpler approach - just get the favorites and use mock data for now
+        // TODO: Replace with actual property data join when tables are properly set up
+        const { data: favoritesData, error } = await supabase
+          .from("user_favorites")
+          .select("saved_at, property_id")
+          .eq("user_id", user.id)
+          .eq("is_active", true)
+          .order("saved_at", { ascending: false })
+          .limit(12);
+
+        if (error) {
+          console.error("Error loading recent properties:", error);
+          // Show empty state
+          setRecentProperties([]);
+          setPropertyCount(0);
+          setHasSearched(false);
+        } else if (favoritesData && favoritesData.length > 0) {
+          // For now, create mock properties based on the favorites
+          // TODO: Replace with actual property data when database schema is ready
+          const mockProperties = favoritesData.map((favorite, index) => ({
+            property_id: favorite.property_id,
+            saved_at: favorite.saved_at,
+            address_full: `Sample Property ${index + 1}`,
+            address_city: "Newport",
+            address_state: "RI",
+            address_zip: "02840",
+            units: Math.floor(Math.random() * 50) + 5,
+            year_built: Math.floor(Math.random() * 50) + 1970,
+            assessed_value: (Math.floor(Math.random() * 2000000) + 500000).toString(),
+            estimated_value: (Math.floor(Math.random() * 2500000) + 600000).toString()
+          }));
+          
+          setRecentProperties(mockProperties);
+          setPropertyCount(mockProperties.length);
+          setHasSearched(mockProperties.length > 0);
+        } else {
+          // No favorites found
+          setRecentProperties([]);
+          setPropertyCount(0);
+          setHasSearched(false);
+        }
+      } catch (error) {
+        console.error("Unexpected error loading recent properties:", error);
+        setRecentProperties([]);
+        setPropertyCount(0);
+        setHasSearched(false);
+      } finally {
+        setIsLoadingRecent(false);
+      }
+    };
+
+    loadRecentProperties();
+  }, [user, supabase]);
+
+  const handleSearch = async () => {
+    if (!searchQuery.trim()) return;
+    
+    // Close address validation dropdown
+    setShowAddressSuggestions(false);
+    
+    setIsSearching(true);
+    setRecentProperties([]);
+    
+    try {
+      // Helper function to capitalize words properly
+      const capitalizeWords = (str: string) => {
+        return str.replace(/\b\w+/g, word => 
+          word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+        );
+      };
+      
+      // Enhanced location parsing for zip codes, city/state, and full addresses
+      const locationParts = searchQuery.split(',').map(s => s.trim());
+      
+      let searchFilters = { ...filters };
+      
+      // Check if this is multiple zip codes FIRST (before other parsing)
+      const zipPattern = /^\d{5}(-\d{4})?$/;
+      const isMultipleZips = locationParts.length >= 2 && 
+                            locationParts.every(part => part === '' || zipPattern.test(part));
+      
+      if (isMultipleZips) {
+        // Handle multiple zip codes - only send zip parameter
+        const validZips = locationParts.filter(part => part !== '');
+        searchFilters = {
+          zip: validZips.join(',') // Send as comma-separated string
+        };
+      } else {
+        // Check if any part contains a zip code (5 digits)
+        const zipMatch = searchQuery.match(/\b\d{5}(-\d{4})?\b/);
+        const hasZip = zipMatch !== null;
+        
+        // Check if first part looks like a street address (contains numbers + text)
+        const isStreetAddress = /^\d+\s+.+/.test(locationParts[0]);
+      
+      if (hasZip && locationParts.length === 1) {
+        // Just a zip code: "80202"
+        searchFilters.zip = zipMatch[0];
+        searchFilters.city = '';
+        searchFilters.state = '';
+        searchFilters.street = '';
+      } else if (isStreetAddress && locationParts.length >= 3) {
+        // Full address: "73 rhode island ave, newport, ri 02840"
+        // Clear all filters - only use address components for exact property lookup
+        searchFilters = {};
+        
+        const streetPart = locationParts[0];
+        const houseMatch = streetPart.match(/^(\d+)\s+(.+)$/);
+        
+        if (houseMatch) {
+          searchFilters.house = houseMatch[1]; // "73"
+          searchFilters.street = capitalizeWords(houseMatch[2]); // "Rhode Island Ave"
+        } else {
+          searchFilters.street = capitalizeWords(streetPart);
+        }
+        
+        searchFilters.city = capitalizeWords(locationParts[1]);
+        
+        // Handle state + zip in last part: "ri 02840" or just "ri"
+        const lastPart = locationParts[locationParts.length - 1].trim();
+        
+        // Handle US addresses - can be 3 or 4 parts
+        if (locationParts.length >= 4) {
+          // Format: "73 Rhode Island Avenue, Newport, RI, USA" 
+          const statePart = locationParts[2].trim(); // "RI"
+          searchFilters.state = statePart.toUpperCase();
+          searchFilters.zip = hasZip ? zipMatch[0] : '';
+        } else if (locationParts.length === 3) {
+          // Format: "73 Rhode Island Avenue, Newport, RI" (no USA suffix)
+          const statePart = locationParts[2].trim(); // "RI" or "RI 02840"
+          const stateZipMatch = statePart.match(/^([a-zA-Z]{2})\s*(\d{5}(?:-\d{4})?)?$/);
+          
+          if (stateZipMatch) {
+            searchFilters.state = stateZipMatch[1].toUpperCase();
+            searchFilters.zip = stateZipMatch[2] || (hasZip ? zipMatch[0] : '');
+          } else {
+            searchFilters.state = statePart.toUpperCase();
+            searchFilters.zip = hasZip ? zipMatch[0] : '';
+          }
+        } else {
+          // Fallback for unusual formats
+          searchFilters.state = lastPart.toUpperCase();
+          searchFilters.zip = hasZip ? zipMatch[0] : '';
+        }
+      } else if (locationParts.length >= 2) {
+        // City, State format: "newport, ri" or "denver, co 80202"
+        searchFilters.city = capitalizeWords(locationParts[0]);
+        
+        const lastPart = locationParts[1].trim();
+        const stateZipMatch = lastPart.match(/^([a-zA-Z]{2})\s*(\d{5}(?:-\d{4})?)?$/);
+        
+        if (stateZipMatch) {
+          searchFilters.state = stateZipMatch[1].toUpperCase();
+          searchFilters.zip = stateZipMatch[2] || (hasZip ? zipMatch[0] : '');
+        } else {
+          // Assume whole part is state and uppercase it
+          searchFilters.state = lastPart.toUpperCase();
+          searchFilters.zip = hasZip ? zipMatch[0] : '';
+        }
+        searchFilters.street = '';
+      } else {
+        // Single input - could be city name, zip, or street
+        if (hasZip) {
+          searchFilters.zip = zipMatch[0];
+          searchFilters.city = '';
+          searchFilters.state = '';
+          searchFilters.street = '';
+        } else {
+          searchFilters.city = capitalizeWords(locationParts[0]);
+          searchFilters.state = '';
+          searchFilters.zip = '';
+          searchFilters.street = '';
+        }
+      }
+      }
+      
+      // Remove empty string and null values to avoid API validation errors
+      Object.keys(searchFilters).forEach(key => {
+        const value = searchFilters[key as keyof typeof searchFilters];
+        if (value === '' || value === null || value === undefined) {
+          delete searchFilters[key as keyof typeof searchFilters];
+        }
+      });
+      
+      const response = await fetch('/api/realestateapi', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          ...searchFilters,
+          size: 12,
+          resultIndex: 0
+        })
+      });
+      
+      if (!response.ok) {
+        throw new Error('Search failed');
+      }
+      
+      const data = await response.json();
+      setSearchResults(data.data || []);
+      setPropertyCount(data.resultCount || data.data?.length || 0);
+      setHasSearched(true);
+      
+    } catch (error) {
+      console.error('Search error:', error);
+      // Show error state or fallback
+      setSearchResults([]);
+      setPropertyCount(0);
+      setHasSearched(true);
+    } finally {
+      setIsSearching(false);
+    }
+  };
+  
+  const updateFilter = (key: string, value: any) => {
+    setFilters(prev => ({ ...prev, [key]: value }));
+  };
+  
+  // Address validation and suggestions
+  const validateAndSuggestAddress = async (input: string) => {
+    if (!input.trim() || input.length < 3) {
+      setShowAddressSuggestions(false);
+      return;
+    }
+    
+    // Check if this is multiple zip codes (contains commas and looks like zip codes)
+    const hasCommas = input.includes(',');
+    const zipPattern = /^\d{5}(-\d{4})?$/;
+    const parts = input.split(',').map(s => s.trim());
+    
+    if (hasCommas && parts.every(part => zipPattern.test(part) || part === '')) {
+      // This is multiple zip codes - don't validate, just show a helpful message
+      setAddressSuggestions([{
+        description: `Search ${parts.filter(p => p).length} zip codes: ${parts.filter(p => p).join(', ')}`,
+        isMultiZip: true,
+        structured_formatting: {
+          main_text: `${parts.filter(p => p).length} zip codes`,
+          secondary_text: parts.filter(p => p).join(', ')
+        }
+      }]);
+      setShowAddressSuggestions(true);
+      setIsValidatingAddress(false);
+      return;
+    }
+    
+    setIsValidatingAddress(true);
+    
+    try {
+      // Use Google Places Autocomplete API for single locations
+      const response = await fetch(`/api/places-autocomplete?input=${encodeURIComponent(input)}`);
+      
+      if (response.ok) {
+        const data = await response.json();
+        setAddressSuggestions(data.predictions || []);
+        setShowAddressSuggestions(true);
+      }
+    } catch (error) {
+      console.error('Address validation error:', error);
+    } finally {
+      setIsValidatingAddress(false);
+    }
+  };
+  
+  const selectAddressSuggestion = (suggestion: any) => {
+    setSearchQuery(suggestion.description);
+    setShowAddressSuggestions(false);
+    // Clear previous search results when address is updated
+    if (hasSearched && searchResults.length > 0) {
+      setSearchResults([]);
+      setPropertyCount(0);
+      setHasSearched(false);
+    }
   };
 
   const toggleSection = (section: string) => {
@@ -79,13 +414,78 @@ export default function DiscoverPage() {
                 type="text"
                 placeholder="Enter city, zip code, or address..."
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  setSearchQuery(value);
+                  
+                  // Clear previous search results when location changes
+                  if (hasSearched && searchResults.length > 0) {
+                    setSearchResults([]);
+                    setPropertyCount(0);
+                    setHasSearched(false);
+                  }
+                  
+                  // Trigger address validation after 300ms delay
+                  clearTimeout(window.addressValidationTimeout);
+                  window.addressValidationTimeout = setTimeout(() => {
+                    validateAndSuggestAddress(value);
+                  }, 300);
+                }}
+                onFocus={() => {
+                  if (searchQuery.length >= 3) {
+                    validateAndSuggestAddress(searchQuery);
+                  }
+                }}
+                onBlur={() => {
+                  // Delay hiding suggestions to allow for clicks
+                  setTimeout(() => setShowAddressSuggestions(false), 200);
+                }}
                 className="w-full pl-12 pr-16 lg:pr-32 py-3 text-base lg:text-lg border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
               />
-              <button className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-blue-600 hover:bg-blue-700 text-white px-2 lg:px-6 py-2 rounded-md font-medium transition-colors duration-200 flex items-center">
-                <Search className="h-4 w-4" />
-                <span className="hidden lg:inline ml-2">Search</span>
+              <button 
+                onClick={() => {
+                  if (searchQuery.trim()) {
+                    validateAndSuggestAddress(searchQuery);
+                  }
+                }}
+                disabled={isValidatingAddress}
+                className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-blue-100 hover:bg-blue-200 disabled:bg-gray-100 text-blue-700 disabled:text-gray-500 px-2 lg:px-6 py-2 rounded-md font-medium transition-colors duration-200 flex items-center"
+                title="Validate and suggest address"
+              >
+                {isValidatingAddress ? (
+                  <div className="animate-spin h-4 w-4 border-2 border-blue-600 border-t-transparent rounded-full" />
+                ) : (
+                  <MapPin className="h-4 w-4" />
+                )}
+                <span className="hidden lg:inline ml-2">
+                  {isValidatingAddress ? 'Validating...' : 'Validate'}
+                </span>
               </button>
+              
+              {/* Address Suggestions Dropdown */}
+              {showAddressSuggestions && addressSuggestions.length > 0 && (
+                <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50 max-h-60 overflow-y-auto">
+                  {addressSuggestions.map((suggestion, index) => (
+                    <button
+                      key={index}
+                      onClick={() => selectAddressSuggestion(suggestion)}
+                      className="w-full text-left px-4 py-3 hover:bg-gray-50 border-b border-gray-100 last:border-b-0 focus:bg-blue-50 focus:outline-none"
+                    >
+                      <div className="flex items-start">
+                        <MapPin className="h-4 w-4 text-gray-400 mt-1 flex-shrink-0" />
+                        <div className="ml-3 flex-1">
+                          <div className="text-sm font-medium text-gray-900">
+                            {suggestion.structured_formatting?.main_text || suggestion.description}
+                          </div>
+                          <div className="text-xs text-gray-600">
+                            {suggestion.structured_formatting?.secondary_text || ''}
+                          </div>
+                        </div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -109,12 +509,16 @@ export default function DiscoverPage() {
                   <input 
                     type="number" 
                     placeholder="Min"
+                    value={filters.units_min}
+                    onChange={(e) => updateFilter('units_min', e.target.value)}
                     className="w-16 px-2 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   />
                   <span className="flex items-center text-gray-500">—</span>
                   <input 
                     type="number" 
                     placeholder="Max"
+                    value={filters.units_max}
+                    onChange={(e) => updateFilter('units_max', e.target.value)}
                     className="w-16 px-2 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   />
                 </div>
@@ -146,12 +550,16 @@ export default function DiscoverPage() {
                     <input 
                       type="number" 
                       placeholder="0"
+                      value={filters.years_owned_min}
+                      onChange={(e) => updateFilter('years_owned_min', e.target.value)}
                       className="w-16 px-2 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     />
                     <span className="flex items-center text-gray-500">—</span>
                     <input 
                       type="number" 
                       placeholder="50"
+                      value={filters.years_owned_max}
+                      onChange={(e) => updateFilter('years_owned_max', e.target.value)}
                       className="w-16 px-2 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     />
                   </div>
@@ -328,37 +736,61 @@ export default function DiscoverPage() {
             {/* Results Header */}
             <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center mb-6 space-y-4 lg:space-y-0">
               <div className="flex-1 min-w-0">
-                <h2 className="text-xl font-semibold text-gray-900">Properties</h2>
-                <p className="text-sm text-gray-600 mt-1">Search to see available multifamily investments</p>
+                <h2 className="text-xl font-semibold text-gray-900">
+                  {recentProperties.length > 0 && !hasSearched ? 'Your Recent Properties' : 'Properties'}
+                </h2>
+                <p className="text-sm text-gray-600 mt-1">
+                  {recentProperties.length > 0 && !hasSearched 
+                    ? 'Your most recently favorited properties'
+                    : 'Search to see available multifamily investments'
+                  }
+                </p>
               </div>
               <div className="flex items-center space-x-4 flex-shrink-0">
                 <span className="text-sm text-gray-600 whitespace-nowrap">
-                  {hasSearched ? `${propertyCount} properties` : '0 properties'}
+                  {isLoadingRecent ? 'Loading...' : `${propertyCount} properties`}
                 </span>
                 <select className="text-sm border border-gray-300 rounded-md px-3 py-2 bg-white min-w-0">
-                  <option>Sort by Recommended</option>
-                  <option>Price: Low to High</option>
-                  <option>Price: High to Low</option>
-                  <option>Year Built: Newest</option>
-                  <option>Year Built: Oldest</option>
+                  <option>Most Recent</option>
+                  <option>Location</option>
+                  <option>Source</option>
                 </select>
               </div>
             </div>
 
             {/* Results or Empty State */}
-            {hasSearched ? (
+            {isLoadingRecent ? (
+              <div className="flex items-center justify-center py-12">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+              </div>
+            ) : recentProperties.length > 0 && !hasSearched ? (
               <div>
-                {/* Property Cards Grid */}
+                {/* Recent Properties Grid */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {Array.from({ length: Math.min(propertyCount, 12) }).map((_, i) => (
-                    <PropertyCard key={i} />
+                  {recentProperties.map((property) => (
+                    <RecentPropertyCard key={property.property_id} property={property} />
                   ))}
                 </div>
+              </div>
+            ) : hasSearched ? (
+              <div>
+                {/* Search Results Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {searchResults.length > 0 ? (
+                    searchResults.map((property, i) => (
+                      <PropertyCard key={property.id || i} property={property} />
+                    ))
+                  ) : (
+                    <div className="col-span-full text-center py-8">
+                      <p className="text-gray-500">No properties found. Try adjusting your search criteria.</p>
+                    </div>
+                  )}
+                </div>
                 
-                {propertyCount > 12 && (
+                {searchResults.length > 0 && propertyCount > searchResults.length && (
                   <div className="text-center py-8">
                     <button className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg transition-colors font-medium">
-                      Load More Properties ({propertyCount - 12} remaining)
+                      Load More Properties ({propertyCount - searchResults.length} remaining)
                     </button>
                   </div>
                 )}
@@ -770,6 +1202,84 @@ function FilterGroup({ label, children }: { label: string; children: React.React
   );
 }
 
+function RecentPropertyCard({ property }: { property: any }) {
+  return (
+    <div className="bg-white rounded-lg border border-gray-200 overflow-hidden hover:shadow-lg transition-all duration-200 cursor-pointer">
+      {/* Property Image */}
+      <div className="relative">
+        <div className="aspect-[4/3] bg-gradient-to-br from-gray-200 to-gray-300 flex items-center justify-center">
+          <div className="text-gray-500 text-center">
+            <div className="w-12 h-12 mx-auto mb-2 bg-gray-400/30 rounded-lg flex items-center justify-center">
+              <div className="w-6 h-6 bg-gray-400 rounded"></div>
+            </div>
+            <div className="text-sm font-medium">Property Photo</div>
+          </div>
+        </div>
+        
+        {/* Heart Favorite Button - Already favorited */}
+        <button className="absolute top-3 right-3 p-2 bg-white/90 rounded-full hover:bg-white shadow-sm transition-colors">
+          <Heart className="h-4 w-4 text-red-500 fill-current" />
+        </button>
+        
+        {/* Recent Tag */}
+        <div className="absolute bottom-3 left-3">
+          <span className="bg-blue-600 text-white px-2 py-1 rounded text-xs font-semibold">
+            Recent
+          </span>
+        </div>
+      </div>
+
+      {/* Property Details */}
+      <div className="p-4">
+        {/* Address */}
+        <h3 className="font-semibold text-gray-900 mb-1 truncate">
+          {property.address_full}
+        </h3>
+        
+        {/* Location and Basic Info */}
+        <p className="text-sm text-gray-600 mb-3">
+          {property.address_city}, {property.address_state} • {property.units} Units • Built {property.year_built}
+        </p>
+
+        {/* Price */}
+        <div className="mb-3">
+          <div className="text-xl font-bold text-gray-900">
+            ${property.assessed_value ? parseInt(property.assessed_value).toLocaleString() : 'N/A'}
+          </div>
+          <div className="text-sm text-gray-600">
+            Est. Value: <span className="font-medium text-green-600">
+              ${property.estimated_value ? parseInt(property.estimated_value).toLocaleString() : 'N/A'}
+            </span>
+          </div>
+        </div>
+
+        {/* Tags */}
+        <div className="flex flex-wrap gap-2 mb-3">
+          <span className="px-2 py-1 bg-green-100 text-green-700 text-xs font-medium rounded">
+            Favorited
+          </span>
+          <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs font-medium rounded">
+            {property.units} Units
+          </span>
+        </div>
+
+        {/* Bottom Actions */}
+        <div className="flex items-center justify-between pt-2 border-t border-gray-100">
+          <div className="text-xs text-gray-500">
+            Saved {new Date(property.saved_at).toLocaleDateString()}
+          </div>
+          <button 
+            onClick={() => window.location.href = `/discover/property/${property.property_id}`}
+            className="text-blue-600 hover:text-blue-700 text-sm font-medium"
+          >
+            View Details
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function ToggleButton({ 
   active, 
   label, 
@@ -792,70 +1302,54 @@ function ToggleButton({
   );
 }
 
-function PropertyCard() {
-  const sampleProperties = [
-    { 
-      address: "3843 Payne Ave", 
-      city: "Cleveland", 
-      state: "OH", 
-      zip: "44114",
-      units: 43, 
-      built: 1997,
-      assessed: "$843,540", 
-      estEquity: "$836,332",
-      absenteeOwner: true,
-      priceTag: null
-    },
-    { 
-      address: "1567 Elm Street", 
-      city: "Denver", 
-      state: "CO", 
-      zip: "80202",
-      units: 24, 
-      built: 2001,
-      assessed: "$2,150,000", 
-      estEquity: "$1,890,000",
-      absenteeOwner: false,
-      priceTag: "Price Drop"
-    },
-    { 
-      address: "892 Oak Avenue", 
-      city: "Austin", 
-      state: "TX", 
-      zip: "78701",
-      units: 18, 
-      built: 1995,
-      assessed: "$1,650,000", 
-      estEquity: "$1,420,000",
-      absenteeOwner: true,
-      priceTag: null
-    },
-    { 
-      address: "4521 Cedar Lane", 
-      city: "Phoenix", 
-      state: "AZ", 
-      zip: "85001",
-      units: 36, 
-      built: 1988,
-      assessed: "$3,200,000", 
-      estEquity: "$2,850,000",
-      absenteeOwner: true,
-      priceTag: "Price Drop"
-    },
-  ];
-  
-  const property = sampleProperties[Math.floor(Math.random() * sampleProperties.length)];
+function PropertyCard({ property }: { property?: any }) {
+  // Use real property data if available, otherwise fallback to sample data
+  const displayProperty = property || {
+    address_full: "Sample Property",
+    address_city: "Sample City",
+    address_state: "ST",
+    units_count: 12,
+    year_built: 2000,
+    assessed_value: 1000000,
+    estimated_value: 1200000,
+    out_of_state_absentee_owner: false
+  };
   
   return (
     <div className="bg-white rounded-lg border border-gray-200 overflow-hidden hover:shadow-lg transition-all duration-200 cursor-pointer">
-      {/* Property Image */}
+      {/* Property Image - Google Street View */}
       <div className="relative">
-        <div className="aspect-[4/3] bg-gradient-to-br from-gray-200 to-gray-300 flex items-center justify-center">
-          <div className="text-gray-500 text-center">
-            <div className="w-12 h-12 mx-auto mb-2 bg-gray-400/30 rounded-lg flex items-center justify-center">
-              <div className="w-6 h-6 bg-gray-400 rounded"></div>
+        <div 
+          className="relative aspect-[4/3] bg-gray-200 cursor-pointer group"
+          onClick={() => {
+            const address = `${displayProperty.address_full || displayProperty.address_street}, ${displayProperty.address_city}, ${displayProperty.address_state} ${displayProperty.address_zip}`;
+            const mapsUrl = `https://www.google.com/maps/search/${encodeURIComponent(address)}`;
+            window.open(mapsUrl, '_blank');
+          }}
+        >
+          <img 
+            src={(() => {
+              const address = `${displayProperty.address_full || displayProperty.address_street}, ${displayProperty.address_city}, ${displayProperty.address_state} ${displayProperty.address_zip}`;
+              return `https://maps.googleapis.com/maps/api/streetview?size=400x300&location=${encodeURIComponent(address)}&key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}`;
+            })()}
+            alt={`Street view of ${displayProperty.address_full || displayProperty.address_street}`}
+            className="w-full h-full object-cover group-hover:opacity-95 transition-opacity"
+            onError={(e) => {
+              // Fallback to placeholder if Street View fails
+              e.currentTarget.style.display = 'none';
+              if (e.currentTarget.nextElementSibling) {
+                (e.currentTarget.nextElementSibling as HTMLElement).classList.remove('hidden');
+              }
+            }}
+          />
+          {/* Fallback placeholder */}
+          <div className="hidden absolute inset-0 bg-gradient-to-br from-gray-200 to-gray-300 flex items-center justify-center">
+            <div className="text-gray-500 text-center">
+              <div className="w-12 h-12 mx-auto mb-2 bg-gray-400/30 rounded-lg flex items-center justify-center">
+                <div className="w-6 h-6 bg-gray-400 rounded"></div>
+              </div>
+              <div className="text-sm font-medium">Property Photo</div>
             </div>
-            <div className="text-sm font-medium">Property Photo</div>
           </div>
         </div>
         
@@ -864,47 +1358,56 @@ function PropertyCard() {
           <Heart className="h-4 w-4 text-gray-600 hover:text-red-500" />
         </button>
         
-        {/* Price Tag */}
-        {property.priceTag && (
-          <div className="absolute bottom-3 left-3">
-            <span className="bg-green-600 text-white px-2 py-1 rounded text-xs font-semibold">
-              {property.priceTag}
-            </span>
-          </div>
-        )}
+        {/* Zillow Button */}
+        <button 
+          onClick={(e) => {
+            e.stopPropagation();
+            const address = displayProperty.address_full || displayProperty.address_street || '';
+            const zillowUrl = `https://www.zillow.com/homes/${address.replace(/\s+/g, '-')}-${displayProperty.address_city}-${displayProperty.address_state}-${displayProperty.address_zip}_rb/`;
+            window.open(zillowUrl, '_blank');
+          }}
+          className="absolute bottom-3 right-3 bg-white/95 hover:bg-white rounded-lg p-2 shadow-sm transition-colors group"
+          title="View on Zillow"
+        >
+          <svg className="w-6 h-6 text-blue-600" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 2L2 12h3v8h4v-6h6v6h4v-8h3L12 2z"/>
+          </svg>
+        </button>
       </div>
 
       {/* Property Details */}
       <div className="p-4">
         {/* Address */}
         <h3 className="font-semibold text-gray-900 mb-1 truncate">
-          {property.address}
+          {displayProperty.address_full || displayProperty.address_street || 'Address Not Available'}
         </h3>
         
         {/* Location and Basic Info */}
         <p className="text-sm text-gray-600 mb-3">
-          {property.city}, {property.state} • {property.units} Units • Built {property.built}
+          {displayProperty.address_city}, {displayProperty.address_state} • {displayProperty.units_count || 'N/A'} Units • Built {displayProperty.year_built || 'Unknown'}
         </p>
 
         {/* Price */}
         <div className="mb-3">
           <div className="text-xl font-bold text-gray-900">
-            {property.assessed}
+            ${displayProperty.assessed_value ? parseInt(displayProperty.assessed_value).toLocaleString() : 'N/A'}
           </div>
           <div className="text-sm text-gray-600">
-            Est. Equity: <span className="font-medium text-green-600">{property.estEquity}</span>
+            Est. Value: <span className="font-medium text-green-600">
+              ${displayProperty.estimated_value ? parseInt(displayProperty.estimated_value).toLocaleString() : 'N/A'}
+            </span>
           </div>
         </div>
 
         {/* Tags */}
         <div className="flex flex-wrap gap-2 mb-3">
-          {property.absenteeOwner && (
+          {displayProperty.out_of_state_absentee_owner && (
             <span className="px-2 py-1 bg-orange-100 text-orange-700 text-xs font-medium rounded">
               Absentee Owner
             </span>
           )}
           <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs font-medium rounded">
-            {property.units} Units
+            {displayProperty.units_count || 'N/A'} Units
           </span>
         </div>
 
@@ -925,3 +1428,4 @@ function PropertyCard() {
     </div>
   );
 }
+

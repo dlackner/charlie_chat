@@ -3,7 +3,6 @@ import { NextRequest, NextResponse } from "next/server";
 // Transform external API camelCase response to snake_case for consistent frontend usage
 function transformListingToSnakeCase(listing: any) {
   return {
-    ...listing,
     // Address handling - keep nested structure but add flat access
     address_street: listing.address?.street,
     address_city: listing.address?.city,
@@ -32,7 +31,7 @@ function transformListingToSnakeCase(listing: any) {
     
     // Sale history
     last_sale_date: listing.lastSaleDate,
-    last_sale_amount: listing.LastSalePrice,
+    last_sale_amount: listing.lastSalePrice,
     last_sale_arms_length: listing.lastSaleArmsLength,
     
     // Ownership information
@@ -76,7 +75,36 @@ function transformListingToSnakeCase(listing: any) {
     
     // Property details
     property_type: listing.propertyType,
-    stories: listing.stories
+    stories: listing.stories,
+    
+    // Financial/Investment Analysis
+    equity_percent: listing.equityPercent,
+    loan_to_value_ratio: listing.loanToValueRatio,
+    mortgage_rate_first: listing.mortgageRateFirst,
+    mortgage_amount_first: listing.mortgageAmountFirst,
+    mortgage_type_first: listing.mortgageTypeFirst,
+    total_open_mortgage_balance: listing.totalOpenMortgageBalance,
+    
+    // Property Details for Analysis
+    building_square_feet: listing.buildingSquareFeet,
+    effective_year_built: listing.effectiveYearBuilt,
+    school_district_name: listing.schoolDistrictName,
+    school_rating: listing.schoolRating,
+    neighborhood_name: listing.neighborhoodName,
+    walk_score: listing.walkScore,
+    median_household_income: listing.medianHouseholdIncome,
+    
+    // Risk Assessment
+    distressed_property: listing.distressedProperty,
+    bankruptcy_date: listing.bankruptcyDate,
+    tax_delinquent: listing.taxDelinquent,
+    lien_amount: listing.lienAmount,
+    judgment_amount: listing.judgmentAmount,
+    
+    // Owner Intelligence
+    owner_type: listing.ownerType,
+    owner_mailing_address_same_as_property: listing.ownerMailingAddressSameAsProperty,
+    years_of_ownership: listing.yearsOfOwnership
   };
 }
 
