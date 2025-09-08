@@ -13,6 +13,9 @@ export default function PropertyDetailsPage() {
   const [isSkipTraceExpanded, setIsSkipTraceExpanded] = useState(false);
   const [isSkipTracing, setIsSkipTracing] = useState(false);
   const [skipTraceData, setSkipTraceData] = useState<any>(null);
+  const [isAnalyzingInvestment, setIsAnalyzingInvestment] = useState(false);
+  const [investmentAnalysis, setInvestmentAnalysis] = useState<any>(null);
+  const [isInvestmentAnalysisExpanded, setIsInvestmentAnalysisExpanded] = useState(false);
 
   // Sample property data - in real app this would come from API based on params.id
   const property = {

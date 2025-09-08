@@ -432,7 +432,7 @@ export default function PipelinePage() {
       {activeId ? (
         <div className="bg-white rounded-lg p-4 shadow-xl border-2 border-blue-400 bg-blue-50 opacity-95 rotate-3 scale-105 cursor-grabbing">
           {(() => {
-            const draggedProperty = propertiesData.find(p => p.id === activeId);
+            const draggedProperty = propertiesData.find(p => String(p.id) === String(activeId));
             return draggedProperty ? (
               <>
                 <h4 className="font-semibold text-gray-900 truncate mb-1">

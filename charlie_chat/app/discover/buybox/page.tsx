@@ -20,10 +20,7 @@ export default function BuyBoxPage() {
       if (!user || !user.id) return;
       
       try {
-        const { supabase } = await import('@/contexts/AuthContext');
-        // This is not the right way to get supabase, but for now let's use mock data
-        // In a real implementation, we'd use useAuth's supabase instance
-        
+        // TODO: In a real implementation, we'd use useAuth's supabase instance to load data
         // For now, we'll use the mock data but this will be replaced with real data
         console.log('Would load real markets for user:', user.id);
       } catch (error) {

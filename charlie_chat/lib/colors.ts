@@ -43,9 +43,9 @@ export const brandColors = {
   brandPrimary: colors.primary.blueDark,    // Darker blue - main CTAs, headers
   brandSecondary: colors.primary.blueLight, // Lighter blue - secondary actions, highlights  
   accent: colors.primary.orange,
-  text: colors.neutral.700,
-  textSecondary: colors.neutral.500,
-  background: colors.neutral.50,
-  surface: colors.neutral.100,
-  border: colors.neutral.200,
+  text: colors.neutral[700],
+  textSecondary: colors.neutral[500],
+  background: colors.neutral[50],
+  surface: colors.neutral[100],
+  border: colors.neutral[200],
 }

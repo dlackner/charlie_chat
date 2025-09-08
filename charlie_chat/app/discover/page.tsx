@@ -108,24 +108,6 @@ export default function DiscoverPage() {
     },
     {
       id: 102,
-      name: 'Distressed Assets',
-      description: 'Properties with legal/financial distress',
-      icon: AlertTriangle,
-      color: 'red',
-      criteria: {
-        specialQuery: 'distressed-assets',
-        apiFields: {
-          or: [
-            { pre_foreclosure: true },
-            { tax_lien: true },
-            { reo: true },
-            { auction: true }
-          ]
-        }
-      }
-    },
-    {
-      id: 103,
       name: 'Value-Add Deals',
       description: 'Older properties (1970-1995) with absentee owners',
       icon: Wrench,
@@ -140,22 +122,69 @@ export default function DiscoverPage() {
       }
     },
     {
-      id: 104,
-      name: 'Comps',
-      description: 'Arms-length sale in the past year',
-      icon: Activity,
-      color: 'purple',
+      id: 103,
+      name: 'High Cash Flow Properties',
+      description: 'Multi-family properties with strong rental income potential',
+      icon: DollarSign,
+      color: 'green',
       criteria: {
-        specialQuery: 'comps',
+        specialQuery: 'high-cash-flow',
         apiFields: {
-          years_owned_min: 1,
-          years_owned_max: 1,
-          last_sale_arms_length: true
+          year_built_min: 1980,
+          year_built_max: 2015
+        }
+      }
+    },
+    {
+      id: 104,
+      name: 'Fix & Flip Opportunities',
+      description: 'Distressed properties with renovation potential',
+      icon: AlertTriangle,
+      color: 'red',
+      criteria: {
+        specialQuery: 'fix-and-flip',
+        apiFields: {
+          year_built_min: 1950,
+          year_built_max: 1990,
+          or: [
+            { pre_foreclosure: true },
+            { tax_lien: true },
+            { reo: true },
+            { auction: true }
+          ]
         }
       }
     },
     {
       id: 105,
+      name: 'New Construction',
+      description: 'Recently built properties with modern amenities',
+      icon: Building,
+      color: 'blue',
+      criteria: {
+        specialQuery: 'new-construction',
+        apiFields: {
+          year_built_min: 2010,
+          year_built_max: 2024
+        }
+      }
+    },
+    {
+      id: 106,
+      name: 'Luxury Properties',
+      description: 'High-end properties in premium locations',
+      icon: Users,
+      color: 'purple',
+      criteria: {
+        specialQuery: 'luxury-properties',
+        apiFields: {
+          year_built_min: 1995,
+          estimated_value_min: 1000000
+        }
+      }
+    },
+    {
+      id: 107,
       name: 'Private Lender',
       description: 'Properties with private financing and absentee owners',
       icon: CreditCard,
@@ -266,9 +295,11 @@ export default function DiscoverPage() {
       if (isMultipleZips) {
         // Handle multiple zip codes - only send zip parameter
         const validZips = locationParts.filter(part => part.trim() !== '').map(part => part.trim());
-        searchFilters = {
-          zip: validZips.join(',') // Send as comma-separated string
-        };
+        searchFilters.zip = validZips.join(','); // Send as comma-separated string
+        searchFilters.city = '';
+        searchFilters.state = '';
+        searchFilters.house = '';
+        searchFilters.street = '';
       } else {
         // Check if any part contains a zip code (5 digits)
         const zipMatch = searchQuery.match(/\b\d{5}(-\d{4})?\b/);
@@ -284,8 +315,12 @@ export default function DiscoverPage() {
         searchFilters.state = '';
       } else if (isStreetAddress && locationParts.length >= 3) {
         // Full address: "73 rhode island ave, newport, ri 02840"
-        // Clear all filters - only use address components for exact property lookup
-        searchFilters = {};
+        // Clear location filters - only use address components for exact property lookup
+        searchFilters.city = '';
+        searchFilters.state = '';
+        searchFilters.zip = '';
+        searchFilters.house = '';
+        searchFilters.street = '';
         
         const streetPart = locationParts[0];
         const houseMatch = streetPart.match(/^(\d+)\s+(.+)$/);
@@ -441,20 +476,19 @@ export default function DiscoverPage() {
         }
         
         // Add smart query specific fields
-        if (savedSearch.id === 102) {
-          // Distressed Assets - use compound query
-          apiParams.or = [
-            { pre_foreclosure: true },
-            { tax_lien: true },
-            { reo: true },
-            { auction: true }
-          ];
-        } else {
-          // Other smart queries - use direct fields
+        if (apiFields.or && Array.isArray(apiFields.or)) {
+          // Queries with "or" conditions (Fix & Flip Opportunities)
+          apiParams.or = apiFields.or;
+          // Also add any other non-"or" fields
           Object.keys(apiFields).forEach(key => {
             if (key !== 'or') {
               apiParams[key] = apiFields[key];
             }
+          });
+        } else {
+          // Other smart queries - use direct fields
+          Object.keys(apiFields).forEach(key => {
+            apiParams[key] = apiFields[key];
           });
         }
         
@@ -599,12 +633,13 @@ export default function DiscoverPage() {
     setSaveSearchName('');
     setSaveSearchDescription('');
     
-    // Show success message (TODO: implement proper feedback)
+    // Show simple success message
     alert('Search saved successfully!');
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div>
+      <div className="min-h-screen bg-gray-50">
       {/* Header Search Bar */}
       <div className="bg-white border-b border-gray-200">
         <div className="px-4 sm:px-6 lg:px-8 py-4">
@@ -945,9 +980,6 @@ export default function DiscoverPage() {
                               )}
                               {search.criteria.apiFields.private_lender && (
                                 <div>• Private financing</div>
-                              )}
-                              {search.criteria.apiFields.last_sale_arms_length && (
-                                <div>• Arms-length sale</div>
                               )}
                               {search.criteria.apiFields.or && (
                                 <div>• Distressed properties</div>
@@ -1470,6 +1502,7 @@ export default function DiscoverPage() {
           </div>
         </div>
       )}
+    </div>
     </div>
   );
 }

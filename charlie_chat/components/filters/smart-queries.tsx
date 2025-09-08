@@ -12,6 +12,7 @@ interface SmartQuery {
     apiFields: {
         out_of_state_owner?: boolean;
         estimated_equity_min?: number;
+        estimated_value_min?: number;
         pre_foreclosure?: boolean;
         tax_lien?: boolean;
         reo?: boolean;
@@ -75,21 +76,6 @@ const smartQueries: Record<string, SmartQuery> = {
             years_owned_min: 10
         }
     },
-    'distressed-assets': {
-        id: 'distressed-assets',
-        icon: '>',
-        title: 'Distressed Assets',
-        tooltip: 'Properties with legal/financial distress: pre-foreclosure, tax liens, REO, or auction',
-        filters: ['Pre-foreclosure', 'Tax liens', 'REO properties', 'Auction properties'],
-        apiFields: {
-            or: [
-                { pre_foreclosure: true },
-                { tax_lien: true },
-                { reo: true },
-                { auction: true }
-            ]
-        }
-    },
     'value-add-deals': {
         id: 'value-add-deals',
         icon: '>',
@@ -102,16 +88,54 @@ const smartQueries: Record<string, SmartQuery> = {
             out_of_state_owner: true
         }
     },
-    'comps': {
-        id: 'comps',
+    'high-cash-flow': {
+        id: 'high-cash-flow',
         icon: '>',
-        title: 'Comps',
-        tooltip: 'Arms-length sale in the past year - good market intel',
-        filters: ['Years owned 1', 'Arms Length'],
+        title: 'High Cash Flow Properties',
+        tooltip: 'Multi-family properties with strong rental income potential (8-50 units, 1980-2015)',
+        filters: ['8-50 units', 'Built 1980-2015', 'Strong cash flow'],
         apiFields: {
-            years_owned_min: 1,
-            years_owned_max: 1,
-            last_sale_arms_length: true
+            year_built_min: 1980,
+            year_built_max: 2015
+        }
+    },
+    'fix-and-flip': {
+        id: 'fix-and-flip',
+        icon: '>',
+        title: 'Fix & Flip Opportunities',
+        tooltip: 'Distressed properties with renovation potential (1-4 units, 1950-1990)',
+        filters: ['1-4 units', 'Built 1950-1990', 'Distressed properties'],
+        apiFields: {
+            year_built_min: 1950,
+            year_built_max: 1990,
+            or: [
+                { pre_foreclosure: true },
+                { tax_lien: true },
+                { reo: true },
+                { auction: true }
+            ]
+        }
+    },
+    'new-construction': {
+        id: 'new-construction',
+        icon: '>',
+        title: 'New Construction',
+        tooltip: 'Recently built properties with modern amenities (2010-2024)',
+        filters: ['Built 2010-2024', 'Modern amenities', 'New construction'],
+        apiFields: {
+            year_built_min: 2010,
+            year_built_max: 2024
+        }
+    },
+    'luxury-properties': {
+        id: 'luxury-properties',
+        icon: '>',
+        title: 'Luxury Properties',
+        tooltip: 'High-end properties in premium locations ($1M+ value, built 1995+)',
+        filters: ['$1M+ value', 'Built 1995+', 'Premium locations'],
+        apiFields: {
+            year_built_min: 1995,
+            estimated_value_min: 1000000
         }
     },
     'private-lender-deals': {
@@ -201,15 +225,10 @@ export const SmartQueries: React.FC<SmartQueriesProps> = ({
 
         const { apiFields } = query;
 
-        // For distressed assets, use compound query structure
-        if (queryId === 'distressed-assets' && 'or' in apiFields && Array.isArray(apiFields.or)) {
+        // For queries with "or" fields, use compound query structure
+        if ('or' in apiFields && Array.isArray(apiFields.or)) {
             const filterParams: Record<string, any> = {
-                or: [
-                    { pre_foreclosure: true },
-                    { tax_lien: true },
-                    { reo: true },
-                    { auction: true }
-                ],
+                or: apiFields.or,
                 propertyType: "MFR",
                 units_min: minUnits || 0,  // Use user's min units
                 count: false,
@@ -219,12 +238,19 @@ export const SmartQueries: React.FC<SmartQueriesProps> = ({
                 summary: false
             };
 
+            // Add other non-"or" fields from apiFields
+            Object.keys(apiFields).forEach(key => {
+                if (key !== 'or') {
+                    filterParams[key] = apiFields[key as keyof typeof apiFields];
+                }
+            });
+
             // Add units_max if user has set it
             if (maxUnits && maxUnits !== '') {
                 filterParams.units_max = maxUnits;
             }
 
-            console.log("📦 Distressed Assets filterParams:", filterParams);
+            console.log(`📦 ${query.title} filterParams:`, filterParams);
             handleSearch(filterParams);
             return;
         }

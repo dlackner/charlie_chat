@@ -958,7 +958,7 @@ export default function OfferAnalyzerPage() {
   };
 
   // Show loading while checking access or redirect disabled users
-  if (isLoadingAccess || (userClass === 'disabled' && !hasPropertyAnalyzerAccess)) {
+  if (isLoadingAccess || (userClass === 'disabled' && !hasOfferAnalyzerAccess)) {
     return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
   }
 
