@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useAuth } from "@/contexts/AuthContext";
-import { Search, MapPin, SlidersHorizontal, ChevronDown, ChevronUp, X, Heart, Bookmark } from 'lucide-react';
+import { Search, MapPin, SlidersHorizontal, ChevronDown, ChevronUp, X, Heart, Bookmark, Target, AlertTriangle, Wrench, Activity, CreditCard, DollarSign, Home, Building, Users } from 'lucide-react';
 
 // Extend Window interface for address validation timeout
 declare global {
@@ -76,8 +76,89 @@ export default function DiscoverPage() {
     sale: true,
     physical: true,
     financial: true,
-    distress: true
+    distress: true,
+    savedSearches: true
   });
+
+  // Saved searches data
+  const savedSearches = [
+    {
+      id: 101,
+      name: 'Motivated Sellers',
+      description: 'Out-of-state owners who have owned 10+ years',
+      icon: Target,
+      color: 'green',
+      criteria: {
+        specialQuery: 'motivated-sellers',
+        apiFields: {
+          out_of_state_owner: true,
+          years_owned_min: 10
+        }
+      }
+    },
+    {
+      id: 102,
+      name: 'Distressed Assets',
+      description: 'Properties with legal/financial distress',
+      icon: AlertTriangle,
+      color: 'red',
+      criteria: {
+        specialQuery: 'distressed-assets',
+        apiFields: {
+          or: [
+            { pre_foreclosure: true },
+            { tax_lien: true },
+            { reo: true },
+            { auction: true }
+          ]
+        }
+      }
+    },
+    {
+      id: 103,
+      name: 'Value-Add Deals',
+      description: 'Older properties (1970-1995) with absentee owners',
+      icon: Wrench,
+      color: 'blue',
+      criteria: {
+        specialQuery: 'value-add-deals',
+        apiFields: {
+          year_built_min: 1970,
+          year_built_max: 1995,
+          out_of_state_owner: true
+        }
+      }
+    },
+    {
+      id: 104,
+      name: 'Comps',
+      description: 'Arms-length sale in the past year',
+      icon: Activity,
+      color: 'purple',
+      criteria: {
+        specialQuery: 'comps',
+        apiFields: {
+          years_owned_min: 1,
+          years_owned_max: 1,
+          last_sale_arms_length: true
+        }
+      }
+    },
+    {
+      id: 105,
+      name: 'Private Lender',
+      description: 'Properties with private financing and absentee owners',
+      icon: CreditCard,
+      color: 'indigo',
+      criteria: {
+        specialQuery: 'private-lender-deals',
+        apiFields: {
+          private_lender: true,
+          out_of_state_owner: true
+        }
+      }
+    }
+  ];
 
   // Load recent favorited properties on page load
   useEffect(() => {
@@ -306,6 +387,119 @@ export default function DiscoverPage() {
   
   const updateFilter = (key: string, value: any) => {
     setFilters(prev => ({ ...prev, [key]: value }));
+  };
+
+  // Apply saved search and trigger search
+  const applySavedSearch = async (savedSearch: any) => {
+    setIsSearching(true);
+    
+    try {
+      // Clear previous search results
+      setSearchResults([]);
+      setPropertyCount(0);
+      
+      if (savedSearch.criteria.specialQuery) {
+        // Handle smart queries - make direct API call
+        const { apiFields } = savedSearch.criteria;
+        
+        let apiParams: any = {
+          propertyType: "MFR",
+          count: false,
+          size: 12,
+          resultIndex: 0,
+          obfuscate: false,
+          summary: false
+        };
+        
+        // Add location if available
+        if (searchQuery.trim()) {
+          const locationParts = searchQuery.split(',').map(s => s.trim());
+          const zipPattern = /^\d{5}(-\d{4})?$/;
+          const zipMatch = searchQuery.match(/\b\d{5}(-\d{4})?\b/);
+          
+          if (zipMatch && locationParts.length === 1) {
+            apiParams.zip = zipMatch[0];
+          } else if (locationParts.length >= 2) {
+            apiParams.city = locationParts[0];
+            const lastPart = locationParts[1].trim();
+            const stateZipMatch = lastPart.match(/^([a-zA-Z]{2})\s*(\d{5}(?:-\d{4})?)?$/);
+            if (stateZipMatch) {
+              apiParams.state = stateZipMatch[1].toUpperCase();
+              if (stateZipMatch[2]) apiParams.zip = stateZipMatch[2];
+            }
+          }
+        }
+        
+        // Add smart query specific fields
+        if (savedSearch.id === 102) {
+          // Distressed Assets - use compound query
+          apiParams.or = [
+            { pre_foreclosure: true },
+            { tax_lien: true },
+            { reo: true },
+            { auction: true }
+          ];
+        } else {
+          // Other smart queries - use direct fields
+          Object.keys(apiFields).forEach(key => {
+            if (key !== 'or') {
+              apiParams[key] = apiFields[key];
+            }
+          });
+        }
+        
+        // Remove empty values
+        Object.keys(apiParams).forEach(key => {
+          const value = apiParams[key];
+          if (value === '' || value === null || value === undefined) {
+            delete apiParams[key];
+          }
+        });
+        
+        // Make API call
+        const response = await fetch('/api/realestateapi', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(apiParams)
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          setSearchResults(data.data || []);
+          setPropertyCount(data.resultCount || data.data?.length || 0);
+          setHasSearched(true);
+        } else {
+          console.error('Smart query search failed:', await response.text());
+          setSearchResults([]);
+          setPropertyCount(0);
+          setHasSearched(true);
+        }
+      }
+      
+      // Collapse the saved searches section after applying
+      setCollapsedSections(prev => ({ ...prev, savedSearches: true }));
+      
+    } catch (error) {
+      console.error('Error executing saved search:', error);
+      setSearchResults([]);
+      setPropertyCount(0);
+      setHasSearched(true);
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  const getColorClasses = (color: string) => {
+    const colorMap: { [key: string]: { bg: string; text: string; border: string; hover: string } } = {
+      green: { bg: 'bg-green-50', text: 'text-green-600', border: 'border-green-200', hover: 'hover:bg-green-100' },
+      orange: { bg: 'bg-orange-50', text: 'text-orange-600', border: 'border-orange-200', hover: 'hover:bg-orange-100' },
+      blue: { bg: 'bg-blue-50', text: 'text-blue-600', border: 'border-blue-200', hover: 'hover:bg-blue-100' },
+      purple: { bg: 'bg-purple-50', text: 'text-purple-600', border: 'border-purple-200', hover: 'hover:bg-purple-100' },
+      indigo: { bg: 'bg-indigo-50', text: 'text-indigo-600', border: 'border-indigo-200', hover: 'hover:bg-indigo-100' },
+      yellow: { bg: 'bg-yellow-50', text: 'text-yellow-600', border: 'border-yellow-200', hover: 'hover:bg-yellow-100' },
+      red: { bg: 'bg-red-50', text: 'text-red-600', border: 'border-red-200', hover: 'hover:bg-red-100' }
+    };
+    return colorMap[color] || colorMap.blue;
   };
   
   // Address validation and suggestions
@@ -704,6 +898,60 @@ export default function DiscoverPage() {
                   <ToggleButton active={false} label="Yes" />
                   <ToggleButton active={false} label="No" />
                 </FilterGroup>
+              </CollapsibleFilterSection>
+
+              {/* Saved Searches */}
+              <CollapsibleFilterSection 
+                title="SAVED SEARCHES" 
+                isCollapsed={collapsedSections.savedSearches}
+                onToggle={() => toggleSection('savedSearches')}
+              >
+                <div className="space-y-3">
+                  {savedSearches.map((search) => {
+                    const colorClasses = getColorClasses(search.color);
+                    const Icon = search.icon;
+                    
+                    return (
+                      <div
+                        key={search.id}
+                        className={`${colorClasses.bg} ${colorClasses.border} border rounded-lg p-3 cursor-pointer transition-all hover:shadow-sm ${colorClasses.hover}`}
+                        onClick={() => applySavedSearch(search)}
+                      >
+                        <div className="flex items-start space-x-3">
+                          <div className={`${colorClasses.bg} p-1.5 rounded border ${colorClasses.border}`}>
+                            <Icon className={`h-3 w-3 ${colorClasses.text}`} />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <h4 className="text-sm font-medium text-gray-900 mb-1">{search.name}</h4>
+                            <div className="text-xs text-gray-500 space-y-0.5">
+                              {search.criteria.apiFields.out_of_state_owner && (
+                                <div>• Out-of-state owners</div>
+                              )}
+                              {search.criteria.apiFields.years_owned_min && (
+                                <div>• Owned {search.criteria.apiFields.years_owned_min}+ years</div>
+                              )}
+                              {search.criteria.apiFields.year_built_min && search.criteria.apiFields.year_built_max && (
+                                <div>• Built {search.criteria.apiFields.year_built_min}-{search.criteria.apiFields.year_built_max}</div>
+                              )}
+                              {search.criteria.apiFields.private_lender && (
+                                <div>• Private financing</div>
+                              )}
+                              {search.criteria.apiFields.last_sale_arms_length && (
+                                <div>• Arms-length sale</div>
+                              )}
+                              {search.criteria.apiFields.or && (
+                                <div>• Distressed properties</div>
+                              )}
+                            </div>
+                            <button className={`mt-2 text-xs ${colorClasses.text} font-medium flex items-center`}>
+                              Apply & Search
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               </CollapsibleFilterSection>
 
               {/* Search Button */}
