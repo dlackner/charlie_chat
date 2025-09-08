@@ -16,8 +16,22 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'API key not configured' }, { status: 500 });
     }
 
-    // Use Google Places Autocomplete API - optimized for US real estate
-    const url = `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(input)}&types=address&components=country:us&language=en&key=${apiKey}`;
+    // Smart filtering based on input type
+    const isLikelyStreetAddress = /^\d+\s+.+/.test(input); // Starts with number + text
+    const isZipCode = /^\d{5}/.test(input); // Starts with 5 digits
+    const isCityState = input.includes(','); // Contains comma
+    
+    let url;
+    if (isLikelyStreetAddress) {
+      // For street addresses, use address type
+      url = `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(input)}&types=address&components=country:us&language=en&key=${apiKey}`;
+    } else if (isZipCode || isCityState) {
+      // For zip codes and city/state, use cities type to get cleaner results
+      url = `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(input)}&types=(cities)&components=country:us&language=en&key=${apiKey}`;
+    } else {
+      // For general searches, use geocode to get both cities and addresses but filter better
+      url = `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(input)}&types=geocode&components=country:us&language=en&key=${apiKey}`;
+    }
     
     const response = await fetch(url);
     
@@ -27,8 +41,27 @@ export async function GET(req: NextRequest) {
     
     const data = await response.json();
     
-    // Since we're already filtering to US with components=country:us, just limit results
-    const filteredPredictions = data.predictions?.slice(0, 5) || [];
+    // Filter out irrelevant results and prioritize better matches
+    let predictions = data.predictions || [];
+    
+    // For zip code searches, prioritize postal code results
+    if (isZipCode) {
+      predictions = predictions.filter((p: any) => 
+        p.types?.includes('postal_code') || 
+        p.description?.includes(input.substring(0, 5))
+      );
+    }
+    
+    // For city searches, prioritize locality results
+    if (isCityState && !isLikelyStreetAddress) {
+      predictions = predictions.filter((p: any) => 
+        p.types?.includes('locality') || 
+        p.types?.includes('administrative_area_level_3') ||
+        p.types?.includes('postal_code')
+      );
+    }
+    
+    const filteredPredictions = predictions.slice(0, 5);
     
     return NextResponse.json({
       predictions: filteredPredictions || [],

@@ -42,8 +42,7 @@ const navigation: NavigationItem[] = [
     icon: Search,
     submenu: [
       { name: 'Property Search', href: '/discover' },
-      { name: 'Buy Box', href: '/discover/buybox' },
-      { name: 'Saved Searches', href: '/discover/saved' }
+      { name: 'Buy Box', href: '/discover/buybox' }
     ]
   },
   { 
@@ -52,7 +51,7 @@ const navigation: NavigationItem[] = [
     icon: Users
   },
   { 
-    name: 'AI CHAT', 
+    name: 'AI COACH', 
     href: '/chat', 
     icon: MessageCircle
   },

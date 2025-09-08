@@ -2,7 +2,14 @@
 
 import { useState, useEffect } from 'react';
 import { useAuth } from "@/contexts/AuthContext";
-import { Search, MapPin, SlidersHorizontal, ChevronDown, ChevronUp, X, Heart, Bookmark, Target, AlertTriangle, Wrench, Activity, CreditCard, DollarSign, Home, Building, Users } from 'lucide-react';
+import { Search, MapPin, SlidersHorizontal, ChevronDown, ChevronUp, X, Heart, Bookmark, Target, AlertTriangle, Wrench, Activity, CreditCard, DollarSign, Home, Building, Users, Grid3x3, Map } from 'lucide-react';
+import dynamic from 'next/dynamic';
+
+// Dynamically import PropertyMap to avoid SSR issues
+const PropertyMap = dynamic(() => import('@/components/ui/PropertyMap'), {
+  ssr: false,
+  loading: () => <div className="bg-gray-100 animate-pulse rounded-lg" />
+});
 
 // Extend Window interface for address validation timeout
 declare global {
@@ -27,6 +34,7 @@ export default function DiscoverPage() {
   const [showAddressSuggestions, setShowAddressSuggestions] = useState(false);
   const [addressSuggestions, setAddressSuggestions] = useState<any[]>([]);
   const [isValidatingAddress, setIsValidatingAddress] = useState(false);
+  const [viewMode, setViewMode] = useState<'cards' | 'map'>('cards');
   
   // Filter states
   const [filters, setFilters] = useState({
@@ -34,6 +42,8 @@ export default function DiscoverPage() {
     city: '',
     state: '',
     zip: '',
+    house: '',
+    street: '',
     
     // Number of Units
     units_min: '',
@@ -241,18 +251,21 @@ export default function DiscoverPage() {
       };
       
       // Enhanced location parsing for zip codes, city/state, and full addresses
-      const locationParts = searchQuery.split(',').map(s => s.trim());
+      // Clean the search query - remove common prefixes like "Search 2 zip codes:"
+      let cleanedQuery = searchQuery.replace(/^(search\s+\d+\s+zip\s+codes?:\s*)/i, '').trim();
+      
+      const locationParts = cleanedQuery.split(',').map(s => s.trim());
       
       let searchFilters = { ...filters };
       
       // Check if this is multiple zip codes FIRST (before other parsing)
       const zipPattern = /^\d{5}(-\d{4})?$/;
       const isMultipleZips = locationParts.length >= 2 && 
-                            locationParts.every(part => part === '' || zipPattern.test(part));
+                            locationParts.every(part => zipPattern.test(part.trim()));
       
       if (isMultipleZips) {
         // Handle multiple zip codes - only send zip parameter
-        const validZips = locationParts.filter(part => part !== '');
+        const validZips = locationParts.filter(part => part.trim() !== '').map(part => part.trim());
         searchFilters = {
           zip: validZips.join(',') // Send as comma-separated string
         };
@@ -269,7 +282,6 @@ export default function DiscoverPage() {
         searchFilters.zip = zipMatch[0];
         searchFilters.city = '';
         searchFilters.state = '';
-        searchFilters.street = '';
       } else if (isStreetAddress && locationParts.length >= 3) {
         // Full address: "73 rhode island ave, newport, ri 02840"
         // Clear all filters - only use address components for exact property lookup
@@ -278,6 +290,7 @@ export default function DiscoverPage() {
         const streetPart = locationParts[0];
         const houseMatch = streetPart.match(/^(\d+)\s+(.+)$/);
         
+        // Extract house and street for specific property lookup
         if (houseMatch) {
           searchFilters.house = houseMatch[1]; // "73"
           searchFilters.street = capitalizeWords(houseMatch[2]); // "Rhode Island Ave"
@@ -328,19 +341,16 @@ export default function DiscoverPage() {
           searchFilters.state = lastPart.toUpperCase();
           searchFilters.zip = hasZip ? zipMatch[0] : '';
         }
-        searchFilters.street = '';
       } else {
         // Single input - could be city name, zip, or street
         if (hasZip) {
           searchFilters.zip = zipMatch[0];
           searchFilters.city = '';
           searchFilters.state = '';
-          searchFilters.street = '';
         } else {
           searchFilters.city = capitalizeWords(locationParts[0]);
           searchFilters.state = '';
           searchFilters.zip = '';
-          searchFilters.street = '';
         }
       }
       }
@@ -998,6 +1008,35 @@ export default function DiscoverPage() {
                 <span className="text-sm text-gray-600 whitespace-nowrap">
                   {isLoadingRecent ? 'Loading...' : `${propertyCount} properties`}
                 </span>
+                
+                {/* View Toggle */}
+                {(hasSearched || recentProperties.length > 0) && (
+                  <div className="flex items-center space-x-2">
+                    <button
+                      onClick={() => setViewMode('cards')}
+                      className={`flex items-center px-3 py-2 rounded-lg transition-colors text-sm ${
+                        viewMode === 'cards'
+                          ? 'bg-blue-600 text-white'
+                          : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                      }`}
+                    >
+                      <Grid3x3 className="h-4 w-4 mr-2" />
+                      Cards
+                    </button>
+                    <button
+                      onClick={() => setViewMode('map')}
+                      className={`flex items-center px-3 py-2 rounded-lg transition-colors text-sm ${
+                        viewMode === 'map'
+                          ? 'bg-blue-600 text-white'
+                          : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                      }`}
+                    >
+                      <Map className="h-4 w-4 mr-2" />
+                      Map + Cards
+                    </button>
+                  </div>
+                )}
+                
                 <select className="text-sm border border-gray-300 rounded-md px-3 py-2 bg-white min-w-0">
                   <option>Most Recent</option>
                   <option>Location</option>
@@ -1005,6 +1044,7 @@ export default function DiscoverPage() {
                 </select>
               </div>
             </div>
+
 
             {/* Results or Empty State */}
             {isLoadingRecent ? (
@@ -1022,24 +1062,55 @@ export default function DiscoverPage() {
               </div>
             ) : hasSearched ? (
               <div>
-                {/* Search Results Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {searchResults.length > 0 ? (
-                    searchResults.map((property, i) => (
-                      <PropertyCard key={property.id || i} property={property} />
-                    ))
-                  ) : (
-                    <div className="col-span-full text-center py-8">
-                      <p className="text-gray-500">No properties found. Try adjusting your search criteria.</p>
+                {viewMode === 'cards' ? (
+                  /* Card View Only */
+                  <>
+                    {/* Search Results Grid */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                      {searchResults.length > 0 ? (
+                        searchResults.map((property, i) => (
+                          <PropertyCard key={property.id || i} property={property} />
+                        ))
+                      ) : (
+                        <div className="col-span-full text-center py-8">
+                          <p className="text-gray-500">No properties found. Try adjusting your search criteria.</p>
+                        </div>
+                      )}
                     </div>
-                  )}
-                </div>
-                
-                {searchResults.length > 0 && propertyCount > searchResults.length && (
-                  <div className="text-center py-8">
-                    <button className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg transition-colors font-medium">
-                      Load More Properties ({propertyCount - searchResults.length} remaining)
-                    </button>
+                    
+                    {searchResults.length > 0 && propertyCount > searchResults.length && (
+                      <div className="text-center py-8">
+                        <button className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg transition-colors font-medium">
+                          Load More Properties ({propertyCount - searchResults.length} remaining)
+                        </button>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  /* Map + Card Combined View */
+                  <div className="flex gap-6 h-[600px]">
+                    {/* Left: Map */}
+                    <div className="w-2/5">
+                      <PropertyMap
+                        properties={searchResults}
+                        className="h-full rounded-lg border border-gray-200"
+                      />
+                    </div>
+                    
+                    {/* Right: Cards in 2-column grid */}
+                    <div className="flex-1 overflow-y-auto">
+                      <div className="grid grid-cols-2 gap-4 pr-4">
+                        {searchResults.length > 0 ? (
+                          searchResults.map((property, i) => (
+                            <PropertyCard key={property.id || i} property={property} />
+                          ))
+                        ) : (
+                          <div className="col-span-2 text-center py-8">
+                            <p className="text-gray-500">No properties found. Try adjusting your search criteria.</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 )}
               </div>
