@@ -414,9 +414,6 @@ export const WeeklyRecommendationsModalMMR: React.FC<WeeklyRecommendationsModalM
         // Store recommendations array before any state changes
         const propertiesToProcess = [...recommendations];
         
-        // Close modal immediately to avoid showing confusing loading state
-        onClose();
-        
         try {
             // Process each property (all are guaranteed to have decisions)
             for (const property of propertiesToProcess) {
@@ -467,9 +464,14 @@ export const WeeklyRecommendationsModalMMR: React.FC<WeeklyRecommendationsModalM
                 // Don't fail the whole operation if convergence update fails
             }
             
+            // Close modal ONLY AFTER all database operations are complete
+            onClose();
+            
         } catch (error) {
             console.error('Error committing decisions:', error);
             // Could show a toast notification here instead of modal error
+            // Still close the modal even if there's an error
+            onClose();
         }
     };
 
