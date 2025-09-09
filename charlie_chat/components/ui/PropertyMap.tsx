@@ -65,7 +65,17 @@ export default function PropertyMap({
 
   // Since all properties have coordinates, just use them directly
   useEffect(() => {
-    setGeocodedProperties(properties);
+    // Filter and validate properties before setting
+    const validProperties = properties.filter(prop => 
+      prop && 
+      prop.latitude && 
+      prop.longitude &&
+      typeof prop.latitude === 'number' &&
+      typeof prop.longitude === 'number' &&
+      !isNaN(prop.latitude) &&
+      !isNaN(prop.longitude)
+    );
+    setGeocodedProperties(validProperties);
   }, [properties]);
 
   const handleMarkerClick = (property: Property) => {
@@ -87,28 +97,39 @@ export default function PropertyMap({
     );
   }
 
-  return (
-    <div className={`relative ${className}`}>
-      <Map
-        ref={mapRef}
-        {...viewState}
-        onMove={evt => setViewState(evt.viewState)}
-        mapboxAccessToken={process.env.NEXT_PUBLIC_MAPBOX_TOKEN}
-        mapStyle="mapbox://styles/mapbox/streets-v12"
-        style={{ width: '100%', height: '100%' }}
-      >
+  // Error boundary for map rendering
+  try {
+    return (
+      <div className={`relative ${className}`}>
+        <Map
+          ref={mapRef}
+          {...viewState}
+          onMove={evt => setViewState(evt.viewState)}
+          mapboxAccessToken={process.env.NEXT_PUBLIC_MAPBOX_TOKEN}
+          mapStyle="mapbox://styles/mapbox/streets-v12"
+          style={{ width: '100%', height: '100%' }}
+        >
         {geocodedProperties.map((property, index) => {
-          if (!property.latitude || !property.longitude) return null;
+          // Enhanced validation for property data
+          if (!property || 
+              !property.latitude || 
+              !property.longitude ||
+              typeof property.latitude !== 'number' ||
+              typeof property.longitude !== 'number' ||
+              isNaN(property.latitude) ||
+              isNaN(property.longitude)) {
+            return null;
+          }
           
           const isSelected = selectedPropertyId && property.id === selectedPropertyId;
           
           return (
             <Marker
-              key={property.id || index}
-              longitude={property.longitude}
-              latitude={property.latitude}
+              key={property.id || property.property_id || `marker-${index}`}
+              longitude={Number(property.longitude)}
+              latitude={Number(property.latitude)}
               onClick={(e) => {
-                e.originalEvent.stopPropagation();
+                e.originalEvent?.stopPropagation();
                 handleMarkerClick(property);
               }}
             >
@@ -138,16 +159,20 @@ export default function PropertyMap({
             offset={-10}
             className="property-popup"
           >
-            <div className="p-3 min-w-64">
-              <h3 className="font-semibold text-gray-900 mb-2 text-sm">
+            <div 
+              className="p-3 min-w-64 max-w-80 cursor-pointer hover:bg-gray-50 transition-colors"
+              onClick={() => {
+                const address = `${popupInfo.address_full || popupInfo.address_street}, ${popupInfo.address_city}, ${popupInfo.address_state} ${popupInfo.address_zip}`;
+                const mapsUrl = `https://www.google.com/maps/search/${encodeURIComponent(address)}`;
+                window.open(mapsUrl, '_blank');
+              }}
+            >
+              <h3 className="font-semibold text-gray-900 mb-2 text-sm break-words leading-tight">
                 {popupInfo.address_full || popupInfo.address_street || 'Property'}
               </h3>
               
               <div className="space-y-1 text-xs text-gray-600">
-                <div>
-                  {popupInfo.address_city}, {popupInfo.address_state} {popupInfo.address_zip}
-                </div>
-                <div>
+                <div className="break-words">
                   {popupInfo.units_count || 'N/A'} Units • Built {popupInfo.year_built || 'Unknown'}
                 </div>
               </div>
@@ -171,7 +196,18 @@ export default function PropertyMap({
             </div>
           </Popup>
         )}
-      </Map>
-    </div>
-  );
+        </Map>
+      </div>
+    );
+  } catch (error) {
+    console.error('PropertyMap render error:', error);
+    return (
+      <div className={`bg-gray-100 rounded-lg flex items-center justify-center ${className}`}>
+        <div className="text-center text-gray-500 p-8">
+          <MapPin className="h-12 w-12 mx-auto mb-4 text-gray-400" />
+          <p className="text-sm">Map temporarily unavailable</p>
+        </div>
+      </div>
+    );
+  }
 }

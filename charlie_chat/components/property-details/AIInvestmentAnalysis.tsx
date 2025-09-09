@@ -77,7 +77,6 @@ export function AIInvestmentAnalysis({ property, isEngageContext }: AIInvestment
         longitude: property.longitude
       };
 
-      console.log('🏠 Sending property data for analysis:', propertyData);
 
       const response = await fetch('/api/analyze-investment', {
         method: 'POST',
@@ -92,7 +91,6 @@ export function AIInvestmentAnalysis({ property, isEngageContext }: AIInvestment
       }
 
       const analysisResult = await response.json();
-      console.log('📊 Analysis result:', analysisResult);
       
       setInvestmentAnalysis(analysisResult);
       setIsAIAnalysisExpanded(true);

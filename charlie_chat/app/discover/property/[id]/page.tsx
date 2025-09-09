@@ -178,7 +178,7 @@ export default function PropertyDetailsPage() {
                 className="inline-flex items-center text-blue-600 hover:text-blue-700 font-medium"
               >
                 <ArrowLeft className="h-4 w-4 mr-2" />
-                Back to Search
+                Back
               </button>
             </div>
           </div>
@@ -199,7 +199,7 @@ export default function PropertyDetailsPage() {
                 className="flex items-center text-blue-600 hover:text-blue-700 font-medium"
               >
                 <ArrowLeft className="h-4 w-4 mr-2" />
-                Back to Search
+                Back
               </button>
               <button
                 onClick={handlePrint}

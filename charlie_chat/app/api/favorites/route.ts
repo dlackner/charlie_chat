@@ -32,7 +32,6 @@ export async function POST(req: NextRequest) {
     // }
 
     const { property_id, property_data, action } = await req.json();
-    console.log('🎯 Favorites API called:', { property_id, action, user_id: user.id });
     
     if (!property_id) {
       return NextResponse.json({ error: 'Property ID is required' }, { status: 400 });
@@ -69,7 +68,6 @@ export async function POST(req: NextRequest) {
           }
         });
 
-        console.log('📝 Inserting property with fields:', Object.keys(filteredPropertyData));
 
         const { error: propertyError } = await supabase
           .from('saved_properties')
@@ -132,13 +130,8 @@ export async function POST(req: NextRequest) {
 }
 
 export async function GET(req: NextRequest) {
-  console.log('🚀 Favorites GET started');
   try {
-    console.log('📨 Getting cookies...');
     const cookieStore = await cookies();
-    console.log('✅ Cookies obtained');
-    
-    console.log('🔗 Creating Supabase client...');
     const supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -155,7 +148,6 @@ export async function GET(req: NextRequest) {
         },
       }
     );
-    console.log('✅ Supabase client created');
     
     // TEMPORARY: Hardcoded user for testing
     const user = { id: '99b75078-44aa-4e04-a66e-7b414c55c976' };
@@ -166,13 +158,10 @@ export async function GET(req: NextRequest) {
     //   return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     // }
 
-    console.log('🔍 Parsing URL params...');
     const { searchParams } = new URL(req.url);
     const property_id = searchParams.get('property_id');
-    console.log('📝 Property ID:', property_id);
     
     if (property_id) {
-      console.log('🎯 Checking specific property favorite status...');
       // Check if specific property is favorited
       const { data, error } = await supabase
         .from('user_favorites')
@@ -189,14 +178,12 @@ export async function GET(req: NextRequest) {
 
       return NextResponse.json({ is_favorite: !!data });
     } else {
-      console.log('📋 Getting all user favorites...');
       // Get all user favorites
       const { data, error } = await supabase
         .from('user_favorites')
         .select('property_id')
         .eq('user_id', user.id)
         .eq('is_active', true);
-      console.log('📊 Query completed, data:', data?.length, 'error:', error);
 
       if (error) {
         console.error('Error getting favorites:', error);
@@ -204,7 +191,6 @@ export async function GET(req: NextRequest) {
       }
 
       const favoritePropertyIds = data.map(fav => fav.property_id);
-      console.log('✅ Returning favorites:', favoritePropertyIds.length);
       return NextResponse.json({ favorites: favoritePropertyIds });
     }
     
