@@ -3,6 +3,9 @@ import { NextRequest, NextResponse } from "next/server";
 // Transform external API camelCase response to snake_case for consistent frontend usage
 function transformListingToSnakeCase(listing: any) {
   return {
+    // Essential ID field - must be preserved
+    id: listing.id,
+    
     // Address handling - keep nested structure but add flat access
     address_street: listing.address?.street,
     address_city: listing.address?.city,
@@ -162,6 +165,7 @@ export async function POST(req: NextRequest) {
       count,
       ids_only,
       ids, // ADD MISSING IDS FIELD
+      id, // Single ID field
       // MLS fields
       mls_cancelled,
       mls_days_on_market_min,
@@ -203,6 +207,7 @@ export async function POST(req: NextRequest) {
       stories_max,
       ids_only: ids_only ?? false,
       ids: ids, // Pass through the ids array
+      id: id, // Pass through single id
       obfuscate: false,
       summary: false,
       size: size ?? 1,

@@ -3,7 +3,8 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
+import { useAuth } from '@/contexts/AuthContext';
 import { 
   Home, 
   Search, 
@@ -14,67 +15,85 @@ import {
   X,
   ChevronDown,
   ChevronUp,
-  DollarSign
+  DollarSign,
+  LogOut
 } from 'lucide-react';
 
 interface NavigationItem {
   name: string;
   href: string;
   icon: any;
-  submenu?: { name: string; href: string; }[];
+  submenu?: { name: string; href?: string; action?: () => void; }[];
 }
 
-const navigation: NavigationItem[] = [
-  { 
-    name: 'DASHBOARD', 
-    href: '/dashboard', 
-    icon: Home,
-    submenu: [
-      { name: 'Metrics', href: '/dashboard/metrics' },
-      { name: 'Pipeline', href: '/dashboard/pipeline' },
-      { name: 'Community', href: '/dashboard/community' },
-      { name: 'Onboarding', href: '/dashboard/onboarding' }
-    ]
-  },
-  { 
-    name: 'DISCOVER', 
-    href: '/discover', 
-    icon: Search,
-    submenu: [
-      { name: 'Property Search', href: '/discover' },
-      { name: 'Buy Box', href: '/discover/buybox' }
-    ]
-  },
-  { 
-    name: 'ENGAGE', 
-    href: '/engage', 
-    icon: Users
-  },
-  { 
-    name: 'AI COACH', 
-    href: '/chat', 
-    icon: MessageCircle
-  },
-  { 
-    name: 'PRICING', 
-    href: '/pricing', 
-    icon: DollarSign
-  },
-  { 
-    name: 'ACCOUNT', 
-    href: '/account', 
-    icon: User,
-    submenu: [
-      { name: 'Profile', href: '/account/profile' },
-      { name: 'Subscription', href: '/account/subscription' }
-    ]
-  },
-];
+// Note: We'll define navigation inside the component to access handleSignOut
 
 export default function MobileNavigation() {
   const [isOpen, setIsOpen] = useState(false);
   const [openSubmenus, setOpenSubmenus] = useState<{ [key: string]: boolean }>({});
   const pathname = usePathname();
+  const router = useRouter();
+  const { supabase } = useAuth();
+
+  // Sign out handler
+  const handleSignOut = async () => {
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+      console.error("Error signing out:", error);
+    } else {
+      setIsOpen(false);
+      setOpenSubmenus({});
+      router.push("/");
+    }
+  };
+
+  const navigation: NavigationItem[] = [
+    { 
+      name: 'DASHBOARD', 
+      href: '/dashboard', 
+      icon: Home,
+      submenu: [
+        { name: 'Metrics', href: '/dashboard/metrics' },
+        { name: 'Pipeline', href: '/dashboard/pipeline' },
+        { name: 'Community', href: '/dashboard/community' },
+        { name: 'Onboarding', href: '/dashboard/onboarding' }
+      ]
+    },
+    { 
+      name: 'DISCOVER', 
+      href: '/discover', 
+      icon: Search,
+      submenu: [
+        { name: 'Property Search', href: '/discover' },
+        { name: 'Buy Box', href: '/discover/buybox' }
+      ]
+    },
+    { 
+      name: 'ENGAGE', 
+      href: '/engage', 
+      icon: Users
+    },
+    { 
+      name: 'AI COACH', 
+      href: '/chat', 
+      icon: MessageCircle
+    },
+    { 
+      name: 'PRICING', 
+      href: '/pricing', 
+      icon: DollarSign
+    },
+    { 
+      name: 'ACCOUNT', 
+      href: '/account', 
+      icon: User,
+      submenu: [
+        { name: 'Profile', href: '/account/profile' },
+        { name: 'Subscription', href: '/account/subscription' },
+        { name: 'Sign Out', action: handleSignOut }
+      ]
+    },
+  ];
 
   const toggleSubmenu = (itemName: string) => {
     setOpenSubmenus(prev => ({
@@ -166,11 +185,29 @@ export default function MobileNavigation() {
                       {isSubmenuOpen && (
                         <div className="ml-8 mt-1 space-y-1">
                           {item.submenu.map((subItem) => {
-                            const isSubActive = pathname === subItem.href;
+                            const isSubActive = subItem.href && pathname === subItem.href;
+                            
+                            if (subItem.action) {
+                              // Action button (like Sign Out)
+                              return (
+                                <button
+                                  key={subItem.name}
+                                  onClick={() => {
+                                    subItem.action!();
+                                    setIsOpen(false);
+                                  }}
+                                  className="block w-full text-left px-3 py-2 rounded-md text-sm transition-colors text-blue-600 hover:bg-blue-50"
+                                >
+                                  {subItem.name}
+                                </button>
+                              );
+                            }
+                            
+                            // Regular link
                             return (
                               <Link
                                 key={subItem.name}
-                                href={subItem.href}
+                                href={subItem.href!}
                                 onClick={() => setIsOpen(false)}
                                 className={`
                                   block px-3 py-2 rounded-md text-sm transition-colors
@@ -265,11 +302,29 @@ export default function MobileNavigation() {
                         {isSubmenuOpen && (
                           <div className="absolute top-full left-0 mt-1 w-56 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50">
                             {item.submenu.map((subItem) => {
-                              const isSubActive = pathname === subItem.href;
+                              const isSubActive = subItem.href && pathname === subItem.href;
+                              
+                              if (subItem.action) {
+                                // Action button (like Sign Out)
+                                return (
+                                  <button
+                                    key={subItem.name}
+                                    onClick={() => {
+                                      subItem.action!();
+                                      closeAllSubmenus();
+                                    }}
+                                    className="block w-full text-left px-4 py-2 text-sm transition-colors text-blue-600 hover:bg-blue-50"
+                                  >
+                                    {subItem.name}
+                                  </button>
+                                );
+                              }
+                              
+                              // Regular link
                               return (
                                 <Link
                                   key={subItem.name}
-                                  href={subItem.href}
+                                  href={subItem.href!}
                                   onClick={closeAllSubmenus}
                                   className={`
                                     block px-4 py-2 text-sm transition-colors
@@ -368,11 +423,29 @@ export default function MobileNavigation() {
                         {isSubmenuOpen && (
                           <div className="absolute top-full right-0 mt-1 w-56 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50">
                             {accountItem.submenu.map((subItem) => {
-                              const isSubActive = pathname === subItem.href;
+                              const isSubActive = subItem.href && pathname === subItem.href;
+                              
+                              if (subItem.action) {
+                                // Action button (like Sign Out)
+                                return (
+                                  <button
+                                    key={subItem.name}
+                                    onClick={() => {
+                                      subItem.action!();
+                                      closeAllSubmenus();
+                                    }}
+                                    className="block w-full text-left px-4 py-2 text-sm transition-colors text-blue-600 hover:bg-blue-50"
+                                  >
+                                    {subItem.name}
+                                  </button>
+                                );
+                              }
+                              
+                              // Regular link
                               return (
                                 <Link
                                   key={subItem.name}
-                                  href={subItem.href}
+                                  href={subItem.href!}
                                   onClick={closeAllSubmenus}
                                   className={`
                                     block px-4 py-2 text-sm transition-colors

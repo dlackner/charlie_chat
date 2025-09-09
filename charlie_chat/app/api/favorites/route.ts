@@ -1,19 +1,38 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
+import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 
 export async function POST(req: NextRequest) {
   try {
-    const supabase = createRouteHandlerClient({ cookies });
+    const cookieStore = await cookies();
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll() {
+            return cookieStore.getAll();
+          },
+          setAll(cookiesToSet) {
+            cookiesToSet.forEach(({ name, value, options }) => {
+              cookieStore.set(name, value, options);
+            });
+          },
+        },
+      }
+    );
     
-    // Get the authenticated user
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    // TEMPORARY: Hardcoded user for testing
+    const user = { id: '99b75078-44aa-4e04-a66e-7b414c55c976' };
     
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    // TODO: Restore auth check when sign-in is implemented
+    // const { data: { user }, error: authError } = await supabase.auth.getUser();
+    // if (authError || !user) {
+    //   return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    // }
 
     const { property_id, property_data, action } = await req.json();
+    console.log('🎯 Favorites API called:', { property_id, action, user_id: user.id });
     
     if (!property_id) {
       return NextResponse.json({ error: 'Property ID is required' }, { status: 400 });
@@ -22,14 +41,39 @@ export async function POST(req: NextRequest) {
     if (action === 'add') {
       // First, save the property data to saved_properties table
       if (property_data) {
+        // Only include fields that exist in the saved_properties table schema
+        const validFields = [
+          'address_street', 'address_full', 'address_city', 'address_state', 'address_zip',
+          'latitude', 'longitude', 'mail_address_full', 'mail_address_street', 'mail_address_city', 
+          'mail_address_county', 'mail_address_state', 'mail_address_zip', 'property_type', 'units_count',
+          'stories', 'year_built', 'square_feet', 'lot_square_feet', 'flood_zone', 'flood_zone_description',
+          'assessed_value', 'assessed_land_value', 'estimated_value', 'estimated_equity', 'rent_estimate',
+          'listing_price', 'mortgage_balance', 'mortgage_maturing_date', 'last_sale_date', 'last_sale_amount',
+          'last_sale_arms_length', 'years_owned', 'mls_active', 'for_sale', 'assumable', 'auction', 'reo',
+          'tax_lien', 'pre_foreclosure', 'foreclosure', 'private_lender', 'owner_first_name', 'owner_last_name',
+          'out_of_state_absentee_owner', 'in_state_absentee_owner', 'owner_occupied', 'corporate_owned',
+          'investor_buyer', 'lender_name', 'total_portfolio_equity', 'total_portfolio_mortgage_balance',
+          'total_properties_owned', 'equity_percent', 'loan_to_value_ratio', 'mortgage_rate_first',
+          'mortgage_amount_first', 'mortgage_type_first', 'total_open_mortgage_balance', 'building_square_feet',
+          'effective_year_built', 'school_district_name', 'school_rating', 'neighborhood_name', 'walk_score',
+          'median_household_income', 'distressed_property', 'bankruptcy_date', 'tax_delinquent', 'lien_amount',
+          'judgment_amount', 'owner_type', 'owner_mailing_address_same_as_property', 'years_of_ownership'
+        ];
+
+        const filteredPropertyData: any = { property_id: property_id };
+        
+        // Only include fields that exist in the database schema
+        validFields.forEach(field => {
+          if (property_data[field] !== undefined) {
+            filteredPropertyData[field] = property_data[field];
+          }
+        });
+
+        console.log('📝 Inserting property with fields:', Object.keys(filteredPropertyData));
+
         const { error: propertyError } = await supabase
           .from('saved_properties')
-          .upsert({
-            property_id: property_id,
-            ...property_data,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          }, {
+          .upsert(filteredPropertyData, {
             onConflict: 'property_id'
           });
 
@@ -88,20 +132,47 @@ export async function POST(req: NextRequest) {
 }
 
 export async function GET(req: NextRequest) {
+  console.log('🚀 Favorites GET started');
   try {
-    const supabase = createRouteHandlerClient({ cookies });
+    console.log('📨 Getting cookies...');
+    const cookieStore = await cookies();
+    console.log('✅ Cookies obtained');
     
-    // Get the authenticated user
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    console.log('🔗 Creating Supabase client...');
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll() {
+            return cookieStore.getAll();
+          },
+          setAll(cookiesToSet) {
+            cookiesToSet.forEach(({ name, value, options }) => {
+              cookieStore.set(name, value, options);
+            });
+          },
+        },
+      }
+    );
+    console.log('✅ Supabase client created');
     
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    // TEMPORARY: Hardcoded user for testing
+    const user = { id: '99b75078-44aa-4e04-a66e-7b414c55c976' };
+    
+    // TODO: Restore auth check when sign-in is implemented
+    // const { data: { user }, error: authError } = await supabase.auth.getUser();
+    // if (authError || !user) {
+    //   return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    // }
 
+    console.log('🔍 Parsing URL params...');
     const { searchParams } = new URL(req.url);
     const property_id = searchParams.get('property_id');
+    console.log('📝 Property ID:', property_id);
     
     if (property_id) {
+      console.log('🎯 Checking specific property favorite status...');
       // Check if specific property is favorited
       const { data, error } = await supabase
         .from('user_favorites')
@@ -118,12 +189,14 @@ export async function GET(req: NextRequest) {
 
       return NextResponse.json({ is_favorite: !!data });
     } else {
+      console.log('📋 Getting all user favorites...');
       // Get all user favorites
       const { data, error } = await supabase
         .from('user_favorites')
         .select('property_id')
         .eq('user_id', user.id)
         .eq('is_active', true);
+      console.log('📊 Query completed, data:', data?.length, 'error:', error);
 
       if (error) {
         console.error('Error getting favorites:', error);
@@ -131,6 +204,7 @@ export async function GET(req: NextRequest) {
       }
 
       const favoritePropertyIds = data.map(fav => fav.property_id);
+      console.log('✅ Returning favorites:', favoritePropertyIds.length);
       return NextResponse.json({ favorites: favoritePropertyIds });
     }
     

@@ -676,7 +676,7 @@ function PropertyCard({
           </button>
           
           <button 
-            onClick={() => window.location.href = `/discover/property/${property.id}`}
+            onClick={() => window.location.href = `/discover/property/${property.id}?context=engage`}
             className="text-blue-600 hover:text-blue-700 text-sm font-medium"
           >
             View Details

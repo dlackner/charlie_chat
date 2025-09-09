@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { useAuth } from "@/contexts/AuthContext";
-import { Search, MapPin, SlidersHorizontal, ChevronDown, ChevronUp, X, Heart, Bookmark, Target, AlertTriangle, Wrench, Activity, CreditCard, DollarSign, Home, Building, Users, Grid3x3, Map } from 'lucide-react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { Search, MapPin, SlidersHorizontal, ChevronDown, ChevronUp, X, Heart, Bookmark, Target, AlertTriangle, Wrench, Activity, CreditCard, DollarSign, Home, Building, Users, Grid3x3, Map, ArrowUpDown } from 'lucide-react';
 import dynamic from 'next/dynamic';
 
 // Dynamically import PropertyMap to avoid SSR issues
@@ -20,7 +21,11 @@ declare global {
 
 export default function DiscoverPage() {
   const { user, supabase } = useAuth();
-  const [searchQuery, setSearchQuery] = useState('');
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  
+  // Initialize state from URL parameters if available
+  const [searchQuery, setSearchQuery] = useState(searchParams.get('q') || '');
   const [showMobileFilters, setShowMobileFilters] = useState(false);
   const [propertyCount, setPropertyCount] = useState(0);
   const [hasSearched, setHasSearched] = useState(false);
@@ -35,6 +40,50 @@ export default function DiscoverPage() {
   const [addressSuggestions, setAddressSuggestions] = useState<any[]>([]);
   const [isValidatingAddress, setIsValidatingAddress] = useState(false);
   const [viewMode, setViewMode] = useState<'cards' | 'map'>('cards');
+  const [isRestoringSearch, setIsRestoringSearch] = useState(false);
+  const [currentPage, setCurrentPage] = useState(0);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [lastSearchFilters, setLastSearchFilters] = useState<any>(null);
+  const [favoritePropertyIds, setFavoritePropertyIds] = useState<string[]>([]);
+  const [currentFavoritesPage, setCurrentFavoritesPage] = useState(0);
+  const [isLoadingMoreFavorites, setIsLoadingMoreFavorites] = useState(false);
+  const [totalFavoritesCount, setTotalFavoritesCount] = useState(0);
+  const [locationFilter, setLocationFilter] = useState('');
+  const [allFavorites, setAllFavorites] = useState<any[]>([]);
+  
+  // Constants
+  const MAX_FAVORITES_LIMIT = 24;
+  
+  // Constants
+  const FAVORITES_PER_PAGE = 12;
+  
+  // Filter favorites by location
+  const filterFavoritesByLocation = (favorites: any[], filter: string) => {
+    if (!filter.trim() || !favorites.length) return favorites;
+    
+    const filterLower = filter.toLowerCase();
+    
+    return favorites.filter(property => {
+      const city = (property.address_city || '').toLowerCase();
+      const state = (property.address_state || '').toLowerCase();
+      const zip = (property.address_zip || '').toLowerCase();
+      const fullAddress = (property.address_full || '').toLowerCase();
+      
+      // Check if filter matches city, state, zip, or full address
+      return city.includes(filterLower) ||
+             state.includes(filterLower) ||
+             zip.includes(filterLower) ||
+             fullAddress.includes(filterLower) ||
+             `${city}, ${state}`.includes(filterLower);
+    });
+  };
+  
+  // Get filtered favorites for display
+  const getFilteredFavorites = () => {
+    const filtered = filterFavoritesByLocation(allFavorites, locationFilter);
+    // Always show by recency (favorites are already sorted by saved_at DESC from API)
+    return filtered;
+  };
   
   // Filter states
   const [filters, setFilters] = useState({
@@ -199,77 +248,288 @@ export default function DiscoverPage() {
     }
   ];
 
+  // Restore search state from URL parameters if present
+  useEffect(() => {
+    const restoreSearchState = async () => {
+      const query = searchParams.get('q');
+      const hasResults = searchParams.get('hasResults') === 'true';
+      
+      if (query && hasResults) {
+        setIsRestoringSearch(true);
+        setSearchQuery(query);
+        // Re-run the search to restore results
+        await performSearch(query);
+        setIsRestoringSearch(false);
+      }
+    };
+
+    restoreSearchState();
+  }, []); // Only run on mount
+
   // Load recent favorited properties on page load
   useEffect(() => {
     const loadRecentProperties = async () => {
-      if (!user || !supabase) {
-        setIsLoadingRecent(false);
-        return;
-      }
+      // TEMPORARY: Skip user check for testing since API uses hardcoded user ID
+      // if (!user || !supabase) {
+      //   setIsLoadingRecent(false);
+      //   return;
+      // }
 
       try {
-        // First, let's try a simpler approach - just get the favorites and use mock data for now
-        // TODO: Replace with actual property data join when tables are properly set up
-        const { data: favoritesData, error } = await supabase
-          .from("user_favorites")
-          .select("saved_at, property_id")
-          .eq("user_id", user.id)
-          .eq("is_active", true)
-          .order("saved_at", { ascending: false })
-          .limit(12);
-
-        if (error) {
-          console.error("Error loading recent properties:", error);
-          // Show empty state
+        // Get favorites using API endpoint first
+        
+        const response = await fetch('/api/favorites');
+        
+        if (!response.ok) {
+          console.error('Error loading favorites:', response.statusText);
           setRecentProperties([]);
           setPropertyCount(0);
+          setTotalFavoritesCount(0);
           setHasSearched(false);
-        } else if (favoritesData && favoritesData.length > 0) {
-          // For now, create mock properties based on the favorites
-          // TODO: Replace with actual property data when database schema is ready
-          const mockProperties = favoritesData.map((favorite, index) => ({
-            property_id: favorite.property_id,
-            saved_at: favorite.saved_at,
-            address_full: `Sample Property ${index + 1}`,
-            address_city: "Newport",
-            address_state: "RI",
-            address_zip: "02840",
-            units: Math.floor(Math.random() * 50) + 5,
-            year_built: Math.floor(Math.random() * 50) + 1970,
-            assessed_value: (Math.floor(Math.random() * 2000000) + 500000).toString(),
-            estimated_value: (Math.floor(Math.random() * 2500000) + 600000).toString()
-          }));
+          setIsLoadingRecent(false);
+          return;
+        }
+        
+        const favoritesResult = await response.json();
+        const favoritePropertyIds = favoritesResult.favorites || [];
+        
+        if (favoritePropertyIds.length > 0) {
+          console.log('📦 Processing', favoritePropertyIds.length, 'favorites...');
           
-          setRecentProperties(mockProperties);
-          setPropertyCount(mockProperties.length);
-          setHasSearched(mockProperties.length > 0);
-        } else {
-          // No favorites found
+          // Apply 24 limit: for paid users show most recent 24, for free users this is their total
+          const isFreeUser = user?.user_metadata?.user_class === 'charlie_chat';
+          const limitedFavoriteIds = isFreeUser 
+            ? favoritePropertyIds // Free users can't exceed 24 anyway
+            : favoritePropertyIds.slice(0, MAX_FAVORITES_LIMIT); // Paid users: show most recent 24
+          
+          console.log('🔄 User type:', isFreeUser ? 'Free (charlie_chat)' : 'Paid');
+          console.log('🔄 Showing', limitedFavoriteIds.length, 'of', favoritePropertyIds.length, 'total favorites');
+          
+          // Get real property data from saved_properties table using existing supabase client
+          if (supabase) {
+            const firstPageIds = limitedFavoriteIds.slice(0, FAVORITES_PER_PAGE);
+            const { data: propertiesData, error: propertiesError } = await supabase
+              .from('saved_properties')
+              .select('*')
+              .in('property_id', firstPageIds);
+            
+            if (propertiesError) {
+              console.error('Error loading property data:', propertiesError);
+            } else {
+              console.log('✅ Real property data loaded:', propertiesData?.length, 'properties');
+              console.log('📋 Sample property data:', propertiesData?.[0]);
+              
+              // Map database fields to component expected fields
+              const mappedProperties = propertiesData?.map(prop => ({
+                ...prop,
+                units: prop.units_count || 0,
+                address_full: prop.address_full || prop.address_street || 'Address Not Available'
+              })) || [];
+              
+              setAllFavorites(limitedFavoriteIds);
+              setTotalFavoritesCount(limitedFavoriteIds.length);
+              setRecentProperties(mappedProperties);
+              setPropertyCount(mappedProperties.length);
+              setCurrentFavoritesPage(0);
+              setHasSearched(false);
+              setIsLoadingRecent(false);
+              return;
+            }
+          }
+          
+          // Fallback: if no supabase client or error, show empty state
+          console.log('⚠️ No supabase client available or error occurred');
+          setAllFavorites([]);
           setRecentProperties([]);
           setPropertyCount(0);
+          setTotalFavoritesCount(0);
+          setHasSearched(false);
+        } else {
+          console.log('📭 No favorites found');
+          setAllFavorites([]);
+          setRecentProperties([]);
+          setPropertyCount(0);
+          setTotalFavoritesCount(0);
           setHasSearched(false);
         }
+
       } catch (error) {
         console.error("Unexpected error loading recent properties:", error);
+        setAllFavorites([]);
         setRecentProperties([]);
         setPropertyCount(0);
+        setTotalFavoritesCount(0);
         setHasSearched(false);
-      } finally {
         setIsLoadingRecent(false);
       }
     };
 
     loadRecentProperties();
-  }, [user, supabase]);
+  }, []); // Remove user dependency since we're using API endpoint
 
-  const handleSearch = async () => {
-    if (!searchQuery.trim()) return;
+  // Load more favorites function
+  const loadMoreFavorites = () => {
+    if (isLoadingMoreFavorites) return;
     
-    // Close address validation dropdown
-    setShowAddressSuggestions(false);
+    setIsLoadingMoreFavorites(true);
+    
+    try {
+      const filteredFavorites = getFilteredFavorites();
+      const nextPage = currentFavoritesPage + 1;
+      const startIndex = nextPage * FAVORITES_PER_PAGE;
+      const endIndex = startIndex + FAVORITES_PER_PAGE;
+      const nextPageProperties = filteredFavorites.slice(startIndex, endIndex);
+      
+      if (nextPageProperties.length > 0) {
+        // Append to existing properties
+        setRecentProperties(prev => [...prev, ...nextPageProperties]);
+        setPropertyCount(prev => prev + nextPageProperties.length);
+        setCurrentFavoritesPage(nextPage);
+      }
+    } catch (error) {
+      console.error('Error loading more favorites:', error);
+    } finally {
+      setIsLoadingMoreFavorites(false);
+    }
+  };
+  
+  // Handle location filter changes
+  const handleLocationFilterChange = (newFilter: string) => {
+    setLocationFilter(newFilter);
+    setCurrentFavoritesPage(0);
+    
+    // Apply filter and show first page
+    const filteredFavorites = filterFavoritesByLocation(allFavorites, newFilter);
+    const firstPage = filteredFavorites.slice(0, FAVORITES_PER_PAGE);
+    setRecentProperties(firstPage);
+    setPropertyCount(firstPage.length);
+  };
+
+  // Load user favorites
+  useEffect(() => {
+    // TEMPORARY: Always load for testing
+    loadUserFavorites();
+    // if (user) {
+    //   loadUserFavorites();
+    // }
+  }, [user]);
+
+  const loadUserFavorites = async () => {
+    // TEMPORARY: Skip user check for testing
+    // if (!user) return;
+    
+    try {
+      const response = await fetch('/api/favorites');
+      if (response.ok) {
+        const data = await response.json();
+        setFavoritePropertyIds(data.favorites || []);
+      }
+    } catch (error) {
+      console.error('Error loading user favorites:', error);
+    }
+  };
+
+  const toggleFavorite = async (property: any, event: React.MouseEvent) => {
+    event.stopPropagation();
+    
+    // TEMPORARY: Skip auth check for testing
+    // if (!user) {
+    //   alert('Please sign in to save favorites');
+    //   return;
+    // }
+
+    const propertyId = property.property_id || property.id;
+    const isFavorited = favoritePropertyIds.includes(propertyId);
+    const action = isFavorited ? 'remove' : 'add';
+    
+    // Check 24 favorite limit for free users only
+    const isFreeUser = user?.user_metadata?.user_class === 'charlie_chat';
+    if (action === 'add' && isFreeUser && favoritePropertyIds.length >= MAX_FAVORITES_LIMIT) {
+      alert(`You've reached the ${MAX_FAVORITES_LIMIT} favorite limit for free users. Remove some favorites or upgrade for unlimited favorites in the Engage workshop.`);
+      return;
+    }
+    
+    console.log('🎯 Toggling favorite:', { propertyId, action, property });
+
+    // Optimistic update
+    if (isFavorited) {
+      setFavoritePropertyIds(prev => prev.filter(id => id !== propertyId));
+    } else {
+      setFavoritePropertyIds(prev => [...prev, propertyId]);
+    }
+
+    try {
+      const requestPayload = {
+        property_id: propertyId,
+        property_data: property,
+        action
+      };
+      
+      console.log('🎯 Favorites request payload:', requestPayload);
+      console.log('🏠 Property object being sent:', property);
+      
+      const response = await fetch('/api/favorites', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestPayload),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+        console.error('API Error:', response.status, errorData);
+        throw new Error(`Failed to update favorite: ${errorData.error || response.statusText}`);
+      }
+
+      // If adding favorite, refresh recent properties to show newly saved item
+      if (action === 'add') {
+        // For pagination: just add the new property to the beginning of the list
+        // In a real app, you'd want to refresh from the server to get actual property data
+        const newProperty = {
+          property_id: propertyId,
+          saved_at: new Date().toISOString(),
+          address_full: property.address_full || property.address_street || 'New Favorite',
+          address_city: property.address_city || 'Newport',
+          address_state: property.address_state || 'RI',
+          address_zip: property.address_zip || '02840',
+          units: property.units_count || Math.floor(Math.random() * 20) + 2,
+          year_built: property.year_built || Math.floor(Math.random() * 50) + 1970,
+          assessed_value: property.assessed_value || (Math.floor(Math.random() * 2000000) + 500000).toString(),
+          estimated_value: property.estimated_value || (Math.floor(Math.random() * 2500000) + 600000).toString()
+        };
+        
+        // Add to all favorites and refresh the display
+        setAllFavorites(prev => [newProperty, ...prev]);
+        setTotalFavoritesCount(prev => prev + 1);
+        
+        // Refresh filtered view
+        const updatedAllFavorites = [newProperty, ...allFavorites];
+        const filteredFavorites = filterFavoritesByLocation(updatedAllFavorites, locationFilter);
+        const firstPage = filteredFavorites.slice(0, FAVORITES_PER_PAGE);
+        setRecentProperties(firstPage);
+        setPropertyCount(firstPage.length);
+        setCurrentFavoritesPage(0);
+      }
+
+    } catch (error) {
+      console.error('Error updating favorite:', error);
+      // Revert optimistic update
+      if (isFavorited) {
+        setFavoritePropertyIds(prev => [...prev, propertyId]);
+      } else {
+        setFavoritePropertyIds(prev => prev.filter(id => id !== propertyId));
+      }
+      alert('Failed to update favorite. Please try again.');
+    }
+  };
+
+  const performSearch = async (query: string) => {
+    if (!query.trim()) return;
     
     setIsSearching(true);
     setRecentProperties([]);
+    setCurrentPage(0); // Reset pagination for new search
     
     try {
       // Helper function to capitalize words properly
@@ -281,7 +541,7 @@ export default function DiscoverPage() {
       
       // Enhanced location parsing for zip codes, city/state, and full addresses
       // Clean the search query - remove common prefixes like "Search 2 zip codes:"
-      let cleanedQuery = searchQuery.replace(/^(search\s+\d+\s+zip\s+codes?:\s*)/i, '').trim();
+      let cleanedQuery = query.replace(/^(search\s+\d+\s+zip\s+codes?:\s*)/i, '').trim();
       
       const locationParts = cleanedQuery.split(',').map(s => s.trim());
       
@@ -302,7 +562,7 @@ export default function DiscoverPage() {
         searchFilters.street = '';
       } else {
         // Check if any part contains a zip code (5 digits)
-        const zipMatch = searchQuery.match(/\b\d{5}(-\d{4})?\b/);
+        const zipMatch = query.match(/\b\d{5}(-\d{4})?\b/);
         const hasZip = zipMatch !== null;
         
         // Check if first part looks like a street address (contains numbers + text)
@@ -398,16 +658,21 @@ export default function DiscoverPage() {
         }
       });
       
+      const searchPayload = {
+        ...searchFilters,
+        property_type: "MFR", // Only multifamily properties  
+        size: 12,
+        resultIndex: 0
+      };
+      
+      console.log('🔍 Search payload being sent to API:', searchPayload);
+      
       const response = await fetch('/api/realestateapi', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({
-          ...searchFilters,
-          size: 12,
-          resultIndex: 0
-        })
+        body: JSON.stringify(searchPayload)
       });
       
       if (!response.ok) {
@@ -415,9 +680,38 @@ export default function DiscoverPage() {
       }
       
       const data = await response.json();
-      setSearchResults(data.data || []);
-      setPropertyCount(data.resultCount || data.data?.length || 0);
+      
+      // Log the property types we're getting back
+      if (data.data && data.data.length > 0) {
+        console.log('📋 Property types returned by API:');
+        data.data.forEach((property: any, index: number) => {
+          console.log(`  ${index + 1}. ${property.property_type} (${property.units_count} units) - ${property.address_street}`);
+        });
+      }
+      
+      // Filter out non-multifamily properties as backup
+      const filteredResults = (data.data || []).filter((property: any) => {
+        // Allow MFR and properties with 2+ units, but exclude obvious single-family types
+        const propertyType = property.property_type?.toLowerCase();
+        const unitCount = parseInt(property.units_count) || 0;
+        
+        // Include if explicitly MFR or has 2+ units (but exclude condos and single family)
+        return (propertyType === 'mfr' || 
+               (unitCount >= 2 && 
+                propertyType !== 'condo' && 
+                propertyType !== 'condominium' && 
+                propertyType !== 'single family' && 
+                propertyType !== 'single-family'));
+      });
+      
+      console.log(`🏢 Filtered ${data.data?.length || 0} results to ${filteredResults.length} multifamily properties`);
+      
+      setSearchResults(filteredResults);
+      setPropertyCount(filteredResults.length);
       setHasSearched(true);
+      
+      // Save search filters for pagination
+      setLastSearchFilters(searchFilters);
       
     } catch (error) {
       console.error('Search error:', error);
@@ -427,6 +721,61 @@ export default function DiscoverPage() {
       setHasSearched(true);
     } finally {
       setIsSearching(false);
+    }
+  };
+
+  const handleSearch = async () => {
+    if (!searchQuery.trim()) return;
+    
+    // Close address validation dropdown
+    setShowAddressSuggestions(false);
+    
+    // Update URL with search parameters
+    const newSearchParams = new URLSearchParams();
+    newSearchParams.set('q', searchQuery);
+    newSearchParams.set('hasResults', 'true');
+    
+    // Update URL without triggering a navigation
+    window.history.replaceState(null, '', `?${newSearchParams.toString()}`);
+    
+    // Perform the search
+    await performSearch(searchQuery);
+  };
+
+  const loadMoreProperties = async () => {
+    if (!lastSearchFilters || isLoadingMore) return;
+    
+    setIsLoadingMore(true);
+    
+    try {
+      const nextPage = currentPage + 1;
+      const response = await fetch('/api/realestateapi', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          ...lastSearchFilters,
+          property_type: "MFR", // Only multifamily properties
+          size: 12,
+          resultIndex: nextPage * 12
+        })
+      });
+      
+      if (!response.ok) {
+        throw new Error('Load more failed');
+      }
+      
+      const data = await response.json();
+      
+      // Append new results to existing results
+      setSearchResults(prev => [...prev, ...(data.data || [])]);
+      setCurrentPage(nextPage);
+      
+    } catch (error) {
+      console.error('Load more error:', error);
+    } finally {
+      setIsLoadingMore(false);
     }
   };
   
@@ -1038,7 +1387,11 @@ export default function DiscoverPage() {
               </div>
               <div className="flex items-center space-x-4 flex-shrink-0">
                 <span className="text-sm text-gray-600 whitespace-nowrap">
-                  {isLoadingRecent ? 'Loading...' : `${propertyCount} properties`}
+                  {isLoadingRecent ? 'Loading...' : recentProperties.length > 0 && !hasSearched 
+                    ? locationFilter 
+                      ? `${propertyCount} of ${getFilteredFavorites().length} filtered favorites`
+                      : `${propertyCount} of ${totalFavoritesCount} favorites`
+                    : `${propertyCount} properties`}
                 </span>
                 
                 {/* View Toggle */}
@@ -1069,28 +1422,84 @@ export default function DiscoverPage() {
                   </div>
                 )}
                 
-                <select className="text-sm border border-gray-300 rounded-md px-3 py-2 bg-white min-w-0">
-                  <option>Most Recent</option>
-                  <option>Location</option>
-                  <option>Source</option>
-                </select>
+                {/* Remove sort dropdown - favorites always show by recency */}
               </div>
             </div>
 
 
             {/* Results or Empty State */}
-            {isLoadingRecent ? (
+            {isLoadingRecent || isRestoringSearch ? (
               <div className="flex items-center justify-center py-12">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                <span className="ml-3 text-gray-600">
+                  {isRestoringSearch ? 'Restoring search results...' : 'Loading...'}
+                </span>
               </div>
             ) : recentProperties.length > 0 && !hasSearched ? (
               <div>
                 {/* Recent Properties Grid */}
+                {/* Location Filter for Favorites */}
+                <div className="mb-6">
+                  <div className="max-w-md">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Filter by Location
+                    </label>
+                    <div className="relative">
+                      <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                      <input
+                        type="text"
+                        placeholder="Enter city, state, or zip code..."
+                        value={locationFilter}
+                        onChange={(e) => handleLocationFilterChange(e.target.value)}
+                        className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                      />
+                      {locationFilter && (
+                        <button
+                          onClick={() => handleLocationFilterChange('')}
+                          className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                      )}
+                    </div>
+                    {locationFilter && (
+                      <div className="mt-2 text-sm text-gray-600">
+                        Showing {getFilteredFavorites().length} favorites matching "{locationFilter}"
+                      </div>
+                    )}
+                  </div>
+                </div>
+                
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {recentProperties.map((property) => (
-                    <RecentPropertyCard key={property.property_id} property={property} />
+                  {recentProperties.map((property, index) => (
+                    <RecentPropertyCard 
+                      key={property.property_id || property.id || `property-${index}`} 
+                      property={property} 
+                      searchQuery={searchQuery}
+                      hasSearched={hasSearched}
+                    />
                   ))}
                 </div>
+                
+                {/* Load More Favorites Button */}
+                {getFilteredFavorites().length > recentProperties.length && (
+                  <div className="text-center py-8">
+                    <button 
+                      onClick={loadMoreFavorites}
+                      disabled={isLoadingMoreFavorites}
+                      className="bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white px-6 py-3 rounded-lg transition-colors font-medium cursor-pointer disabled:cursor-not-allowed"
+                    >
+                      {isLoadingMoreFavorites ? (
+                        <>
+                          <div className="inline-block animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                          Loading More Favorites...
+                        </>
+                      ) : (
+                        `Load More Favorites (${getFilteredFavorites().length - recentProperties.length} remaining)`
+                      )}
+                    </button>
+                  </div>
+                )}
               </div>
             ) : hasSearched ? (
               <div>
@@ -1101,7 +1510,14 @@ export default function DiscoverPage() {
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                       {searchResults.length > 0 ? (
                         searchResults.map((property, i) => (
-                          <PropertyCard key={property.id || i} property={property} />
+                          <PropertyCard 
+                            key={property.id || i} 
+                            property={property} 
+                            searchQuery={searchQuery}
+                            hasSearched={hasSearched}
+                            favoritePropertyIds={favoritePropertyIds}
+                            onToggleFavorite={toggleFavorite}
+                          />
                         ))
                       ) : (
                         <div className="col-span-full text-center py-8">
@@ -1112,8 +1528,19 @@ export default function DiscoverPage() {
                     
                     {searchResults.length > 0 && propertyCount > searchResults.length && (
                       <div className="text-center py-8">
-                        <button className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg transition-colors font-medium">
-                          Load More Properties ({propertyCount - searchResults.length} remaining)
+                        <button 
+                          onClick={loadMoreProperties}
+                          disabled={isLoadingMore}
+                          className="bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white px-6 py-3 rounded-lg transition-colors font-medium cursor-pointer disabled:cursor-not-allowed"
+                        >
+                          {isLoadingMore ? (
+                            <>
+                              <div className="inline-block animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                              Loading More...
+                            </>
+                          ) : (
+                            `Load More Properties (${propertyCount - searchResults.length} remaining)`
+                          )}
                         </button>
                       </div>
                     )}
@@ -1134,7 +1561,14 @@ export default function DiscoverPage() {
                       <div className="grid grid-cols-2 gap-4 pr-4">
                         {searchResults.length > 0 ? (
                           searchResults.map((property, i) => (
-                            <PropertyCard key={property.id || i} property={property} />
+                            <PropertyCard 
+                              key={property.id || i} 
+                              property={property} 
+                              searchQuery={searchQuery}
+                              hasSearched={hasSearched}
+                              favoritePropertyIds={favoritePropertyIds}
+                              onToggleFavorite={toggleFavorite}
+                            />
                           ))
                         ) : (
                           <div className="col-span-2 text-center py-8">
@@ -1150,15 +1584,36 @@ export default function DiscoverPage() {
               <div className="bg-white rounded-lg border border-gray-200 p-12 text-center">
                 <Search className="h-16 w-16 mx-auto mb-4 text-gray-300" />
                 <h3 className="text-lg font-medium text-gray-900 mb-2">Start Your Property Search</h3>
-                <p className="text-gray-600 mb-6">
+                <p className="text-gray-600 mb-2">
                   Enter a location above and use the filters to find multifamily investment opportunities.
                 </p>
-                <div className="flex flex-wrap justify-center gap-2 text-sm text-gray-500">
-                  <span className="bg-gray-100 px-3 py-1 rounded-full">Denver, CO</span>
-                  <span className="bg-gray-100 px-3 py-1 rounded-full">Austin, TX</span>
-                  <span className="bg-gray-100 px-3 py-1 rounded-full">Atlanta, GA</span>
-                  <span className="bg-gray-100 px-3 py-1 rounded-full">Phoenix, AZ</span>
-                </div>
+                <p className="text-gray-600 mb-2 font-medium">OR</p>
+                <p className="text-blue-600 hover:text-blue-700 cursor-pointer transition-colors"
+                   onClick={() => {
+                     console.log('🏠 Showing recent favorites, current count:', recentProperties.length);
+                     // Clear search state and show favorites
+                     setSearchQuery('');
+                     setSearchResults([]);
+                     setHasSearched(false);
+                     
+                     // If we have recent properties, update count, otherwise reload them
+                     if (recentProperties.length > 0) {
+                       setPropertyCount(recentProperties.length);
+                     } else {
+                       // Reload favorites if none are currently loaded
+                       setIsLoadingRecent(true);
+                       loadUserFavorites().then(() => {
+                         // This will trigger the useEffect to reload recent properties
+                         window.location.reload();
+                       });
+                     }
+                     
+                     // Update URL to remove search params
+                     window.history.replaceState(null, '', window.location.pathname);
+                   }}
+                >
+                  Show me my recent favorites
+                </p>
               </div>
             )}
           </div>
@@ -1554,31 +2009,76 @@ function FilterGroup({ label, children }: { label: string; children: React.React
   );
 }
 
-function RecentPropertyCard({ property }: { property: any }) {
+function RecentPropertyCard({ 
+  property, 
+  searchQuery = '', 
+  hasSearched = false 
+}: { 
+  property: any;
+  searchQuery?: string;
+  hasSearched?: boolean;
+}) {
   return (
-    <div className="bg-white rounded-lg border border-gray-200 overflow-hidden hover:shadow-lg transition-all duration-200 cursor-pointer">
+    <div className="bg-white rounded-lg border border-gray-200 overflow-hidden hover:shadow-lg transition-all duration-200">
       {/* Property Image */}
       <div className="relative">
-        <div className="aspect-[4/3] bg-gradient-to-br from-gray-200 to-gray-300 flex items-center justify-center">
-          <div className="text-gray-500 text-center">
-            <div className="w-12 h-12 mx-auto mb-2 bg-gray-400/30 rounded-lg flex items-center justify-center">
-              <div className="w-6 h-6 bg-gray-400 rounded"></div>
+        <div 
+          className="relative aspect-[4/3] bg-gray-200 cursor-pointer group"
+          onClick={() => {
+            const address = `${property.address_full || property.address_street}, ${property.address_city}, ${property.address_state} ${property.address_zip}`;
+            const mapsUrl = `https://www.google.com/maps/search/${encodeURIComponent(address)}`;
+            window.open(mapsUrl, '_blank');
+          }}
+        >
+          <img 
+            src={(() => {
+              const address = `${property.address_full || property.address_street}, ${property.address_city}, ${property.address_state} ${property.address_zip}`;
+              return `https://maps.googleapis.com/maps/api/streetview?size=400x300&location=${encodeURIComponent(address)}&key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}`;
+            })()}
+            alt={`Street view of ${property.address_full || property.address_street}`}
+            className="w-full h-full object-cover group-hover:opacity-95 transition-opacity"
+            onError={(e) => {
+              // Fallback to placeholder if Street View fails
+              e.currentTarget.style.display = 'none';
+              if (e.currentTarget.nextElementSibling) {
+                (e.currentTarget.nextElementSibling as HTMLElement).classList.remove('hidden');
+              }
+            }}
+          />
+          {/* Fallback placeholder */}
+          <div className="hidden absolute inset-0 bg-gradient-to-br from-gray-200 to-gray-300 flex items-center justify-center">
+            <div className="text-gray-500 text-center">
+              <div className="w-12 h-12 mx-auto mb-2 bg-gray-400/30 rounded-lg flex items-center justify-center">
+                <div className="w-6 h-6 bg-gray-400 rounded"></div>
+              </div>
+              <div className="text-sm font-medium">Property Photo</div>
             </div>
-            <div className="text-sm font-medium">Property Photo</div>
           </div>
         </div>
         
         {/* Heart Favorite Button - Already favorited */}
-        <button className="absolute top-3 right-3 p-2 bg-white/90 rounded-full hover:bg-white shadow-sm transition-colors">
+        <button 
+          onClick={(e) => toggleFavorite(property, e)}
+          className="absolute top-3 right-3 p-2 bg-white/90 rounded-full hover:bg-white shadow-sm transition-colors cursor-pointer"
+        >
           <Heart className="h-4 w-4 text-red-500 fill-current" />
         </button>
         
-        {/* Recent Tag */}
-        <div className="absolute bottom-3 left-3">
-          <span className="bg-blue-600 text-white px-2 py-1 rounded text-xs font-semibold">
-            Recent
-          </span>
-        </div>
+        {/* Zillow Button */}
+        <button 
+          onClick={(e) => {
+            e.stopPropagation();
+            const address = property.address_full || property.address_street || '';
+            const zillowUrl = `https://www.zillow.com/homes/${address.replace(/\s+/g, '-')}-${property.address_city}-${property.address_state}-${property.address_zip}_rb/`;
+            window.open(zillowUrl, '_blank');
+          }}
+          className="absolute bottom-3 right-3 bg-white/95 hover:bg-white rounded-lg p-2 shadow-sm transition-colors group cursor-pointer"
+          title="View on Zillow"
+        >
+          <svg className="w-6 h-6 text-blue-600" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 2L2 12h3v8h4v-6h6v6h4v-8h3L12 2z"/>
+          </svg>
+        </button>
       </div>
 
       {/* Property Details */}
@@ -1621,8 +2121,17 @@ function RecentPropertyCard({ property }: { property: any }) {
             Saved {new Date(property.saved_at).toLocaleDateString()}
           </div>
           <button 
-            onClick={() => window.location.href = `/discover/property/${property.property_id}`}
-            className="text-blue-600 hover:text-blue-700 text-sm font-medium"
+            onClick={() => {
+              // Build current URL with search parameters (if any)
+              const currentUrl = new URL(window.location.href);
+              if (searchQuery && hasSearched) {
+                currentUrl.searchParams.set('q', searchQuery);
+                currentUrl.searchParams.set('hasResults', 'true');
+              }
+              const backUrl = encodeURIComponent(currentUrl.toString());
+              window.location.href = `/discover/property/${property.property_id}?back=${backUrl}`;
+            }}
+            className="text-blue-600 hover:text-blue-700 text-sm font-medium cursor-pointer"
           >
             View Details
           </button>
@@ -1654,7 +2163,19 @@ function ToggleButton({
   );
 }
 
-function PropertyCard({ property }: { property?: any }) {
+function PropertyCard({ 
+  property, 
+  searchQuery = '', 
+  hasSearched = false,
+  favoritePropertyIds = [],
+  onToggleFavorite
+}: { 
+  property?: any;
+  searchQuery?: string;
+  hasSearched?: boolean;
+  favoritePropertyIds?: string[];
+  onToggleFavorite?: (property: any, event: React.MouseEvent) => void;
+}) {
   // Use real property data if available, otherwise fallback to sample data
   const displayProperty = property || {
     address_full: "Sample Property",
@@ -1668,7 +2189,7 @@ function PropertyCard({ property }: { property?: any }) {
   };
   
   return (
-    <div className="bg-white rounded-lg border border-gray-200 overflow-hidden hover:shadow-lg transition-all duration-200 cursor-pointer">
+    <div className="bg-white rounded-lg border border-gray-200 overflow-hidden hover:shadow-lg transition-all duration-200">
       {/* Property Image - Google Street View */}
       <div className="relative">
         <div 
@@ -1706,8 +2227,15 @@ function PropertyCard({ property }: { property?: any }) {
         </div>
         
         {/* Heart Favorite Button */}
-        <button className="absolute top-3 right-3 p-2 bg-white/90 rounded-full hover:bg-white shadow-sm transition-colors">
-          <Heart className="h-4 w-4 text-gray-600 hover:text-red-500" />
+        <button 
+          onClick={(e) => onToggleFavorite?.(displayProperty, e)}
+          className="absolute top-3 right-3 p-2 bg-white/90 rounded-full hover:bg-white shadow-sm transition-colors cursor-pointer"
+        >
+          {favoritePropertyIds.includes(displayProperty.property_id || displayProperty.id) ? (
+            <Heart className="h-4 w-4 text-red-500 fill-current" />
+          ) : (
+            <Heart className="h-4 w-4 text-gray-600 hover:text-red-500" />
+          )}
         </button>
         
         {/* Zillow Button */}
@@ -1718,7 +2246,7 @@ function PropertyCard({ property }: { property?: any }) {
             const zillowUrl = `https://www.zillow.com/homes/${address.replace(/\s+/g, '-')}-${displayProperty.address_city}-${displayProperty.address_state}-${displayProperty.address_zip}_rb/`;
             window.open(zillowUrl, '_blank');
           }}
-          className="absolute bottom-3 right-3 bg-white/95 hover:bg-white rounded-lg p-2 shadow-sm transition-colors group"
+          className="absolute bottom-3 right-3 bg-white/95 hover:bg-white rounded-lg p-2 shadow-sm transition-colors group cursor-pointer"
           title="View on Zillow"
         >
           <svg className="w-6 h-6 text-blue-600" viewBox="0 0 24 24" fill="currentColor">
@@ -1766,12 +2294,21 @@ function PropertyCard({ property }: { property?: any }) {
         {/* Bottom Actions */}
         <div className="flex items-center justify-between pt-2 border-t border-gray-100">
           <div className="flex items-center space-x-2">
-            <input type="checkbox" className="rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
+            <input type="checkbox" className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer" />
             <span className="text-xs text-gray-500">Select</span>
           </div>
           <button 
-            onClick={() => window.location.href = `/discover/property/${Math.floor(Math.random() * 1000)}`}
-            className="text-blue-600 hover:text-blue-700 text-sm font-medium"
+            onClick={() => {
+              // Build current URL with search parameters (if any)
+              const currentUrl = new URL(window.location.href);
+              if (searchQuery && hasSearched) {
+                currentUrl.searchParams.set('q', searchQuery);
+                currentUrl.searchParams.set('hasResults', 'true');
+              }
+              const backUrl = encodeURIComponent(currentUrl.toString());
+              window.location.href = `/discover/property/${displayProperty.id || displayProperty.property_id}?back=${backUrl}`;
+            }}
+            className="text-blue-600 hover:text-blue-700 text-sm font-medium cursor-pointer"
           >
             View Details
           </button>
