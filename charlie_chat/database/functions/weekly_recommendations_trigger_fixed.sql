@@ -9,16 +9,12 @@ RETURNS TABLE(user_email TEXT, status TEXT, message TEXT) AS $$
 DECLARE
     user_record RECORD;
     api_response http_response;
-    auth_token TEXT;
     api_url TEXT;
     success_count INTEGER := 0;
     error_count INTEGER := 0;
 BEGIN
-    -- Set the API URL (adjust based on your environment)
-    api_url := coalesce(
-        current_setting('app.base_url', true), 
-        'http://localhost:3000'
-    ) || '/api/weekly-recommendations';
+    -- Set the API URL to production endpoint
+    api_url := 'https://multifamilyos.ai/api/weekly-recommendations';
     
     RAISE NOTICE 'Starting weekly recommendations trigger at %', NOW();
     RAISE NOTICE 'API URL: %', api_url;
@@ -36,23 +32,18 @@ BEGIN
         BEGIN
             RAISE NOTICE 'Processing user: % (%)', user_record.email, user_record.id;
             
-            -- Generate a service role JWT token for API authentication
-            auth_token := 'Bearer ' || coalesce(
-                current_setting('app.service_role_key', true),
-                'your-service-role-key-here'
-            );
-            
             -- Make HTTP request to the weekly recommendations API
             SELECT * INTO api_response FROM http((
                 'POST',
                 api_url,
                 ARRAY[
                     http_header('Content-Type', 'application/json'),
-                    http_header('Authorization', auth_token),
-                    http_header('x-user-id', user_record.id::TEXT)
+                    http_header('x-user-id', user_record.id::TEXT),
+                    http_header('Accept', 'application/json'),
+                    http_header('User-Agent', 'Supabase-Cron/1.0')
                 ],
-                '{}',  -- Empty JSON body since API uses user from auth
-                NULL
+                '{"forceRefresh": false}'::TEXT,
+                '30000'::TEXT  -- 30 second timeout
             )::http_request);
             
             -- Check response status

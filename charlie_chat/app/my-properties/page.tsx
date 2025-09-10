@@ -1269,8 +1269,8 @@ ${userEmail}`;
                                                             
                                                             const mailtoLink = `mailto:${recipientEmail}?subject=${encodedSubject}&body=${encodedBody}`;
                                                             
-                                                            // Open email client
-                                                            window.open(mailtoLink, '_self');
+                                                            // Open email client in new tab
+                                                            window.open(mailtoLink, '_blank');
                                                             
                                                             // Add reminder note 7 days in the future
                                                             try {
