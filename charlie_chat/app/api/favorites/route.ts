@@ -104,15 +104,60 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: true, favorite: data[0] });
       
     } else if (action === 'remove') {
-      // Remove from favorites (set is_active to false)
+      // First, save the property data to saved_properties table (same as 'add' action)
+      if (property_data) {
+        // Only include fields that exist in the saved_properties table schema
+        const validFields = [
+          'address_street', 'address_full', 'address_city', 'address_state', 'address_zip',
+          'latitude', 'longitude', 'mail_address_full', 'mail_address_street', 'mail_address_city', 
+          'mail_address_county', 'mail_address_state', 'mail_address_zip', 'property_type', 'units_count',
+          'stories', 'year_built', 'square_feet', 'lot_square_feet', 'flood_zone', 'flood_zone_description',
+          'assessed_value', 'assessed_land_value', 'estimated_value', 'estimated_equity', 'rent_estimate',
+          'listing_price', 'mortgage_balance', 'mortgage_maturing_date', 'last_sale_date', 'last_sale_amount',
+          'last_sale_arms_length', 'years_owned', 'mls_active', 'for_sale', 'assumable', 'auction', 'reo',
+          'tax_lien', 'pre_foreclosure', 'foreclosure', 'private_lender', 'owner_first_name', 'owner_last_name',
+          'out_of_state_absentee_owner', 'in_state_absentee_owner', 'owner_occupied', 'corporate_owned',
+          'investor_buyer', 'lender_name', 'total_portfolio_equity', 'total_portfolio_mortgage_balance',
+          'total_properties_owned', 'equity_percent', 'loan_to_value_ratio', 'mortgage_rate_first',
+          'mortgage_amount_first', 'mortgage_type_first', 'total_open_mortgage_balance', 'building_square_feet',
+          'effective_year_built', 'school_district_name', 'school_rating', 'neighborhood_name', 'walk_score',
+          'median_household_income', 'distressed_property', 'bankruptcy_date', 'tax_delinquent', 'lien_amount',
+          'judgment_amount', 'owner_type', 'owner_mailing_address_same_as_property', 'years_of_ownership'
+        ];
+
+        const filteredPropertyData: any = { property_id: property_id };
+        
+        // Only include fields that exist in the database schema
+        validFields.forEach(field => {
+          if (property_data[field] !== undefined) {
+            filteredPropertyData[field] = property_data[field];
+          }
+        });
+
+        const { error: propertyError } = await supabase
+          .from('saved_properties')
+          .upsert(filteredPropertyData, {
+            onConflict: 'property_id'
+          });
+
+        if (propertyError) {
+          console.error('Error saving rejected property data:', propertyError);
+          return NextResponse.json({ error: 'Failed to save rejected property data' }, { status: 500 });
+        }
+      }
+
+      // Then remove from favorites (set is_active to false) using upsert to ensure record exists
       const { error } = await supabase
         .from('user_favorites')
-        .update({ 
+        .upsert({
+          user_id: user.id,
+          property_id: property_id,
           is_active: false,
-          status: 'archived'
-        })
-        .eq('user_id', user.id)
-        .eq('property_id', property_id);
+          status: 'archived',
+          recommendation_type: 'manual'
+        }, {
+          onConflict: 'user_id,property_id'
+        });
 
       if (error) {
         console.error('Error removing favorite:', error);

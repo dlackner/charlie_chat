@@ -5,6 +5,29 @@
  */
 'use client';
 
+// Add custom keyframes for card animations
+const cardAnimationStyles = `
+  @keyframes heartFlyOut {
+    0% { transform: scale(1) translateX(0) rotate(0deg); opacity: 1; }
+    30% { transform: scale(1.1) translateX(0) rotate(0deg); opacity: 1; }
+    100% { transform: scale(0.8) translateX(300px) rotate(10deg); opacity: 0; }
+  }
+  
+  @keyframes rejectFlyOut {
+    0% { transform: scale(1) translateX(0) rotate(0deg); opacity: 1; }
+    30% { transform: scale(0.95) translateX(0) rotate(-3deg); opacity: 1; }
+    100% { transform: scale(0.8) translateX(-300px) rotate(-15deg); opacity: 0; }
+  }
+`;
+
+// Inject styles into the document head
+if (typeof document !== 'undefined' && !document.getElementById('card-animations')) {
+  const style = document.createElement('style');
+  style.id = 'card-animations';
+  style.textContent = cardAnimationStyles;
+  document.head.appendChild(style);
+}
+
 import { useState, useEffect } from 'react';
 import { Settings, Heart, X, Star, Grid3x3, Map } from 'lucide-react';
 import { BuyBoxModal } from '@/components/BuyBoxModal';
@@ -75,6 +98,8 @@ export default function BuyBoxPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [heartedProperties, setHeartedProperties] = useState<Set<string>>(new Set());
+  const [decidedProperties, setDecidedProperties] = useState<Set<string>>(new Set()); // Track properties user has decided on
+  const [animatingProperties, setAnimatingProperties] = useState<{ [propertyId: string]: 'heart' | 'reject' }>({}); // Track animating properties
   const [marketConvergence, setMarketConvergence] = useState<{ [marketKey: string]: { phase: 'discovery' | 'learning' | 'mastery' | 'production'; progress: number } }>({});
 
   // Load user markets and existing recommendations
@@ -238,68 +263,98 @@ export default function BuyBoxPage() {
   // Card flip functionality removed - now using direct navigation to property details
 
   const handleFavorite = async (propertyId: string) => {
-    if (!user || !supabase) return;
-    
-    const isCurrentlyHearted = heartedProperties.has(propertyId);
+    if (!user) return;
     
     try {
-      if (isCurrentlyHearted) {
-        // Remove from favorites (set status to rejected)
-        await supabase
-          .from('user_favorites')
-          .update({ 
-            status: 'rejected',
-            is_active: false 
-          })
-          .eq('user_id', user.id)
-          .eq('property_id', propertyId);
-          
-        setHeartedProperties(prev => {
-          const updated = new Set(prev);
-          updated.delete(propertyId);
+      // Start animation immediately
+      setAnimatingProperties(prev => ({ ...prev, [propertyId]: 'heart' }));
+      
+      // Get property data for the API call
+      const property = recommendations.find(r => r.property_id === propertyId);
+      if (!property) {
+        throw new Error(`Property ${propertyId} not found in recommendations`);
+      }
+
+      // Use the centralized favorites API endpoint
+      const response = await fetch('/api/favorites', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          property_id: propertyId,
+          property_data: property,
+          action: 'add'
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to add favorite');
+      }
+        
+      setHeartedProperties(prev => new Set([...prev, propertyId]));
+      
+      // Wait for animation to complete before removing from view
+      setTimeout(() => {
+        setDecidedProperties(prev => new Set([...prev, propertyId]));
+        setAnimatingProperties(prev => {
+          const updated = { ...prev };
+          delete updated[propertyId];
           return updated;
         });
-        
-        console.log('Removed property from favorites:', propertyId);
-      } else {
-        // Add to favorites (set status to active)
-        await supabase
-          .from('user_favorites')
-          .update({ status: 'active', is_active: true })
-          .eq('user_id', user.id)
-          .eq('property_id', propertyId);
-          
-        setHeartedProperties(prev => new Set([...prev, propertyId]));
-        
-        // Log the decision for learning
-        const property = recommendations.find(r => r.property_id === propertyId);
-        if (property && selectedMarket) {
-          await logPropertyDecision(propertyId, 'favorite', property, selectedMarket);
-          // Update convergence analysis after decision
-          const convergenceData = await updateMarketConvergence(user.id, supabase);
-          setMarketConvergence(convergenceData);
-        }
-        
-        console.log('Added property to favorites:', propertyId);
+      }, 800); // Animation duration
+      
+      // Log the decision for learning
+      if (selectedMarket) {
+        await logPropertyDecision(propertyId, 'favorite', property, selectedMarket);
+        // Update convergence analysis after decision
+        const convergenceData = await updateMarketConvergence(user.id, supabase);
+        setMarketConvergence(convergenceData);
       }
+      
+      console.log('Favorited property - will animate out:', propertyId);
     } catch (error) {
       console.error('Error updating favorite status:', error);
+      // Remove animation state on error
+      setAnimatingProperties(prev => {
+        const updated = { ...prev };
+        delete updated[propertyId];
+        return updated;
+      });
     }
   };
 
   const handleNotInterested = async (propertyId: string) => {
-    if (!user || !supabase) return;
+    if (!user) return;
     
     try {
-      // Set status to rejected
-      await supabase
-        .from('user_favorites')
-        .update({ 
-          status: 'rejected',
-          is_active: false 
+      // Start animation immediately
+      setAnimatingProperties(prev => ({ ...prev, [propertyId]: 'reject' }));
+      
+      // Get property data for the API call
+      const property = recommendations.find(r => r.property_id === propertyId);
+      if (!property) {
+        throw new Error(`Property ${propertyId} not found in recommendations`);
+      }
+
+      // Use the centralized favorites API endpoint to remove/reject
+      const response = await fetch('/api/favorites', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          property_id: propertyId,
+          property_data: property,
+          action: 'remove'
         })
-        .eq('user_id', user.id)
-        .eq('property_id', propertyId);
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to reject property');
+      }
         
       // Remove from hearted properties if it was hearted
       setHeartedProperties(prev => {
@@ -308,18 +363,33 @@ export default function BuyBoxPage() {
         return updated;
       });
       
+      // Wait for animation to complete before removing from view
+      setTimeout(() => {
+        setDecidedProperties(prev => new Set([...prev, propertyId]));
+        setAnimatingProperties(prev => {
+          const updated = { ...prev };
+          delete updated[propertyId];
+          return updated;
+        });
+      }, 800); // Animation duration
+      
       // Log the decision for learning
-      const property = recommendations.find(r => r.property_id === propertyId);
-      if (property && selectedMarket) {
+      if (selectedMarket) {
         await logPropertyDecision(propertyId, 'not_interested', property, selectedMarket);
         // Update convergence analysis after decision
         const convergenceData = await updateMarketConvergence(user.id, supabase);
         setMarketConvergence(convergenceData);
       }
       
-      console.log('Marked property as not interested:', propertyId);
+      console.log('Rejected property - will animate out:', propertyId);
     } catch (error) {
       console.error('Error marking property as not interested:', error);
+      // Remove animation state on error
+      setAnimatingProperties(prev => {
+        const updated = { ...prev };
+        delete updated[propertyId];
+        return updated;
+      });
     }
   };
   
@@ -581,57 +651,66 @@ export default function BuyBoxPage() {
               {getMarketDisplayName(selectedMarket)} Recommendations
             </h3>
             <p className="text-gray-600">
-              {recommendations.length > 0 
-                ? `${recommendations.length} properties this week matching your buy box criteria`
-                : 'No new recommendations this week. Weekly recommendations are generated automatically each Monday morning.'
-              }
+              {(() => {
+                const undecidedCount = recommendations.filter(p => !decidedProperties.has(p.property_id)).length;
+                const decidedCount = decidedProperties.size;
+                
+                if (undecidedCount > 0) {
+                  return `${undecidedCount} properties this week matching your buy box criteria${decidedCount > 0 ? ` (${decidedCount} already reviewed)` : ''}`;
+                } else if (decidedCount > 0) {
+                  return `All ${decidedCount} recommendations reviewed this week!`;
+                } else {
+                  return 'No new recommendations this week. Weekly recommendations are generated automatically each Thursday night.';
+                }
+              })()}
             </p>
           </div>
         )}
 
         {/* Weekly Recommendations - Grid or Map View */}
-        {recommendations.length > 0 ? (
-          viewMode === 'grid' ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {recommendations.map((property, index) => (
-                <RecommendationCard 
-                  key={property.property_id}
-                  property={property}
-                  onFavorite={() => handleFavorite(property.property_id)}
-                  onNotInterested={() => handleNotInterested(property.property_id)}
-                  index={index + 1}
-                  total={recommendations.length}
-                  isHearted={heartedProperties.has(property.property_id)}
-                />
-              ))}
-            </div>
+        {(() => {
+          const undecidedRecommendations = recommendations.filter(p => !decidedProperties.has(p.property_id));
+          return undecidedRecommendations.length > 0 ? (
+            viewMode === 'grid' ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {undecidedRecommendations.map((property, index) => (
+                  <RecommendationCard 
+                    key={property.property_id}
+                    property={property}
+                    onFavorite={() => handleFavorite(property.property_id)}
+                    onNotInterested={() => handleNotInterested(property.property_id)}
+                    index={index + 1}
+                    total={undecidedRecommendations.length}
+                    isHearted={heartedProperties.has(property.property_id)}
+                    animationType={animatingProperties[property.property_id]}
+                  />
+                ))}
+              </div>
+            ) : (
+              <MapView 
+                properties={undecidedRecommendations}
+                selectedMarket={selectedMarket ? getMarketDisplayName(selectedMarket) : ''}
+                onFavorite={handleFavorite}
+                onNotInterested={handleNotInterested}
+              />
+            )
           ) : (
-            <MapView 
-              properties={recommendations}
-              selectedMarket={selectedMarket ? getMarketDisplayName(selectedMarket) : ''}
-              onFavorite={handleFavorite}
-              onNotInterested={handleNotInterested}
-            />
-          )
-        ) : (
-          <div className="text-center py-12">
-            <div className="text-gray-600 mb-4">
-              No recommendations available for this market this week.
+            <div className="text-center py-12">
+              <div className="text-gray-600 mb-4">
+                {decidedProperties.size > 0 
+                  ? "Great job! You've reviewed all recommendations for this market this week." 
+                  : "No recommendations available for this market this week."
+                }
+              </div>
+              <p className="text-sm text-gray-500">
+                {decidedProperties.size > 0
+                  ? "New recommendations will be generated next Thursday night."
+                  : "Weekly recommendations are generated automatically each Thursday night based on your buy box criteria."
+                }
+              </p>
             </div>
-            <p className="text-sm text-gray-500 mb-6">
-              Weekly recommendations are generated automatically each Monday morning based on your buy box criteria.
-            </p>
-            <button 
-              onClick={() => {
-                setFocusedMarket(selectedMarketKey);
-                setShowBuyBoxModal(true);
-              }}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium transition-colors"
-            >
-              Review Buy Box Criteria
-            </button>
-          </div>
-        )}
+          );
+        })()}
 
         {/* Buy Box Modal */}
         <BuyBoxModal
@@ -712,7 +791,8 @@ function RecommendationCard({
   onNotInterested,
   index,
   total,
-  isHearted
+  isHearted,
+  animationType
 }: {
   property: MMRProperty;
   onFavorite: () => void;
@@ -720,6 +800,7 @@ function RecommendationCard({
   index: number;
   total: number;
   isHearted: boolean;
+  animationType?: 'heart' | 'reject';
 }) {
   
   const formatCurrency = (amount: number | null | undefined) => {
@@ -756,7 +837,13 @@ function RecommendationCard({
   };
   return (
     <div className="relative h-96">
-      <div className="relative w-full h-full bg-white rounded-lg border border-gray-200 overflow-hidden hover:shadow-lg transition-shadow">
+      <div className={`relative w-full h-full bg-white rounded-lg border border-gray-200 overflow-hidden hover:shadow-lg transition-all duration-800 ${
+        animationType === 'heart' 
+          ? 'animate-[heartFlyOut_0.8s_ease-in-out_forwards] bg-green-100 border-green-300 scale-105'
+          : animationType === 'reject'
+            ? 'animate-[rejectFlyOut_0.8s_ease-in-out_forwards] bg-red-100 border-red-300 -rotate-6'
+            : 'transition-shadow'
+      }`}>
         {/* Property Image */}
         <div className="relative h-48">
           <StreetViewImage
@@ -845,12 +932,12 @@ function RecommendationCard({
               onFavorite();
             }}
             className={`p-2 bg-white/90 rounded-full hover:bg-white transition-colors shadow-lg border border-gray-200 ${
-              isHearted 
+              isHearted || animationType === 'heart'
                 ? 'text-red-500 hover:text-red-600' 
                 : 'text-gray-600 hover:text-red-500'
             }`}
           >
-            <Heart className={`h-4 w-4 ${isHearted ? 'fill-current' : ''}`} />
+            <Heart className={`h-4 w-4 ${isHearted || animationType === 'heart' ? 'fill-current' : ''}`} />
           </button>
         </div>
       </div>

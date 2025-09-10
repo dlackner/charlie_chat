@@ -121,19 +121,17 @@ export const StreetViewImage: React.FC<StreetViewImageProps> = ({
   if (!hasImagery || imageError) {
     return (
       <div 
-        className={`bg-gray-100 rounded border p-2 flex items-center justify-center cursor-pointer hover:bg-gray-200 ${className}`}
+        className={`bg-gray-100 rounded border flex items-center justify-center cursor-pointer hover:bg-gray-200 relative ${className}`}
         onClick={handleImageClick}
         title="Click to open Google Street View"
       >
-        <div className="w-full h-full flex flex-col">
-          <img 
-            src="/Google%20Street%20View.png"
-            alt="Street View Placeholder"
-            className="flex-1 w-full object-cover rounded"
-          />
-          <div className="text-center pt-1">
-            <span className="text-xs text-gray-600">Click for street view</span>
-          </div>
+        <img 
+          src="/Google%20Street%20View.png"
+          alt="Street View Placeholder"
+          className="w-full h-full object-cover rounded"
+        />
+        <div className="absolute bottom-2 left-0 right-0 text-center">
+          <span className="text-xs text-gray-600 bg-white/80 px-2 py-1 rounded">Click for street view</span>
         </div>
       </div>
     );
