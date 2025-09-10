@@ -1224,7 +1224,14 @@ export default function MyPropertiesPage() {
 
                                                             // Create mailto link with email template content
                                                             const ownerName = property.owner_first_name || 'Property Owner';
-                                                            const propertyAddress = property.address_full;
+                                                            
+                                                            // Build complete address from available parts
+                                                            const addressParts = [
+                                                                property.address_street || property.address_full,
+                                                                property.address_city,
+                                                                property.address_state
+                                                            ].filter(Boolean); // Remove empty/null values
+                                                            const propertyAddress = addressParts.join(', ') || property.address_full || 'the property';
                                                             const subject = `Your Property at ${propertyAddress}`;
                                                             const userPhone = profileData.phone_number?.replace(/(\d{3})(\d{3})(\d{4})/, "$1.$2.$3") || 'Phone not provided';
                                                             const userEmail = user.email;
