@@ -1,3 +1,8 @@
+/*
+ * CHARLIE2 V2 - Favorites API (Updated)
+ * Property favorites management with proper authentication
+ * Updated to use real authenticated users instead of hardcoded IDs
+ */
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
@@ -22,14 +27,10 @@ export async function POST(req: NextRequest) {
       }
     );
     
-    // TEMPORARY: Hardcoded user for testing
-    const user = { id: '99b75078-44aa-4e04-a66e-7b414c55c976' };
-    
-    // TODO: Restore auth check when sign-in is implemented
-    // const { data: { user }, error: authError } = await supabase.auth.getUser();
-    // if (authError || !user) {
-    //   return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    // }
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
 
     const { property_id, property_data, action } = await req.json();
     
@@ -149,14 +150,10 @@ export async function GET(req: NextRequest) {
       }
     );
     
-    // TEMPORARY: Hardcoded user for testing
-    const user = { id: '99b75078-44aa-4e04-a66e-7b414c55c976' };
-    
-    // TODO: Restore auth check when sign-in is implemented
-    // const { data: { user }, error: authError } = await supabase.auth.getUser();
-    // if (authError || !user) {
-    //   return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    // }
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
 
     const { searchParams } = new URL(req.url);
     const property_id = searchParams.get('property_id');

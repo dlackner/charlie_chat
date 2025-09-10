@@ -1,3 +1,8 @@
+/*
+ * CHARLIE2 V2 - Login Page
+ * Clean authentication flow with magic link support
+ * Part of the new V2 application architecture
+ */
 "use client";
 
 import { useState } from 'react';

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { useMyPropertiesAccess } from "@/app/my-properties/components/useMyPropertiesAccess";
+import { useMyPropertiesAccess } from "@/app/v2/my-properties/components/useMyPropertiesAccess";
 import { Home, X, Star, Plus, Trash2, Info } from "lucide-react";
 import { Dialog } from "@headlessui/react";
 import { PropertyCountRangeIndicator } from "@/components/ui/PropertyCountRangeIndicator";

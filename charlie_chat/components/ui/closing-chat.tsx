@@ -2,7 +2,7 @@
 
 import { Dialog } from "@headlessui/react";
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Sidebar } from "@/components/ui/sidebar";
+import { Sidebar } from "@/components/legacy/sidebar";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { useModal } from "@/contexts/ModalContext";
@@ -466,23 +466,19 @@ export function ClosingChat() {
       <>
         {/* Main layout container */}
         <div className="flex h-screen overflow-hidden bg-white text-black">
-          {/* Sidebar */}
-          <Sidebar
-            onSearch={async (data: any) => {
-              if (data.clearResults) {
-                setListings([]);
-              } else if (data.listings) {
-                // API now returns snake_case data, so no transformation needed
-                setListings(data.listings);
-              }
-            }}
-            listings={listings}
-            selectedListings={selectedListings}
-            toggleListingSelect={toggleListingSelect}
-            onSendToGPT={(listingsToProcess, autoProcess) => {
-              const callbacks = {
-                onMessageUpdate: setMessages,
-                onBatchStateUpdate: (state: Partial<PropertyBatchState>) => {
+          {/* Sidebar removed */}
+          
+          {/* Main content area */}
+          <div className="flex-1 flex flex-col">
+            {/* Chat area content will go here */}
+            <div className="flex-1 flex flex-col">
+              {/* This is where chat content would be */}
+              <div className="flex-1 bg-gray-50">
+                {/* Chat content placeholder */}
+              </div>
+            </div>
+          </div>
+        </div>
                   if (state.currentBatch !== undefined) setCurrentBatch(state.currentBatch);
                   if (state.totalPropertiesToAnalyze !== undefined) setTotalPropertiesToAnalyze(state.totalPropertiesToAnalyze);
                   if (state.selectedListings !== undefined) setSelectedListings(state.selectedListings);

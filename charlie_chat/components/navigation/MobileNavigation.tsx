@@ -1,3 +1,8 @@
+/*
+ * CHARLIE2 V2 - Mobile Navigation Component
+ * Updated navigation menu for V2 application with proper routing to /v2/ paths
+ * Features responsive mobile/desktop navigation with dropdown menus
+ */
 'use client';
 
 import { useState } from 'react';
@@ -50,27 +55,27 @@ export default function MobileNavigation() {
   const navigation: NavigationItem[] = [
     { 
       name: 'DASHBOARD', 
-      href: '/dashboard', 
+      href: '/v2/dashboard', 
       icon: Home,
       submenu: [
-        { name: 'Metrics', href: '/dashboard/metrics' },
-        { name: 'Pipeline', href: '/dashboard/pipeline' },
-        { name: 'Community', href: '/dashboard/community' },
-        { name: 'Onboarding', href: '/dashboard/onboarding' }
+        { name: 'Metrics', href: '/v2/dashboard/metrics' },
+        { name: 'Pipeline', href: '/v2/dashboard/pipeline' },
+        { name: 'Community', href: '/v2/dashboard/community' },
+        { name: 'Onboarding', href: '/v2/dashboard/onboarding' }
       ]
     },
     { 
       name: 'DISCOVER', 
-      href: '/discover', 
+      href: '/v2/discover', 
       icon: Search,
       submenu: [
-        { name: 'Property Search', href: '/discover' },
-        { name: 'Buy Box', href: '/discover/buybox' }
+        { name: 'Property Search', href: '/v2/discover' },
+        { name: 'Buy Box', href: '/v2/discover/buybox' }
       ]
     },
     { 
       name: 'ENGAGE', 
-      href: '/engage', 
+      href: '/v2/engage', 
       icon: Users
     },
     { 
