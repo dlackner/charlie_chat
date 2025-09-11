@@ -220,20 +220,39 @@ export async function GET(req: NextRequest) {
 
       return NextResponse.json({ is_favorite: !!data });
     } else {
-      // Get all user favorites
+      // Get all user favorites with full property data
       const { data, error } = await supabase
         .from('user_favorites')
-        .select('property_id')
+        .select(`
+          property_id,
+          status,
+          notes,
+          recommendation_type,
+          saved_at,
+          saved_properties:property_id (*)
+        `)
         .eq('user_id', user.id)
-        .eq('is_active', true);
+        .eq('is_active', true)
+        .order('saved_at', { ascending: false });
 
       if (error) {
         console.error('Error getting favorites:', error);
         return NextResponse.json({ error: 'Failed to get favorites' }, { status: 500 });
       }
 
-      const favoritePropertyIds = data.map(fav => fav.property_id);
-      return NextResponse.json({ favorites: favoritePropertyIds });
+      // Transform the data to include property data at the right level
+      const transformedFavorites = data.map(fav => ({
+        property_id: fav.property_id,
+        status: fav.status,
+        notes: fav.notes,
+        is_skip_traced: !!(fav.saved_properties as any)?.last_skip_trace,
+        has_pricing_scenario: false, // TODO: Create offers table to track user offer analyses
+        recommendation_type: fav.recommendation_type,
+        created_at: fav.saved_at,
+        property_data: fav.saved_properties
+      }));
+
+      return NextResponse.json({ favorites: transformedFavorites });
     }
     
   } catch (error) {

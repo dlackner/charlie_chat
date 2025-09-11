@@ -87,14 +87,16 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
-    // Insert new saved search
+    // Upsert saved search (prevent duplicates per user)
     const { data: savedSearch, error } = await supabase
       .from('saved_searches')
-      .insert({
+      .upsert({
         user_id: session.user.id,
         name: name.trim(),
         description: description?.trim() || null,
         filters: filters
+      }, {
+        onConflict: 'user_id,name'
       })
       .select('*')
       .single();

@@ -10,7 +10,9 @@ import { useState, useEffect, useRef } from 'react';
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter, useSearchParams } from 'next/navigation';
 import { createBrowserClient } from '@supabase/ssr';
-import { Search, MapPin, SlidersHorizontal, ChevronDown, ChevronUp, X, Heart, Bookmark, Target, AlertTriangle, Wrench, Activity, CreditCard, DollarSign, Home, Building, Users, Grid3x3, Map, ArrowUpDown, Trash2 } from 'lucide-react';
+import { Search, MapPin, SlidersHorizontal, ChevronDown, ChevronUp, X, Heart, Bookmark, Target, AlertTriangle, Wrench, Activity, CreditCard, DollarSign, Home, Building, Users, Grid3x3, Map, ArrowUpDown, Trash2, Edit } from 'lucide-react';
+import { StandardModalWithActions } from '@/components/v2/StandardModal';
+import PropertyMap from '@/components/v2/PropertyMap';
 import dynamic from 'next/dynamic';
 import 'mapbox-gl/dist/mapbox-gl.css';
 
@@ -154,6 +156,9 @@ export default function DiscoverPage() {
   const [propertyCount, setPropertyCount] = useState(0);
   const [hasSearched, setHasSearched] = useState(false);
   const [showSaveModal, setShowSaveModal] = useState(false);
+  const [saveSearchSuccess, setSaveSearchSuccess] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [searchToDelete, setSearchToDelete] = useState<any>(null);
   const [saveSearchName, setSaveSearchName] = useState('');
   const [saveSearchDescription, setSaveSearchDescription] = useState('');
   const [recentProperties, setRecentProperties] = useState<any[]>([]);
@@ -428,7 +433,8 @@ export default function DiscoverPage() {
         }
         
         const favoritesResult = await response.json();
-        const favoritePropertyIds = favoritesResult.favorites || [];
+        // Extract property IDs from the new API format
+        const favoritePropertyIds = favoritesResult.favorites?.map((fav: any) => fav.property_id) || [];
         
         if (favoritePropertyIds.length > 0) {
           // Apply 24 limit: for paid users show most recent 24, for free users this is their total
@@ -580,7 +586,9 @@ export default function DiscoverPage() {
       const response = await fetch('/api/favorites');
       if (response.ok) {
         const data = await response.json();
-        setFavoritePropertyIds(data.favorites || []);
+        // Extract property IDs from the new API format
+        const propertyIds = data.favorites?.map((fav: any) => fav.property_id) || [];
+        setFavoritePropertyIds(propertyIds);
       }
     } catch (error) {
       console.error('Error loading user favorites:', error);
@@ -1179,24 +1187,33 @@ export default function DiscoverPage() {
     }
   };
 
-  // Delete saved search
-  const deleteSavedSearch = async (searchId: string) => {
-    if (!confirm('Are you sure you want to delete this saved search?')) return;
+  // Show delete confirmation modal
+  const deleteSavedSearch = (searchId: string) => {
+    const search = mySearches.find(s => s.id === searchId);
+    setSearchToDelete(search);
+    setShowDeleteModal(true);
+  };
+
+  // Actually delete the search after confirmation
+  const confirmDeleteSearch = async () => {
+    if (!searchToDelete) return;
     
     try {
-      const response = await fetch(`/api/v2/saved-searches?id=${searchId}`, {
+      const response = await fetch(`/api/v2/saved-searches?id=${searchToDelete.id}`, {
         method: 'DELETE'
       });
       
       if (response.ok) {
         // Remove from local state
-        setMySearches(prev => prev.filter(s => s.id !== searchId));
+        setMySearches(prev => prev.filter(s => s.id !== searchToDelete.id));
+        setShowDeleteModal(false);
+        setSearchToDelete(null);
       } else {
         console.error('Failed to delete saved search');
         alert('Failed to delete search. Please try again.');
       }
     } catch (error) {
-      console.error('Error deleting search:', error);
+      console.error('Error deleting saved search:', error);
       alert('Failed to delete search. Please try again.');
     }
   };
@@ -1210,6 +1227,12 @@ export default function DiscoverPage() {
         ...filters, // Save all current filter values
         searchQuery: searchQuery
       };
+      
+      console.log('Saving search with data:', {
+        name: saveSearchName.trim(),
+        description: saveSearchDescription.trim() || null,
+        filters: searchFilters
+      });
 
       const response = await fetch('/api/v2/saved-searches', {
         method: 'POST',
@@ -1219,22 +1242,28 @@ export default function DiscoverPage() {
         body: JSON.stringify({
           name: saveSearchName.trim(),
           description: saveSearchDescription.trim() || null,
-          filters: searchFilters,
-          user_id: user?.id // Pass user ID from frontend
+          filters: searchFilters
         })
       });
 
       if (!response.ok) {
-        throw new Error('Failed to save search');
+        const errorData = await response.text();
+        console.error('Save search failed:', response.status, errorData);
+        throw new Error(`Failed to save search: ${response.status} ${errorData}`);
       }
 
-      // Reset modal
-      setShowSaveModal(false);
+      // Reset form fields
       setSaveSearchName('');
       setSaveSearchDescription('');
       
       // Show success message
-      alert('Search saved successfully!');
+      setSaveSearchSuccess(true);
+      
+      // Auto-hide success message and close modal after 2 seconds
+      setTimeout(() => {
+        setSaveSearchSuccess(false);
+        setShowSaveModal(false);
+      }, 2000);
       
       // Reload saved searches to show the new one
       loadMySearches();
@@ -1242,6 +1271,301 @@ export default function DiscoverPage() {
     } catch (error) {
       console.error('Error saving search:', error);
       alert('Failed to save search. Please try again.');
+    }
+  };
+
+  // Handle editing a smart search (populate filters without executing)
+  const handleEditSmartSearch = (search: any) => {
+    if (search.criteria && search.criteria.apiFields) {
+      // Map criteria fields to filter sections
+      const fieldToSection: { [key: string]: string } = {
+        units_min: 'units',
+        units_max: 'units',
+        in_state_owner: 'owner',
+        out_of_state_owner: 'owner',
+        corporate_owned: 'owner',
+        years_owned_min: 'owner',
+        years_owned_max: 'owner',
+        last_sale_price_min: 'sale',
+        last_sale_price_max: 'sale',
+        mls_active: 'sale',
+        last_sale_arms_length: 'sale',
+        year_built_min: 'physical',
+        year_built_max: 'physical',
+        flood_zone: 'physical',
+        assessed_value_min: 'financial',
+        assessed_value_max: 'financial',
+        value_min: 'financial',
+        value_max: 'financial',
+        estimated_value_min: 'financial',
+        assumable: 'distress',
+        reo: 'distress',
+        pre_foreclosure: 'distress'
+      };
+
+      // Find which sections contain the search criteria
+      const sectionsToExpand = new Set<string>();
+      Object.keys(search.criteria.apiFields).forEach(field => {
+        if (fieldToSection[field]) {
+          sectionsToExpand.add(fieldToSection[field]);
+        }
+      });
+
+      // First reset all filters to defaults, preserving location
+      const defaultFilters = {
+        // Location - preserve current values
+        city: filters.city,
+        state: filters.state,
+        zip: filters.zip,
+        house: filters.house,
+        street: filters.street,
+        
+        // Reset all other filters to defaults
+        units_min: '',
+        units_max: '',
+        in_state_owner: null,
+        out_of_state_owner: null,
+        corporate_owned: null,
+        years_owned_min: '',
+        years_owned_max: '',
+        last_sale_price_min: '',
+        last_sale_price_max: '',
+        mls_active: null,
+        last_sale_arms_length: null,
+        year_built_min: '',
+        year_built_max: '',
+        flood_zone: null,
+        assessed_value_min: '',
+        assessed_value_max: '',
+        value_min: '',
+        value_max: '',
+        assumable: null,
+        reo: null,
+        pre_foreclosure: null
+      };
+      
+      // Apply smart search criteria to the form (don't execute search)
+      setFilters({ ...defaultFilters, ...search.criteria.apiFields });
+      
+      // Expand relevant filter sections
+      setCollapsedSections(prev => {
+        const newCollapsed = { ...prev };
+        sectionsToExpand.forEach(section => {
+          if (section in newCollapsed) {
+            (newCollapsed as any)[section] = false;
+          }
+        });
+        return newCollapsed;
+      });
+      
+      // Scroll to first relevant section after a short delay
+      setTimeout(() => {
+        const firstSection = Array.from(sectionsToExpand)[0];
+        if (firstSection) {
+          const element = document.querySelector(`[data-section="${firstSection}"]`);
+          if (element) {
+            element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }
+        }
+      }, 100);
+    }
+  };
+
+  // Handle executing a smart search (populate filters and execute)
+  const handleExecuteSmartSearch = async (search: any) => {
+    if (search.criteria && search.criteria.apiFields) {
+      // First reset all filters to defaults, preserving location
+      const defaultFilters = {
+        // Location - preserve current values
+        city: filters.city,
+        state: filters.state,
+        zip: filters.zip,
+        house: filters.house,
+        street: filters.street,
+        
+        // Reset all other filters to defaults
+        units_min: '',
+        units_max: '',
+        in_state_owner: null,
+        out_of_state_owner: null,
+        corporate_owned: null,
+        years_owned_min: '',
+        years_owned_max: '',
+        last_sale_price_min: '',
+        last_sale_price_max: '',
+        mls_active: null,
+        last_sale_arms_length: null,
+        year_built_min: '',
+        year_built_max: '',
+        flood_zone: null,
+        assessed_value_min: '',
+        assessed_value_max: '',
+        value_min: '',
+        value_max: '',
+        assumable: null,
+        reo: null,
+        pre_foreclosure: null
+      };
+      
+      // Apply smart search criteria to the form
+      setFilters({ ...defaultFilters, ...search.criteria.apiFields });
+      
+      // Execute the search automatically
+      setTimeout(() => {
+        handleSearch();
+      }, 100); // Small delay to ensure filters are updated
+    }
+  };
+
+  // Handle editing a saved search (populate filters without executing)
+  const handleEditSavedSearch = (search: any) => {
+    if (search.filters) {
+      // Find which sections contain the search criteria
+      const fieldToSection: { [key: string]: string } = {
+        units_min: 'units',
+        units_max: 'units',
+        in_state_owner: 'owner',
+        out_of_state_owner: 'owner',
+        corporate_owned: 'owner',
+        years_owned_min: 'owner',
+        years_owned_max: 'owner',
+        last_sale_price_min: 'sale',
+        last_sale_price_max: 'sale',
+        mls_active: 'sale',
+        last_sale_arms_length: 'sale',
+        year_built_min: 'physical',
+        year_built_max: 'physical',
+        flood_zone: 'physical',
+        assessed_value_min: 'financial',
+        assessed_value_max: 'financial',
+        value_min: 'financial',
+        value_max: 'financial',
+        estimated_value_min: 'financial',
+        assumable: 'distress',
+        reo: 'distress',
+        pre_foreclosure: 'distress'
+      };
+
+      const sectionsToExpand = new Set<string>();
+      Object.keys(search.filters).forEach(field => {
+        if (fieldToSection[field] && search.filters[field] !== null && search.filters[field] !== '') {
+          sectionsToExpand.add(fieldToSection[field]);
+        }
+      });
+
+      // First reset all filters to defaults, preserving location
+      const defaultFilters = {
+        // Location - preserve current values
+        city: filters.city,
+        state: filters.state,
+        zip: filters.zip,
+        house: filters.house,
+        street: filters.street,
+        
+        // Reset all other filters to defaults
+        units_min: '',
+        units_max: '',
+        in_state_owner: null,
+        out_of_state_owner: null,
+        corporate_owned: null,
+        years_owned_min: '',
+        years_owned_max: '',
+        last_sale_price_min: '',
+        last_sale_price_max: '',
+        mls_active: null,
+        last_sale_arms_length: null,
+        year_built_min: '',
+        year_built_max: '',
+        flood_zone: null,
+        assessed_value_min: '',
+        assessed_value_max: '',
+        value_min: '',
+        value_max: '',
+        assumable: null,
+        reo: null,
+        pre_foreclosure: null
+      };
+      
+      // Apply saved search criteria to the form (don't execute search)
+      setFilters({ ...defaultFilters, ...search.filters });
+      
+      // Set search query if saved
+      if (search.filters.searchQuery) {
+        setSearchQuery(search.filters.searchQuery);
+      }
+      
+      // Expand relevant filter sections
+      setCollapsedSections(prev => {
+        const newCollapsed = { ...prev };
+        sectionsToExpand.forEach(section => {
+          if (section in newCollapsed) {
+            (newCollapsed as any)[section] = false;
+          }
+        });
+        return newCollapsed;
+      });
+      
+      // Scroll to first relevant section after a short delay
+      setTimeout(() => {
+        const firstSection = Array.from(sectionsToExpand)[0];
+        if (firstSection) {
+          const element = document.querySelector(`[data-section="${firstSection}"]`);
+          if (element) {
+            element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }
+        }
+      }, 100);
+    }
+  };
+
+  // Handle executing a saved search (populate filters and execute)
+  const handleExecuteSavedSearch = async (search: any) => {
+    if (search.filters) {
+      // First reset all filters to defaults, preserving location
+      const defaultFilters = {
+        // Location - preserve current values
+        city: filters.city,
+        state: filters.state,
+        zip: filters.zip,
+        house: filters.house,
+        street: filters.street,
+        
+        // Reset all other filters to defaults
+        units_min: '',
+        units_max: '',
+        in_state_owner: null,
+        out_of_state_owner: null,
+        corporate_owned: null,
+        years_owned_min: '',
+        years_owned_max: '',
+        last_sale_price_min: '',
+        last_sale_price_max: '',
+        mls_active: null,
+        last_sale_arms_length: null,
+        year_built_min: '',
+        year_built_max: '',
+        flood_zone: null,
+        assessed_value_min: '',
+        assessed_value_max: '',
+        value_min: '',
+        value_max: '',
+        assumable: null,
+        reo: null,
+        pre_foreclosure: null
+      };
+      
+      // Apply saved search criteria to the form
+      setFilters({ ...defaultFilters, ...search.filters });
+      
+      // Set search query if saved
+      if (search.filters.searchQuery) {
+        setSearchQuery(search.filters.searchQuery);
+      }
+      
+      // Execute the search automatically
+      setTimeout(() => {
+        handleSearch();
+      }, 100); // Small delay to ensure filters are updated
     }
   };
 
@@ -1327,6 +1651,28 @@ export default function DiscoverPage() {
           <div className="w-80 flex-shrink-0 hidden lg:block">
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 sticky top-6">
               
+              {/* Search Button */}
+              <div className="pb-4 border-b border-gray-200 mb-4">
+                <button 
+                  onClick={handleSearch}
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 px-3 rounded-md font-medium transition-colors flex items-center justify-center text-sm"
+                >
+                  <Search className="h-4 w-4 mr-2" />
+                  Search Properties
+                </button>
+                
+                {/* Save Search Button - Only show when filters are set */}
+                {hasFiltersSet() && (
+                  <button 
+                    onClick={() => setShowSaveModal(true)}
+                    className="w-full bg-white hover:bg-gray-50 text-gray-700 border border-gray-300 py-2 px-3 rounded-md font-medium transition-colors flex items-center justify-center text-sm mt-2"
+                  >
+                    <Bookmark className="h-4 w-4 mr-2" />
+                    Save This Search
+                  </button>
+                )}
+              </div>
+              
               {/* Reset Button */}
               <div className="pb-6 border-b border-gray-200 mb-6">
                 <button
@@ -1342,6 +1688,7 @@ export default function DiscoverPage() {
                 title="NUMBER OF UNITS" 
                 isCollapsed={collapsedSections.units}
                 onToggle={() => toggleSection('units')}
+                sectionKey="units"
               >
                 <div className="flex space-x-2">
                   <input 
@@ -1367,6 +1714,7 @@ export default function DiscoverPage() {
                 title="OWNER INFORMATION" 
                 isCollapsed={collapsedSections.owner}
                 onToggle={() => toggleSection('owner')}
+                sectionKey="owner"
               >
                 <FilterGroup label="Owner Location">
                   <ToggleButton 
@@ -1444,6 +1792,7 @@ export default function DiscoverPage() {
                 title="SALE HISTORY" 
                 isCollapsed={collapsedSections.sale}
                 onToggle={() => toggleSection('sale')}
+                sectionKey="sale"
               >
                 <div>
                   <label className="block text-xs font-medium text-gray-700 mb-2 uppercase tracking-wide">
@@ -1512,6 +1861,7 @@ export default function DiscoverPage() {
                 title="PHYSICAL CHARACTERISTICS" 
                 isCollapsed={collapsedSections.physical}
                 onToggle={() => toggleSection('physical')}
+                sectionKey="physical"
               >
                 <div>
                   <label className="block text-xs font-medium text-gray-700 mb-2 uppercase tracking-wide">
@@ -1561,6 +1911,7 @@ export default function DiscoverPage() {
                 title="FINANCIAL INFORMATION" 
                 isCollapsed={collapsedSections.financial}
                 onToggle={() => toggleSection('financial')}
+                sectionKey="financial"
               >
                 <div>
                   <label className="block text-xs font-medium text-gray-700 mb-2 uppercase tracking-wide">
@@ -1614,6 +1965,7 @@ export default function DiscoverPage() {
                 title="DISTRESS & SPECIAL CONDITIONS" 
                 isCollapsed={collapsedSections.distress}
                 onToggle={() => toggleSection('distress')}
+                sectionKey="distress"
               >
                 <FilterGroup label="Assumable">
                   <ToggleButton 
@@ -1688,52 +2040,10 @@ export default function DiscoverPage() {
                     return (
                       <div
                         key={search.id}
-                        className={`${colorClasses.bg} ${colorClasses.border} border rounded-lg p-3 cursor-pointer transition-all hover:shadow-sm ${colorClasses.hover}`}
-                        onClick={() => {
-                          // Load smart search criteria into filters
-                          if (search.criteria && search.criteria.apiFields) {
-                            // First reset all filters to defaults, preserving location
-                            const defaultFilters = {
-                              // Location - preserve current values
-                              city: filters.city,
-                              state: filters.state,
-                              zip: filters.zip,
-                              house: filters.house,
-                              street: filters.street,
-                              
-                              // Reset all other filters to defaults
-                              units_min: '',
-                              units_max: '',
-                              in_state_owner: null,
-                              out_of_state_owner: null,
-                              corporate_owned: null,
-                              years_owned_min: '',
-                              years_owned_max: '',
-                              last_sale_price_min: '',
-                              last_sale_price_max: '',
-                              mls_active: null,
-                              last_sale_arms_length: null,
-                              year_built_min: '',
-                              year_built_max: '',
-                              flood_zone: null,
-                              assessed_value_min: '',
-                              assessed_value_max: '',
-                              value_min: '',
-                              value_max: '',
-                              assumable: null,
-                              reo: null,
-                              pre_foreclosure: null
-                            };
-                            
-                            // Apply smart search criteria to the form
-                            setFilters({ ...defaultFilters, ...search.criteria.apiFields });
-                          }
-                        }}
+                        className={`${colorClasses.bg} ${colorClasses.border} border rounded-lg p-3 cursor-pointer transition-all hover:shadow-sm ${colorClasses.hover} relative`}
+                        onClick={() => handleExecuteSmartSearch(search)}
                       >
-                        <div className="flex items-start space-x-3">
-                          <div className={`${colorClasses.bg} p-1.5 rounded border ${colorClasses.border}`}>
-                            <Icon className={`h-3 w-3 ${colorClasses.text}`} />
-                          </div>
+                        <div className="flex items-start">
                           <div className="flex-1 min-w-0">
                             <h4 className="text-sm font-medium text-gray-900 mb-1">{search.name}</h4>
                             <div className="text-xs text-gray-500 space-y-0.5">
@@ -1746,6 +2056,12 @@ export default function DiscoverPage() {
                               {search.criteria.apiFields.year_built_min && search.criteria.apiFields.year_built_max && (
                                 <div>• Built {search.criteria.apiFields.year_built_min}-{search.criteria.apiFields.year_built_max}</div>
                               )}
+                              {search.criteria.apiFields.year_built_min && !search.criteria.apiFields.year_built_max && (
+                                <div>• Built {search.criteria.apiFields.year_built_min}+</div>
+                              )}
+                              {search.criteria.apiFields.estimated_value_min && (
+                                <div>• Value ${(search.criteria.apiFields.estimated_value_min / 1000000).toFixed(1)}M+</div>
+                              )}
                               {search.criteria.apiFields.private_lender && (
                                 <div>• Private financing</div>
                               )}
@@ -1755,6 +2071,17 @@ export default function DiscoverPage() {
                             </div>
                           </div>
                         </div>
+                        {/* Edit Button - Positioned at bottom right */}
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleEditSmartSearch(search);
+                          }}
+                          className="absolute bottom-2 right-2 p-2 text-gray-400 hover:text-gray-600 hover:bg-white/80 rounded-full transition-all duration-200 shadow-sm hover:shadow-md"
+                          title="Edit search criteria"
+                        >
+                          <Edit className="h-4 w-4" />
+                        </button>
                       </div>
                     );
                   })}
@@ -1778,48 +2105,8 @@ export default function DiscoverPage() {
                     mySearches.map((search) => (
                       <div
                         key={search.id}
-                        className="bg-gray-50 border border-gray-200 rounded-lg p-3 cursor-pointer transition-all hover:shadow-sm hover:bg-gray-100"
-                        onClick={() => {
-                          // Load the saved search criteria into filters
-                          if (search.filters) {
-                            // First reset all filters to defaults, preserving location
-                            const defaultFilters = {
-                              // Location - preserve current values
-                              city: filters.city,
-                              state: filters.state,
-                              zip: filters.zip,
-                              house: filters.house,
-                              street: filters.street,
-                              
-                              // Reset all other filters to defaults
-                              units_min: '',
-                              units_max: '',
-                              in_state_owner: null,
-                              out_of_state_owner: null,
-                              corporate_owned: null,
-                              years_owned_min: '',
-                              years_owned_max: '',
-                              last_sale_price_min: '',
-                              last_sale_price_max: '',
-                              mls_active: null,
-                              last_sale_arms_length: null,
-                              year_built_min: '',
-                              year_built_max: '',
-                              flood_zone: null,
-                              assessed_value_min: '',
-                              assessed_value_max: '',
-                              value_min: '',
-                              value_max: '',
-                              assumable: null,
-                              reo: null,
-                              pre_foreclosure: null
-                            };
-                            
-                            // Apply the saved filters to the form
-                            setSearchQuery(search.filters.searchQuery || '');
-                            setFilters({ ...defaultFilters, ...search.filters });
-                          }
-                        }}
+                        className="bg-gray-50 border border-gray-200 rounded-lg p-3 cursor-pointer transition-all hover:shadow-sm hover:bg-gray-100 relative"
+                        onClick={() => handleExecuteSavedSearch(search)}
                       >
                         <div className="flex items-start justify-between">
                           <div className="flex-1 min-w-0">
@@ -1842,6 +2129,17 @@ export default function DiscoverPage() {
                             <Trash2 className="h-4 w-4" />
                           </button>
                         </div>
+                        {/* Edit Button - Positioned at bottom right */}
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleEditSavedSearch(search);
+                          }}
+                          className="absolute bottom-2 right-2 p-2 text-gray-400 hover:text-gray-600 hover:bg-white/80 rounded-full transition-all duration-200 shadow-sm hover:shadow-md"
+                          title="Edit search criteria"
+                        >
+                          <Edit className="h-4 w-4" />
+                        </button>
                       </div>
                     ))
                   ) : (
@@ -1855,27 +2153,7 @@ export default function DiscoverPage() {
               </CollapsibleFilterSection>
               </div>
 
-              {/* Search Button */}
-              <div className="pt-6 border-t border-gray-200 space-y-3">
-                <button 
-                  onClick={handleSearch}
-                  className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 px-4 rounded-lg font-medium transition-colors flex items-center justify-center"
-                >
-                  <Search className="h-4 w-4 mr-2" />
-                  Search Properties
-                </button>
-                
-                {/* Save Search Button - Only show when filters are set */}
-                {hasFiltersSet() && (
-                  <button 
-                    onClick={() => setShowSaveModal(true)}
-                    className="w-full bg-white hover:bg-gray-50 text-gray-700 border border-gray-300 py-3 px-4 rounded-lg font-medium transition-colors flex items-center justify-center"
-                  >
-                    <Bookmark className="h-4 w-4 mr-2" />
-                    Save This Search
-                  </button>
-                )}
-              </div>
+              {/* Search button moved to top */}
 
             </div>
           </div>
@@ -1968,9 +2246,10 @@ export default function DiscoverPage() {
                   <div className="flex gap-6 h-[600px]">
                     {/* Left: Map */}
                     <div className="w-2/5">
-                      <DiscoverMap
+                      <PropertyMap
                         properties={recentProperties}
                         className="h-full rounded-lg border border-gray-200"
+                        context="discover"
                         currentViewMode={viewMode}
                         isShowingFavorites={true}
                         hasSearched={false}
@@ -2068,9 +2347,10 @@ export default function DiscoverPage() {
                   <div className="flex gap-6 h-[600px]">
                     {/* Left: Map */}
                     <div className="w-2/5">
-                      <DiscoverMap
+                      <PropertyMap
                         properties={searchResults}
                         className="h-full rounded-lg border border-gray-200"
+                        context="discover"
                         currentViewMode={viewMode}
                         isShowingFavorites={false}
                         searchQuery={searchQuery}
@@ -2178,6 +2458,34 @@ export default function DiscoverPage() {
               </div>
               
               <div className="space-y-6">
+                {/* Search Button */}
+                <div className="pb-4 border-b border-gray-200">
+                  <button 
+                    onClick={() => {
+                      handleSearch();
+                      setShowMobileFilters(false);
+                    }}
+                    className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 px-3 rounded-md font-medium transition-colors flex items-center justify-center text-sm"
+                  >
+                    <Search className="h-4 w-4 mr-2" />
+                    Search Properties
+                  </button>
+                  
+                  {/* Save Search Button - Only show when filters are set */}
+                  {hasFiltersSet() && (
+                    <button 
+                      onClick={() => {
+                        setShowSaveModal(true);
+                        setShowMobileFilters(false);
+                      }}
+                      className="w-full bg-white hover:bg-gray-50 text-gray-700 border border-gray-300 py-2 px-3 rounded-md font-medium transition-colors flex items-center justify-center text-sm mt-2"
+                    >
+                      <Bookmark className="h-4 w-4 mr-2" />
+                      Save This Search
+                    </button>
+                  )}
+                </div>
+                
                 {/* Reset Button */}
                 <div className="pb-4 border-b border-gray-200">
                   <button
@@ -2193,6 +2501,7 @@ export default function DiscoverPage() {
                   title="NUMBER OF UNITS" 
                   isCollapsed={collapsedSections.units}
                   onToggle={() => toggleSection('units')}
+                  sectionKey="units"
                 >
                   <div className="flex space-x-2">
                     <input 
@@ -2218,6 +2527,7 @@ export default function DiscoverPage() {
                   title="OWNER INFORMATION" 
                   isCollapsed={collapsedSections.owner}
                   onToggle={() => toggleSection('owner')}
+                  sectionKey="owner"
                 >
                   <FilterGroup label="Owner Location">
                     <ToggleButton 
@@ -2295,6 +2605,7 @@ export default function DiscoverPage() {
                   title="SALE HISTORY" 
                   isCollapsed={collapsedSections.sale}
                   onToggle={() => toggleSection('sale')}
+                  sectionKey="sale"
                 >
                   <div>
                     <label className="block text-xs font-medium text-gray-700 mb-2 uppercase tracking-wide">
@@ -2363,6 +2674,7 @@ export default function DiscoverPage() {
                   title="PHYSICAL CHARACTERISTICS" 
                   isCollapsed={collapsedSections.physical}
                   onToggle={() => toggleSection('physical')}
+                  sectionKey="physical"
                 >
                   <div>
                     <label className="block text-xs font-medium text-gray-700 mb-2 uppercase tracking-wide">
@@ -2412,6 +2724,7 @@ export default function DiscoverPage() {
                   title="FINANCIAL INFORMATION" 
                   isCollapsed={collapsedSections.financial}
                   onToggle={() => toggleSection('financial')}
+                  sectionKey="financial"
                 >
                   <div>
                     <label className="block text-xs font-medium text-gray-700 mb-2 uppercase tracking-wide">
@@ -2465,6 +2778,7 @@ export default function DiscoverPage() {
                   title="DISTRESS & SPECIAL CONDITIONS" 
                   isCollapsed={collapsedSections.distress}
                   onToggle={() => toggleSection('distress')}
+                  sectionKey="distress"
                 >
                   <FilterGroup label="Assumable">
                     <ToggleButton 
@@ -2525,57 +2839,45 @@ export default function DiscoverPage() {
                 </CollapsibleFilterSection>
               </div>
 
-              {/* Search Button */}
-              <div className="mt-6 pt-6 border-t border-gray-200 space-y-3">
-                <button 
-                  onClick={() => {
-                    handleSearch();
-                    setShowMobileFilters(false);
-                  }}
-                  className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 px-4 rounded-lg font-medium transition-colors flex items-center justify-center"
-                >
-                  <Search className="h-4 w-4 mr-2" />
-                  Search Properties
-                </button>
-                
-                {/* Save Search Button - Only show when filters are set */}
-                {hasFiltersSet() && (
-                  <button 
-                    onClick={() => {
-                      setShowSaveModal(true);
-                      setShowMobileFilters(false);
-                    }}
-                    className="w-full bg-white hover:bg-gray-50 text-gray-700 border border-gray-300 py-3 px-4 rounded-lg font-medium transition-colors flex items-center justify-center"
-                  >
-                    <Bookmark className="h-4 w-4 mr-2" />
-                    Save This Search
-                  </button>
-                )}
-              </div>
+              {/* Search button moved to top */}
             </div>
           </div>
         </div>
       )}
 
       {/* Save Search Modal */}
-      {showSaveModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-gray-900">Save Search</h3>
-              <button
-                onClick={() => setShowSaveModal(false)}
-                className="text-gray-400 hover:text-gray-600"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-            
+      <StandardModalWithActions
+        isOpen={showSaveModal}
+        onClose={() => setShowSaveModal(false)}
+        title="Save Search"
+        size="md"
+        primaryAction={!saveSearchSuccess ? {
+          label: "Save Search",
+          onClick: handleSaveSearch,
+          type: "submit"
+        } : undefined}
+        secondaryAction={!saveSearchSuccess ? {
+          label: "Cancel",
+          onClick: () => setShowSaveModal(false)
+        } : undefined}
+      >
+        {saveSearchSuccess ? (
+          <div className="text-center py-8">
             <div className="mb-4">
-              <p className="text-sm text-gray-600 mb-4">
-                Save your current search criteria so you can easily find similar properties later.
-              </p>
+              <div className="mx-auto w-16 h-16 bg-green-100 rounded-full flex items-center justify-center">
+                <svg className="w-8 h-8 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
             </div>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">Search Saved Successfully!</h3>
+            <p className="text-sm text-gray-600">You can now access this search from your saved searches.</p>
+          </div>
+        ) : (
+          <>
+            <p className="text-sm text-gray-600 mb-4">
+              Save your current search criteria so you can easily find similar properties later.
+            </p>
 
             <form onSubmit={(e) => { e.preventDefault(); handleSaveSearch(); }} className="space-y-4">
               <div>
@@ -2607,26 +2909,42 @@ export default function DiscoverPage() {
                   className="w-full px-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 />
               </div>
-
-              <div className="flex space-x-3 pt-4">
-                <button
-                  type="submit"
-                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-3 px-4 rounded-lg font-medium transition-colors"
-                >
-                  Save Search
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setShowSaveModal(false)}
-                  className="flex-1 border border-gray-300 hover:bg-gray-50 text-gray-700 py-3 px-4 rounded-lg font-medium transition-colors"
-                >
-                  Cancel
-                </button>
-              </div>
             </form>
-          </div>
+          </>
+        )}
+      </StandardModalWithActions>
+
+      {/* Delete Search Confirmation Modal */}
+      <StandardModalWithActions
+        isOpen={showDeleteModal}
+        onClose={() => {
+          setShowDeleteModal(false);
+          setSearchToDelete(null);
+        }}
+        title="Delete Search"
+        size="sm"
+        primaryAction={{
+          label: "Delete Search",
+          onClick: confirmDeleteSearch,
+          variant: "danger"
+        }}
+        secondaryAction={{
+          label: "Cancel",
+          onClick: () => {
+            setShowDeleteModal(false);
+            setSearchToDelete(null);
+          }
+        }}
+      >
+        <div className="py-2">
+          <p className="text-sm text-gray-600 mb-2">
+            Are you sure you want to delete <strong>"{searchToDelete?.name}"</strong>?
+          </p>
+          <p className="text-xs text-gray-500">
+            This action cannot be undone.
+          </p>
         </div>
-      )}
+      </StandardModalWithActions>
     </div>
     </div>
   );
@@ -2638,15 +2956,17 @@ function CollapsibleFilterSection({
   title, 
   children, 
   isCollapsed, 
-  onToggle 
+  onToggle,
+  sectionKey
 }: { 
   title: string; 
   children: React.ReactNode;
   isCollapsed: boolean;
   onToggle: () => void;
+  sectionKey?: string;
 }) {
   return (
-    <div className="border-b border-gray-200 pb-6 mb-6 last:border-b-0 last:pb-0 last:mb-0">
+    <div className="border-b border-gray-200 pb-6 mb-6 last:border-b-0 last:pb-0 last:mb-0" data-section={sectionKey}>
       <button
         onClick={onToggle}
         className="flex items-center justify-between w-full text-left"

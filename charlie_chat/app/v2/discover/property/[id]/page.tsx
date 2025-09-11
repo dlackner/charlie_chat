@@ -91,11 +91,20 @@ export default function PropertyDetailsPage() {
         window.location.href = decodedUrl;
       } catch (error) {
         console.error('Error decoding back URL:', error);
-        router.push('/v2/discover');
+        // Fallback based on context
+        if (isEngageContext) {
+          router.push('/v2/engage');
+        } else {
+          router.push('/v2/discover');
+        }
       }
     } else {
-      // Fallback to discover page if no back parameter
-      router.push('/v2/discover');
+      // Fallback based on context if no back parameter
+      if (isEngageContext) {
+        router.push('/v2/engage');
+      } else {
+        router.push('/v2/discover');
+      }
     }
   };
 

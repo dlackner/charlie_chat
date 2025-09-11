@@ -8,7 +8,7 @@ import { User, ChevronDown, Settings, Heart, LogOut, Star, CreditCard, Target } 
 import { RecommendationsIconModal, RecommendationsIconModalRef } from '@/components/ui/RecommendationsIconModal';
 import { WeeklyRecommendationsModalMMR } from "@/components/WeeklyRecommendationsModalMMR";
 import { ProfileModal } from "@/components/ProfileModal";
-import { BuyBoxModal } from "@/components/BuyBoxModal";
+import { BuyBoxModal } from "@/components/v2/BuyBoxModal";
 import { SubscriptionModal } from "@/components/SubscriptionModal";
 import SubscriptionSupportModal from "@/components/ui/SubscriptionSupportModal";
 

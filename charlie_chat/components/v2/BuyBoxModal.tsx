@@ -1,3 +1,8 @@
+/*
+ * CHARLIE2 V2 - Buy Box Modal Component
+ * User investment criteria configuration with market setup
+ * Part of the new V2 application architecture
+ */
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
@@ -104,7 +109,6 @@ interface Market {
     learning_completed_at?: string;
     created_at?: string;
     updated_at?: string;
-    is_locked?: boolean;
     // UI compatibility fields
     type?: 'city' | 'zip';
     customName?: string;
@@ -145,7 +149,6 @@ export const BuyBoxModal: React.FC<BuyBoxModalProps> = ({ isOpen, onClose, focus
 
     // Memoized function to close learning phases modal
     const handleCloseLearningPhases = useCallback(() => {
-        console.log('Closing learning phases modal');
         setShowLearningPhasesModal(false);
     }, []);
 
@@ -171,30 +174,35 @@ export const BuyBoxModal: React.FC<BuyBoxModalProps> = ({ isOpen, onClose, focus
                     .single();
 
                 if (marketsError) {
-                    console.error("Error loading markets:", marketsError);
+                    // Handle market loading errors silently
                     setErrorMessage("Failed to load markets");
                     return;
                 }
 
                 if (profileError) {
-                    console.warn("Error loading profile:", profileError);
+                    // Handle profile loading errors silently
                 }
 
                 // Convert database fields to UI format
-                const marketsWithUIState = (marketsData || []).map((market: any) => ({
-                    ...market,
-                    // Add UI state
-                    isExpanded: false,
-                    propertyCountChecked: market.property_count > 0,
-                    // Map database field names to UI field names for compatibility
-                    type: market.market_type,
-                    customName: market.market_name,
-                    marketKey: market.market_key,
-                    // Convert market_tier integer to MarketTier object
-                    marketTier: market.market_tier ? MARKET_TIERS.find(tier => tier.tier === market.market_tier) || MARKET_TIERS[3] : null,
-                    // Load per-market weekly recommendations setting (fallback to global if not set)
-                    weekly_recommendations_enabled: market.weekly_recommendations_enabled ?? profileData?.weekly_recommendations_enabled ?? false
-                }));
+                const marketsWithUIState = (marketsData || []).map((market: any) => {
+                    // Remove is_locked field completely - all markets should be editable
+                    const { is_locked, ...marketWithoutLock } = market;
+                    
+                    return {
+                        ...marketWithoutLock,
+                        // Add UI state
+                        isExpanded: false,
+                        propertyCountChecked: market.property_count > 0,
+                        // Map database field names to UI field names for compatibility
+                        type: market.market_type,
+                        customName: market.market_name,
+                        marketKey: market.market_key,
+                        // Convert market_tier integer to MarketTier object
+                        marketTier: market.market_tier ? MARKET_TIERS.find(tier => tier.tier === market.market_tier) || MARKET_TIERS[3] : null,
+                        // Load per-market weekly recommendations setting (fallback to global if not set)
+                        weekly_recommendations_enabled: market.weekly_recommendations_enabled ?? profileData?.weekly_recommendations_enabled ?? false
+                    };
+                });
 
                 setBuyBoxData({
                     markets: marketsWithUIState,
@@ -202,7 +210,7 @@ export const BuyBoxModal: React.FC<BuyBoxModalProps> = ({ isOpen, onClose, focus
                 });
 
             } catch (error) {
-                console.error("Unexpected error loading buy box data:", error);
+                // Handle unexpected loading errors silently
                 setErrorMessage("Failed to load buy box data");
             } finally {
                 setIsLoading(false);
@@ -218,9 +226,9 @@ export const BuyBoxModal: React.FC<BuyBoxModalProps> = ({ isOpen, onClose, focus
                 const { updateMarketConvergence } = await import('@/lib/convergenceAnalysis');
                 const convergenceData = await updateMarketConvergence(user.id, supabase);
                 setMarketConvergence(convergenceData);
-                console.log('📊 Market convergence loaded:', convergenceData);
+                // Market convergence loaded successfully
             } catch (error) {
-                console.error('Error loading market convergence:', error);
+                // Handle market convergence loading errors silently
             }
         };
 
@@ -229,16 +237,48 @@ export const BuyBoxModal: React.FC<BuyBoxModalProps> = ({ isOpen, onClose, focus
         checkUserMarketLimit();
     }, [isOpen, user, supabase, hasAccess]);
 
-    // Auto-add market when in add mode
+    // Add template market when in add mode
     useEffect(() => {
         if (isOpen && focusedMarket === null && buyBoxData.markets.length < maxMarkets) {
-            // Find if there's already an empty market
-            const hasEmptyMarket = buyBoxData.markets.some(market => !market.market_name && !market.city);
-            if (!hasEmptyMarket) {
-                addMarket();
+            // Check if we already have a template market for new market creation
+            const hasTemplateMarket = buyBoxData.markets.some(market => market.id === 'template-new-market');
+            if (!hasTemplateMarket) {
+                // Create and add a template market for adding
+                const templateMarket: Market = {
+                    id: 'template-new-market',
+                    user_id: user?.id || '',
+                    market_key: 'New',
+                    market_name: '',
+                    market_type: 'city',
+                    city: '',
+                    state: '',
+                    zip: '',
+                    units_min: 15,
+                    units_max: 35,
+                    assessed_value_min: 1000000,
+                    assessed_value_max: 2500000,
+                    estimated_value_min: 1200000,
+                    estimated_value_max: 2800000,
+                    year_built_min: 1990,
+                    year_built_max: 2010,
+                    total_decisions_made: 0,
+                    learning_phase: 'discovery',
+                    type: 'city',
+                    customName: '',
+                    marketKey: 'New',
+                    isExpanded: true,
+                    propertyCountChecked: false,
+                    weekly_recommendations_enabled: true
+                };
+                
+                setBuyBoxData(prev => ({
+                    ...prev,
+                    markets: [...prev.markets, templateMarket]
+                }));
+                // Added template market to state for add mode
             }
         }
-    }, [isOpen, focusedMarket, buyBoxData.markets.length, maxMarkets]);
+    }, [isOpen, focusedMarket, buyBoxData.markets.length, maxMarkets, user]);
 
     // Reset form when modal closes
     useEffect(() => {
@@ -279,7 +319,7 @@ export const BuyBoxModal: React.FC<BuyBoxModalProps> = ({ isOpen, onClose, focus
                 setMaxMarkets(5); // Default for Pro users
             }
         } catch (error) {
-            console.error('Error checking user class:', error);
+            // Handle user class check errors silently
             setMaxMarkets(5); // Default on error
         }
     };
@@ -293,7 +333,7 @@ export const BuyBoxModal: React.FC<BuyBoxModalProps> = ({ isOpen, onClose, focus
                 .eq("user_id", user.id);
             
             const existingKeys = (existingMarkets || []).map(m => m.market_key);
-            console.log("📊 Existing market keys in database:", existingKeys);
+            // Existing market keys loaded from database
             
             // Generate next key based on actual database content
             const marketNumbers = existingKeys
@@ -304,7 +344,7 @@ export const BuyBoxModal: React.FC<BuyBoxModalProps> = ({ isOpen, onClose, focus
             const maxNumber = marketNumbers.length > 0 ? Math.max(...marketNumbers) : 0;
             const nextMarketKey = `Market${maxNumber + 1}`;
             
-            console.log("🔑 Generated next market key:", nextMarketKey);
+            // Generated next market key
             const newMarket: Market = {
                 id: crypto.randomUUID(),
                 user_id: user.id,
@@ -324,7 +364,6 @@ export const BuyBoxModal: React.FC<BuyBoxModalProps> = ({ isOpen, onClose, focus
                 year_built_max: 0,
                 total_decisions_made: 0,
                 learning_phase: 'discovery',
-                is_locked: false,  // New markets start unlocked
                 // UI compatibility fields
                 type: 'city',
                 marketKey: nextMarketKey,
@@ -357,7 +396,7 @@ export const BuyBoxModal: React.FC<BuyBoxModalProps> = ({ isOpen, onClose, focus
                 .eq("id", marketId);
 
             if (error) {
-                console.error("Error removing market:", error);
+                // Handle market removal errors silently
                 setErrorMessage("Failed to remove market");
                 setBuyBoxData(prev => ({
                     ...prev,
@@ -365,38 +404,130 @@ export const BuyBoxModal: React.FC<BuyBoxModalProps> = ({ isOpen, onClose, focus
                 }));
             }
         } catch (error) {
-            console.error("Error removing market:", error);
+            // Handle market removal errors silently
             setErrorMessage("Failed to remove market");
         }
     };
 
     const updateMarket = (marketId: string, updates: Partial<Market>) => {
-        setBuyBoxData(prev => ({
-            ...prev,
-            markets: prev.markets.map((market, index) => {
-                if (market.id === marketId) {
-                    const updatedMarket = { ...market, ...updates };
-                    
-                    // Sync UI fields with database fields
-                    if ('type' in updates) {
-                        updatedMarket.market_type = updates.type as 'city' | 'zip';
-                    }
-                    if ('customName' in updates) {
-                        updatedMarket.market_name = updates.customName;
-                        
-                        // Clear error message if user enters a name
-                        if (updates.customName?.trim()) {
-                            setErrorMessage("");
-                        }
-                    }
-                    
-                    // Don't regenerate market_key once it's been set - this preserves the unique key
-                    // generated during addMarket and prevents constraint violations
-                    return updatedMarket;
+        setBuyBoxData(prev => {
+            // Check if this is a template market that doesn't exist in state yet
+            const existingMarket = prev.markets.find(market => market.id === marketId);
+            
+            if (!existingMarket && marketId.startsWith('template-')) {
+                // This is a template market being updated for the first time - add it to state
+                // Keep the template ID instead of generating a new one to maintain consistency
+                let templateMarket: Market;
+                
+                if (marketId === 'template-new-market') {
+                    // Create the new market template
+                    templateMarket = {
+                        id: marketId, // Keep the template ID for now
+                        user_id: user?.id || '',
+                        market_key: `Market${prev.markets.length + 1}`,
+                        market_name: '',
+                        market_type: 'city',
+                        city: '',
+                        state: '',
+                        zip: '',
+                        units_min: 15,
+                        units_max: 35,
+                        assessed_value_min: 1000000,
+                        assessed_value_max: 2500000,
+                        estimated_value_min: 1200000,
+                        estimated_value_max: 2800000,
+                        year_built_min: 1990,
+                        year_built_max: 2010,
+                        total_decisions_made: 0,
+                        learning_phase: 'discovery',
+                        type: 'city',
+                        customName: '',
+                        marketKey: `Market${prev.markets.length + 1}`,
+                        isExpanded: true,
+                        propertyCountChecked: false,
+                        weekly_recommendations_enabled: true,
+                        ...updates
+                    };
+                } else {
+                    // This is a focused market template - extract market name from marketId
+                    const focusedMarketName = marketId.replace('template-', '').replace(/-/g, ' ');
+                    const [city, state] = focusedMarketName.split(' ');
+                    templateMarket = {
+                        id: marketId, // Keep the template ID for now
+                        user_id: user?.id || '',
+                        market_key: `Market${prev.markets.length + 1}`,
+                        market_name: focusedMarketName,
+                        market_type: 'city',
+                        city: city || '',
+                        state: state || '',
+                        zip: '',
+                        units_min: 15,
+                        units_max: 35,
+                        assessed_value_min: 1000000,
+                        assessed_value_max: 2500000,
+                        estimated_value_min: 1200000,
+                        estimated_value_max: 2800000,
+                        year_built_min: 1990,
+                        year_built_max: 2010,
+                        total_decisions_made: 0,
+                        learning_phase: 'discovery',
+                        type: 'city',
+                        customName: focusedMarketName,
+                        marketKey: `Market${prev.markets.length + 1}`,
+                        isExpanded: true,
+                        propertyCountChecked: false,
+                        weekly_recommendations_enabled: true,
+                        ...updates
+                    };
                 }
-                return market;
-            })
-        }));
+                
+                // Sync UI fields with database fields
+                if ('type' in updates) {
+                    templateMarket.market_type = updates.type as 'city' | 'zip';
+                }
+                if ('customName' in updates) {
+                    templateMarket.market_name = updates.customName;
+                    
+                    // Clear error message if user enters a name
+                    if (updates.customName?.trim()) {
+                        setErrorMessage("");
+                    }
+                }
+                
+                return {
+                    ...prev,
+                    markets: [...prev.markets, templateMarket]
+                };
+            }
+            
+            // Normal market update logic
+            return {
+                ...prev,
+                markets: prev.markets.map((market, index) => {
+                    if (market.id === marketId) {
+                        const updatedMarket = { ...market, ...updates };
+                        
+                        // Sync UI fields with database fields
+                        if ('type' in updates) {
+                            updatedMarket.market_type = updates.type as 'city' | 'zip';
+                        }
+                        if ('customName' in updates) {
+                            updatedMarket.market_name = updates.customName;
+                            
+                            // Clear error message if user enters a name
+                            if (updates.customName?.trim()) {
+                                setErrorMessage("");
+                            }
+                        }
+                        
+                        // Don't regenerate market_key once it's been set - this preserves the unique key
+                        // generated during addMarket and prevents constraint violations
+                        return updatedMarket;
+                    }
+                    return market;
+                })
+            };
+        });
     };
 
     const toggleMarketExpansion = (marketId: string) => {
@@ -404,12 +535,7 @@ export const BuyBoxModal: React.FC<BuyBoxModalProps> = ({ isOpen, onClose, focus
             ...prev,
             markets: prev.markets.map(market => {
                 if (market.id === marketId) {
-                    const updatedMarket = { ...market, isExpanded: !market.isExpanded };
-                    // When expanding a market for the first time, set it to locked state by default
-                    if (!market.isExpanded && updatedMarket.isExpanded) {
-                        updatedMarket.is_locked = true;
-                    }
-                    return updatedMarket;
+                    return { ...market, isExpanded: !market.isExpanded };
                 }
                 return market;
             })
@@ -542,7 +668,7 @@ export const BuyBoxModal: React.FC<BuyBoxModalProps> = ({ isOpen, onClose, focus
             
             return { count, propertyIds, coordinates };
         } catch (error) {
-            console.error('Error checking property count:', error);
+            // Handle property count check errors silently
             return { count: 0, propertyIds: [], coordinates: undefined };
         }
     };
@@ -555,7 +681,7 @@ export const BuyBoxModal: React.FC<BuyBoxModalProps> = ({ isOpen, onClose, focus
                 .select('region_id, latitude, longitude, radius, city_state, market_tier');
 
             if (error || !rentalMarkets) {
-                console.error('Error fetching rental markets:', error);
+                // Handle rental market fetch errors silently
                 return null;
             }
 
@@ -564,7 +690,7 @@ export const BuyBoxModal: React.FC<BuyBoxModalProps> = ({ isOpen, onClose, focus
                 if (market.latitude && market.longitude) {
                     const distance = calculateDistance(lat, lng, market.latitude, market.longitude);
                     if (distance <= market.radius) {
-                        console.log(`🏡 Found rental market ${market.city_state} (region_id: ${market.region_id}, tier: ${market.market_tier}) within ${distance.toFixed(2)} miles (radius: ${market.radius})`);
+                        // Found rental market within radius
                         return {
                             region_id: market.region_id,
                             market_tier: market.market_tier
@@ -573,10 +699,10 @@ export const BuyBoxModal: React.FC<BuyBoxModalProps> = ({ isOpen, onClose, focus
                 }
             }
 
-            console.log('❌ No rental market found within radius');
+            // No rental market found within radius
             return null;
         } catch (error) {
-            console.error('Error in findNearestRentalMarket:', error);
+            // Handle findNearestRentalMarket errors silently
             return null;
         }
     };
@@ -606,9 +732,19 @@ export const BuyBoxModal: React.FC<BuyBoxModalProps> = ({ isOpen, onClose, focus
                 return;
             }
 
-            // If this is a template market, generate a new ID for database storage
+            // If this is a template market, generate a new ID for database storage and update the market in state
             const isTemplate = market.id.startsWith('template-');
             const actualMarketId = isTemplate ? crypto.randomUUID() : market.id;
+            
+            // If template, update the market ID in state to the new UUID for future operations
+            if (isTemplate) {
+                setBuyBoxData(prev => ({
+                    ...prev,
+                    markets: prev.markets.map(m => 
+                        m.id === marketId ? { ...m, id: actualMarketId } : m
+                    )
+                }));
+            }
 
             // Validate that market has a name before saving
             const marketName = market.customName?.trim() || market.market_name?.trim();
@@ -628,72 +764,7 @@ export const BuyBoxModal: React.FC<BuyBoxModalProps> = ({ isOpen, onClose, focus
                 return;
             }
 
-            // If market is locked, skip property count check and tier recalculation
-            // Just save the current state as-is to preserve locked configuration
-            if (market.is_locked) {
-                const marketToSave = {
-                    id: actualMarketId,
-                    user_id: user.id,
-                    market_key: market.market_key,
-                    market_name: market.market_name || null,
-                    market_type: market.market_type,
-                    city: market.city || null,
-                    state: market.state || null,
-                    zip: market.zip || null,
-                    units_min: Number(market.units_min) || 0,
-                    units_max: Number(market.units_max) || 0,
-                    assessed_value_min: Number(market.assessed_value_min) || 0,
-                    assessed_value_max: Number(market.assessed_value_max) || 0,
-                    estimated_value_min: Number(market.estimated_value_min) || 0,
-                    estimated_value_max: Number(market.estimated_value_max) || 0,
-                    year_built_min: Number(market.year_built_min) || 0,
-                    year_built_max: Number(market.year_built_max) || 0,
-                    // Keep existing values for locked market
-                    latitude: market.latitude || null,
-                    longitude: market.longitude || null,
-                    property_count: Number(market.property_count) || 0,
-                    market_tier: market.market_tier || null,
-                    rental_region_id: market.rental_region_id || null,
-                    property_ids: market.property_ids || null,
-                    cache_criteria_hash: market.cache_criteria_hash || null,
-                    cache_updated_at: market.cache_updated_at || new Date().toISOString(),
-                    lambda_value: Number(market.lambda_value) || null,
-                    exploration_score: Number(market.exploration_score) || null,
-                    total_decisions_made: Number(market.total_decisions_made) || 0,
-                    learning_phase: market.learning_phase || 'discovery',
-                    learning_completed_at: market.learning_completed_at || null,
-                    is_locked: true,
-                    updated_at: new Date().toISOString()
-                };
-
-                console.log("💾 Saving locked market data:", marketToSave);
-
-                const { error: saveError } = await supabase
-                    .from('user_markets')
-                    .upsert(marketToSave);
-
-                if (saveError) {
-                    console.error("Error saving locked market:", {
-                        error: saveError,
-                        message: saveError.message,
-                        details: saveError.details,
-                        hint: saveError.hint,
-                        code: saveError.code
-                    });
-                    setErrorMessage(`Failed to save market: ${saveError.message} (${saveError.code})`);
-                    return;
-                }
-
-                console.log("✅ Saved locked market without recalculation");
-                setSavingMarkets(prev => {
-                    const newSet = new Set(prev);
-                    newSet.delete(marketId);
-                    return newSet;
-                });
-                return;
-            }
-
-            // For unlocked markets, proceed with normal property count check and tier calculation
+            // Proceed with property count check and tier calculation
             const { count: rawPropertyCount, propertyIds, coordinates } = await checkPropertyCount(market);
             // Cap property count at 8,000 for display and storage (API limit)
             const propertyCount = Math.min(rawPropertyCount, 8000);
@@ -702,18 +773,18 @@ export const BuyBoxModal: React.FC<BuyBoxModalProps> = ({ isOpen, onClose, focus
             let rentalRegionId: number | null = null;
 
             if (coordinates) {
-                console.log(`🔍 Looking for rental market near coordinates: ${coordinates.lat}, ${coordinates.lng}`);
+                // Looking for rental market near coordinates
                 // Get both rental region and market tier from market_rental_data table
                 const rentalMarket = await findNearestRentalMarket(coordinates.lat, coordinates.lng);
                 if (rentalMarket) {
                     rentalRegionId = rentalMarket.region_id;
                     marketTier = rentalMarket.market_tier ? MARKET_TIERS.find(tier => tier.tier === rentalMarket.market_tier) || MARKET_TIERS[3] : null;
-                    console.log(`✅ Found rental market: region_id=${rentalMarket.region_id}, tier=${rentalMarket.market_tier}`);
+                    // Found rental market for coordinates
                 } else {
-                    console.log(`❌ No rental market found for coordinates ${coordinates.lat}, ${coordinates.lng} - defaulting to Tier 4`);
+                    // No rental market found for coordinates - defaulting to Tier 4
                     // Default to Tier 4 when no market found within radius
                     marketTier = MARKET_TIERS[3]; // Tier 4 (Small City)
-                    console.log(`🔄 Using default Tier 4 for unmatched location: ${marketTier.name}`);
+                    // Using default Tier 4 for unmatched location
                 }
             }
 
@@ -767,11 +838,10 @@ export const BuyBoxModal: React.FC<BuyBoxModalProps> = ({ isOpen, onClose, focus
                     cache_updated_at: new Date().toISOString(),
                     total_decisions_made: 0,
                     learning_phase: 'discovery',
-                    is_locked: true,  // Lock market after first successful save
                     updated_at: new Date().toISOString(),
                 };
 
-                console.log("💾 Saving market data:", marketData);
+                // Saving market data
 
                 const { error: marketError } = await supabase
                     .from("user_markets")
@@ -780,13 +850,7 @@ export const BuyBoxModal: React.FC<BuyBoxModalProps> = ({ isOpen, onClose, focus
                     });
 
                 if (marketError) {
-                    console.error("Error saving market:", {
-                        error: marketError,
-                        message: marketError.message,
-                        details: marketError.details,
-                        hint: marketError.hint,
-                        code: marketError.code
-                    });
+                    // Handle market save errors silently
                     throw new Error(`Database error: ${marketError.message} (${marketError.code})`);
                 }
             }
@@ -805,7 +869,6 @@ export const BuyBoxModal: React.FC<BuyBoxModalProps> = ({ isOpen, onClose, focus
                 markets: prev.markets.map(market =>
                     market.id === marketId ? { 
                         ...market, 
-                        is_locked: true,  // Update UI to reflect locked state
                         property_count: propertyCount,
                         marketTier: marketTier || undefined
                     } : market
@@ -813,7 +876,7 @@ export const BuyBoxModal: React.FC<BuyBoxModalProps> = ({ isOpen, onClose, focus
             }));
             
         } catch (error: any) {
-            console.error("Unexpected error saving market:", error);
+            // Handle unexpected market save errors silently
             setErrorMessage(`Error saving market: ${error.message || JSON.stringify(error)}`);
         } finally {
             setSavingMarkets(prev => {
@@ -945,22 +1008,60 @@ export const BuyBoxModal: React.FC<BuyBoxModalProps> = ({ isOpen, onClose, focus
                                     <div className="space-y-4">
                                         {(() => {
                                             // Filter markets based on focusedMarket prop
-                                            console.log('🎯 Modal Debug:', { focusedMarket, allMarkets: buyBoxData.markets });
+                                            // Modal debug information
                                             let marketsToShow = buyBoxData.markets;
                                             
                                             if (focusedMarket === null) {
-                                                // Add new market mode - show only new/empty markets
-                                                marketsToShow = buyBoxData.markets.filter(market => !market.market_name && !market.city);
+                                                // Add new market mode - show only new/empty markets and template markets
+                                                marketsToShow = buyBoxData.markets.filter(market => 
+                                                    (!market.market_name && !market.city) || 
+                                                    market.id === 'template-new-market'
+                                                );
                                             } else if (focusedMarket) {
-                                                // Focus on specific market - find by name with flexible matching
+                                                // Focus on specific market - find by market_key or display name with flexible matching
                                                 marketsToShow = buyBoxData.markets.filter(market => {
                                                     const marketName = market.market_name || market.customName || `${market.city}, ${market.state}`;
-                                                    console.log('🔍 Matching market:', { marketName, focusedMarket, market });
-                                                    return marketName === focusedMarket;
+                                                    const marketKey = market.market_key;
+                                                    // Matching market found
+                                                    // Match either the market key (like "Market1") or the display name (like "Newport, RI")
+                                                    return marketKey === focusedMarket || marketName === focusedMarket;
                                                 });
-                                                console.log('📋 Markets to show:', marketsToShow);
+                                                // Markets filtered for display
                                             }
-                                            // If focusedMarket is undefined, show all markets (original behavior)
+                                            // If focusedMarket is undefined, show all markets (original behavior) - marketsToShow is already set to buyBoxData.markets
+
+                                            // If no markets found but we're in add mode (focusedMarket === null), 
+                                            // create a template market as fallback (useEffect should handle this normally)
+                                            if (marketsToShow.length === 0 && focusedMarket === null) {
+                                                // Creating fallback template market for add mode
+                                                const templateMarket = {
+                                                    id: 'template-new-market',
+                                                    user_id: user?.id || '',
+                                                    market_key: 'New',
+                                                    market_name: '',
+                                                    market_type: 'city' as 'city',
+                                                    city: '',
+                                                    state: '',
+                                                    zip: '',
+                                                    units_min: 15,
+                                                    units_max: 35,
+                                                    assessed_value_min: 1000000,
+                                                    assessed_value_max: 2500000,
+                                                    estimated_value_min: 1200000,
+                                                    estimated_value_max: 2800000,
+                                                    year_built_min: 1990,
+                                                    year_built_max: 2010,
+                                                    total_decisions_made: 0,
+                                                    learning_phase: 'discovery' as 'discovery',
+                                                    type: 'city' as 'city',
+                                                    customName: '',
+                                                    marketKey: 'New',
+                                                    isExpanded: true,
+                                                    propertyCountChecked: false,
+                                                    weekly_recommendations_enabled: true
+                                                };
+                                                marketsToShow = [templateMarket];
+                                            }
 
                                             // If no market found but we're in focused mode, create a template market to edit
                                             if (marketsToShow.length === 0 && focusedMarket) {
@@ -985,7 +1086,6 @@ export const BuyBoxModal: React.FC<BuyBoxModalProps> = ({ isOpen, onClose, focus
                                                     year_built_max: 2010,
                                                     total_decisions_made: 0,
                                                     learning_phase: 'discovery' as 'discovery',
-                                                    is_locked: false,
                                                     type: 'city' as 'city',
                                                     customName: focusedMarket,
                                                     marketKey: 'Market1',
@@ -1026,16 +1126,24 @@ export const BuyBoxModal: React.FC<BuyBoxModalProps> = ({ isOpen, onClose, focus
                                                                         type="text"
                                                                         value={market.customName !== undefined ? market.customName : getMarketDisplayName(market, index)}
                                                                         placeholder="Enter name for market"
-                                                                        onChange={(e) => updateMarket(market.id, { customName: e.target.value })}
+                                                                        onChange={(e) => {
+                                                                            e.stopPropagation();
+                                                                            updateMarket(market.id, { customName: e.target.value });
+                                                                        }}
                                                                         onClick={(e) => e.stopPropagation()}
+                                                                        onMouseDown={(e) => e.stopPropagation()}
                                                                         onBlur={(e) => {
                                                                             if (e.target.value === getMarketDisplayName({ ...market, customName: undefined }, index)) {
                                                                                 updateMarket(market.id, { customName: undefined });
                                                                             }
                                                                         }}
-                                                                        onFocus={() => {
+                                                                        onFocus={(e) => {
+                                                                            e.stopPropagation();
                                                                             if (market.customName === undefined) {
-                                                                                updateMarket(market.id, { customName: getMarketDisplayName(market, index) });
+                                                                                // Use setTimeout to avoid immediate re-render that could lose focus
+                                                                                setTimeout(() => {
+                                                                                    updateMarket(market.id, { customName: getMarketDisplayName(market, index) });
+                                                                                }, 0);
                                                                             }
                                                                         }}
                                                                         className="font-medium text-gray-900 bg-transparent border border-gray-300 outline-none focus:bg-white focus:border-blue-400 focus:ring-1 focus:ring-blue-400 rounded px-2 py-1 min-w-[8ch] max-w-[40ch] hover:border-gray-400 transition-colors text-sm"
@@ -1066,29 +1174,18 @@ export const BuyBoxModal: React.FC<BuyBoxModalProps> = ({ isOpen, onClose, focus
                                                                 </div>
                                                             </div>
                                                             <div className="flex items-center space-x-2">
-                                                                {/* Edit/Save Toggle - Only visible when expanded */}
+                                                                {/* Save button - Only visible when expanded */}
                                                                 {isExpanded && (
                                                                     <button
                                                                         onClick={(e) => {
                                                                             e.stopPropagation();
-                                                                            if (market.is_locked) {
-                                                                                // Switch to edit mode
-                                                                                updateMarket(market.id, { is_locked: false });
-                                                                            } else {
-                                                                                // Save and lock
-                                                                                saveMarket(market.id);
-                                                                                updateMarket(market.id, { is_locked: true });
-                                                                            }
+                                                                            saveMarket(market.id);
                                                                         }}
-                                                                        disabled={!market.is_locked && isSavingThis}
-                                                                        className={`px-4 py-2 rounded text-sm font-medium transition-colors ${
-                                                                            market.is_locked 
-                                                                                ? 'bg-blue-500 text-white hover:bg-blue-600' 
-                                                                                : 'bg-blue-500 text-white hover:bg-blue-600'
-                                                                        } disabled:opacity-50 disabled:cursor-not-allowed`}
-                                                                        title={market.is_locked ? 'Click to edit market criteria' : 'Click to save changes and lock market'}
+                                                                        disabled={isSavingThis}
+                                                                        className="px-4 py-2 rounded text-sm font-medium transition-colors bg-blue-500 text-white hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                                                                        title="Save market configuration"
                                                                     >
-                                                                        {market.is_locked ? 'Edit' : (isSavingThis ? 'Saving...' : 'Save')}
+                                                                        {isSavingThis ? 'Saving...' : 'Save'}
                                                                     </button>
                                                                 )}
                                                                 {/* Trash icon - Only visible when expanded */}
@@ -1125,8 +1222,11 @@ export const BuyBoxModal: React.FC<BuyBoxModalProps> = ({ isOpen, onClose, focus
                                                                             type="radio"
                                                                             value="city"
                                                                             checked={market.type === 'city'}
-                                                                            onChange={() => updateMarket(market.id, { type: 'city', zip: '' })}
-                                                                            disabled={market.is_locked}
+                                                                            onChange={(e) => {
+                                                                                e.stopPropagation();
+                                                                                updateMarket(market.id, { type: 'city', zip: '' });
+                                                                            }}
+                                                                            onClick={(e) => e.stopPropagation()}
                                                                             className="mr-2"
                                                                         />
                                                                         City/State
@@ -1136,8 +1236,11 @@ export const BuyBoxModal: React.FC<BuyBoxModalProps> = ({ isOpen, onClose, focus
                                                                             type="radio"
                                                                             value="zip"
                                                                             checked={market.type === 'zip'}
-                                                                            onChange={() => updateMarket(market.id, { type: 'zip', city: '', state: '' })}
-                                                                            disabled={market.is_locked}
+                                                                            onChange={(e) => {
+                                                                                e.stopPropagation();
+                                                                                updateMarket(market.id, { type: 'zip', city: '', state: '' });
+                                                                            }}
+                                                                            onClick={(e) => e.stopPropagation()}
                                                                             className="mr-2"
                                                                         />
                                                                         ZIP Code(s)
@@ -1150,22 +1253,26 @@ export const BuyBoxModal: React.FC<BuyBoxModalProps> = ({ isOpen, onClose, focus
                                                                             type="text"
                                                                             placeholder="City"
                                                                             value={market.city || ''}
-                                                                            onChange={(e) => updateMarket(market.id, { city: capitalizeWords(e.target.value) })}
-                                                                            disabled={market.is_locked}
-                                                                            className={`flex-1 px-3 py-2 text-xs border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                                                                                market.is_locked ? 'bg-gray-100 text-gray-600 cursor-not-allowed' : ''
-                                                                            }`}
+                                                                            onChange={(e) => {
+                                                                                e.stopPropagation();
+                                                                                updateMarket(market.id, { city: capitalizeWords(e.target.value) });
+                                                                            }}
+                                                                            onClick={(e) => e.stopPropagation()}
+                                                                            onFocus={(e) => e.stopPropagation()}
+                                                                            className="flex-1 px-3 py-2 text-xs border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                                                                         />
                                                                         <input
                                                                             type="text"
                                                                             maxLength={2}
                                                                             placeholder="ST"
                                                                             value={market.state || ''}
-                                                                            onChange={(e) => updateMarket(market.id, { state: e.target.value.toUpperCase() })}
-                                                                            disabled={market.is_locked}
-                                                                            className={`w-16 px-3 py-2 text-xs border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-center uppercase ${
-                                                                                market.is_locked ? 'bg-gray-100 text-gray-600 cursor-not-allowed' : ''
-                                                                            }`}
+                                                                            onChange={(e) => {
+                                                                                e.stopPropagation();
+                                                                                updateMarket(market.id, { state: e.target.value.toUpperCase() });
+                                                                            }}
+                                                                            onClick={(e) => e.stopPropagation()}
+                                                                            onFocus={(e) => e.stopPropagation()}
+                                                                            className="w-16 px-3 py-2 text-xs border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-center uppercase"
                                                                         />
                                                                     </div>
                                                                 )}
@@ -1175,11 +1282,13 @@ export const BuyBoxModal: React.FC<BuyBoxModalProps> = ({ isOpen, onClose, focus
                                                                         type="text"
                                                                         placeholder="Zip codes (comma-separated: 02840,02841,02842)"
                                                                         value={market.zip || ''}
-                                                                        onChange={(e) => updateMarket(market.id, { zip: e.target.value })}
-                                                                        disabled={market.is_locked}
-                                                                        className={`w-full px-3 py-2 text-xs border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                                                                            market.is_locked ? 'bg-gray-100 text-gray-600 cursor-not-allowed' : ''
-                                                                        }`}
+                                                                        onChange={(e) => {
+                                                                            e.stopPropagation();
+                                                                            updateMarket(market.id, { zip: e.target.value });
+                                                                        }}
+                                                                        onClick={(e) => e.stopPropagation()}
+                                                                        onFocus={(e) => e.stopPropagation()}
+                                                                        className="w-full px-3 py-2 text-xs border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                                                                     />
                                                                 )}
                                                             </div>
@@ -1197,11 +1306,13 @@ export const BuyBoxModal: React.FC<BuyBoxModalProps> = ({ isOpen, onClose, focus
                                                                             max="100"
                                                                             value={market.units_min || ''}
                                                                             placeholder="Min"
-                                                                            onChange={(e) => updateMarket(market.id, { units_min: parseInt(e.target.value) || 0 })}
-                                                                            disabled={market.is_locked}
-                                                                            className={`w-16 px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 ${
-                                                                                market.is_locked ? 'bg-gray-100 text-gray-600 cursor-not-allowed' : ''
-                                                                            }`}
+                                                                            onChange={(e) => {
+                                                                                e.stopPropagation();
+                                                                                updateMarket(market.id, { units_min: parseInt(e.target.value) || 0 });
+                                                                            }}
+                                                                            onClick={(e) => e.stopPropagation()}
+                                                                            onFocus={(e) => e.stopPropagation()}
+                                                                            className="w-16 px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
                                                                         />
                                                                         <span className="text-gray-500">to</span>
                                                                         <input
@@ -1210,11 +1321,13 @@ export const BuyBoxModal: React.FC<BuyBoxModalProps> = ({ isOpen, onClose, focus
                                                                             max="100"
                                                                             value={market.units_max || ''}
                                                                             placeholder="Max"
-                                                                            onChange={(e) => updateMarket(market.id, { units_max: parseInt(e.target.value) || 0 })}
-                                                                            disabled={market.is_locked}
-                                                                            className={`w-16 px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 ${
-                                                                                market.is_locked ? 'bg-gray-100 text-gray-600 cursor-not-allowed' : ''
-                                                                            }`}
+                                                                            onChange={(e) => {
+                                                                                e.stopPropagation();
+                                                                                updateMarket(market.id, { units_max: parseInt(e.target.value) || 0 });
+                                                                            }}
+                                                                            onClick={(e) => e.stopPropagation()}
+                                                                            onFocus={(e) => e.stopPropagation()}
+                                                                            className="w-16 px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
                                                                         />
                                                                     </div>
                                                                 </div>
@@ -1230,11 +1343,13 @@ export const BuyBoxModal: React.FC<BuyBoxModalProps> = ({ isOpen, onClose, focus
                                                                             max={new Date().getFullYear()}
                                                                             value={market.year_built_min || ''}
                                                                             placeholder="Min"
-                                                                            onChange={(e) => updateMarket(market.id, { year_built_min: parseInt(e.target.value) || 0 })}
-                                                                            disabled={market.is_locked}
-                                                                            className={`w-16 px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 ${
-                                                                                market.is_locked ? 'bg-gray-100 text-gray-600 cursor-not-allowed' : ''
-                                                                            }`}
+                                                                            onChange={(e) => {
+                                                                                e.stopPropagation();
+                                                                                updateMarket(market.id, { year_built_min: parseInt(e.target.value) || 0 });
+                                                                            }}
+                                                                            onClick={(e) => e.stopPropagation()}
+                                                                            onFocus={(e) => e.stopPropagation()}
+                                                                            className="w-16 px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
                                                                         />
                                                                         <span className="text-gray-500">to</span>
                                                                         <input
@@ -1243,11 +1358,13 @@ export const BuyBoxModal: React.FC<BuyBoxModalProps> = ({ isOpen, onClose, focus
                                                                             max={new Date().getFullYear()}
                                                                             value={market.year_built_max || ''}
                                                                             placeholder="Max"
-                                                                            onChange={(e) => updateMarket(market.id, { year_built_max: parseInt(e.target.value) || 0 })}
-                                                                            disabled={market.is_locked}
-                                                                            className={`w-16 px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 ${
-                                                                                market.is_locked ? 'bg-gray-100 text-gray-600 cursor-not-allowed' : ''
-                                                                            }`}
+                                                                            onChange={(e) => {
+                                                                                e.stopPropagation();
+                                                                                updateMarket(market.id, { year_built_max: parseInt(e.target.value) || 0 });
+                                                                            }}
+                                                                            onClick={(e) => e.stopPropagation()}
+                                                                            onFocus={(e) => e.stopPropagation()}
+                                                                            className="w-16 px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
                                                                         />
                                                                     </div>
                                                                 </div>
@@ -1263,22 +1380,26 @@ export const BuyBoxModal: React.FC<BuyBoxModalProps> = ({ isOpen, onClose, focus
                                                                             type="text"
                                                                             value={formatCurrency(market.assessed_value_min)}
                                                                             placeholder="Min value"
-                                                                            onChange={(e) => updateMarket(market.id, { assessed_value_min: parseCurrency(e.target.value) })}
-                                                                            disabled={market.is_locked}
-                                                                            className={`w-24 px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 ${
-                                                                                market.is_locked ? 'bg-gray-100 text-gray-600 cursor-not-allowed' : ''
-                                                                            }`}
+                                                                            onChange={(e) => {
+                                                                                e.stopPropagation();
+                                                                                updateMarket(market.id, { assessed_value_min: parseCurrency(e.target.value) });
+                                                                            }}
+                                                                            onClick={(e) => e.stopPropagation()}
+                                                                            onFocus={(e) => e.stopPropagation()}
+                                                                            className="w-24 px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
                                                                         />
                                                                         <span className="text-gray-500">to</span>
                                                                         <input
                                                                             type="text"
                                                                             value={formatCurrency(market.assessed_value_max)}
                                                                             placeholder="Max value"
-                                                                            onChange={(e) => updateMarket(market.id, { assessed_value_max: parseCurrency(e.target.value) })}
-                                                                            disabled={market.is_locked}
-                                                                            className={`w-24 px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 ${
-                                                                                market.is_locked ? 'bg-gray-100 text-gray-600 cursor-not-allowed' : ''
-                                                                            }`}
+                                                                            onChange={(e) => {
+                                                                                e.stopPropagation();
+                                                                                updateMarket(market.id, { assessed_value_max: parseCurrency(e.target.value) });
+                                                                            }}
+                                                                            onClick={(e) => e.stopPropagation()}
+                                                                            onFocus={(e) => e.stopPropagation()}
+                                                                            className="w-24 px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
                                                                         />
                                                                     </div>
                                                                 </div>
@@ -1292,22 +1413,26 @@ export const BuyBoxModal: React.FC<BuyBoxModalProps> = ({ isOpen, onClose, focus
                                                                             type="text"
                                                                             value={formatCurrency(market.estimated_value_min)}
                                                                             placeholder="Min value"
-                                                                            onChange={(e) => updateMarket(market.id, { estimated_value_min: parseCurrency(e.target.value) })}
-                                                                            disabled={market.is_locked}
-                                                                            className={`w-24 px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 ${
-                                                                                market.is_locked ? 'bg-gray-100 text-gray-600 cursor-not-allowed' : ''
-                                                                            }`}
+                                                                            onChange={(e) => {
+                                                                                e.stopPropagation();
+                                                                                updateMarket(market.id, { estimated_value_min: parseCurrency(e.target.value) });
+                                                                            }}
+                                                                            onClick={(e) => e.stopPropagation()}
+                                                                            onFocus={(e) => e.stopPropagation()}
+                                                                            className="w-24 px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
                                                                         />
                                                                         <span className="text-gray-500">to</span>
                                                                         <input
                                                                             type="text"
                                                                             value={formatCurrency(market.estimated_value_max)}
                                                                             placeholder="Max value"
-                                                                            onChange={(e) => updateMarket(market.id, { estimated_value_max: parseCurrency(e.target.value) })}
-                                                                            disabled={market.is_locked}
-                                                                            className={`w-24 px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 ${
-                                                                                market.is_locked ? 'bg-gray-100 text-gray-600 cursor-not-allowed' : ''
-                                                                            }`}
+                                                                            onChange={(e) => {
+                                                                                e.stopPropagation();
+                                                                                updateMarket(market.id, { estimated_value_max: parseCurrency(e.target.value) });
+                                                                            }}
+                                                                            onClick={(e) => e.stopPropagation()}
+                                                                            onFocus={(e) => e.stopPropagation()}
+                                                                            className="w-24 px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
                                                                         />
                                                                     </div>
                                                                 </div>
@@ -1316,29 +1441,6 @@ export const BuyBoxModal: React.FC<BuyBoxModalProps> = ({ isOpen, onClose, focus
                                                             {/* Market Range Indicator */}
                                                             {market.propertyCountChecked && (() => {
                                                                 const debugMarketTier = market.marketTier || (market.market_tier ? MARKET_TIERS.find(t => t.tier === market.market_tier) || MARKET_TIERS[3] : MARKET_TIERS[3]);
-                                                                console.log('🔍 PropertyCountRangeIndicator Debug:', {
-                                                                    marketName: market.customName || `${market.city}, ${market.state}`,
-                                                                    propertyCount: market.property_count,
-                                                                    marketTierObject: market.marketTier,
-                                                                    marketTierNumber: market.market_tier,
-                                                                    resolvedMarketTier: debugMarketTier,
-                                                                    resolvedMarketTierDetails: {
-                                                                        tier: debugMarketTier?.tier,
-                                                                        name: debugMarketTier?.name,
-                                                                        description: debugMarketTier?.description,
-                                                                        recommendedMin: debugMarketTier?.recommendedMin,
-                                                                        recommendedMax: debugMarketTier?.recommendedMax,
-                                                                        sweetSpotMin: debugMarketTier?.sweetSpotMin,
-                                                                        sweetSpotMax: debugMarketTier?.sweetSpotMax
-                                                                    },
-                                                                    allMarketData: {
-                                                                        city: market.city,
-                                                                        state: market.state,
-                                                                        latitude: market.latitude,
-                                                                        longitude: market.longitude,
-                                                                        rental_region_id: market.rental_region_id
-                                                                    }
-                                                                });
                                                                 return (
                                                                     <PropertyCountRangeIndicator
                                                                         propertyCount={market.property_count || 0}
@@ -1372,10 +1474,10 @@ export const BuyBoxModal: React.FC<BuyBoxModalProps> = ({ isOpen, onClose, focus
                                                                                             .eq("id", market.id);
                                                                                         
                                                                                         if (error) {
-                                                                                            console.error('Error saving market weekly recommendations:', error);
+                                                                                            // Handle weekly recommendations save errors silently
                                                                                         }
                                                                                     } catch (error) {
-                                                                                        console.error('Error saving market weekly recommendations:', error);
+                                                                                        // Handle weekly recommendations save errors silently
                                                                                     }
                                                                                 }
                                                                             }}
@@ -1424,10 +1526,10 @@ export const BuyBoxModal: React.FC<BuyBoxModalProps> = ({ isOpen, onClose, focus
                                                             .eq("user_id", user.id);
                                                         
                                                         if (error) {
-                                                            console.error('Error saving weekly recommendations setting:', error);
+                                                            // Handle weekly recommendations setting save errors silently
                                                         }
                                                     } catch (error) {
-                                                        console.error('Error saving weekly recommendations setting:', error);
+                                                        // Handle weekly recommendations setting save errors silently
                                                     }
                                                 }
                                             }}

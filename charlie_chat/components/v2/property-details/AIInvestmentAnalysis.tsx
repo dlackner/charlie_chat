@@ -403,7 +403,7 @@ export function AIInvestmentAnalysis({ property, isEngageContext }: AIInvestment
                     </p>
                     <div className="flex items-center text-xs text-green-600">
                       <Calculator className="w-3 h-3 mr-1" />
-                      <span>Powered by Brave Search API</span>
+                      <span>Powered by MultifamilyOS.ai</span>
                     </div>
                   </div>
                   <button

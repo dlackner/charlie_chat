@@ -30,7 +30,7 @@ if (typeof document !== 'undefined' && !document.getElementById('card-animations
 
 import { useState, useEffect } from 'react';
 import { Settings, Heart, X, Star, Grid3x3, Map } from 'lucide-react';
-import { BuyBoxModal } from '@/components/BuyBoxModal';
+import { BuyBoxModal } from '@/components/v2/BuyBoxModal';
 import { useAuth } from '@/contexts/AuthContext';
 import { StreetViewImage } from '@/components/ui/StreetViewImage';
 import { updateMarketConvergence } from '@/lib/v2/convergenceAnalysis';
@@ -121,7 +121,6 @@ export default function BuyBoxPage() {
         .eq('user_id', user.id);
         
       if (marketsError) {
-        console.error('Error loading markets:', marketsError);
         setError('Failed to load your markets. Please check your Buy Box settings.');
         return;
       }
@@ -155,7 +154,6 @@ export default function BuyBoxPage() {
       }
       
     } catch (error) {
-      console.error('Error loading user data:', error);
       setError('Failed to load data. Please try again.');
     } finally {
       setLoading(false);
@@ -188,12 +186,10 @@ export default function BuyBoxPage() {
         .order('saved_at', { ascending: true });
         
       if (error) {
-        console.error('Error loading recommendations:', error);
         return;
       }
       
       if (!existingRecs || existingRecs.length === 0) {
-        console.log('No existing recommendations found for this week');
         return;
       }
       
@@ -217,10 +213,9 @@ export default function BuyBoxPage() {
       });
       
       setMarketRecommendations(recsByMarket);
-      console.log('Loaded recommendations for markets:', Object.keys(recsByMarket));
       
     } catch (error) {
-      console.error('Error loading recommendations:', error);
+      // Silently handle recommendation loading errors
     }
   };
   
@@ -313,9 +308,8 @@ export default function BuyBoxPage() {
         setMarketConvergence(convergenceData);
       }
       
-      console.log('Favorited property - will animate out:', propertyId);
     } catch (error) {
-      console.error('Error updating favorite status:', error);
+      // Silently handle favorite status update errors
       // Remove animation state on error
       setAnimatingProperties(prev => {
         const updated = { ...prev };
@@ -381,9 +375,8 @@ export default function BuyBoxPage() {
         setMarketConvergence(convergenceData);
       }
       
-      console.log('Rejected property - will animate out:', propertyId);
     } catch (error) {
-      console.error('Error marking property as not interested:', error);
+      // Silently handle rejection status update errors
       // Remove animation state on error
       setAnimatingProperties(prev => {
         const updated = { ...prev };
@@ -425,9 +418,8 @@ export default function BuyBoxPage() {
         });
         
       if (error) {
-        console.error('Error logging decision:', error);
+        // Silently handle logging errors
       } else {
-        console.log(`✅ Logged ${decision} decision for property ${propertyId}`);
         
         // Increment total_decisions_made for this market
         const currentCount = market.total_decisions_made || 0;
@@ -441,7 +433,7 @@ export default function BuyBoxPage() {
           .eq('market_key', market.market_key);
       }
     } catch (error) {
-      console.error('Error logging property decision:', error);
+      // Silently handle property decision errors
     }
   };
 
@@ -531,9 +523,38 @@ export default function BuyBoxPage() {
               
               {/* Add Market Tab */}
               <button
-                onClick={() => {
-                  setFocusedMarket(null); // null means add new market mode
-                  setShowBuyBoxModal(true);
+                onClick={async () => {
+                  // Check if user can add more markets
+                  if (!user || !supabase) return;
+                  
+                  try {
+                    // Get user's class to determine market limit
+                    const { data: profile } = await supabase
+                      .from('profiles')
+                      .select('user_class')
+                      .eq('user_id', user.id)
+                      .single();
+                    
+                    // Determine market limit based on user class
+                    const maxMarkets = (profile?.user_class === 'trial' || profile?.user_class === 'charlie_chat') ? 1 : 5;
+                    
+                    // Check current market count (exclude template markets)
+                    const realMarketCount = userMarkets.filter(market => !market.market_key?.startsWith('template-') && market.id !== 'template-new-market').length;
+                    
+                    if (realMarketCount >= maxMarkets) {
+                      // User is at limit - show upgrade message or modal
+                      alert(`You've reached your limit of ${maxMarkets} market${maxMarkets > 1 ? 's' : ''}. Please upgrade your plan to add more markets.`);
+                      return;
+                    }
+                    
+                    // User can add more markets
+                    setFocusedMarket(null); // null means add new market mode
+                    setShowBuyBoxModal(true);
+                  } catch (error) {
+                    // Allow modal to open on error (fail open)
+                    setFocusedMarket(null);
+                    setShowBuyBoxModal(true);
+                  }
                 }}
                 className="whitespace-nowrap py-2 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 font-medium text-sm transition-colors flex items-center"
               >

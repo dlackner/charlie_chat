@@ -8,9 +8,12 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { Search, Heart, Grid3x3, Map, BarChart3, Grid, Filter, ChevronDown, FileText, MapPin, Calculator, StickyNote, Columns } from 'lucide-react';
+import PropertyMap from '@/components/v2/PropertyMap';
 import { generate10YearCashFlowReport } from '../offer-analyzer/cash-flow-report';
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function EngagePage() {
+  const { user, isLoading: authLoading } = useAuth();
   const [viewMode, setViewMode] = useState<'cards' | 'map' | 'analysis' | 'matrix' | 'pipeline'>('cards');
   const [selectedStatus, setSelectedStatus] = useState('All');
   const [selectedMarket, setSelectedMarket] = useState('All');
@@ -18,90 +21,98 @@ export default function EngagePage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedProperties, setSelectedProperties] = useState<number[]>([]);
   const [showDocumentDropdown, setShowDocumentDropdown] = useState(false);
+  const [savedProperties, setSavedProperties] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [userMarkets, setUserMarkets] = useState<any[]>([]);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // Sample saved properties data - would come from API
-  const savedProperties = [
-    {
-      id: 1,
-      address: '103 Gibbs Ave',
-      city: 'Newport',
-      state: 'RI',
-      zip: '02840',
-      units: 10,
-      built: 1900,
-      assessed: '$1,202,800',
-      estEquity: '$2,079,000',
-      market: 'Newport',
-      pipelineStatus: 'Reviewing',
-      source: 'A', // A = Auto (weekly recommendations), M = Manual (user saved)
-      isFavorited: true,
-      isSkipTraced: false,
-      hasPricingScenario: false,
-      notes: ''
-    },
-    {
-      id: 2,
-      address: '9-11 Sherman St',
-      city: 'Newport',
-      state: 'RI', 
-      zip: '02840',
-      units: 5,
-      built: 1870,
-      assessed: '$1,262,300',
-      estEquity: '$1,597,000',
-      market: 'Newport',
-      pipelineStatus: 'Engaged',
-      source: 'M',
-      isFavorited: true,
-      isSkipTraced: true,
-      hasPricingScenario: true,
-      notes: 'Great property, need to follow up @09/15/25'
-    },
-    {
-      id: 3,
-      address: 'Kingston Ave',
-      city: 'Newport',
-      state: 'RI',
-      zip: '02840',
-      units: 286,
-      built: 1980,
-      assessed: '$3,468,900',
-      estEquity: '$3,468,900',
-      market: 'Newport',
-      pipelineStatus: 'Analyzing',
-      source: 'A',
-      isFavorited: true,
-      isSkipTraced: false,
-      hasPricingScenario: false,
-      notes: 'Large complex - schedule site visit @09/20/25'
-    },
-    {
-      id: 4,
-      address: '14 Everett St',
-      city: 'Newport',
-      state: 'RI',
-      zip: '02840',
-      units: 5,
-      built: 1900,
-      assessed: '$976,600',
-      estEquity: '$1,844,000',
-      market: 'Newport',
-      pipelineStatus: 'Engaged',
-      source: 'M',
-      isFavorited: true,
-      isSkipTraced: false,
-      hasPricingScenario: true,
-      notes: 'Owner responded - waiting for financials'
-    }
-  ];
+  // Fetch favorited properties and user markets from database
+  useEffect(() => {
+    const fetchData = async () => {
+      if (!user) {
+        setIsLoading(false);
+        return;
+      }
 
-  // Valid markets that can be assigned to properties
-  const validMarkets = ['Denver, CO', 'Austin, TX', 'Phoenix, AZ', 'Newport, RI', 'Atlanta, GA', 'Tampa, FL'];
-  
+      try {
+        setIsLoading(true);
+        setError(null);
+
+        // Fetch both favorites and user markets in parallel
+        const [favoritesResponse, marketsResponse] = await Promise.all([
+          fetch('/api/favorites'),
+          fetch(`/api/v2/user-markets?userId=${user.id}`)
+        ]);
+
+        if (!favoritesResponse.ok) {
+          throw new Error('Failed to fetch favorites');
+        }
+
+        const favoritesData = await favoritesResponse.json();
+        
+        // Transform the data to match the expected format
+        const transformedProperties = favoritesData.favorites.map((favorite: any) => {
+          const propertyData = favorite.property_data;
+          if (!propertyData) {
+            console.warn('No property data found for favorite:', favorite);
+            return null;
+          }
+          
+          return {
+            id: propertyData.property_id || favorite.property_id,
+            address: propertyData.address_street || propertyData.address_full || 'Unknown Address',
+            city: propertyData.address_city || 'Unknown City',
+            state: propertyData.address_state || 'Unknown State',
+            zip: propertyData.address_zip || 'Unknown Zip',
+            latitude: propertyData.latitude,
+            longitude: propertyData.longitude,
+            units: propertyData.units_count || 1,
+            built: propertyData.year_built || 1950,
+            assessed: propertyData.assessed_value ? `$${parseInt(propertyData.assessed_value).toLocaleString()}` : 'Unknown',
+            estEquity: propertyData.estimated_equity ? `$${parseInt(propertyData.estimated_equity).toLocaleString()}` : 
+                      propertyData.estimated_value ? `$${parseInt(propertyData.estimated_value).toLocaleString()}` : 'Unknown',
+            market: propertyData.address_city || 'Unknown Market',
+            pipelineStatus: favorite.status || 'Reviewing',
+            source: favorite.recommendation_type === 'weekly' ? 'A' : 'M', // A = Auto (weekly), M = Manual
+            isFavorited: true,
+            isSkipTraced: favorite.is_skip_traced || false,
+            hasPricingScenario: favorite.has_pricing_scenario || false,
+            notes: favorite.notes || '',
+            createdAt: favorite.created_at
+          };
+        }).filter(Boolean); // Remove any null entries
+
+        setSavedProperties(transformedProperties);
+
+        // Fetch user markets
+        if (marketsResponse.ok) {
+          const marketsData = await marketsResponse.json();
+          setUserMarkets(marketsData.markets || []);
+        } else {
+          console.warn('Failed to fetch user markets, using fallback');
+          setUserMarkets([]);
+        }
+
+      } catch (error) {
+        console.error('Error fetching data:', error);
+        setError('Failed to load saved properties');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    if (!authLoading) {
+      fetchData();
+    }
+  }, [user, authLoading]);
+
   // Get unique values for filters
   const uniqueStatuses = ['All', ...new Set(savedProperties.map(p => p.pipelineStatus))];
-  const uniqueMarkets = ['All', ...new Set(savedProperties.map(p => p.market))];
+  // Use user markets from database, limited to 5 markets plus 'All' option
+  const uniqueMarkets = ['All', ...userMarkets.slice(0, 5).map(market => market.name)];
+  // Also create validMarkets list for property card dropdowns from user markets
+  const validMarkets = userMarkets.slice(0, 5).map(market => market.name);
   const uniqueSources = ['All', 'Algorithm', 'Manual'];
 
   // Filter properties based on selections
@@ -195,7 +206,7 @@ export default function EngagePage() {
 
   return (
     <div className="min-h-screen bg-gray-50 py-6">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="px-4 sm:px-6 lg:px-8">
         
         {/* Header */}
         <div className="mb-6">
@@ -429,7 +440,40 @@ export default function EngagePage() {
         </div>
 
         {/* Content based on view mode */}
-        {viewMode === 'cards' && (
+        {isLoading ? (
+          <div className="flex items-center justify-center py-12">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+              <p className="text-gray-600">Loading your saved properties...</p>
+            </div>
+          </div>
+        ) : error ? (
+          <div className="flex items-center justify-center py-12">
+            <div className="text-center">
+              <div className="text-red-600 mb-4">
+                <svg className="h-12 w-12 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">Error Loading Properties</h3>
+              <p className="text-gray-600">{error}</p>
+            </div>
+          </div>
+        ) : filteredProperties.length === 0 ? (
+          <div className="flex items-center justify-center py-12">
+            <div className="text-center">
+              <Heart className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 mb-2">No Saved Properties</h3>
+              <p className="text-gray-600 mb-4">You haven't saved any properties yet. Start by discovering properties and saving your favorites.</p>
+              <a 
+                href="/v2/discover" 
+                className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+              >
+                Discover Properties
+              </a>
+            </div>
+          </div>
+        ) : viewMode === 'cards' ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {filteredProperties.map((property) => (
               <PropertyCard
@@ -441,17 +485,47 @@ export default function EngagePage() {
               />
             ))}
           </div>
-        )}
+        ) : null}
 
-        {viewMode === 'map' && (
-          <div className="bg-white rounded-lg border border-gray-200 p-8 text-center">
-            <Map className="h-16 w-16 mx-auto mb-4 text-gray-400" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">Map View</h3>
-            <p className="text-gray-600">Interactive map showing all {filteredProperties.length} saved properties</p>
+        {!isLoading && !error && viewMode === 'map' && (
+          <div className="flex gap-6 h-[600px]">
+            {/* Left: Map */}
+            <div className="w-2/5">
+              <PropertyMap
+                properties={filteredProperties}
+                className="h-full rounded-lg border border-gray-200"
+                context="engage"
+              />
+            </div>
+            
+            {/* Right: Properties in 2-column grid */}
+            <div className="flex-1 overflow-y-auto">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                {filteredProperties.map((property) => (
+                  <PropertyCard
+                    key={property.id}
+                    property={property}
+                    isSelected={selectedProperties.includes(property.id)}
+                    onToggleSelect={() => togglePropertySelection(property.id)}
+                    validMarkets={validMarkets}
+                  />
+                ))}
+              </div>
+              
+              {filteredProperties.length === 0 && (
+                <div className="flex items-center justify-center h-64">
+                  <div className="text-center">
+                    <Heart className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">No Properties Found</h3>
+                    <p className="text-gray-600">No properties match your current filters.</p>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         )}
 
-        {viewMode === 'analysis' && (
+        {!isLoading && !error && viewMode === 'analysis' && (
           <div className="bg-white rounded-lg border border-gray-200 p-8 text-center">
             <BarChart3 className="h-16 w-16 mx-auto mb-4 text-gray-400" />
             <h3 className="text-lg font-medium text-gray-900 mb-2">Analytics View</h3>
@@ -459,7 +533,7 @@ export default function EngagePage() {
           </div>
         )}
 
-        {viewMode === 'matrix' && (
+        {!isLoading && !error && viewMode === 'matrix' && (
           <div className="bg-white rounded-lg border border-gray-200 p-8 text-center">
             <Grid className="h-16 w-16 mx-auto mb-4 text-gray-400" />
             <h3 className="text-lg font-medium text-gray-900 mb-2">Matrix View</h3>
@@ -653,10 +727,6 @@ function PropertyCard({
 
         {/* Notes Section */}
         <div className="mb-3">
-          <div className="flex items-center mb-2">
-            <StickyNote className="h-3 w-3 text-gray-500 mr-1" />
-            <label className="text-xs font-medium text-gray-700">Notes</label>
-          </div>
           <textarea
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
