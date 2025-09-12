@@ -7,6 +7,23 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 
+// Function to normalize status values from database (handles both caps and title case)
+function normalizeStatus(status: string | null): string | null {
+  if (!status) return null;
+  
+  const statusMap: { [key: string]: string } = {
+    'REVIEWED': 'Reviewing',
+    'COMMUNICATED': 'Communicating', 
+    'ENGAGED': 'Engaged',
+    'ANALYZED': 'Analyzing',
+    'LOI_SENT': 'LOI Sent',
+    'ACQUIRED': 'Acquired',
+    'REJECTED': 'Rejected'
+  };
+  
+  return statusMap[status] || status; // Return mapped value or original if not found
+}
+
 export async function POST(req: NextRequest) {
   try {
     const cookieStore = await cookies();
@@ -90,6 +107,7 @@ export async function POST(req: NextRequest) {
           property_id: property_id,
           is_active: true,
           status: 'active',
+          favorite_status: 'Reviewing',
           recommendation_type: 'manual'
         }, {
           onConflict: 'user_id,property_id'
@@ -154,6 +172,7 @@ export async function POST(req: NextRequest) {
           property_id: property_id,
           is_active: false,
           status: 'archived',
+          favorite_status: 'Rejected',
           recommendation_type: 'manual'
         }, {
           onConflict: 'user_id,property_id'
@@ -225,7 +244,8 @@ export async function GET(req: NextRequest) {
         .from('user_favorites')
         .select(`
           property_id,
-          status,
+          favorite_status,
+          market_key,
           notes,
           recommendation_type,
           saved_at,
@@ -240,10 +260,30 @@ export async function GET(req: NextRequest) {
         return NextResponse.json({ error: 'Failed to get favorites' }, { status: 500 });
       }
 
+      // Get user markets to map market_key to market_name
+      const { data: marketsData, error: marketsError } = await supabase
+        .from('user_markets')
+        .select('market_key, market_name')
+        .eq('user_id', user.id);
+
+      if (marketsError) {
+        console.error('Error getting markets:', marketsError);
+      }
+
+      // Create a map of market_key to market_name
+      const marketMap = new Map();
+      if (marketsData) {
+        marketsData.forEach(market => {
+          marketMap.set(market.market_key, market.market_name);
+        });
+      }
+
       // Transform the data to include property data at the right level
       const transformedFavorites = data.map(fav => ({
         property_id: fav.property_id,
-        status: fav.status,
+        status: normalizeStatus(fav.favorite_status) || 'Reviewing',
+        market_name: marketMap.get(fav.market_key) || null,
+        market_key: fav.market_key,
         notes: fav.notes,
         is_skip_traced: !!(fav.saved_properties as any)?.last_skip_trace,
         has_pricing_scenario: false, // TODO: Create offers table to track user offer analyses

@@ -185,7 +185,7 @@ export function AIInvestmentAnalysis({ property, isEngageContext }: AIInvestment
                   <div className="flex items-center justify-between mb-4">
                     <div>
                       <h3 className="text-lg font-semibold text-blue-900 mb-1">Investment Analysis Complete</h3>
-                      <p className="text-sm text-blue-700">Based on current market data from Brave Search</p>
+                      <p className="text-sm text-blue-700">Based on current market data</p>
                     </div>
                     <div className="text-center">
                       <div className="text-sm text-blue-600 font-medium capitalize">{investmentAnalysis.confidence} Confidence</div>

@@ -15,9 +15,11 @@ import { useAuth } from "@/contexts/AuthContext";
 export default function EngagePage() {
   const { user, isLoading: authLoading } = useAuth();
   const [viewMode, setViewMode] = useState<'cards' | 'map' | 'analysis' | 'matrix' | 'pipeline'>('cards');
-  const [selectedStatus, setSelectedStatus] = useState('All');
-  const [selectedMarket, setSelectedMarket] = useState('All');
+  const [selectedStatuses, setSelectedStatuses] = useState<string[]>([]);
+  const [selectedMarkets, setSelectedMarkets] = useState<string[]>([]);
   const [selectedSource, setSelectedSource] = useState('All');
+  const [showStatusDropdown, setShowStatusDropdown] = useState(false);
+  const [showMarketDropdown, setShowMarketDropdown] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedProperties, setSelectedProperties] = useState<number[]>([]);
   const [showDocumentDropdown, setShowDocumentDropdown] = useState(false);
@@ -26,6 +28,8 @@ export default function EngagePage() {
   const [error, setError] = useState<string | null>(null);
   const [userMarkets, setUserMarkets] = useState<any[]>([]);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const statusDropdownRef = useRef<HTMLDivElement>(null);
+  const marketDropdownRef = useRef<HTMLDivElement>(null);
 
   // Fetch favorited properties and user markets from database
   useEffect(() => {
@@ -70,11 +74,11 @@ export default function EngagePage() {
             units: propertyData.units_count || 1,
             built: propertyData.year_built || 1950,
             assessed: propertyData.assessed_value ? `$${parseInt(propertyData.assessed_value).toLocaleString()}` : 'Unknown',
-            estEquity: propertyData.estimated_equity ? `$${parseInt(propertyData.estimated_equity).toLocaleString()}` : 
-                      propertyData.estimated_value ? `$${parseInt(propertyData.estimated_value).toLocaleString()}` : 'Unknown',
-            market: propertyData.address_city || 'Unknown Market',
+            estimated: propertyData.estimated_value ? `$${parseInt(propertyData.estimated_value).toLocaleString()}` : 'Unknown',
+            estEquity: propertyData.estimated_equity ? `$${parseInt(propertyData.estimated_equity).toLocaleString()}` : 'Unknown',
+            market: favorite.market_name || propertyData.address_city || 'Unknown Market',
             pipelineStatus: favorite.status || 'Reviewing',
-            source: favorite.recommendation_type === 'weekly' ? 'A' : 'M', // A = Auto (weekly), M = Manual
+            source: favorite.recommendation_type === 'algorithm' ? 'A' : 'M', // A = Auto (algorithm), M = Manual
             isFavorited: true,
             isSkipTraced: favorite.is_skip_traced || false,
             hasPricingScenario: favorite.has_pricing_scenario || false,
@@ -107,18 +111,21 @@ export default function EngagePage() {
     }
   }, [user, authLoading]);
 
-  // Get unique values for filters
-  const uniqueStatuses = ['All', ...new Set(savedProperties.map(p => p.pipelineStatus))];
-  // Use user markets from database, limited to 5 markets plus 'All' option
-  const uniqueMarkets = ['All', ...userMarkets.slice(0, 5).map(market => market.name)];
+  // Get unique values for filters - sort statuses in logical pipeline order
+  const statusOrder = ['Reviewing', 'Communicating', 'Engaged', 'Analyzing', 'LOI Sent', 'Acquired', 'Rejected'];
+  const uniqueStatuses = statusOrder.filter(status => 
+    savedProperties.some(p => p.pipelineStatus === status)
+  );
+  // Use user markets from database, limited to 5 markets
+  const uniqueMarkets = userMarkets.slice(0, 5).map(market => market.name);
   // Also create validMarkets list for property card dropdowns from user markets
   const validMarkets = userMarkets.slice(0, 5).map(market => market.name);
   const uniqueSources = ['All', 'Algorithm', 'Manual'];
 
   // Filter properties based on selections
   const filteredProperties = savedProperties.filter(property => {
-    const matchesStatus = selectedStatus === 'All' || property.pipelineStatus === selectedStatus;
-    const matchesMarket = selectedMarket === 'All' || property.market === selectedMarket;
+    const matchesStatus = selectedStatuses.length === 0 || selectedStatuses.includes(property.pipelineStatus);
+    const matchesMarket = selectedMarkets.length === 0 || selectedMarkets.includes(property.market);
     const matchesSource = selectedSource === 'All' || 
       (selectedSource === 'Algorithm' && property.source === 'A') ||
       (selectedSource === 'Manual' && property.source === 'M');
@@ -143,6 +150,26 @@ export default function EngagePage() {
 
   const clearSelection = () => {
     setSelectedProperties([]);
+  };
+
+  const handleStatusUpdate = (propertyId: string, newStatus: string) => {
+    setSavedProperties(prev => 
+      prev.map(property => 
+        property.id.toString() === propertyId 
+          ? { ...property, pipelineStatus: newStatus }
+          : property
+      )
+    );
+  };
+
+  const handleMarketUpdate = (propertyId: string, newMarket: string) => {
+    setSavedProperties(prev => 
+      prev.map(property => 
+        property.id.toString() === propertyId 
+          ? { ...property, market: newMarket }
+          : property
+      )
+    );
   };
 
   const handleGenerateCashFlowReport = (propertyId: number) => {
@@ -195,6 +222,14 @@ export default function EngagePage() {
     const handleClickOutside = (event: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setShowDocumentDropdown(false);
+      }
+      
+      // Close filter dropdowns when clicking outside
+      if (statusDropdownRef.current && !statusDropdownRef.current.contains(event.target as Node)) {
+        setShowStatusDropdown(false);
+      }
+      if (marketDropdownRef.current && !marketDropdownRef.current.contains(event.target as Node)) {
+        setShowMarketDropdown(false);
       }
     };
 
@@ -341,35 +376,113 @@ export default function EngagePage() {
               <Filter className="h-4 w-4 text-gray-500" />
               
               {/* Status Filter */}
-              <div className="relative">
-                <select
-                  value={selectedStatus}
-                  onChange={(e) => setSelectedStatus(e.target.value)}
-                  className="appearance-none bg-white border border-gray-300 rounded-lg px-3 py-2 pr-8 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              <div className="relative" ref={statusDropdownRef}>
+                <button
+                  onClick={() => setShowStatusDropdown(!showStatusDropdown)}
+                  className="appearance-none bg-white border border-gray-300 rounded-lg px-3 py-2 pr-8 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 min-w-[140px] text-left"
                 >
-                  {uniqueStatuses.map(status => (
-                    <option key={status} value={status}>
-                      {status === 'All' ? 'All Statuses' : status}
-                    </option>
-                  ))}
-                </select>
+                  Status ({selectedStatuses.length} selected)
+                </button>
                 <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+                
+                {showStatusDropdown && (
+                  <div 
+                    className="absolute top-full left-0 mt-1 bg-white border border-gray-300 rounded-lg shadow-lg z-50 min-w-[200px]"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <div className="p-3">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-sm font-medium">Status Options</span>
+                        <button
+                          onClick={() => {
+                            if (selectedStatuses.length === uniqueStatuses.length) {
+                              setSelectedStatuses([]);
+                            } else {
+                              setSelectedStatuses([...uniqueStatuses]);
+                            }
+                          }}
+                          className="text-xs text-blue-600 hover:text-blue-700"
+                        >
+                          {selectedStatuses.length === uniqueStatuses.length ? 'Clear All' : 'Select All'}
+                        </button>
+                      </div>
+                      <div className="max-h-48 overflow-y-auto">
+                        {uniqueStatuses.map(status => (
+                          <label key={status} className="flex items-center space-x-2 py-1 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={selectedStatuses.includes(status)}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setSelectedStatuses(prev => [...prev, status]);
+                                } else {
+                                  setSelectedStatuses(prev => prev.filter(s => s !== status));
+                                }
+                              }}
+                              className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 text-xs"
+                            />
+                            <span className="text-sm">{status}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Market Filter */}
-              <div className="relative">
-                <select
-                  value={selectedMarket}
-                  onChange={(e) => setSelectedMarket(e.target.value)}
-                  className="appearance-none bg-white border border-gray-300 rounded-lg px-3 py-2 pr-8 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              <div className="relative" ref={marketDropdownRef}>
+                <button
+                  onClick={() => setShowMarketDropdown(!showMarketDropdown)}
+                  className="appearance-none bg-white border border-gray-300 rounded-lg px-3 py-2 pr-8 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 min-w-[140px] text-left"
                 >
-                  {uniqueMarkets.map(market => (
-                    <option key={market} value={market}>
-                      {market === 'All' ? 'All Markets' : market}
-                    </option>
-                  ))}
-                </select>
+                  Markets ({selectedMarkets.length} selected)
+                </button>
                 <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+                
+                {showMarketDropdown && (
+                  <div 
+                    className="absolute top-full left-0 mt-1 bg-white border border-gray-300 rounded-lg shadow-lg z-50 min-w-[200px]"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <div className="p-3">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-sm font-medium">Market Options</span>
+                        <button
+                          onClick={() => {
+                            if (selectedMarkets.length === uniqueMarkets.length) {
+                              setSelectedMarkets([]);
+                            } else {
+                              setSelectedMarkets([...uniqueMarkets]);
+                            }
+                          }}
+                          className="text-xs text-blue-600 hover:text-blue-700"
+                        >
+                          {selectedMarkets.length === uniqueMarkets.length ? 'Clear All' : 'Select All'}
+                        </button>
+                      </div>
+                      <div className="max-h-48 overflow-y-auto">
+                        {uniqueMarkets.map(market => (
+                          <label key={market} className="flex items-center space-x-2 py-1 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={selectedMarkets.includes(market)}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setSelectedMarkets(prev => [...prev, market]);
+                                } else {
+                                  setSelectedMarkets(prev => prev.filter(m => m !== market));
+                                }
+                              }}
+                              className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 text-xs"
+                            />
+                            <span className="text-sm">{market}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Source Filter */}
@@ -387,6 +500,19 @@ export default function EngagePage() {
                 </select>
                 <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
               </div>
+              
+              {/* Clear Filters Button */}
+              {(selectedStatuses.length > 0 || selectedMarkets.length > 0) && (
+                <button
+                  onClick={() => {
+                    setSelectedStatuses([]);
+                    setSelectedMarkets([]);
+                  }}
+                  className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+                >
+                  Clear Filters
+                </button>
+              )}
             </div>
           </div>
 
@@ -482,6 +608,8 @@ export default function EngagePage() {
                 isSelected={selectedProperties.includes(property.id)}
                 onToggleSelect={() => togglePropertySelection(property.id)}
                 validMarkets={validMarkets}
+                onStatusUpdate={handleStatusUpdate}
+                onMarketUpdate={handleMarketUpdate}
               />
             ))}
           </div>
@@ -508,6 +636,8 @@ export default function EngagePage() {
                     isSelected={selectedProperties.includes(property.id)}
                     onToggleSelect={() => togglePropertySelection(property.id)}
                     validMarkets={validMarkets}
+                    onStatusUpdate={handleStatusUpdate}
+                    onMarketUpdate={handleMarketUpdate}
                   />
                 ))}
               </div>
@@ -549,16 +679,63 @@ function PropertyCard({
   property, 
   isSelected, 
   onToggleSelect,
-  validMarkets
+  validMarkets,
+  onStatusUpdate,
+  onMarketUpdate
 }: { 
   property: any; 
   isSelected: boolean; 
   onToggleSelect: () => void;
   validMarkets: string[];
+  onStatusUpdate?: (propertyId: string, newStatus: string) => void;
+  onMarketUpdate?: (propertyId: string, newMarket: string) => void;
 }) {
   const [pipelineStatus, setPipelineStatus] = useState(property.pipelineStatus);
   const [market, setMarket] = useState(property.market);
   const [notes, setNotes] = useState(property.notes || '');
+
+  const updateFavoriteStatus = async (newStatus: string) => {
+    try {
+      const response = await fetch('/api/favorites/update-status', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          property_id: property.id,
+          favorite_status: newStatus
+        })
+      });
+      
+      if (!response.ok) {
+        console.error('Failed to update favorite status');
+      } else {
+        // Update parent component's state
+        if (onStatusUpdate) {
+          onStatusUpdate(property.id, newStatus);
+        }
+      }
+    } catch (error) {
+      console.error('Error updating favorite status:', error);
+    }
+  };
+
+  const updateFavoriteMarket = async (newMarket: string) => {
+    try {
+      const response = await fetch('/api/favorites/update-market', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          property_id: property.id,
+          market: newMarket
+        })
+      });
+      
+      if (!response.ok) {
+        console.error('Failed to update favorite market');
+      }
+    } catch (error) {
+      console.error('Error updating favorite market:', error);
+    }
+  };
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -688,8 +865,16 @@ function PropertyCard({
             <MapPin className="h-3 w-3 mr-1" />
             <select
               value={market}
-              onChange={(e) => setMarket(e.target.value)}
-              className="text-sm text-gray-600 bg-transparent border-0 focus:ring-1 focus:ring-blue-500 rounded px-1 py-0 cursor-pointer hover:bg-gray-50"
+              onChange={(e) => {
+                const newMarket = e.target.value;
+                setMarket(newMarket);
+                updateFavoriteMarket(newMarket);
+                // Update parent component state immediately
+                if (onMarketUpdate) {
+                  onMarketUpdate(property.id.toString(), newMarket);
+                }
+              }}
+              className="text-xs px-2 py-1 rounded-full font-medium border-0 focus:ring-2 focus:ring-blue-500 bg-gray-100 text-gray-700"
             >
               {validMarkets.map(marketOption => (
                 <option key={marketOption} value={marketOption}>
@@ -701,7 +886,11 @@ function PropertyCard({
           <div className="relative">
             <select
               value={pipelineStatus}
-              onChange={(e) => setPipelineStatus(e.target.value)}
+              onChange={(e) => {
+                const newStatus = e.target.value;
+                setPipelineStatus(newStatus);
+                updateFavoriteStatus(newStatus);
+              }}
               className={`text-xs px-2 py-1 rounded-full font-medium border-0 focus:ring-2 focus:ring-blue-500 ${getStatusColor(pipelineStatus)}`}
             >
               <option value="Reviewing">Reviewing</option>
@@ -718,10 +907,10 @@ function PropertyCard({
         {/* Price */}
         <div className="mb-3">
           <div className="text-xl font-bold text-gray-900">
-            {property.assessed}
+            {property.estimated}
           </div>
           <div className="text-sm text-gray-600">
-            Est. Equity: <span className="font-medium text-green-600">{property.estEquity}</span>
+            Assessed: <span className="font-medium text-blue-600">{property.assessed}</span>
           </div>
         </div>
 
