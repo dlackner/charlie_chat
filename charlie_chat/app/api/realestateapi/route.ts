@@ -12,6 +12,7 @@ function transformListingToSnakeCase(listing: any) {
     address_state: listing.address?.state,
     address_zip: listing.address?.zip,
     address_full: listing.address?.address,
+    county: listing.county,
     
     // Mail address handling
     mail_address_street: listing.mailAddress?.street,
@@ -125,6 +126,7 @@ export async function POST(req: NextRequest) {
       zip,
       city,
       state,
+      county,
       property_type,
       units_min,
       mls_active,
@@ -187,6 +189,7 @@ export async function POST(req: NextRequest) {
       property_type: property_type,
       city,
       state,
+      county,
       units_min,
       units_max,
       mls_active,

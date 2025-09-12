@@ -19,9 +19,12 @@ export default function PropertyDetailsPage() {
   const searchParams = useSearchParams();
   const [property, setProperty] = useState<any>(null);
   
-  // Determine if we're in DISCOVER or ENGAGE context
-  const isEngageContext = searchParams.get('context') === 'engage' || 
+  // Determine if we're in DISCOVER, ENGAGE, or BUYBOX context
+  const context = searchParams.get('context');
+  const isEngageContext = context === 'engage' || 
                          (typeof window !== 'undefined' && document.referrer.includes('/engage'));
+  const isBuyboxContext = context === 'buybox' || 
+                         (typeof window !== 'undefined' && document.referrer.includes('/buybox'));
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showStreetView, setShowStreetView] = useState(false);
@@ -94,6 +97,8 @@ export default function PropertyDetailsPage() {
         // Fallback based on context
         if (isEngageContext) {
           router.push('/v2/engage');
+        } else if (isBuyboxContext) {
+          router.push('/v2/discover/buybox');
         } else {
           router.push('/v2/discover');
         }
@@ -102,6 +107,8 @@ export default function PropertyDetailsPage() {
       // Fallback based on context if no back parameter
       if (isEngageContext) {
         router.push('/v2/engage');
+      } else if (isBuyboxContext) {
+        router.push('/v2/discover/buybox');
       } else {
         router.push('/v2/discover');
       }

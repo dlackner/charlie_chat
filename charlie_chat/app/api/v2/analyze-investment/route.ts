@@ -17,6 +17,7 @@ interface PropertyData {
   units: number;
   yearBuilt: number;
   assessedValue: string;
+  estimatedValue?: string;
   latitude?: number;
   longitude?: number;
 }
@@ -88,22 +89,25 @@ async function performMultiPromptAnalysis(property: PropertyData): Promise<Analy
 
   // 1. Market Overview Analysis
   const marketPrompt = `Analyze the real estate market for ${property.city}, ${property.state}. Provide 2-3 sentences about:
-- Market characteristics and investment climate
-- Average 1-bedroom apartment rental rates for multifamily properties (NOT single-family homes)
+- Market characteristics and investment climate  
+- Monthly rent for ONE 1-bedroom apartment unit (not total building rent)
 - Current market trends
 
 Property context: ${property.units}-unit ${property.yearBuilt < 1950 ? 'historic' : property.yearBuilt > 1990 ? 'modern' : 'established'} multifamily property.
 
-Keep response concise and factual.`;
+IMPORTANT: When mentioning rent, specify it as "$X per month for a 1-bedroom unit" - do NOT give total building rent.`;
 
   // 2. Financial Analysis
   const financialPrompt = `Estimate financial metrics for a ${property.units}-unit multifamily property in ${property.city}, ${property.state}, built ${property.yearBuilt}, assessed at ${property.assessedValue}:
 
-- Average 1-bedroom apartment rent per unit (for multifamily buildings, not single-family homes)
+IMPORTANT: Provide the monthly rent for ONE 1-bedroom apartment unit only (not total building rent).
+
+- What does ONE 1-bedroom apartment rent for per month in this market?
 - Market cap rate for similar multifamily properties
 - Key financial considerations for apartment buildings
 
-Provide specific numbers when possible. Keep response brief and focus on apartment rental rates.`;
+Format: "$1,200 per month for a 1-bedroom unit" 
+Do NOT provide total building rent. Provide ONLY per-unit rent for one apartment.`;
 
   // 3. Property Features Analysis
   const featuresPrompt = `List exactly 3-4 SHORT investment highlights for this property:
@@ -171,6 +175,48 @@ Keep response structured and actionable.`;
   }
 }
 
+function calculateCashOnCash(noi: number, estimatedValue: string | undefined): number {
+  // Use estimated_value if available, fallback to NOI-based estimation
+  let purchasePrice = 0;
+  
+  if (estimatedValue) {
+    const cleanValue = estimatedValue.toString().replace(/[^\d]/g, '');
+    purchasePrice = parseInt(cleanValue) || 0;
+  }
+  
+  // If no estimated value or invalid, estimate based on NOI and 7.4% cap rate
+  if (purchasePrice === 0) {
+    purchasePrice = Math.round(noi / 0.074);
+  }
+  
+  // Standard investment property assumptions
+  const downPaymentPercent = 0.25; // 25% down payment
+  const interestRate = 0.075; // 7.5% interest rate
+  const loanTermYears = 30;
+  const closingCostPercent = 0.03; // 3% closing costs
+  
+  // Calculate loan details
+  const downPayment = purchasePrice * downPaymentPercent;
+  const loanAmount = purchasePrice - downPayment;
+  const closingCosts = purchasePrice * closingCostPercent;
+  const totalCashInvested = downPayment + closingCosts;
+  
+  // Calculate monthly mortgage payment (P&I only)
+  const monthlyRate = interestRate / 12;
+  const numPayments = loanTermYears * 12;
+  const monthlyPayment = loanAmount * (monthlyRate * Math.pow(1 + monthlyRate, numPayments)) / (Math.pow(1 + monthlyRate, numPayments) - 1);
+  const annualDebtService = monthlyPayment * 12;
+  
+  // Calculate annual cash flow
+  const annualCashFlow = noi - annualDebtService;
+  
+  // Calculate Cash-on-Cash return
+  const cashOnCash = totalCashInvested > 0 ? (annualCashFlow / totalCashInvested) * 100 : 0;
+  
+  // Round to 1 decimal place and ensure reasonable bounds
+  return Math.max(0, Math.min(50, Math.round(cashOnCash * 10) / 10));
+}
+
 function buildAnalysisResult({
   marketResponse,
   financialResponse, 
@@ -193,6 +239,7 @@ function buildAnalysisResult({
   const estimatedRent = rentMatch ? parseInt(rentMatch[1].replace(/,/g, '')) : property.units * 1500;
   const projectedNOI = Math.round((estimatedRent * property.units * 12) * 0.65);
   const capRate = capRateMatch ? parseFloat(capRateMatch[1]) : 7.4;
+  const cashOnCash = calculateCashOnCash(projectedNOI, property.estimatedValue);
   
   // Format equity position
   let formattedEquity = property.assessedValue || 'Unknown';
@@ -289,7 +336,7 @@ function buildAnalysisResult({
   return {
     financialStrength: {
       projectedNOI,
-      cashOnCash: 8.2,
+      cashOnCash,
       capRate,
       equityPosition: formattedEquity,
       marketRent: rentMatch ? `$${rentMatch[1]}/month` : undefined,
@@ -347,11 +394,12 @@ function buildFallbackAnalysis(property: PropertyData): AnalysisResult {
 
   const estimatedRent = property.units * 1500;
   const projectedNOI = Math.round((estimatedRent * 12) * 0.65);
+  const cashOnCash = calculateCashOnCash(projectedNOI, property.estimatedValue);
 
   return {
     financialStrength: {
       projectedNOI,
-      cashOnCash: 8.2,
+      cashOnCash,
       capRate: 7.4,
       equityPosition: formattedEquity,
       notes: ['Analysis based on property fundamentals']

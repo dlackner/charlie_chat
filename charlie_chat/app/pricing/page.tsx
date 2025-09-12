@@ -252,22 +252,22 @@ export default function PricingPage() {
       </div>
 
       <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 pt-8">
-        {/* Charlie Chat FREE */}
+        {/* Core FREE */}
         <div className="border border-gray-300 rounded-lg p-6 bg-white shadow hover:shadow-lg hover:-translate-y-1 transform transition duration-200 ease-in-out flex flex-col relative">
           {/* Free Badge */}
           <div className="absolute -top-6 left-6 z-10">
             <span className="bg-gradient-to-r from-green-500 to-green-600 text-white text-xs font-extrabold px-4 py-2 rounded-full shadow-lg border-2 border-white whitespace-nowrap">FREE</span>
           </div>
-          <h2 className="text-2xl font-semibold mb-2">Charlie Chat</h2>
+          <h2 className="text-2xl font-semibold mb-2">Core</h2>
           <div className="mb-4">
             <p className="text-xl font-bold mb-1">$0</p>
             <p className="text-sm text-gray-500">Forever free</p>
           </div>
           <p className="text-sm text-gray-700 mb-4">
-            It's me, Charles Dobens—my multifamily lessons and stories, my multifamily legal and operational know-how—delivered to you through my Charlie Chat AI assistant.
+            It's me, Charles Dobens—my multifamily lessons and stories, my multifamily legal and operational know-how—delivered to you through my AI assistant.
           </p>
           <ul className="text-sm space-y-1 text-gray-800 mb-4 flex flex-col">
-            <li>✔️ Unlimited Charlie Chats</li>
+            <li>✔️ Unlimited AI chats</li>
             <li>✔️ Full Access to my entire knowledge base</li>
             <li>✔️ Deal tactics</li>
             <li>✔️ Closing strategies</li>
@@ -281,13 +281,13 @@ export default function PricingPage() {
           </button>
         </div>
 
-        {/* Charlie Chat Plus */}
+        {/* Plus */}
         <div className="border border-gray-300 rounded-lg p-6 bg-white shadow hover:shadow-lg hover:-translate-y-1 transform transition duration-200 ease-in-out flex flex-col relative">
           {/* Most Popular Badge */}
           <div className="absolute -top-6 left-6 z-10">
             <span className="bg-gradient-to-r from-blue-500 to-blue-600 text-white text-xs font-extrabold px-4 py-2 rounded-full shadow-lg border-2 border-white whitespace-nowrap">MOST POPULAR</span>
           </div>
-          <h2 className="text-2xl font-semibold mb-2">Charlie Chat Plus</h2>
+          <h2 className="text-2xl font-semibold mb-2">Plus</h2>
           {isAnnual ? (
             <>
               <p className="text-xl font-bold mb-1">$75</p>
@@ -300,11 +300,11 @@ export default function PricingPage() {
             </>
           )}
           <p className="text-sm text-gray-700 mb-4">
-            All the power of Charlie Chat with advanced analytics, mapping, financial statements and property analysis tools.
+            All the power of Core with advanced analytics, mapping, financial statements and property analysis tools.
           </p>
           <ul className="text-sm space-y-1 text-gray-800 mb-4 flex flex-col">
             <li className="flex items-baseline">
-              <span className="text-lg font-semibold text-blue-600">Everything in Charlie Chat, PLUS:</span>
+              <span className="text-lg font-semibold text-blue-600">Everything in Core, PLUS:</span>
             </li>
             <li>✔️ AI analysis of broker documents and offer memorandums</li>
             <li>✔️ Best practice marketing tools & LOI's</li>
@@ -319,13 +319,13 @@ export default function PricingPage() {
           </button>
         </div>
 
-        {/* Charlie Chat Pro */}
+        {/* Pro */}
         <div className="border border-gray-300 rounded-lg p-6 bg-white shadow hover:shadow-lg hover:-translate-y-1 transform transition duration-200 ease-in-out flex flex-col relative">
           {/* Best Value Badge */}
           <div className="absolute -top-6 left-6 z-10">
             <span className="bg-gradient-to-r from-indigo-600 to-indigo-700 text-white text-xs font-extrabold px-4 py-2 rounded-full shadow-lg border-2 border-white whitespace-nowrap">BEST VALUE</span>
           </div>
-          <h2 className="text-2xl font-semibold mb-2">Charlie Chat Professional</h2>
+          <h2 className="text-2xl font-semibold mb-2">Professional</h2>
           {isAnnual ? (
             <>
               <p className="text-xl font-bold mb-1">$250</p>
@@ -342,7 +342,7 @@ export default function PricingPage() {
           </p>
           <ul className="text-sm space-y-1 text-gray-800 mb-4 flex flex-col">
             <li className="flex items-baseline">
-              <span className="text-lg font-semibold text-indigo-600">Everything in Charlie Chat Plus, PLUS:</span>
+              <span className="text-lg font-semibold text-indigo-600">Everything in Plus, PLUS:</span>
             </li>
             <li><a href="#charlie-chat-pro-details" className="text-gray-800 border-b border-dotted border-gray-400 hover:border-gray-600 cursor-pointer transition-colors duration-200">✔️ Access to my Master Class Training Program</a></li>
             <li><a href="#charlie-chat-pro-details" className="text-gray-800 border-b border-dotted border-gray-400 hover:border-gray-600 cursor-pointer transition-colors duration-200">✔️ Weekly group coaching call with Charles Dobens</a></li>
@@ -369,7 +369,7 @@ export default function PricingPage() {
           </p>
           <ul className="text-sm space-y-1 text-gray-800 mb-4 flex flex-col">
             <li className="flex items-baseline">
-              <span className="text-lg font-semibold text-blue-600">Everything in Charlie Chat Pro, PLUS:</span>
+              <span className="text-lg font-semibold text-blue-600">Everything in Professional, PLUS:</span>
             </li>
             <li>✔️ Weekly expert sessions led by me</li>
             <li>✔️ A supportive community of peers & investors</li>
@@ -388,19 +388,11 @@ export default function PricingPage() {
 
       {/* Feature Comparison Section */}
       <div className="max-w-6xl mx-auto mt-16">
-        <div className="flex items-start gap-4 mb-8">
-          <img 
-            src="/charlie.png" 
-            alt="Charlie Dobens" 
-            className="w-16 h-16 rounded-full flex-shrink-0"
-          />
-          <div>
-            <p className="text-lg text-gray-700 leading-relaxed">
-              Look, I've been in this business for over 25 years, and I know that every investor is different. 
-              We have solutions for every type of investor—from beginners just starting out to seasoned professionals 
-              looking to build their business faster and smarter. Here's exactly what you get with each plan:
-            </p>
-          </div>
+        <div className="mb-8">
+          <p className="text-lg text-gray-700 leading-relaxed">
+            We have solutions for every type of investor—from beginners just starting out to seasoned professionals 
+            looking to build their business faster and smarter. Here's exactly what you get with each plan:
+          </p>
         </div>
 
         {/* Modern Comparison Table */}
@@ -412,13 +404,13 @@ export default function PricingPage() {
                 <div className="text-base font-semibold text-gray-900">Compare Features</div>
               </div>
               <div className="px-6 py-4 text-center border-l border-gray-200">
-                <div className="text-sm font-semibold text-gray-900">Charlie Chat</div>
+                <div className="text-sm font-semibold text-gray-900">Core</div>
               </div>
               <div className="px-6 py-4 text-center border-l border-gray-200">
-                <div className="text-sm font-semibold text-gray-900">Charlie Chat Plus</div>
+                <div className="text-sm font-semibold text-gray-900">Plus</div>
               </div>
               <div className="px-6 py-4 text-center border-l border-gray-200">
-                <div className="text-sm font-semibold text-gray-900">Charlie Chat Professional</div>
+                <div className="text-sm font-semibold text-gray-900">Professional</div>
               </div>
             </div>
           </div>
@@ -847,11 +839,11 @@ export default function PricingPage() {
                 </DialogTitle>
                 <DialogDescription className="text-base mt-2 text-gray-700">
                   {userClass === 'cohort' ? (
-                    <>You're already in my exclusive Cohort program! That means you get everything in Charlie Chat <em>plus</em> all the premium features, unlimited property searches, my personal coaching calls, and direct access to me. <br/><br/>You're all set with the best we've got – no need to go backwards!</>
+                    <>You're already in my exclusive Cohort program! That means you get everything in Core <em>plus</em> all the premium features, unlimited property searches, my personal coaching calls, and direct access to me. <br/><br/>You're all set with the best we've got – no need to go backwards!</>
                   ) : userClass === 'charlie_chat_pro' ? (
-                    <>You're already a Charlie Chat Professional member! That gives you everything in basic Charlie Chat <em>plus</em> unlimited property searches, advanced analytics, my master class training, and weekly group coaching. <br/><br/>You've got the premium experience already – no need to downgrade!</>
+                    <>You're already a Professional member! That gives you everything in basic Core <em>plus</em> unlimited property searches, advanced analytics, my master class training, and weekly group coaching. <br/><br/>You've got the premium experience already – no need to downgrade!</>
                   ) : (
-                    <>You're already a Charlie Chat Plus member! That gets you everything in basic Charlie Chat <em>plus</em> unlimited property searches, advanced analytics, and all the premium tools. <br/><br/>You've got more than the basic plan already – you're all set!</>
+                    <>You're already a Plus member! That gets you everything in basic Core <em>plus</em> unlimited property searches, advanced analytics, and all the premium tools. <br/><br/>You've got more than the basic plan already – you're all set!</>
                   )}
                 </DialogDescription>
               </div>
@@ -893,7 +885,7 @@ export default function PricingPage() {
                         <ul className="list-disc ml-4 space-y-1">
                           <li>All the features of whichever plan you choose</li>
                           <li>Unlimited property searches and analytics</li>
-                          <li>Everything in basic Charlie Chat</li>
+                          <li>Everything in basic Core</li>
                         </ul>
                       </div>
                       
@@ -916,7 +908,7 @@ export default function PricingPage() {
                         <p className="font-semibold mb-2">You'd keep:</p>
                         <ul className="list-disc ml-4 space-y-1">
                           <li>All the Plus features (unlimited property searches, analytics, marketing tools)</li>
-                          <li>Everything in basic Charlie Chat</li>
+                          <li>Everything in basic Core</li>
                         </ul>
                       </div>
                       

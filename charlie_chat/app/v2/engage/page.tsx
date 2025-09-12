@@ -7,6 +7,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { Search, Heart, Grid3x3, Map, BarChart3, Grid, Filter, ChevronDown, FileText, MapPin, Calculator, StickyNote, Columns } from 'lucide-react';
 import PropertyMap from '@/components/v2/PropertyMap';
 import { generate10YearCashFlowReport } from '../offer-analyzer/cash-flow-report';
@@ -14,7 +15,15 @@ import { useAuth } from "@/contexts/AuthContext";
 
 export default function EngagePage() {
   const { user, isLoading: authLoading } = useAuth();
-  const [viewMode, setViewMode] = useState<'cards' | 'map' | 'analysis' | 'matrix' | 'pipeline'>('cards');
+  const searchParams = useSearchParams();
+  const [viewMode, setViewMode] = useState<'cards' | 'map' | 'analysis' | 'matrix' | 'pipeline'>(() => {
+    // Initialize view mode from URL parameter, defaulting to 'cards'
+    const paramViewMode = searchParams.get('viewMode');
+    if (paramViewMode && ['cards', 'map', 'analysis', 'matrix', 'pipeline'].includes(paramViewMode)) {
+      return paramViewMode as 'cards' | 'map' | 'analysis' | 'matrix' | 'pipeline';
+    }
+    return 'cards';
+  });
   const [selectedStatuses, setSelectedStatuses] = useState<string[]>([]);
   const [selectedMarkets, setSelectedMarkets] = useState<string[]>([]);
   const [selectedSource, setSelectedSource] = useState('All');
@@ -589,14 +598,33 @@ export default function EngagePage() {
           <div className="flex items-center justify-center py-12">
             <div className="text-center">
               <Heart className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">No Saved Properties</h3>
-              <p className="text-gray-600 mb-4">You haven't saved any properties yet. Start by discovering properties and saving your favorites.</p>
-              <a 
-                href="/v2/discover" 
-                className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
-              >
-                Discover Properties
-              </a>
+              {savedProperties.length === 0 ? (
+                <>
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">No Saved Properties</h3>
+                  <p className="text-gray-600 mb-4">You haven't saved any properties yet. Start by discovering properties and saving your favorites.</p>
+                  <a 
+                    href="/v2/discover" 
+                    className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                  >
+                    Discover Properties
+                  </a>
+                </>
+              ) : (
+                <>
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">No Properties Match Your Filters</h3>
+                  <p className="text-gray-600 mb-4">You have {savedProperties.length} saved properties, but none match your current filter criteria.</p>
+                  <button 
+                    onClick={() => {
+                      setSelectedStatuses([]);
+                      setSelectedMarkets([]);
+                      setSelectedSource('All');
+                    }}
+                    className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                  >
+                    Clear All Filters
+                  </button>
+                </>
+              )}
             </div>
           </div>
         ) : viewMode === 'cards' ? (
@@ -610,6 +638,7 @@ export default function EngagePage() {
                 validMarkets={validMarkets}
                 onStatusUpdate={handleStatusUpdate}
                 onMarketUpdate={handleMarketUpdate}
+                currentViewMode={viewMode}
               />
             ))}
           </div>
@@ -623,6 +652,7 @@ export default function EngagePage() {
                 properties={filteredProperties}
                 className="h-full rounded-lg border border-gray-200"
                 context="engage"
+                currentViewMode={viewMode}
               />
             </div>
             
@@ -638,6 +668,7 @@ export default function EngagePage() {
                     validMarkets={validMarkets}
                     onStatusUpdate={handleStatusUpdate}
                     onMarketUpdate={handleMarketUpdate}
+                    currentViewMode={viewMode}
                   />
                 ))}
               </div>
@@ -681,7 +712,8 @@ function PropertyCard({
   onToggleSelect,
   validMarkets,
   onStatusUpdate,
-  onMarketUpdate
+  onMarketUpdate,
+  currentViewMode
 }: { 
   property: any; 
   isSelected: boolean; 
@@ -689,6 +721,7 @@ function PropertyCard({
   validMarkets: string[];
   onStatusUpdate?: (propertyId: string, newStatus: string) => void;
   onMarketUpdate?: (propertyId: string, newMarket: string) => void;
+  currentViewMode?: string;
 }) {
   const [pipelineStatus, setPipelineStatus] = useState(property.pipelineStatus);
   const [market, setMarket] = useState(property.market);
@@ -941,7 +974,14 @@ function PropertyCard({
           </button>
           
           <button 
-            onClick={() => window.location.href = `/v2/discover/property/${property.id}?context=engage`}
+            onClick={() => {
+              const baseUrl = new URL('/v2/engage', window.location.origin);
+              if (currentViewMode && currentViewMode !== 'cards') {
+                baseUrl.searchParams.set('viewMode', currentViewMode);
+              }
+              const backUrl = encodeURIComponent(baseUrl.toString());
+              window.location.href = `/v2/discover/property/${property.id}?context=engage&back=${backUrl}`;
+            }}
             className="text-blue-600 hover:text-blue-700 text-sm font-medium"
           >
             View Details

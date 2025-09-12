@@ -12,7 +12,7 @@ import 'mapbox-gl/dist/mapbox-gl.css';
 interface PropertyMapProps {
   properties: any[];
   className?: string;
-  context?: 'discover' | 'engage';
+  context?: 'discover' | 'engage' | 'buybox';
   currentViewMode?: string;
   isShowingFavorites?: boolean;
   searchQuery?: string;
@@ -71,8 +71,16 @@ const PropertyMap = dynamic(() => import('react-map-gl/mapbox').then((mod) => {
       let backUrl = '';
       
       if (context === 'engage') {
-        // For engage context, go back to engage page
-        backUrl = encodeURIComponent('/v2/engage');
+        // For engage context, go back to engage page with current view mode
+        const baseUrl = new URL('/v2/engage', window.location.origin);
+        if (currentViewMode && currentViewMode !== 'cards') {
+          baseUrl.searchParams.set('viewMode', currentViewMode);
+        }
+        backUrl = encodeURIComponent(baseUrl.toString());
+      } else if (context === 'buybox') {
+        // For buybox context, go back to buybox page
+        const baseUrl = new URL('/v2/discover/buybox', window.location.origin);
+        backUrl = encodeURIComponent(baseUrl.toString());
       } else {
         // For discover context, create a clean back URL
         const baseUrl = new URL('/v2/discover', window.location.origin);
@@ -89,7 +97,7 @@ const PropertyMap = dynamic(() => import('react-map-gl/mapbox').then((mod) => {
       }
 
       // Navigate to property details with appropriate context
-      const contextParam = context === 'engage' ? '?context=engage' : '';
+      const contextParam = context === 'engage' ? '?context=engage' : context === 'buybox' ? '?context=buybox' : '';
       const separator = contextParam ? '&' : '?';
       window.location.href = `/v2/discover/property/${popupInfo.id || popupInfo.property_id}${contextParam}${separator}back=${backUrl}`;
     };

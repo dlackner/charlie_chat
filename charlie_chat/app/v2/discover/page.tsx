@@ -226,6 +226,7 @@ export default function DiscoverPage() {
     city: '',
     state: '',
     zip: '',
+    county: '',
     house: '',
     street: '',
     
@@ -786,7 +787,13 @@ export default function DiscoverPage() {
         }
       } else if (locationParts.length >= 2) {
         // City, State format: "newport, ri" or "denver, co 80202"
-        searchFilters.city = capitalizeWords(locationParts[0]);
+        // Check if first part contains "County" - if so, use county parameter instead of city
+        const firstPart = locationParts[0];
+        if (firstPart.toLowerCase().includes('county')) {
+          searchFilters.county = capitalizeWords(firstPart);
+        } else {
+          searchFilters.city = capitalizeWords(firstPart);
+        }
         
         const lastPart = locationParts[1].trim();
         const stateZipMatch = lastPart.match(/^([a-zA-Z]{2})\s*(\d{5}(?:-\d{4})?)?$/);
@@ -806,7 +813,13 @@ export default function DiscoverPage() {
           searchFilters.city = '';
           searchFilters.state = '';
         } else {
-          searchFilters.city = capitalizeWords(locationParts[0]);
+          // Check if single input contains "County"
+          const input = locationParts[0];
+          if (input.toLowerCase().includes('county')) {
+            searchFilters.county = capitalizeWords(input);
+          } else {
+            searchFilters.city = capitalizeWords(input);
+          }
           searchFilters.state = '';
           searchFilters.zip = '';
         }
@@ -947,6 +960,7 @@ export default function DiscoverPage() {
       city: '',
       state: '',
       zip: '',
+      county: '',
       house: '',
       street: '',
       
@@ -1016,7 +1030,14 @@ export default function DiscoverPage() {
           if (zipMatch && locationParts.length === 1) {
             apiParams.zip = zipMatch[0];
           } else if (locationParts.length >= 2) {
-            apiParams.city = locationParts[0];
+            const firstPart = locationParts[0];
+            // Check if first part contains "County" - if so, use county parameter instead of city
+            if (firstPart.toLowerCase().includes('county')) {
+              apiParams.county = firstPart;
+            } else {
+              apiParams.city = firstPart;
+            }
+            
             const lastPart = locationParts[1].trim();
             const stateZipMatch = lastPart.match(/^([a-zA-Z]{2})\s*(\d{5}(?:-\d{4})?)?$/);
             if (stateZipMatch) {
@@ -3094,11 +3115,11 @@ function RecentPropertyCard({
         {/* Price */}
         <div className="mb-3">
           <div className="text-xl font-bold text-gray-900">
-            ${property.assessed_value ? parseInt(property.assessed_value).toLocaleString() : 'N/A'}
+            ${property.estimated_value ? parseInt(property.estimated_value).toLocaleString() : 'N/A'}
           </div>
           <div className="text-sm text-gray-600">
-            Est. Value: <span className="font-medium text-green-600">
-              ${property.estimated_value ? parseInt(property.estimated_value).toLocaleString() : 'N/A'}
+            Assessed: <span className="font-medium text-gray-600">
+              ${property.assessed_value ? parseInt(property.assessed_value).toLocaleString() : 'N/A'}
             </span>
           </div>
         </div>
@@ -3288,11 +3309,11 @@ function PropertyCard({
         {/* Price */}
         <div className="mb-3">
           <div className="text-xl font-bold text-gray-900">
-            ${displayProperty.assessed_value ? parseInt(displayProperty.assessed_value).toLocaleString() : 'N/A'}
+            ${displayProperty.estimated_value ? parseInt(displayProperty.estimated_value).toLocaleString() : 'N/A'}
           </div>
           <div className="text-sm text-gray-600">
-            Est. Value: <span className="font-medium text-green-600">
-              ${displayProperty.estimated_value ? parseInt(displayProperty.estimated_value).toLocaleString() : 'N/A'}
+            Assessed: <span className="font-medium text-gray-600">
+              ${displayProperty.assessed_value ? parseInt(displayProperty.assessed_value).toLocaleString() : 'N/A'}
             </span>
           </div>
         </div>

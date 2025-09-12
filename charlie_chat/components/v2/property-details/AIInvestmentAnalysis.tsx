@@ -78,6 +78,7 @@ export function AIInvestmentAnalysis({ property, isEngageContext }: AIInvestment
         units: property.units_count || 1,
         yearBuilt: property.year_built || 1950,
         assessedValue: property.assessed_value || 'Unknown',
+        estimatedValue: (property as any).estimated_value,
         latitude: property.latitude,
         longitude: property.longitude
       };

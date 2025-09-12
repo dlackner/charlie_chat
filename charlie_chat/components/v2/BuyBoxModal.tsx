@@ -8,7 +8,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useMyPropertiesAccess } from "@/app/v2/my-properties/components/useMyPropertiesAccess";
-import { Home, X, Star, Plus, Trash2, Info } from "lucide-react";
+import { Home, X, Star, Plus, Info, MapPin } from "lucide-react";
 import { Dialog } from "@headlessui/react";
 import { PropertyCountRangeIndicator } from "@/components/ui/PropertyCountRangeIndicator";
 import { getPropertyCountStatus, MarketTier, MARKET_TIERS } from "@/lib/marketSizeUtil";
@@ -16,6 +16,126 @@ import { getPropertyCountStatus, MarketTier, MARKET_TIERS } from "@/lib/marketSi
 // Utility function for capitalizing words (proper case)
 const capitalizeWords = (str: string) =>
     str.toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
+
+// Address validation and suggestions (same logic as discover page)
+const validateAndSuggestAddress = async (input: string, marketId: string, setShowSuggestions: (marketId: string, show: boolean) => void, setSuggestions: (marketId: string, suggestions: any[]) => void) => {
+    if (!input.trim() || input.length < 3) {
+        setShowSuggestions(marketId, false);
+        return;
+    }
+    
+    // Check if this is multiple zip codes (contains commas and looks like zip codes)
+    const hasCommas = input.includes(',');
+    const zipPattern = /^\d{5}(-\d{4})?$/;
+    const parts = input.split(',').map(s => s.trim());
+    
+    // If it's all zip codes, don't suggest
+    if (hasCommas && parts.every(part => zipPattern.test(part))) {
+        setShowSuggestions(marketId, false);
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/api/v2/places-autocomplete?input=${encodeURIComponent(input)}`);
+        if (response.ok) {
+            const data = await response.json();
+            if (data.predictions && Array.isArray(data.predictions)) {
+                setSuggestions(marketId, data.predictions);
+                setShowSuggestions(marketId, true);
+            } else {
+                setShowSuggestions(marketId, false);
+            }
+        } else {
+            setShowSuggestions(marketId, false);
+        }
+    } catch (error) {
+        console.error('Error fetching address suggestions:', error);
+        setShowSuggestions(marketId, false);
+    }
+};
+
+// Parse location input and extract location components (same logic as discover page)
+const parseLocationInput = (locationInput: string): { type: 'city' | 'zip' | 'county', city: string, state: string, zip: string, county: string } => {
+    if (!locationInput.trim()) {
+        return { type: 'city', city: '', state: '', zip: '', county: '' };
+    }
+
+    const locationParts = locationInput.split(',').map(s => s.trim());
+    const zipMatch = locationInput.match(/\b\d{5}(-\d{4})?\b/);
+    
+    if (zipMatch && locationParts.length === 1) {
+        // Just a ZIP code
+        return { type: 'zip', zip: zipMatch[0], city: '', state: '', county: '' };
+    } else if (locationParts.length >= 2) {
+        const firstPart = locationParts[0];
+        const lastPart = locationParts[1].trim();
+        const stateZipMatch = lastPart.match(/^([a-zA-Z]{2})\s*(\d{5}(?:-\d{4})?)?$/);
+        
+        let parsedData = {
+            type: 'city' as const,
+            city: '',
+            state: '',
+            zip: '',
+            county: ''
+        };
+
+        // Check if first part contains "County"
+        if (firstPart.toLowerCase().includes('county')) {
+            parsedData.type = 'county';
+            parsedData.county = capitalizeWords(firstPart);
+            parsedData.city = capitalizeWords(firstPart); // Store county in city field for API compatibility
+        } else {
+            parsedData.city = capitalizeWords(firstPart);
+        }
+        
+        if (stateZipMatch) {
+            parsedData.state = stateZipMatch[1].toUpperCase();
+            if (stateZipMatch[2]) parsedData.zip = stateZipMatch[2];
+        }
+        
+        return parsedData;
+    } else {
+        // Single input - could be city or zip
+        if (zipMatch) {
+            return { type: 'zip', zip: zipMatch[0], city: '', state: '', county: '' };
+        } else {
+            const firstPart = locationParts[0];
+            if (firstPart.toLowerCase().includes('county')) {
+                return { 
+                    type: 'county' as const, 
+                    county: capitalizeWords(firstPart),
+                    city: capitalizeWords(firstPart), // Store county in city field for API compatibility
+                    state: '', 
+                    zip: '' 
+                };
+            } else {
+                return { 
+                    type: 'city' as const, 
+                    city: capitalizeWords(firstPart), 
+                    state: '', 
+                    zip: '', 
+                    county: '' 
+                };
+            }
+        }
+    }
+};
+
+// Get current location display value for the unified input
+const getLocationDisplayValue = (market: any) => {
+    if (market.type === 'zip' && market.zip) {
+        return market.zip;
+    } else if (market.type === 'city' && market.city && market.state) {
+        return `${market.city}, ${market.state}`;
+    } else if (market.city && market.state) {
+        return `${market.city}, ${market.state}`;
+    } else if (market.city) {
+        return market.city;
+    } else if (market.zip) {
+        return market.zip;
+    }
+    return '';
+};
 
 // Generate a stable market key for recommendation system mapping (never changes)
 // Always uses sequential Market1-5 format regardless of location type
@@ -43,11 +163,13 @@ const getMarketDisplayName = (market: Market, index: number): string => {
     
     if (market.type === 'city' && market.city && market.state) {
         return `${market.city}, ${market.state}`;
+    } else if (market.type === 'county' && market.county && market.state) {
+        return `${market.county}, ${market.state}`;
     } else if (market.type === 'zip' && market.zip) {
         const firstZip = market.zip.split(',')[0].trim();
         return `ZIP ${firstZip}`;
     } else {
-        return `Market ${index + 1}`;
+        return '';
     }
 };
 
@@ -82,10 +204,11 @@ interface Market {
     user_id: string;
     market_key: string;
     market_name?: string;
-    market_type: 'city' | 'zip';
+    market_type: 'city' | 'zip' | 'county';
     city?: string;
     state?: string;
     zip?: string;
+    county?: string;
     units_min: number;
     units_max: number;
     assessed_value_min: number;
@@ -110,7 +233,7 @@ interface Market {
     created_at?: string;
     updated_at?: string;
     // UI compatibility fields
-    type?: 'city' | 'zip';
+    type?: 'city' | 'zip' | 'county';
     customName?: string;
     marketKey?: string;
     isExpanded?: boolean;
@@ -146,10 +269,48 @@ export const BuyBoxModal: React.FC<BuyBoxModalProps> = ({ isOpen, onClose, focus
     const [successMessage, setSuccessMessage] = useState("");
     const [showLearningPhasesModal, setShowLearningPhasesModal] = useState(false);
     const [maxMarkets, setMaxMarkets] = useState(5); // Default for Pro users
+    // Location input states (separate from parsed location data, like discover page)
+    const [locationInputs, setLocationInputs] = useState<{ [marketId: string]: string }>({});
+    const [showAddressSuggestions, setShowAddressSuggestions] = useState<{ [marketId: string]: boolean }>({});
+    const [addressSuggestions, setAddressSuggestions] = useState<{ [marketId: string]: any[] }>({});
 
     // Memoized function to close learning phases modal
     const handleCloseLearningPhases = useCallback(() => {
         setShowLearningPhasesModal(false);
+    }, []);
+
+    // Helper functions for address suggestions (same pattern as discover page)
+    const updateAddressSuggestions = useCallback((marketId: string, suggestions: any[]) => {
+        setAddressSuggestions(prev => ({ ...prev, [marketId]: suggestions }));
+    }, []);
+
+    const updateShowAddressSuggestions = useCallback((marketId: string, show: boolean) => {
+        setShowAddressSuggestions(prev => ({ ...prev, [marketId]: show }));
+    }, []);
+
+    const selectAddressSuggestion = useCallback((marketId: string, suggestion: any) => {
+        const suggestionText = suggestion.description;
+        setLocationInputs(prev => ({ ...prev, [marketId]: suggestionText }));
+        setShowAddressSuggestions(prev => ({ ...prev, [marketId]: false }));
+        
+        // Parse and update market data when suggestion is selected
+        const parsedLocation = parseLocationInput(suggestionText);
+        setBuyBoxData(prev => ({
+            ...prev,
+            markets: prev.markets.map(market => {
+                if (market.id === marketId) {
+                    return {
+                        ...market,
+                        type: parsedLocation.type,
+                        city: parsedLocation.city,
+                        state: parsedLocation.state,
+                        zip: parsedLocation.zip,
+                        county: parsedLocation.county
+                    };
+                }
+                return market;
+            })
+        }));
     }, []);
 
     // Load existing buy box data when modal opens
@@ -208,6 +369,13 @@ export const BuyBoxModal: React.FC<BuyBoxModalProps> = ({ isOpen, onClose, focus
                     markets: marketsWithUIState,
                     weekly_recommendations_enabled: profileData?.weekly_recommendations_enabled ?? false
                 });
+
+                // Initialize location inputs for existing markets (same as discover page approach)
+                const initialLocationInputs: { [marketId: string]: string } = {};
+                marketsWithUIState.forEach((market: any) => {
+                    initialLocationInputs[market.id] = getLocationDisplayValue(market) || '';
+                });
+                setLocationInputs(initialLocationInputs);
 
             } catch (error) {
                 // Handle unexpected loading errors silently
@@ -275,6 +443,9 @@ export const BuyBoxModal: React.FC<BuyBoxModalProps> = ({ isOpen, onClose, focus
                     ...prev,
                     markets: [...prev.markets, templateMarket]
                 }));
+
+                // Initialize location input for template market
+                setLocationInputs(prev => ({ ...prev, [templateMarket.id]: '' }));
                 // Added template market to state for add mode
             }
         }
@@ -483,7 +654,7 @@ export const BuyBoxModal: React.FC<BuyBoxModalProps> = ({ isOpen, onClose, focus
                 
                 // Sync UI fields with database fields
                 if ('type' in updates) {
-                    templateMarket.market_type = updates.type as 'city' | 'zip';
+                    templateMarket.market_type = updates.type as 'city' | 'zip' | 'county';
                 }
                 if ('customName' in updates) {
                     templateMarket.market_name = updates.customName;
@@ -494,6 +665,12 @@ export const BuyBoxModal: React.FC<BuyBoxModalProps> = ({ isOpen, onClose, focus
                     }
                 }
                 
+                // Initialize location input for new template market
+                setLocationInputs(prevInputs => ({ 
+                    ...prevInputs, 
+                    [templateMarket.id]: getLocationDisplayValue(templateMarket) || '' 
+                }));
+
                 return {
                     ...prev,
                     markets: [...prev.markets, templateMarket]
@@ -509,7 +686,7 @@ export const BuyBoxModal: React.FC<BuyBoxModalProps> = ({ isOpen, onClose, focus
                         
                         // Sync UI fields with database fields
                         if ('type' in updates) {
-                            updatedMarket.market_type = updates.type as 'city' | 'zip';
+                            updatedMarket.market_type = updates.type as 'city' | 'zip' | 'county';
                         }
                         if ('customName' in updates) {
                             updatedMarket.market_name = updates.customName;
@@ -556,7 +733,16 @@ export const BuyBoxModal: React.FC<BuyBoxModalProps> = ({ isOpen, onClose, focus
 
             let locationCondition: any = {};
             if (market.type === 'city' && market.city && market.state) {
-                locationCondition.city = market.city;
+                // Check if this is actually a county stored in the city field
+                if (market.city.toLowerCase().includes('county')) {
+                    locationCondition.county = market.city;
+                    locationCondition.state = market.state;
+                } else {
+                    locationCondition.city = market.city;
+                    locationCondition.state = market.state;
+                }
+            } else if (market.type === 'county' && market.county && market.state) {
+                locationCondition.county = market.county;
                 locationCondition.state = market.state;
             } else if (market.type === 'zip' && market.zip) {
                 locationCondition.zip = market.zip;
@@ -820,6 +1006,7 @@ export const BuyBoxModal: React.FC<BuyBoxModalProps> = ({ isOpen, onClose, focus
                     city: marketToSave.city || null,
                     state: marketToSave.state || null,
                     zip: marketToSave.zip || null,
+                    county: marketToSave.county || null,
                     units_min: Number(marketToSave.units_min) || 0,
                     units_max: Number(marketToSave.units_max) || 0,
                     assessed_value_min: Number(marketToSave.assessed_value_min) || 0,
@@ -937,39 +1124,41 @@ export const BuyBoxModal: React.FC<BuyBoxModalProps> = ({ isOpen, onClose, focus
     return (
         <>
         <Dialog open={isOpen} onClose={onClose} className="relative z-50">
-            <div className="fixed inset-0 bg-black/50" aria-hidden="true" />
+            <div className="fixed inset-0 bg-gray-900/75 backdrop-blur-sm" aria-hidden="true" />
             <div className="fixed inset-0 flex items-center justify-center p-4">
-                <Dialog.Panel className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-hidden">
+                <Dialog.Panel className="bg-white rounded-2xl shadow-2xl ring-1 ring-gray-900/5 w-full max-w-4xl max-h-[90vh] overflow-hidden">
                     {/* Header */}
-                    <div className="flex items-center justify-between p-6 border-b border-gray-200">
-                        <div className="flex items-center">
-                            <Home size={24} className="mr-3 text-blue-600" />
+                    <div className="flex items-center justify-between px-8 py-6 border-b border-gray-100">
+                        <div className="flex items-center gap-4">
+                            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-50">
+                                <Home size={20} className="text-blue-600" />
+                            </div>
                             <div>
-                                <Dialog.Title className="text-xl font-semibold text-gray-900">
+                                <Dialog.Title className="text-2xl font-semibold text-gray-900">
                                     My Buy Box
                                 </Dialog.Title>
-                                <p className="text-sm text-gray-600">Set your investment criteria to receive personalized weekly property recommendations</p>
+                                <p className="text-sm text-gray-600 mt-1">Set your investment criteria to receive personalized weekly property recommendations</p>
                             </div>
                         </div>
                         <button
                             onClick={onClose}
-                            className="text-gray-400 hover:text-gray-600"
+                            className="flex h-10 w-10 items-center justify-center rounded-lg text-gray-400 hover:bg-gray-50 hover:text-gray-600 transition-colors"
                         >
-                            <X size={24} />
+                            <X size={20} />
                         </button>
                     </div>
 
                     {/* Content */}
-                    <div className="p-6 overflow-y-auto max-h-[calc(90vh-160px)]">
+                    <div className="px-8 py-6 overflow-y-auto max-h-[calc(90vh-160px)]">
                         {/* Messages */}
                         {successMessage && (
-                            <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg text-green-800 text-sm">
+                            <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-xl text-green-800 text-sm font-medium shadow-sm">
                                 {successMessage}
                             </div>
                         )}
 
                         {errorMessage && (
-                            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-800 text-sm">
+                            <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl text-red-800 text-sm font-medium shadow-sm">
                                 {errorMessage}
                             </div>
                         )}
@@ -980,18 +1169,15 @@ export const BuyBoxModal: React.FC<BuyBoxModalProps> = ({ isOpen, onClose, focus
                                 <p className="text-gray-600">Loading buy box...</p>
                             </div>
                         ) : (
-                            <div className="space-y-6">
+                            <div className="space-y-8">
                                 {/* Target Markets */}
                                 <div>
                                     <div className="flex items-center justify-between mb-4">
-                                        <label className="block text-sm font-medium text-gray-700">
-                                            {focusedMarket === null 
-                                                ? "Add New Market" 
-                                                : focusedMarket 
-                                                    ? `Edit ${focusedMarket} Market` 
-                                                    : `Target Markets (up to ${maxMarkets})`
-                                            }
-                                        </label>
+                                        {focusedMarket === undefined && (
+                                            <label className="block text-base font-semibold text-gray-900">
+                                                {`Target Markets (up to ${maxMarkets})`}
+                                            </label>
+                                        )}
                                         {focusedMarket === undefined && (
                                             <button
                                                 onClick={addMarket}
@@ -1110,10 +1296,10 @@ export const BuyBoxModal: React.FC<BuyBoxModalProps> = ({ isOpen, onClose, focus
                                             const isExpanded = focusedMarket ? true : (market.isExpanded !== false);
                                             
                                             return (
-                                                <div key={market.id} className={`border rounded-lg transition-all duration-200 ${
+                                                <div key={market.id} className={`border rounded-xl transition-all duration-200 ${
                                                     isExpanded 
-                                                        ? 'border-blue-400 border-2 shadow-md bg-blue-50/30' 
-                                                        : 'border-gray-200'
+                                                        ? 'border-blue-500 shadow-lg bg-blue-50/50 ring-1 ring-blue-500/20' 
+                                                        : 'border-gray-200 shadow-sm hover:shadow-md hover:border-gray-300'
                                                 }`}>
                                                     <div 
                                                         className={`p-4 transition-colors ${focusedMarket ? '' : 'cursor-pointer hover:bg-gray-50'}`}
@@ -1146,7 +1332,7 @@ export const BuyBoxModal: React.FC<BuyBoxModalProps> = ({ isOpen, onClose, focus
                                                                                 }, 0);
                                                                             }
                                                                         }}
-                                                                        className="font-medium text-gray-900 bg-transparent border border-gray-300 outline-none focus:bg-white focus:border-blue-400 focus:ring-1 focus:ring-blue-400 rounded px-2 py-1 min-w-[8ch] max-w-[40ch] hover:border-gray-400 transition-colors text-sm"
+                                                                        className="font-semibold text-gray-900 bg-transparent border border-gray-200 outline-none focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 rounded-lg px-3 py-2 min-w-[8ch] max-w-[40ch] hover:border-gray-300 transition-all duration-200 text-base"
                                                                         title="Click to edit market name"
                                                                     />
                                                                     {market.propertyCountChecked && (() => {
@@ -1185,20 +1371,7 @@ export const BuyBoxModal: React.FC<BuyBoxModalProps> = ({ isOpen, onClose, focus
                                                                         className="px-4 py-2 rounded text-sm font-medium transition-colors bg-blue-500 text-white hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
                                                                         title="Save market configuration"
                                                                     >
-                                                                        {isSavingThis ? 'Saving...' : 'Save'}
-                                                                    </button>
-                                                                )}
-                                                                {/* Trash icon - Only visible when expanded */}
-                                                                {isExpanded && (
-                                                                    <button
-                                                                        onClick={(e) => {
-                                                                            e.stopPropagation();
-                                                                            removeMarket(market.id);
-                                                                        }}
-                                                                        className="text-red-600 hover:text-red-700 transition-colors"
-                                                                        title="Delete market"
-                                                                    >
-                                                                        <Trash2 size={16} />
+                                                                        {isSavingThis ? 'Updating...' : 'Update Criteria'}
                                                                     </button>
                                                                 )}
                                                                 {!focusedMarket && (
@@ -1213,90 +1386,83 @@ export const BuyBoxModal: React.FC<BuyBoxModalProps> = ({ isOpen, onClose, focus
                                                     </div>
 
                                                     {isExpanded && (
-                                                        <div className="px-4 pb-4 border-t border-gray-100">
+                                                        <div className="px-6 pb-6 border-t border-gray-100">
                                                             {/* Market configuration form - keeping existing structure but with smaller text */}
-                                                            <div className="mb-4 mt-4">
-                                                                <div className="flex items-center space-x-4 mb-3">
-                                                                    <label className="flex items-center text-xs">
-                                                                        <input
-                                                                            type="radio"
-                                                                            value="city"
-                                                                            checked={market.type === 'city'}
-                                                                            onChange={(e) => {
-                                                                                e.stopPropagation();
-                                                                                updateMarket(market.id, { type: 'city', zip: '' });
-                                                                            }}
-                                                                            onClick={(e) => e.stopPropagation()}
-                                                                            className="mr-2"
-                                                                        />
-                                                                        City/State
-                                                                    </label>
-                                                                    <label className="flex items-center text-xs">
-                                                                        <input
-                                                                            type="radio"
-                                                                            value="zip"
-                                                                            checked={market.type === 'zip'}
-                                                                            onChange={(e) => {
-                                                                                e.stopPropagation();
-                                                                                updateMarket(market.id, { type: 'zip', city: '', state: '' });
-                                                                            }}
-                                                                            onClick={(e) => e.stopPropagation()}
-                                                                            className="mr-2"
-                                                                        />
-                                                                        ZIP Code(s)
-                                                                    </label>
-                                                                </div>
-
-                                                                {market.type === 'city' && (
-                                                                    <div className="flex gap-3">
-                                                                        <input
-                                                                            type="text"
-                                                                            placeholder="City"
-                                                                            value={market.city || ''}
-                                                                            onChange={(e) => {
-                                                                                e.stopPropagation();
-                                                                                updateMarket(market.id, { city: capitalizeWords(e.target.value) });
-                                                                            }}
-                                                                            onClick={(e) => e.stopPropagation()}
-                                                                            onFocus={(e) => e.stopPropagation()}
-                                                                            className="flex-1 px-3 py-2 text-xs border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                                                        />
-                                                                        <input
-                                                                            type="text"
-                                                                            maxLength={2}
-                                                                            placeholder="ST"
-                                                                            value={market.state || ''}
-                                                                            onChange={(e) => {
-                                                                                e.stopPropagation();
-                                                                                updateMarket(market.id, { state: e.target.value.toUpperCase() });
-                                                                            }}
-                                                                            onClick={(e) => e.stopPropagation()}
-                                                                            onFocus={(e) => e.stopPropagation()}
-                                                                            className="w-16 px-3 py-2 text-xs border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-center uppercase"
-                                                                        />
-                                                                    </div>
-                                                                )}
-
-                                                                {market.type === 'zip' && (
+                                                            <div className="mb-6 mt-6">
+                                                                <div className="mb-3 relative">
                                                                     <input
                                                                         type="text"
-                                                                        placeholder="Zip codes (comma-separated: 02840,02841,02842)"
-                                                                        value={market.zip || ''}
+                                                                        placeholder="Enter city, county, or zip code (e.g., Newport, RI or Newport County, RI or 02840)"
+                                                                        value={locationInputs[market.id] || ''}
                                                                         onChange={(e) => {
                                                                             e.stopPropagation();
-                                                                            updateMarket(market.id, { zip: e.target.value });
+                                                                            const locationInput = e.target.value;
+                                                                            
+                                                                            // Update the input state (allows free typing like discover page)
+                                                                            setLocationInputs(prev => ({ ...prev, [market.id]: locationInput }));
+                                                                            
+                                                                            // Parse and update market data
+                                                                            const parsedLocation = parseLocationInput(locationInput);
+                                                                            updateMarket(market.id, {
+                                                                                type: parsedLocation.type,
+                                                                                city: parsedLocation.city,
+                                                                                state: parsedLocation.state,
+                                                                                zip: parsedLocation.zip,
+                                                                                county: parsedLocation.county
+                                                                            });
+                                                                            
+                                                                            // Trigger address validation after 300ms delay (same as discover page)
+                                                                            clearTimeout((window as any).addressValidationTimeout);
+                                                                            (window as any).addressValidationTimeout = setTimeout(() => {
+                                                                                validateAndSuggestAddress(locationInput, market.id, updateShowAddressSuggestions, updateAddressSuggestions);
+                                                                            }, 300);
+                                                                        }}
+                                                                        onFocus={(e) => {
+                                                                            e.stopPropagation();
+                                                                            const currentInput = locationInputs[market.id] || '';
+                                                                            if (currentInput.length >= 3) {
+                                                                                validateAndSuggestAddress(currentInput, market.id, updateShowAddressSuggestions, updateAddressSuggestions);
+                                                                            }
+                                                                        }}
+                                                                        onBlur={() => {
+                                                                            // Delay hiding suggestions to allow for clicks
+                                                                            setTimeout(() => updateShowAddressSuggestions(market.id, false), 200);
                                                                         }}
                                                                         onClick={(e) => e.stopPropagation()}
-                                                                        onFocus={(e) => e.stopPropagation()}
-                                                                        className="w-full px-3 py-2 text-xs border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                                        className="w-full px-4 py-3 text-sm font-medium border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                                                                     />
-                                                                )}
+                                                                    
+                                                                    {/* Address Suggestions Dropdown (same as discover page) */}
+                                                                    {showAddressSuggestions[market.id] && addressSuggestions[market.id] && addressSuggestions[market.id].length > 0 && (
+                                                                        <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50 max-h-60 overflow-y-auto">
+                                                                            {addressSuggestions[market.id].map((suggestion: any, index: number) => (
+                                                                                <button
+                                                                                    key={index}
+                                                                                    onClick={() => selectAddressSuggestion(market.id, suggestion)}
+                                                                                    className="w-full text-left px-4 py-3 hover:bg-gray-50 border-b border-gray-100 last:border-b-0 focus:bg-blue-50 focus:outline-none"
+                                                                                >
+                                                                                    <div className="flex items-start">
+                                                                                        <MapPin className="h-4 w-4 text-gray-400 mt-1 flex-shrink-0" />
+                                                                                        <div className="ml-3 flex-1">
+                                                                                            <div className="text-sm font-medium text-gray-900">
+                                                                                                {suggestion.structured_formatting?.main_text || suggestion.description}
+                                                                                            </div>
+                                                                                            <div className="text-xs text-gray-600">
+                                                                                                {suggestion.structured_formatting?.secondary_text || ''}
+                                                                                            </div>
+                                                                                        </div>
+                                                                                    </div>
+                                                                                </button>
+                                                                            ))}
+                                                                        </div>
+                                                                    )}
+                                                                </div>
                                                             </div>
 
                                                             {/* Property Filters */}
-                                                            <div className="grid grid-cols-2 gap-4">
+                                                            <div className="grid grid-cols-2 gap-6">
                                                                 <div>
-                                                                    <label className="block text-xs font-medium text-gray-700 mb-2">
+                                                                    <label className="block text-sm font-semibold text-gray-900 mb-3">
                                                                         Units Range
                                                                     </label>
                                                                     <div className="flex items-center space-x-2">
@@ -1312,9 +1478,9 @@ export const BuyBoxModal: React.FC<BuyBoxModalProps> = ({ isOpen, onClose, focus
                                                                             }}
                                                                             onClick={(e) => e.stopPropagation()}
                                                                             onFocus={(e) => e.stopPropagation()}
-                                                                            className="w-16 px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                                                            className="w-16 px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors"
                                                                         />
-                                                                        <span className="text-gray-500">to</span>
+                                                                        <span className="text-gray-600 text-sm font-medium">to</span>
                                                                         <input
                                                                             type="number"
                                                                             min="0"
@@ -1327,13 +1493,13 @@ export const BuyBoxModal: React.FC<BuyBoxModalProps> = ({ isOpen, onClose, focus
                                                                             }}
                                                                             onClick={(e) => e.stopPropagation()}
                                                                             onFocus={(e) => e.stopPropagation()}
-                                                                            className="w-16 px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                                                            className="w-16 px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors"
                                                                         />
                                                                     </div>
                                                                 </div>
 
                                                                 <div>
-                                                                    <label className="block text-xs font-medium text-gray-700 mb-2">
+                                                                    <label className="block text-sm font-semibold text-gray-900 mb-3">
                                                                         Year Built Range
                                                                     </label>
                                                                     <div className="flex items-center space-x-2">
@@ -1349,9 +1515,9 @@ export const BuyBoxModal: React.FC<BuyBoxModalProps> = ({ isOpen, onClose, focus
                                                                             }}
                                                                             onClick={(e) => e.stopPropagation()}
                                                                             onFocus={(e) => e.stopPropagation()}
-                                                                            className="w-16 px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                                                            className="w-16 px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors"
                                                                         />
-                                                                        <span className="text-gray-500">to</span>
+                                                                        <span className="text-gray-600 text-sm font-medium">to</span>
                                                                         <input
                                                                             type="number"
                                                                             min="1800"
@@ -1364,7 +1530,7 @@ export const BuyBoxModal: React.FC<BuyBoxModalProps> = ({ isOpen, onClose, focus
                                                                             }}
                                                                             onClick={(e) => e.stopPropagation()}
                                                                             onFocus={(e) => e.stopPropagation()}
-                                                                            className="w-16 px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                                                            className="w-16 px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors"
                                                                         />
                                                                     </div>
                                                                 </div>
@@ -1372,7 +1538,7 @@ export const BuyBoxModal: React.FC<BuyBoxModalProps> = ({ isOpen, onClose, focus
 
                                                             <div className="grid grid-cols-2 gap-4 mt-4">
                                                                 <div>
-                                                                    <label className="block text-xs font-medium text-gray-700 mb-2">
+                                                                    <label className="block text-sm font-semibold text-gray-900 mb-3">
                                                                         Assessed Value Range
                                                                     </label>
                                                                     <div className="flex items-center space-x-2">
@@ -1386,9 +1552,9 @@ export const BuyBoxModal: React.FC<BuyBoxModalProps> = ({ isOpen, onClose, focus
                                                                             }}
                                                                             onClick={(e) => e.stopPropagation()}
                                                                             onFocus={(e) => e.stopPropagation()}
-                                                                            className="w-24 px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                                                            className="w-24 px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors"
                                                                         />
-                                                                        <span className="text-gray-500">to</span>
+                                                                        <span className="text-gray-600 text-sm font-medium">to</span>
                                                                         <input
                                                                             type="text"
                                                                             value={formatCurrency(market.assessed_value_max)}
@@ -1399,13 +1565,13 @@ export const BuyBoxModal: React.FC<BuyBoxModalProps> = ({ isOpen, onClose, focus
                                                                             }}
                                                                             onClick={(e) => e.stopPropagation()}
                                                                             onFocus={(e) => e.stopPropagation()}
-                                                                            className="w-24 px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                                                            className="w-24 px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors"
                                                                         />
                                                                     </div>
                                                                 </div>
 
                                                                 <div>
-                                                                    <label className="block text-xs font-medium text-gray-700 mb-2">
+                                                                    <label className="block text-sm font-semibold text-gray-900 mb-3">
                                                                         Estimated Value Range
                                                                     </label>
                                                                     <div className="flex items-center space-x-2">
@@ -1419,9 +1585,9 @@ export const BuyBoxModal: React.FC<BuyBoxModalProps> = ({ isOpen, onClose, focus
                                                                             }}
                                                                             onClick={(e) => e.stopPropagation()}
                                                                             onFocus={(e) => e.stopPropagation()}
-                                                                            className="w-24 px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                                                            className="w-24 px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors"
                                                                         />
-                                                                        <span className="text-gray-500">to</span>
+                                                                        <span className="text-gray-600 text-sm font-medium">to</span>
                                                                         <input
                                                                             type="text"
                                                                             value={formatCurrency(market.estimated_value_max)}
@@ -1432,7 +1598,7 @@ export const BuyBoxModal: React.FC<BuyBoxModalProps> = ({ isOpen, onClose, focus
                                                                             }}
                                                                             onClick={(e) => e.stopPropagation()}
                                                                             onFocus={(e) => e.stopPropagation()}
-                                                                            className="w-24 px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                                                            className="w-24 px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors"
                                                                         />
                                                                     </div>
                                                                 </div>
@@ -1484,10 +1650,10 @@ export const BuyBoxModal: React.FC<BuyBoxModalProps> = ({ isOpen, onClose, focus
                                                                             className="mr-3 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                                                                         />
                                                                         <div>
-                                                                            <span className="text-sm font-medium text-gray-900">
+                                                                            <span className="text-base font-semibold text-gray-900">
                                                                                 Enable weekly recommendations for this market
                                                                             </span>
-                                                                            <p className="text-xs text-gray-500 mt-1">
+                                                                            <p className="text-sm text-gray-600 mt-1">
                                                                                 Get curated properties for this market delivered every Monday
                                                                             </p>
                                                                         </div>
@@ -1558,15 +1724,6 @@ export const BuyBoxModal: React.FC<BuyBoxModalProps> = ({ isOpen, onClose, focus
                         )}
                     </div>
 
-                    {/* Footer */}
-                    <div className="flex items-center justify-end px-6 py-4 border-t border-gray-200 gap-3">
-                        <button
-                            onClick={onClose}
-                            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                        >
-                            Done
-                        </button>
-                    </div>
                 </Dialog.Panel>
             </div>
         </Dialog>

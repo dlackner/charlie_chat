@@ -29,11 +29,12 @@ if (typeof document !== 'undefined' && !document.getElementById('card-animations
 }
 
 import { useState, useEffect } from 'react';
-import { Settings, Heart, X, Star, Grid3x3, Map } from 'lucide-react';
+import { Settings, Heart, X, Star, Grid3x3, Map, Trash2 } from 'lucide-react';
 import { BuyBoxModal } from '@/components/v2/BuyBoxModal';
 import { useAuth } from '@/contexts/AuthContext';
 import { StreetViewImage } from '@/components/ui/StreetViewImage';
 import { updateMarketConvergence } from '@/lib/v2/convergenceAnalysis';
+import PropertyMap from '@/components/v2/PropertyMap';
 
 // Enhanced interfaces matching weekly recommendations system
 interface MMRProperty {
@@ -48,6 +49,8 @@ interface MMRProperty {
     address_city?: string;
     address_state?: string;
     address_zip?: string;
+    latitude?: number;
+    longitude?: number;
     units_count?: number;
     year_built?: number;
     assessed_value?: number;
@@ -627,16 +630,28 @@ export default function BuyBoxPage() {
                 </button>
               </div>
               
-              <button 
-                onClick={() => {
-                  setFocusedMarket(selectedMarketKey); // Focus on the currently selected market
-                  setShowBuyBoxModal(true);
-                }}
-                className="flex items-center text-blue-600 hover:text-blue-700 font-medium"
-              >
-                <Settings className="h-4 w-4 mr-2" />
-                Edit Criteria
-              </button>
+              <div className="flex items-center space-x-3">
+                <button 
+                  onClick={() => {
+                    setFocusedMarket(selectedMarketKey); // Focus on the currently selected market
+                    setShowBuyBoxModal(true);
+                  }}
+                  className="flex items-center text-blue-600 hover:text-blue-700 font-medium"
+                >
+                  <Settings className="h-4 w-4 mr-2" />
+                  Edit Criteria
+                </button>
+                <button
+                  onClick={() => {
+                    // TODO: Add delete market functionality
+                    console.log('Delete market:', selectedMarketKey);
+                  }}
+                  className="flex h-8 w-8 items-center justify-center rounded-lg text-red-600 hover:bg-red-50 hover:text-red-700 transition-all duration-200"
+                  title="Delete market"
+                >
+                  <Trash2 size={16} />
+                </button>
+              </div>
             </div>
           </div>
           
@@ -763,44 +778,25 @@ function MapView({
   return (
     <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
       {/* Map Container */}
-      <div className="relative h-96 bg-gradient-to-br from-green-100 to-blue-100 flex items-center justify-center">
-        <div className="text-center text-gray-600">
-          <Map className="h-16 w-16 mx-auto mb-4 text-gray-400" />
-          <h3 className="text-lg font-medium text-gray-900 mb-2">
-            {selectedMarket} Property Map
-          </h3>
-          <p className="text-sm text-gray-600 mb-4">
-            Interactive map showing {properties.length} recommendations in this market
-          </p>
-          <div className="text-xs text-gray-500">
-            Map integration with Google Maps or Mapbox would go here
-          </div>
-        </div>
-
-        {/* Sample Map Pins/Markers */}
-        <div className="absolute inset-0">
-          {properties.map((property, index) => (
-            <div
-              key={property.property_id}
-              className={`absolute w-8 h-8 rounded-full border-2 border-white shadow-lg cursor-pointer hover:scale-110 transition-all ${
-                property.fit_score >= 90 
-                  ? 'bg-green-500' 
-                  : property.fit_score >= 85 
-                    ? 'bg-yellow-500' 
-                    : 'bg-red-500'
-              }`}
-              style={{
-                left: `${20 + (index * 15)}%`,
-                top: `${30 + (index * 10)}%`
-              }}
-              title={`${property.address_full || property.address_street} - ${Math.round(property.fit_score)}% match`}
-            >
-              <span className="text-white text-xs font-bold flex items-center justify-center w-full h-full">
-                {index + 1}
-              </span>
-            </div>
-          ))}
-        </div>
+      <div className="h-96">
+        <PropertyMap
+          properties={properties.map(property => ({
+            id: property.property_id,
+            property_id: property.property_id,
+            latitude: property.latitude,
+            longitude: property.longitude,
+            address_street: property.address_street,
+            address_full: property.address_full,
+            address_city: property.address_city,
+            address_state: property.address_state,
+            address_zip: property.address_zip,
+            units_count: property.units_count,
+            year_built: property.year_built,
+            assessed_value: property.assessed_value,
+          }))}
+          className="w-full h-full rounded-lg border border-gray-200"
+          context="buybox"
+        />
       </div>
     </div>
   );
