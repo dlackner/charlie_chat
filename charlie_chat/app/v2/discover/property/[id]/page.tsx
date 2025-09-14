@@ -8,10 +8,11 @@
 
 import { useState, useEffect } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
-import { ArrowLeft, Printer, ExternalLink, Bot, ChevronDown, ChevronUp, Zap, Phone, Mail, User, Calculator } from 'lucide-react';
+import { ArrowLeft, Printer, ExternalLink, ChevronDown, ChevronUp, Zap, Phone, Mail, User } from 'lucide-react';
 import { StreetViewImage } from '@/components/ui/StreetViewImage';
 import { PropertyInfoSections } from '@/components/v2/property-details/PropertyInfoSections';
 import { AIInvestmentAnalysis } from '@/components/v2/property-details/AIInvestmentAnalysis';
+import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 
 export default function PropertyDetailsPage() {
   const params = useParams();
@@ -27,7 +28,6 @@ export default function PropertyDetailsPage() {
                          (typeof window !== 'undefined' && document.referrer.includes('/buybox'));
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [showStreetView, setShowStreetView] = useState(false);
   const [isSkipTraceExpanded, setIsSkipTraceExpanded] = useState(false);
   const [isSkipTracing, setIsSkipTracing] = useState(false);
   const [skipTraceData, setSkipTraceData] = useState<any>(null);
@@ -66,6 +66,21 @@ export default function PropertyDetailsPage() {
           console.log('Property data received:', foundProperty);
           console.log('Property fields available:', Object.keys(foundProperty));
           setProperty(foundProperty);
+
+          // Check for existing skip trace data in saved_properties table if in ENGAGE context
+          if (isEngageContext) {
+            const supabase = createSupabaseBrowserClient();
+            const { data: savedProperty, error: savedError } = await supabase
+              .from('saved_properties')
+              .select('skip_trace_data, last_skip_trace')
+              .eq('property_id', foundProperty.property_id)
+              .single();
+
+            if (!savedError && savedProperty?.skip_trace_data) {
+              console.log('Found existing skip trace data');
+              setSkipTraceData(savedProperty.skip_trace_data);
+            }
+          }
         } else {
           console.log('No property data found. API response:', data);
           setError('Property not found');
@@ -115,53 +130,159 @@ export default function PropertyDetailsPage() {
     }
   };
 
-  const openStreetView = () => {
-    const address = `${property.address}, ${property.city}, ${property.state} ${property.zip}`;
-    const streetViewUrl = `https://www.google.com/maps/@?api=1&map_action=pano&parameters&pano&viewpoint&heading&pitch&fov&cbll&layer=c&z=18&q=${encodeURIComponent(address)}`;
-    window.open(streetViewUrl, '_blank');
-  };
-
-
   const handleSkipTrace = async () => {
+    if (!property) return;
+    
     setIsSkipTracing(true);
     
     try {
-      // TODO: Call skip trace API
-      // For now, simulate loading and return sample data
-      setTimeout(() => {
-        setSkipTraceData({
-          contacts: [
-            {
-              name: "John R. Smith",
-              phone: "(401) 555-0123",
-              email: "j.smith@email.com",
-              relationship: "Owner"
-            },
-            {
-              name: "Smith Family Trust",
-              phone: "(401) 555-0124", 
-              email: "trust@smithfamily.com",
-              relationship: "Trust Entity"
-            },
-            {
-              name: "Mary E. Smith",
-              phone: "(401) 555-0125",
-              email: "mary.smith@email.com",
-              relationship: "Co-Owner"
-            }
-          ],
-          traceDate: new Date().toLocaleDateString(),
-          confidence: "High"
+      // Step 1: Prepare skip trace request using property's owner mailing address
+      const skipTraceRequest = {
+        address: property.mail_address_street || property.address_street || '',
+        city: property.mail_address_city || property.address_city || '',
+        state: property.mail_address_state || property.address_state || '',
+        zip: property.mail_address_zip || property.address_zip || '',
+        first_name: property.owner_first_name || '',
+        last_name: property.owner_last_name || ''
+      };
+
+      // Validate required fields
+      if (!skipTraceRequest.address || !skipTraceRequest.city || !skipTraceRequest.state) {
+        throw new Error('Insufficient address information for skip trace');
+      }
+
+      console.log('Skip trace request:', skipTraceRequest);
+
+      // Step 2: Call the skip trace API
+      const response = await fetch('/api/skiptrace', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(skipTraceRequest)
+      });
+
+      const apiData = await response.json();
+
+      if (!response.ok) {
+        throw new Error(apiData.message || apiData.error || 'Skip trace failed');
+      }
+
+      console.log('Skip trace API response:', apiData);
+
+      // Step 3: Process the API response into display format
+      let processedData = null;
+      
+      if (apiData.match && apiData.output && apiData.output.identity) {
+        const identity = apiData.output.identity;
+        const demographics = apiData.output.demographics || {};
+        
+        // Extract connected phones
+        const phones = (identity.phones || [])
+          .filter((p: any) => p.isConnected)
+          .slice(0, 3); // Limit to first 3 connected phones
+        
+        // Extract emails  
+        const emails = identity.emails || [];
+        
+        // Create contacts array for display
+        const contacts = [];
+        
+        // Primary contact with owner info
+        contacts.push({
+          name: `${property.owner_first_name || ''} ${property.owner_last_name || ''}`.trim() || 'Property Owner',
+          phone: phones[0]?.phoneDisplay || phones[0]?.phone || '',
+          email: emails[0]?.email || '',
+          relationship: 'Owner',
+          phoneType: phones[0]?.phoneType || '',
+          doNotCall: phones[0]?.doNotCall || false
         });
-        setIsSkipTracing(false);
-        setIsSkipTraceExpanded(true);
-      }, 1500);
+
+        // Additional phone numbers as separate contacts
+        phones.slice(1).forEach((phone: any, index: number) => {
+          contacts.push({
+            name: `${property.owner_first_name || ''} ${property.owner_last_name || ''}`.trim() || 'Property Owner',
+            phone: phone.phoneDisplay || phone.phone || '',
+            email: '',
+            relationship: `Additional Phone ${index + 2}`,
+            phoneType: phone.phoneType || '',
+            doNotCall: phone.doNotCall || false
+          });
+        });
+
+        processedData = {
+          contacts: contacts.filter(c => c.phone || c.email), // Only include contacts with phone or email
+          confidence: apiData.match ? 'High' : 'Low',
+          traceDate: new Date().toLocaleDateString(),
+          demographics: {
+            age: demographics.age,
+            gender: demographics.gender,
+            occupation: demographics.jobs?.[0]?.display
+          },
+          currentAddress: identity.address?.formattedAddress,
+          addressHistory: identity.addressHistory || []
+        };
+      }
+
+      // Step 4: Store results in saved_properties table
+      if (processedData) {
+        try {
+          const supabase = createSupabaseBrowserClient();
+          const { error: updateError } = await supabase
+            .from('saved_properties')
+            .update({
+              skip_trace_data: processedData,
+              last_skip_trace: new Date().toISOString()
+            })
+            .eq('property_id', property.property_id);
+
+          if (updateError) {
+            console.warn('Failed to save skip trace data to database:', updateError.message);
+          } else {
+            console.log('Skip trace data saved successfully to database');
+          }
+        } catch (dbError) {
+          console.error('Database update error:', dbError);
+        }
+      }
+
+      setSkipTraceData(processedData);
+      setIsSkipTraceExpanded(true);
+
     } catch (error) {
       console.error('Skip trace error:', error);
+      
+      let errorMessage = 'Skip trace failed';
+      if (error instanceof Error) {
+        const errorText = error.message.toLowerCase();
+        
+        // Handle various error types with user-friendly messages
+        if (errorText.includes('unable to locate valid property') || 
+            errorText.includes('address(es) provided') ||
+            errorText.includes('property from address')) {
+          errorMessage = 'No skip trace data available - property address not found in database';
+        } else if (errorText.includes('insufficient address information')) {
+          errorMessage = 'Skip trace requires complete owner mailing address information';
+        } else if (errorText.includes('po box')) {
+          errorMessage = 'Skip trace not available for PO Box addresses - need a physical mailing address';
+        } else if (errorText.includes('network') || errorText.includes('timeout')) {
+          errorMessage = 'Network error - please check your connection and try again';
+        } else if (errorText.includes('service temporarily unavailable')) {
+          errorMessage = 'Skip trace service temporarily unavailable - please try again later';
+        } else {
+          errorMessage = error.message;
+        }
+      }
+      
+      setSkipTraceData({
+        error: errorMessage,
+        contacts: [],
+        confidence: 'Failed',
+        traceDate: new Date().toLocaleDateString()
+      });
+      setIsSkipTraceExpanded(true);
+    } finally {
       setIsSkipTracing(false);
     }
   };
-
 
   // Show loading state
   if (isLoading) {
@@ -259,139 +380,159 @@ export default function PropertyDetailsPage() {
         {/* Skip Trace Section - Full Width - Only show in ENGAGE context */}
         {isEngageContext && (
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 mb-6">
-          <div 
-            className="p-6 cursor-pointer hover:bg-gray-50 transition-colors"
-            onClick={() => setIsSkipTraceExpanded(!isSkipTraceExpanded)}
-          >
-            <div className="flex items-center justify-between">
-              <div className="flex items-center">
-                <div className="p-2 bg-gradient-to-r from-green-500 to-blue-600 rounded-lg mr-3">
-                  <Zap className="h-5 w-5 text-white" />
+            <div 
+              className="p-6 cursor-pointer hover:bg-gray-50 transition-colors"
+              onClick={() => setIsSkipTraceExpanded(!isSkipTraceExpanded)}
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center">
+                  <div className="p-2 bg-gradient-to-r from-green-500 to-blue-600 rounded-lg mr-3">
+                    <Zap className="h-5 w-5 text-white" />
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-bold text-gray-900">Skip Trace Results</h2>
+                    <p className="text-sm text-gray-600">Contact information and owner details</p>
+                  </div>
                 </div>
-                <div>
-                  <h2 className="text-xl font-bold text-gray-900">Skip Trace Results</h2>
-                  <p className="text-sm text-gray-600">Contact information and owner details</p>
+                <div className="flex items-center space-x-3">
+                  {!skipTraceData && !isSkipTracing && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleSkipTrace();
+                      }}
+                      className="flex items-center px-4 py-2 bg-gradient-to-r from-green-500 to-blue-600 text-white rounded-lg hover:from-green-600 hover:to-blue-700 transition-all font-medium"
+                    >
+                      <Zap className="h-4 w-4 mr-2" />
+                      Run Skip Trace
+                    </button>
+                  )}
+                  {isSkipTraceExpanded ? (
+                    <ChevronUp className="h-5 w-5 text-gray-400" />
+                  ) : (
+                    <ChevronDown className="h-5 w-5 text-gray-400" />
+                  )}
                 </div>
-              </div>
-              <div className="flex items-center space-x-3">
-                {!skipTraceData && !isSkipTracing && (
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleSkipTrace();
-                    }}
-                    className="flex items-center px-4 py-2 bg-gradient-to-r from-green-500 to-blue-600 text-white rounded-lg hover:from-green-600 hover:to-blue-700 transition-all font-medium"
-                  >
-                    <Zap className="h-4 w-4 mr-2" />
-                    Run Skip Trace
-                  </button>
-                )}
-                {isSkipTraceExpanded ? (
-                  <ChevronUp className="h-5 w-5 text-gray-400" />
-                ) : (
-                  <ChevronDown className="h-5 w-5 text-gray-400" />
-                )}
               </div>
             </div>
-          </div>
-          
-          {isSkipTraceExpanded && (
-            <div className="px-6 pb-6 border-t border-gray-100">
-              {isSkipTracing ? (
-                <div className="py-8 text-center">
-                  <div className="inline-flex items-center justify-center w-12 h-12 bg-gradient-to-r from-green-500 to-blue-600 rounded-full mb-4 animate-pulse">
-                    <Zap className="h-6 w-6 text-white" />
-                  </div>
-                  <h3 className="text-lg font-medium text-gray-900 mb-2">Running Skip Trace...</h3>
-                  <p className="text-gray-600">Searching for contact information and owner details</p>
-                  <div className="mt-4">
-                    <div className="w-48 h-2 bg-gray-200 rounded-full mx-auto">
-                      <div className="h-2 bg-gradient-to-r from-green-500 to-blue-600 rounded-full animate-pulse" style={{width: '70%'}}></div>
+            
+            {isSkipTraceExpanded && (
+              <div className="px-6 pb-6 border-t border-gray-100">
+                {isSkipTracing ? (
+                  <div className="py-8 text-center">
+                    <div className="inline-flex items-center justify-center w-12 h-12 bg-gradient-to-r from-green-500 to-blue-600 rounded-full mb-4 animate-pulse">
+                      <Zap className="h-6 w-6 text-white" />
+                    </div>
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">Running Skip Trace...</h3>
+                    <p className="text-gray-600">Searching for contact information and owner details</p>
+                    <div className="mt-4">
+                      <div className="w-48 h-2 bg-gray-200 rounded-full mx-auto">
+                        <div className="h-2 bg-gradient-to-r from-green-500 to-blue-600 rounded-full animate-pulse" style={{width: '70%'}}></div>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ) : skipTraceData ? (
-                <div className="py-6">
-                  <div className="flex items-center justify-between mb-6">
-                    <div>
-                      <h3 className="text-lg font-semibold text-gray-900">Contact Information</h3>
-                      <p className="text-sm text-gray-600">
-                        Trace completed on {skipTraceData.traceDate} • Confidence: {skipTraceData.confidence}
-                      </p>
-                    </div>
-                    <button
-                      onClick={handleSkipTrace}
-                      className="text-sm text-blue-600 hover:text-blue-700 font-medium"
-                    >
-                      Refresh Data
-                    </button>
-                  </div>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {skipTraceData.contacts.map((contact: any, index: number) => (
-                      <div key={index} className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-                        <div className="flex items-center justify-between mb-3">
-                          <div className="flex items-center">
-                            <div className="p-2 bg-blue-100 rounded-lg mr-2">
-                              <User className="h-4 w-4 text-blue-600" />
-                            </div>
-                            <div>
-                              <h4 className="font-medium text-gray-900">{contact.name}</h4>
-                              <p className="text-xs text-gray-500">{contact.relationship}</p>
-                            </div>
+                ) : skipTraceData ? (
+                  <div className="py-6">
+                    {skipTraceData.error ? (
+                      <div className="text-center py-8">
+                        <div className="inline-flex items-center justify-center w-12 h-12 bg-red-100 rounded-full mb-4">
+                          <Zap className="h-6 w-6 text-red-600" />
+                        </div>
+                        <h3 className="text-lg font-medium text-gray-900 mb-2">Skip Trace Failed</h3>
+                        <p className="text-sm text-gray-600 mb-4 max-w-md mx-auto">
+                          {skipTraceData.error}
+                        </p>
+                        <button
+                          onClick={handleSkipTrace}
+                          className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+                        >
+                          Try Again
+                        </button>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="flex items-center justify-between mb-6">
+                          <div>
+                            <h3 className="text-lg font-semibold text-gray-900">Contact Information</h3>
+                            <p className="text-sm text-gray-600">
+                              Trace completed on {skipTraceData.traceDate} • Confidence: {skipTraceData.confidence}
+                            </p>
                           </div>
+                          <button
+                            onClick={handleSkipTrace}
+                            className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+                          >
+                            Refresh Data
+                          </button>
                         </div>
                         
-                        <div className="space-y-2">
-                          <div className="flex items-center text-sm text-gray-600">
-                            <Phone className="h-3 w-3 mr-2 text-gray-400" />
-                            <a 
-                              href={`tel:${contact.phone}`}
-                              className="hover:text-blue-600 transition-colors"
-                            >
-                              {contact.phone}
-                            </a>
-                          </div>
-                          
-                          <div className="flex items-center text-sm text-gray-600">
-                            <Mail className="h-3 w-3 mr-2 text-gray-400" />
-                            <a 
-                              href={`mailto:${contact.email}`}
-                              className="hover:text-blue-600 transition-colors truncate"
-                            >
-                              {contact.email}
-                            </a>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                          {skipTraceData.contacts.map((contact: any, index: number) => (
+                            <div key={index} className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                              <div className="flex items-center justify-between mb-3">
+                                <div className="flex items-center">
+                                  <div className="p-2 bg-blue-100 rounded-lg mr-2">
+                                    <User className="h-4 w-4 text-blue-600" />
+                                  </div>
+                                  <div>
+                                    <h4 className="font-medium text-gray-900">{contact.name}</h4>
+                                    <p className="text-xs text-gray-500">{contact.relationship}</p>
+                                  </div>
+                                </div>
+                              </div>
+                              
+                              <div className="space-y-2">
+                                <div className="flex items-center text-sm text-gray-600">
+                                  <Phone className="h-3 w-3 mr-2 text-gray-400" />
+                                  <a 
+                                    href={`tel:${contact.phone}`}
+                                    className="hover:text-blue-600 transition-colors"
+                                  >
+                                    {contact.phone}
+                                  </a>
+                                </div>
+                                
+                                <div className="flex items-center text-sm text-gray-600">
+                                  <Mail className="h-3 w-3 mr-2 text-gray-400" />
+                                  <a 
+                                    href={`mailto:${contact.email}`}
+                                    className="hover:text-blue-600 transition-colors truncate"
+                                  >
+                                    {contact.email}
+                                  </a>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                        
+                        <div className="mt-6 pt-4 border-t border-gray-200 bg-blue-50 rounded-lg p-4">
+                          <div className="flex items-start space-x-3">
+                            <div className="p-1 bg-blue-100 rounded">
+                              <Zap className="h-4 w-4 text-blue-600" />
+                            </div>
+                            <div>
+                              <h4 className="font-medium text-blue-900 mb-1">Skip Trace Complete</h4>
+                              <p className="text-sm text-blue-700">
+                                Found {skipTraceData.contacts.length} contact records. All information is current as of the trace date.
+                                Use this data to reach out to property owners for potential investment opportunities.
+                              </p>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    ))}
+                      </>
+                    )}
                   </div>
-                  
-                  <div className="mt-6 pt-4 border-t border-gray-200 bg-blue-50 rounded-lg p-4">
-                    <div className="flex items-start space-x-3">
-                      <div className="p-1 bg-blue-100 rounded">
-                        <Zap className="h-4 w-4 text-blue-600" />
-                      </div>
-                      <div>
-                        <h4 className="font-medium text-blue-900 mb-1">Skip Trace Complete</h4>
-                        <p className="text-sm text-blue-700">
-                          Found {skipTraceData.contacts.length} contact records. All information is current as of the trace date.
-                          Use this data to reach out to property owners for potential investment opportunities.
-                        </p>
-                      </div>
-                    </div>
+                ) : (
+                  <div className="py-8 text-center">
+                    <Zap className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                    <p className="text-gray-600 mb-2">No skip trace data available</p>
+                    <p className="text-sm text-gray-500">Click "Run Skip Trace" to search for contact information</p>
                   </div>
-                </div>
-              ) : (
-                <div className="py-8 text-center">
-                  <Zap className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                  <p className="text-gray-600 mb-2">No skip trace data available</p>
-                  <p className="text-sm text-gray-500">Click "Run Skip Trace" to search for contact information</p>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
+                )}
+              </div>
+            )}
+          </div>
         )}
 
         <PropertyInfoSections property={property} />

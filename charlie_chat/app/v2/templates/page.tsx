@@ -123,7 +123,7 @@ const FormField = ({ label, name, type = "text", value, onChange, placeholder }:
       value={value}
       onChange={onChange}
       placeholder={placeholder}
-      className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-orange-500 focus:border-orange-500 sm:text-sm"
+      className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
     />
   </div>
 );
@@ -438,7 +438,7 @@ function Home() {
         yourPhoneFormatted: formatPhoneJS(userProfile?.phone_number?.replace(/(\d{3})(\d{3})(\d{4})/, '$1.$2.$3') || ''),
         purchasePriceFormatted: formatCurrencyJS(formData.purchasePrice),
         earnestMoneyFormatted: formatCurrencyJS(formData.earnestMoney),
-        currentDate: new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }),
+        currentDate: new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }).toUpperCase(),
         ownerFullName: `${formData.ownerFirst} ${formData.ownerLast}`.trim(),
         ownerCityStateZip: `${formData.ownerCity}, ${formData.ownerState} ${formData.ownerZip}`.trim(),
         inspectionPeriodText: `${numberToWords.toWords(inspectionDays)} (${inspectionDays})`,
@@ -1472,6 +1472,11 @@ function Home() {
       if (typeof window !== 'undefined' && (window as any).toast) {
         (window as any).toast.success('LOI document generated successfully!');
       }
+      
+      // Redirect back to engage page after successful generation
+      setTimeout(() => {
+        router.push('/v2/engage');
+      }, 2000); // Wait 2 seconds to let user see the success message
 
     } catch (error) {
       console.error('Error generating LOI document:', error);
@@ -1491,7 +1496,7 @@ function Home() {
   if (isLoadingProfile) {
     return (
       <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
         <p className="mt-4 text-gray-600">Loading...</p>
       </div>
     );
@@ -1501,14 +1506,14 @@ function Home() {
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col items-center py-10 px-4 sm:px-6 lg:px-8">
       <div className="bg-white p-8 rounded-lg shadow-xl w-full max-w-4xl border border-gray-200">
-        <h1 className="text-3xl md:text-4xl font-extrabold mb-6 text-orange-600 text-center font-sans">Generate a Letter of Intent</h1>
+        <h1 className="text-3xl md:text-4xl font-extrabold mb-6 text-blue-600 text-center font-sans">Generate a Letter of Intent</h1>
         <p className="text-center text-gray-600 mb-8">Choose your LOI type and fill in the details to generate your customized document.</p>
 
         {/* LOI Type Selection - Moved to Top with Card Design */}
         <section className="mb-8">
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
             {/* Short Form Card */}
-            <label className={`relative flex flex-col p-6 rounded-lg border-2 cursor-pointer transition-all h-full ${loiType === 'short' ? 'border-orange-500 bg-orange-50' : 'border-gray-200 hover:border-gray-300'
+            <label className={`relative flex flex-col p-6 rounded-lg border-2 cursor-pointer transition-all h-full ${loiType === 'short' ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-gray-300'
               }`}>
               <input
                 type="radio"
@@ -1520,7 +1525,7 @@ function Home() {
               />
               <div className="flex items-center justify-between mb-3">
                 <span className="text-lg font-semibold text-gray-800">Short Form</span>
-                <div className={`w-5 h-5 rounded-full border-2 ${loiType === 'short' ? 'border-orange-500 bg-orange-500' : 'border-gray-400'
+                <div className={`w-5 h-5 rounded-full border-2 ${loiType === 'short' ? 'border-blue-500 bg-blue-500' : 'border-gray-400'
                   }`}>
                   {loiType === 'short' && (
                     <svg className="w-3 h-3 text-white mx-auto mt-0.5" fill="currentColor" viewBox="0 0 20 20">
@@ -1533,7 +1538,7 @@ function Home() {
             </label>
 
             {/* Long Form Card */}
-            <label className={`relative flex flex-col p-6 rounded-lg border-2 cursor-pointer transition-all h-full ${loiType === 'long' ? 'border-orange-500 bg-orange-50' : 'border-gray-200 hover:border-gray-300'
+            <label className={`relative flex flex-col p-6 rounded-lg border-2 cursor-pointer transition-all h-full ${loiType === 'long' ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-gray-300'
               }`}>
               <input
                 type="radio"
@@ -1545,7 +1550,7 @@ function Home() {
               />
               <div className="flex items-center justify-between mb-3">
                 <span className="text-lg font-semibold text-gray-800">Long Form</span>
-                <div className={`w-5 h-5 rounded-full border-2 ${loiType === 'long' ? 'border-orange-500 bg-orange-500' : 'border-gray-400'
+                <div className={`w-5 h-5 rounded-full border-2 ${loiType === 'long' ? 'border-blue-500 bg-blue-500' : 'border-gray-400'
                   }`}>
                   {loiType === 'long' && (
                     <svg className="w-3 h-3 text-white mx-auto mt-0.5" fill="currentColor" viewBox="0 0 20 20">
@@ -1558,7 +1563,7 @@ function Home() {
             </label>
 
             {/* Master Lease Card */}
-            <label className={`relative flex flex-col p-6 rounded-lg border-2 cursor-pointer transition-all h-full ${loiType === 'master' ? 'border-orange-500 bg-orange-50' : 'border-gray-200 hover:border-gray-300'
+            <label className={`relative flex flex-col p-6 rounded-lg border-2 cursor-pointer transition-all h-full ${loiType === 'master' ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-gray-300'
               }`}>
               <input
                 type="radio"
@@ -1570,7 +1575,7 @@ function Home() {
               />
               <div className="flex items-center justify-between mb-3">
                 <span className="text-lg font-semibold text-gray-800">Master Lease</span>
-                <div className={`w-5 h-5 rounded-full border-2 ${loiType === 'master' ? 'border-orange-500 bg-orange-500' : 'border-gray-400'
+                <div className={`w-5 h-5 rounded-full border-2 ${loiType === 'master' ? 'border-blue-500 bg-blue-500' : 'border-gray-400'
                   }`}>
                   {loiType === 'master' && (
                     <svg className="w-3 h-3 text-white mx-auto mt-0.5" fill="currentColor" viewBox="0 0 20 20">
@@ -1583,7 +1588,7 @@ function Home() {
             </label>
 
             {/* Assumption Card */}
-            <label className={`relative flex flex-col p-6 rounded-lg border-2 cursor-pointer transition-all h-full ${loiType === 'assumption' ? 'border-orange-500 bg-orange-50' : 'border-gray-200 hover:border-gray-300'
+            <label className={`relative flex flex-col p-6 rounded-lg border-2 cursor-pointer transition-all h-full ${loiType === 'assumption' ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-gray-300'
               }`}>
               <input
                 type="radio"
@@ -1595,7 +1600,7 @@ function Home() {
               />
               <div className="flex items-center justify-between mb-3">
                 <span className="text-lg font-semibold text-gray-800">Assumption</span>
-                <div className={`w-5 h-5 rounded-full border-2 ${loiType === 'assumption' ? 'border-orange-500 bg-orange-500' : 'border-gray-400'
+                <div className={`w-5 h-5 rounded-full border-2 ${loiType === 'assumption' ? 'border-blue-500 bg-blue-500' : 'border-gray-400'
                   }`}>
                   {loiType === 'assumption' && (
                     <svg className="w-3 h-3 text-white mx-auto mt-0.5" fill="currentColor" viewBox="0 0 20 20">
@@ -1608,7 +1613,7 @@ function Home() {
             </label>
 
             {/* Financing Card */}
-            <label className={`relative flex flex-col p-6 rounded-lg border-2 cursor-pointer transition-all h-full ${loiType === 'financing' ? 'border-orange-500 bg-orange-50' : 'border-gray-200 hover:border-gray-300'
+            <label className={`relative flex flex-col p-6 rounded-lg border-2 cursor-pointer transition-all h-full ${loiType === 'financing' ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-gray-300'
               }`}>
               <input
                 type="radio"
@@ -1620,7 +1625,7 @@ function Home() {
               />
               <div className="flex items-center justify-between mb-3">
                 <span className="text-lg font-semibold text-gray-800">Seller Financing</span>
-                <div className={`w-5 h-5 rounded-full border-2 ${loiType === 'financing' ? 'border-orange-500 bg-orange-500' : 'border-gray-400'
+                <div className={`w-5 h-5 rounded-full border-2 ${loiType === 'financing' ? 'border-blue-500 bg-blue-500' : 'border-gray-400'
                   }`}>
                   {loiType === 'financing' && (
                     <svg className="w-3 h-3 text-white mx-auto mt-0.5" fill="currentColor" viewBox="0 0 20 20">
@@ -1664,7 +1669,7 @@ function Home() {
           <button
             type="submit"
             disabled={isLoadingAuth || !isLoggedIn || isLoadingAccess}
-            className={`w-full md:w-auto mt-6 text-white py-3 px-6 rounded-lg font-semibold text-lg transition duration-200 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 focus:ring-offset-gray-50 ${(isLoadingAuth || !isLoggedIn) ? 'bg-gray-400 cursor-not-allowed' : 'bg-orange-600'
+            className={`w-full md:w-auto mt-6 text-white py-3 px-6 rounded-lg font-semibold text-lg transition duration-200 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-gray-50 ${(isLoadingAuth || !isLoggedIn) ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-600'
               }`}
           >
             Generate LOI

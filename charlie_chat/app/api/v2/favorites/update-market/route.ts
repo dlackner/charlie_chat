@@ -1,6 +1,8 @@
 /*
- * CHARLIE2 V2 - Update Favorite Status API
- * Allows updating the pipeline status (favorite_status) of saved properties
+ * CHARLIE2 V2 - Update Favorite Market API
+ * Updates market assignment for properties in user_favorites
+ * Converts market_name to market_key using user_markets lookup
+ * Part of the new V2 API architecture
  */
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from '@supabase/ssr';
@@ -31,26 +33,45 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { property_id, favorite_status } = await req.json();
+    const { property_id, market_key } = await req.json();
     
     if (!property_id) {
       return NextResponse.json({ error: 'Property ID is required' }, { status: 400 });
     }
 
+    // If market_key looks like a market_name (contains spaces, letters), look up the actual market_key
+    let actualMarketKey = market_key;
+    
+    if (market_key && (market_key.includes(' ') || /^[A-Za-z]/.test(market_key))) {
+      // This looks like a market_name, find the corresponding market_key
+      const { data: marketData, error: marketError } = await supabase
+        .from('user_markets')
+        .select('market_key')
+        .eq('user_id', user.id)
+        .ilike('market_name', `%${market_key}%`)
+        .single();
+
+      if (marketError) {
+        return NextResponse.json({ error: 'Market not found' }, { status: 404 });
+      }
+      
+      actualMarketKey = marketData.market_key;
+    }
+
+    // Update the market_key field in user_favorites table
     const { error } = await supabase
       .from('user_favorites')
-      .update({ favorite_status })
+      .update({ market_key: actualMarketKey })
       .eq('user_id', user.id)
       .eq('property_id', property_id);
 
     if (error) {
-      return NextResponse.json({ error: 'Failed to update favorite status' }, { status: 500 });
+      return NextResponse.json({ error: 'Failed to update property market' }, { status: 500 });
     }
 
     return NextResponse.json({ success: true });
     
   } catch (error) {
-    console.error('Update favorite status API error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

@@ -456,13 +456,13 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
 // Helper function to get colors for each status
 function getStatusColor(status: FavoriteStatus): string {
   const colors: { [key in FavoriteStatus]: string } = {
-    'REVIEWED': '#3B82F6',      // Blue
-    'COMMUNICATED': '#8B5CF6',  // Purple  
-    'ENGAGED': '#10B981',       // Green
-    'ANALYZED': '#F59E0B',      // Orange
-    'LOI_SENT': '#EF4444',      // Red
-    'ACQUIRED': '#059669',      // Emerald
-    'REJECTED': '#6B7280'       // Gray
+    'Reviewing': '#3B82F6',      // Blue
+    'Communicating': '#8B5CF6',  // Purple  
+    'Engaged': '#10B981',        // Green
+    'Analyzing': '#F59E0B',      // Orange
+    'LOI Sent': '#EF4444',       // Red
+    'Acquired': '#059669',       // Emerald
+    'Rejected': '#6B7280'        // Gray
   };
   
   return colors[status] || '#9CA3AF';

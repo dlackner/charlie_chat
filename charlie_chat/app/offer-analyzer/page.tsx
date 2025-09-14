@@ -8,6 +8,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useOfferAnalyzerAccess } from './usePropertyAnalyzerAccess';
 import { UnsavedChangesModal } from './UnsavedChangesModal';
 import { CharlieTooltip } from './CharlieTooltip';
+import { SaveOfferModal } from '@/components/v2/SaveOfferModal';
 import {
   LineChart,
   Line,
@@ -71,14 +72,16 @@ const calculateIRR = (cashFlows: number[], guess: number = 0.1): number => {
 };
 
 // Component to handle search params
-function SearchParamsHandler({ onParamsLoaded }: { onParamsLoaded: (params: { street: string; city: string; state: string }) => void }) {
+function SearchParamsHandler({ onParamsLoaded }: { onParamsLoaded: (params: { street: string; city: string; state: string; id?: string; offerId?: string }) => void }) {
   const searchParams = useSearchParams();
   
   useEffect(() => {
     onParamsLoaded({
       street: searchParams.get('street') || '',
       city: searchParams.get('city') || '',
-      state: searchParams.get('state') || ''
+      state: searchParams.get('state') || '',
+      id: searchParams.get('id') || undefined,
+      offerId: searchParams.get('offerId') || undefined
     });
   }, [searchParams, onParamsLoaded]);
   
@@ -102,17 +105,70 @@ export default function OfferAnalyzerPage() {
   const [showUnsavedChangesModal, setShowUnsavedChangesModal] = useState(false);
   const [pendingNavigation, setPendingNavigation] = useState<(() => void) | null>(null);
   const allowLeavingRef = useRef(false);
+  
+  // --- Offer Management Modals ---
+  const [showSaveOfferModal, setShowSaveOfferModal] = useState(false);
+  const [showOffersModal, setShowOffersModal] = useState(false);
+  const [selectedPropertyOffers, setSelectedPropertyOffers] = useState<any[]>([]);
+  const [loadedOfferName, setLoadedOfferName] = useState<string>('');
 
   // --- Property Address State (from URL params, not displayed in UI) ---
   const [propertyStreet, setPropertyStreet] = useState<string>('');
   const [propertyCity, setPropertyCity] = useState<string>('');
+  const [propertyId, setPropertyId] = useState<string>('');
   const [propertyState, setPropertyState] = useState<string>('');
   
   // Callback to handle search params
-  const handleParamsLoaded = useCallback((params: { street: string; city: string; state: string }) => {
+  const handleParamsLoaded = useCallback(async (params: { street: string; city: string; state: string; id?: string; offerId?: string }) => {
     setPropertyStreet(params.street);
     setPropertyCity(params.city);
     setPropertyState(params.state);
+    if (params.id) {
+      setPropertyId(params.id);
+    }
+    
+    // If offerId is provided, load the saved offer scenario
+    if (params.offerId) {
+      try {
+        const response = await fetch(`/api/v2/offer-scenarios/${params.offerId}`);
+        if (response.ok) {
+          const data = await response.json();
+          const offerData = data.scenario.offer_data;
+          
+          // Set the loaded offer name for display
+          setLoadedOfferName(data.scenario.offer_name || `Offer ${params.offerId}`);
+          
+          // Load all the saved values into the form fields
+          if (offerData) {
+            setPurchasePrice(parseFloat(offerData.purchasePrice) || 0);
+            setDownPaymentPercentage(parseFloat(offerData.downPaymentPercentage) || 20);
+            setInterestRate(parseFloat(offerData.interestRate) || 7.0);
+            setAmortizationPeriodYears(parseInt(offerData.amortizationPeriodYears) || 30);
+            setClosingCostsPercentage(parseFloat(offerData.closingCostsPercentage) || 3);
+            
+            setNumUnits(parseInt(offerData.numUnits) || 0);
+            setAvgMonthlyRentPerUnit(parseFloat(offerData.avgMonthlyRentPerUnit) || 0);
+            setVacancyRate(parseFloat(offerData.vacancyRate) || 10);
+            setAnnualRentalGrowthRate(parseFloat(offerData.annualRentalGrowthRate) || 2);
+            setOtherIncomeAnnual(parseFloat(offerData.otherIncomeAnnual) || 0);
+            setIncomeReductionsAnnual(parseFloat(offerData.incomeReductionsAnnual) || 0);
+            
+            setPropertyTaxes(parseFloat(offerData.propertyTaxes) || 0);
+            setInsurance(parseFloat(offerData.insurance) || 0);
+            setPropertyManagementFeePercentage(parseFloat(offerData.propertyManagementFeePercentage) || 6);
+            setMaintenanceRepairsAnnual(parseFloat(offerData.maintenanceRepairsAnnual) || 0);
+            setUtilitiesAnnual(parseFloat(offerData.utilitiesAnnual) || 0);
+            setContractServicesAnnual(parseFloat(offerData.contractServicesAnnual) || 0);
+            
+            setInterestOnlyPeriodYears(parseInt(offerData.interestOnlyPeriodYears) || 10);
+            setRefinanceTermYears(parseInt(offerData.refinanceTermYears) || 25);
+            setDispositionCapRate(parseFloat(offerData.dispositionCapRate) || 6);
+          }
+        }
+      } catch (error) {
+        console.error('Error loading saved offer:', error);
+      }
+    }
   }, []);
 
   // --- Input States: FINANCING ---
@@ -305,7 +361,6 @@ export default function OfferAnalyzerPage() {
   const [actualGradingScore, setActualGradingScore] = useState<number>(0);
   const [showMoreMenu, setShowMoreMenu] = useState(false);
   const moreMenuRef = useRef<HTMLDivElement>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Function to save settings as blob
   const saveSettings = () => {
@@ -372,6 +427,187 @@ export default function OfferAnalyzerPage() {
 
     URL.revokeObjectURL(url);
     
+    // Clean up the saving flag 
+    if ((window as any).propertyAnalyzerSetSavingScenario) {
+      (window as any).propertyAnalyzerSetSavingScenario(false);
+    }
+  };
+
+  // --- Offer Management Functions ---
+  
+  // Function to get current offer data for saving
+  const getCurrentOfferData = () => {
+    return {
+      purchasePrice,
+      downPaymentPercentage,
+      interestRate,
+      loanStructure,
+      amortizationPeriodYears,
+      interestOnlyPeriodYears,
+      refinanceTermYears,
+      closingCostsPercentage,
+      dispositionCapRate,
+      numUnits,
+      avgMonthlyRentPerUnit,
+      vacancyRate,
+      annualRentalGrowthRate,
+      otherIncomeAnnual,
+      incomeReductionsAnnual,
+      propertyTaxes,
+      insurance,
+      propertyManagementFeePercentage,
+      maintenanceRepairsAnnual,
+      utilitiesAnnual,
+      contractServicesAnnual,
+      payrollAnnual,
+      marketingAnnual,
+      gAndAAnnual,
+      otherExpensesAnnual,
+      expenseGrowthRate,
+      capitalReservePerUnitAnnual,
+      deferredCapitalReservePerUnit,
+      holdingPeriodYears,
+      usePercentageMode,
+      operatingExpensePercentage,
+      savedAt: new Date().toISOString()
+    };
+  };
+
+  // Function to load offer data
+  const loadOfferData = (offerData: any) => {
+    if (!offerData || typeof offerData !== 'object') return;
+    
+    setPurchasePrice(offerData.purchasePrice ?? purchasePrice);
+    setDownPaymentPercentage(offerData.downPaymentPercentage ?? downPaymentPercentage);
+    setInterestRate(offerData.interestRate ?? interestRate);
+    setLoanStructure(offerData.loanStructure ?? loanStructure);
+    setAmortizationPeriodYears(offerData.amortizationPeriodYears ?? amortizationPeriodYears);
+    setInterestOnlyPeriodYears(offerData.interestOnlyPeriodYears ?? interestOnlyPeriodYears);
+    setRefinanceTermYears(offerData.refinanceTermYears ?? refinanceTermYears);
+    setClosingCostsPercentage(offerData.closingCostsPercentage ?? closingCostsPercentage);
+    setDispositionCapRate(offerData.dispositionCapRate ?? dispositionCapRate);
+    setNumUnits(offerData.numUnits ?? numUnits);
+    setAvgMonthlyRentPerUnit(offerData.avgMonthlyRentPerUnit ?? avgMonthlyRentPerUnit);
+    setVacancyRate(offerData.vacancyRate ?? vacancyRate);
+    setAnnualRentalGrowthRate(offerData.annualRentalGrowthRate ?? annualRentalGrowthRate);
+    setOtherIncomeAnnual(offerData.otherIncomeAnnual ?? otherIncomeAnnual);
+    setIncomeReductionsAnnual(offerData.incomeReductionsAnnual ?? incomeReductionsAnnual);
+    setPropertyTaxes(offerData.propertyTaxes ?? propertyTaxes);
+    setInsurance(offerData.insurance ?? insurance);
+    setPropertyManagementFeePercentage(offerData.propertyManagementFeePercentage ?? propertyManagementFeePercentage);
+    setMaintenanceRepairsAnnual(offerData.maintenanceRepairsAnnual ?? maintenanceRepairsAnnual);
+    setUtilitiesAnnual(offerData.utilitiesAnnual ?? utilitiesAnnual);
+    setContractServicesAnnual(offerData.contractServicesAnnual ?? contractServicesAnnual);
+    setPayrollAnnual(offerData.payrollAnnual ?? payrollAnnual);
+    setMarketingAnnual(offerData.marketingAnnual ?? marketingAnnual);
+    setGAndAAnnual(offerData.gAndAAnnual ?? gAndAAnnual);
+    setOtherExpensesAnnual(offerData.otherExpensesAnnual ?? otherExpensesAnnual);
+    setExpenseGrowthRate(offerData.expenseGrowthRate ?? expenseGrowthRate);
+    setCapitalReservePerUnitAnnual(offerData.capitalReservePerUnitAnnual ?? capitalReservePerUnitAnnual);
+    setDeferredCapitalReservePerUnit(offerData.deferredCapitalReservePerUnit ?? deferredCapitalReservePerUnit);
+    setHoldingPeriodYears(offerData.holdingPeriodYears ?? holdingPeriodYears);
+    setUsePercentageMode(offerData.usePercentageMode ?? usePercentageMode);
+    setOperatingExpensePercentage(offerData.operatingExpensePercentage ?? operatingExpensePercentage);
+  };
+
+  // Handle viewing all user offers
+  const handleViewOffers = async () => {
+    if (!currentUser) {
+      alert('Please log in to view offers.');
+      return;
+    }
+
+    try {
+      // Fetch offers from the offer_scenarios table (all user offers)
+      const response = await fetch('/api/v2/offer-scenarios?all=true');
+      if (!response.ok) {
+        throw new Error('Failed to fetch offers');
+      }
+
+      const data = await response.json();
+      
+      // Transform the data to match our UI format
+      const transformedOffers = data.scenarios.map((offer: any) => ({
+        id: offer.id,
+        name: offer.offer_name || `Offer ${offer.id}`,
+        description: offer.offer_description || 'No description',
+        property_address: offer.saved_properties?.address_full || 'Unknown Address',
+        offer_amount: offer.offer_data?.purchasePrice ? `$${parseInt(offer.offer_data.purchasePrice).toLocaleString()}` : 'N/A',
+        created_date: new Date(offer.created_at).toLocaleDateString(),
+        property_id: offer.property_id,
+        offer_data: offer.offer_data
+      }));
+
+      setSelectedPropertyOffers(transformedOffers);
+      setShowOffersModal(true);
+    } catch (error) {
+      console.error('Error fetching offers:', error);
+      alert('Failed to load offers. Please try again.');
+    }
+  };
+
+  const handleOfferSelection = (offer: any) => {
+    loadOfferData(offer.offer_data);
+    setLoadedOfferName(offer.name);
+    setShowOffersModal(false);
+  };
+
+  const handleDeleteOffer = async (offerId: string) => {
+    if (!confirm('Are you sure you want to delete this offer? This action cannot be undone.')) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/v2/offer-scenarios/${offerId}`, {
+        method: 'DELETE'
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Failed to delete offer');
+      }
+
+      // Remove from local state
+      setSelectedPropertyOffers(prev => prev.filter(offer => offer.id !== offerId));
+    } catch (error) {
+      console.error('Error deleting offer:', error);
+      alert('Failed to delete offer. Please try again.');
+    }
+  };
+
+  // Handle saving offer to database
+  const handleSaveOffer = async (offerName: string, offerDescription: string) => {
+    if (!propertyId) {
+      throw new Error('Property ID is required to save offers');
+    }
+
+    const response = await fetch('/api/v2/offer-scenarios', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        propertyId,
+        offerName,
+        offerDescription,
+        offerData: getCurrentOfferData()
+      })
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || 'Failed to save offer');
+    }
+
+    // Reset the unsaved changes tracking since we're saving the scenario
+    if ((window as any).propertyAnalyzerSetSavingScenario) {
+      (window as any).propertyAnalyzerSetSavingScenario(true);
+    }
+    
+    // File was successfully saved, permanently reset the interaction flag
+    if ((window as any).propertyAnalyzerResetUserInteraction) {
+      (window as any).propertyAnalyzerResetUserInteraction();
+    }
+
     // Clean up the saving flag 
     if ((window as any).propertyAnalyzerSetSavingScenario) {
       (window as any).propertyAnalyzerSetSavingScenario(false);
@@ -969,13 +1205,6 @@ export default function OfferAnalyzerPage() {
       </Suspense>
     <div className="flex flex-col lg:flex-row p-6 bg-gray-50 text-gray-800 min-h-screen">
       {/* Hidden file input for loading settings */}
-      <input
-        type="file"
-        ref={fileInputRef}
-        accept=".json"
-        style={{ display: 'none' }}
-        onChange={handleFileLoad}
-      />
       <div className="lg:w-2/3 pr-0 lg:pr-8 mb-8 lg:mb-0">
 
         <div className="flex justify-between items-end mb-6">
@@ -1079,7 +1308,7 @@ export default function OfferAnalyzerPage() {
 
         <div className="mt-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {/* Column 1 - Row 1 */}
-          <CharlieTooltip message="This is your total rental income after vacancy. The foundation of everything—if this number's wrong, your whole deal is wrong.">
+          <CharlieTooltip message="Total rental income after vacancy. The foundation of every deal—if this number's wrong, the entire analysis is worthless.">
             <div className="bg-white p-5 rounded-xl shadow-lg border border-gray-200 cursor-pointer">
               <h3 className="text-md font-semibold text-blue-600 mb-1">Gross Operating Income</h3>
               <p className="text-2xl font-bold text-gray-900">{formatCurrency(effectiveGrossIncome)}</p>
@@ -1087,7 +1316,7 @@ export default function OfferAnalyzerPage() {
           </CharlieTooltip>
 
           {/* Column 2 - Row 1 */}
-          <CharlieTooltip message="The money left after all operating expenses. This is what pays your mortgage and puts cash in your pocket. Make it count.">
+          <CharlieTooltip message="Net Operating Income—the money left after all operating expenses. This pays the mortgage and generates cash flow. The most critical number in real estate.">
             <div className="bg-white p-5 rounded-xl shadow-lg border border-gray-200 cursor-pointer">
               <h3 className="text-md font-semibold text-blue-600 mb-1">Net Operating Income</h3>
               <p className="text-2xl font-bold text-gray-900">{formatCurrency(netOperatingIncome)}</p>
@@ -1103,7 +1332,7 @@ export default function OfferAnalyzerPage() {
           </CharlieTooltip>
 
           {/* Column 1 - Row 2 */}
-          <CharlieTooltip message="What percentage of your income goes to expenses. Under 50% is good. Over 60% and you're working for your property manager.">
+          <CharlieTooltip message="Percentage of income consumed by expenses. Under 50% is excellent. Over 60% means the property is working against you.">
             <div className="bg-white p-5 rounded-xl shadow-lg border border-gray-200 cursor-pointer">
               <h3 className="text-md font-semibold text-blue-600 mb-1">Expense Ratio (Year 1)</h3>
               <p className="text-2xl font-bold text-gray-900">{formatPercentage(expenseRatio)}</p>
@@ -1119,7 +1348,7 @@ export default function OfferAnalyzerPage() {
           </CharlieTooltip>
 
           {/* Column 3 - Row 2 */}
-          <CharlieTooltip message="The return on your actual cash invested in year one. This is immediate gratification—what you earn on your down payment right away.">
+          <CharlieTooltip message="Return on actual cash invested in year one. Immediate gratification—the cash return on the down payment and closing costs.">
             <div className="bg-white p-5 rounded-xl shadow-lg border border-gray-200 cursor-pointer">
               <h3 className="text-md font-semibold text-blue-600 mb-1">Cash-on-Cash Return (Year 1)</h3>
               <p className="text-2xl font-bold text-gray-900">{formatPercentage(cashOnCashReturn)}</p>
@@ -1135,7 +1364,7 @@ export default function OfferAnalyzerPage() {
           </CharlieTooltip>
 
           {/* Column 2 - Row 3 */}
-          <CharlieTooltip message="Your total return if you sell at the end of your holding period. Includes all cash flow plus sale proceeds. This is what really matters.">
+          <CharlieTooltip message="Total return if sold at the end of the holding period. Includes all cash flow plus sale proceeds. The ultimate performance metric.">
             <div className="bg-white p-5 rounded-xl shadow-lg border border-gray-200 cursor-pointer">
               <h3 className="text-md font-semibold text-blue-600 mb-1">Total ROI ({holdingPeriodYears} Year)</h3>
               <p className="text-2xl font-bold text-gray-900">{formatPercentage(roiAtHorizon)}</p>
@@ -1143,7 +1372,7 @@ export default function OfferAnalyzerPage() {
           </CharlieTooltip>
 
           {/* Column 3 - Row 3 */}
-          <CharlieTooltip message="Your annual return including cash flow AND appreciation. This is the gold standard—aim for double digits but be realistic about your market.">
+          <CharlieTooltip message="Annual return including cash flow AND appreciation. The gold standard metric—double digits are excellent but market reality matters.">
             <div className="bg-white p-5 rounded-xl shadow-lg border border-gray-200 cursor-pointer">
               <h3 className="text-md font-semibold text-blue-600 mb-1">Internal Rate of Return ({holdingPeriodYears} Year)</h3>
               <p className="text-2xl font-bold text-gray-900">{formatPercentage(irr)}</p>
@@ -1151,7 +1380,7 @@ export default function OfferAnalyzerPage() {
           </CharlieTooltip>
 
           {/* Column 1 - Row 4 */}
-          <CharlieTooltip message="Your annual payment to the bank. This comes out of your NOI first—everything else is gravy. Keep this manageable.">
+          <CharlieTooltip message="Annual payment to the bank. This comes out of NOI first—everything else is profit. Keep debt service manageable.">
             <div className="bg-white p-5 rounded-xl shadow-lg border border-gray-200 cursor-pointer">
               <h3 className="text-md font-semibold text-blue-600 mb-1">
                 {loanStructure === 'interest-only' ? 'Annual IO Payment' : 'Annual Debt Service'}
@@ -1179,7 +1408,7 @@ export default function OfferAnalyzerPage() {
           </CharlieTooltip>
 
           {/* Column 3 - Row 4 */}
-          <CharlieTooltip message="Your NOI divided by purchase price. It's like a stock dividend—higher is better, but don't chase cap rates into bad neighborhoods.">
+          <CharlieTooltip message="NOI divided by purchase price. Like a stock dividend—higher is better, but don't chase cap rates into bad neighborhoods.">
             <div className="bg-white p-5 rounded-xl shadow-lg border border-gray-200 cursor-pointer">
               <h3 className="text-md font-semibold text-blue-600 mb-1">Cap Rate (Year 1)</h3>
               <p className="text-2xl font-bold text-gray-900">{formatPercentage(capRate)}</p>
@@ -1197,7 +1426,7 @@ export default function OfferAnalyzerPage() {
           </CharlieTooltip>
 
           {/* Column 2 - Row 5 */}
-          <CharlieTooltip message="What your property should be worth when you sell, minus remaining debt. This is your payday—appreciation plus principal paydown over time.">
+          <CharlieTooltip message="Property value at sale minus remaining debt. The ultimate payday—appreciation plus principal paydown over time.">
             <div className="bg-white p-5 rounded-xl shadow-lg border border-gray-200 cursor-pointer">
               <h3 className="text-md font-semibold text-blue-600 mb-1">Projected Equity (at Year {holdingPeriodYears})</h3>
               <p className="text-2xl font-bold text-gray-900">{formatCurrency(projectedEquityAtHorizon)}</p>
@@ -1209,7 +1438,12 @@ export default function OfferAnalyzerPage() {
 
       <div className="print-assumptions lg:w-1/3 bg-white p-6 rounded-lg shadow-sm border border-gray-200 lg:sticky lg:top-8 self-start max-h-[calc(100vh-4rem)] overflow-y-auto">
         <div className="flex justify-between items-center mb-6">
-          <h2 className="text-xl font-semibold text-gray-900">Investment Assumptions</h2>
+          <div>
+            <h2 className="text-xl font-semibold text-gray-900">Investment Assumptions</h2>
+            {loadedOfferName && (
+              <p className="text-sm text-blue-600 font-medium mt-1">{loadedOfferName}</p>
+            )}
+          </div>
           <div className="flex space-x-2 relative" style={{ minHeight: '40px', minWidth: '280px' }}>
             <button
               onClick={resetToDefaults}
@@ -1233,7 +1467,7 @@ export default function OfferAnalyzerPage() {
             {showMoreMenu && (
               <div
                 ref={moreMenuRef}
-                className="absolute w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-50"
+                className="absolute w-40 bg-white border border-gray-200 rounded-lg shadow-lg z-50"
                 style={{
                   top: '100%',
                   right: '0',
@@ -1241,24 +1475,27 @@ export default function OfferAnalyzerPage() {
                   position: 'absolute'
                 }}
               >
-                <button
-                  onClick={() => {
-                    saveSettings();
-                    setShowMoreMenu(false);
-                  }}
-                  className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900 rounded-t-lg transition-colors cursor-pointer border-b border-gray-100"
-                >
-                  &gt; Save scenario
-                </button>
-                <button
-                  onClick={() => {
-                    fileInputRef.current?.click();
-                    setShowMoreMenu(false);
-                  }}
-                  className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900 rounded-b-lg transition-colors cursor-pointer"
-                >
-                  &gt; Load scenario
-                </button>
+                <div className="py-2">
+                  <button
+                    onClick={() => {
+                      setShowSaveOfferModal(true);
+                      setShowMoreMenu(false);
+                    }}
+                    className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 hover:text-gray-900 transition-colors cursor-pointer"
+                  >
+                    &gt; Save Offer
+                  </button>
+                  <div className="border-t border-gray-100 mx-2"></div>
+                  <button
+                    onClick={() => {
+                      handleViewOffers();
+                      setShowMoreMenu(false);
+                    }}
+                    className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 hover:text-gray-900 transition-colors cursor-pointer"
+                  >
+                    &gt; Load Offer
+                  </button>
+                </div>
               </div>
             )}
           </div>
@@ -1300,7 +1537,7 @@ export default function OfferAnalyzerPage() {
 
         <div className="mb-5">
           <label htmlFor="interestRate" className="block text-sm font-medium text-gray-700 mb-1">Interest Rate (%)</label>
-          <CharlieTooltip message="Shop around! A half percent difference on a million-dollar loan costs you $5,000/year. Your broker relationship matters here.">
+          <CharlieTooltip message="Shop around! A half percent difference on a million-dollar loan costs $5,000/year. Broker relationships matter here.">
             <input
               type="number"
               id="interestRate"
@@ -1315,7 +1552,7 @@ export default function OfferAnalyzerPage() {
         {/* Loan Structure Selection */}
         <div className="mb-5">
           <label className="block text-sm font-medium text-gray-700 mb-3">Loan Structure</label>
-          <CharlieTooltip message="Interest-only gives you better cash flow early but higher payments later. I use it strategically for value-add deals.">
+          <CharlieTooltip message="Interest-only gives better cash flow early but higher payments later. Strategic for value-add deals with planned improvements.">
             <div className="flex space-x-4">
               <label className="flex items-center">
                 <input
@@ -1347,7 +1584,7 @@ export default function OfferAnalyzerPage() {
         {loanStructure === 'amortizing' ? (
           <div className="mb-5">
             <label htmlFor="amortizationPeriodYears" className="block text-sm font-medium text-gray-700 mb-1">Amortization Period (Years)</label>
-            <CharlieTooltip message="30 years = lower payments, more cash flow. 25 years = higher payments but you build equity faster. Pick your poison.">
+            <CharlieTooltip message="30 years = lower payments, more cash flow. 25 years = higher payments but faster equity building. Choose based on strategy.">
               <input
                 type="number"
                 id="amortizationPeriodYears"
@@ -1363,7 +1600,7 @@ export default function OfferAnalyzerPage() {
           <div className="space-y-5">
             <div>
               <label htmlFor="interestOnlyPeriodYears" className="block text-sm font-medium text-gray-700 mb-1">Interest-Only Period (Years)</label>
-              <CharlieTooltip message="Perfect for value-add deals. Use this time to increase rents, then refi. Don't get stuck when the IO period ends!">
+              <CharlieTooltip message="Perfect for value-add deals. Use this time to increase rents, then refinance. Plan the exit before the IO period ends.">
                 <input
                   type="number"
                   id="interestOnlyPeriodYears"
@@ -1377,7 +1614,7 @@ export default function OfferAnalyzerPage() {
             </div>
             <div>
               <label htmlFor="refinanceTermYears" className="block text-sm font-medium text-gray-700 mb-1">Refinance Term (Years)</label>
-              <CharlieTooltip message="Plan your exit strategy now. Will you sell, refi, or hold? This number should match your business plan.">
+              <CharlieTooltip message="Plan the exit strategy now. Sell, refinance, or hold? This term should align with the business plan.">
                 <input
                   type="number"
                   id="refinanceTermYears"
@@ -1395,7 +1632,7 @@ export default function OfferAnalyzerPage() {
 
         <div className="mb-5 mt-3">
           <label htmlFor="closingCostsPercentage" className="block text-sm font-medium text-gray-700 mb-1">Closing Costs (%)</label>
-          <CharlieTooltip message="Don't forget these! They add up fast. Budget 2-4% depending on your lender and market. Factor them into your returns.">
+          <CharlieTooltip message="Don't forget these! They add up fast. Budget 2-4% depending on lender and market. Factor them into return calculations.">
             <input
               type="number"
               id="closingCostsPercentage"
@@ -1411,7 +1648,7 @@ export default function OfferAnalyzerPage() {
         {/* Disposition Cap Rate */}
         <div className="mb-5">
           <label htmlFor="dispositionCapRate" className="block text-sm font-medium text-gray-700 mb-1">Disposition Cap Rate (%)</label>
-          <CharlieTooltip message="What cap rate will you sell at? Be conservative—markets change. I usually assume 0.5-1% higher than today's rates.">
+          <CharlieTooltip message="What cap rate at sale? Be conservative—markets change. Assume 0.5-1% higher than current market rates.">
             <input
               type="number"
               id="dispositionCapRate"
@@ -1443,7 +1680,7 @@ export default function OfferAnalyzerPage() {
 
         <div className="mb-5">
           <label htmlFor="avgMonthlyRentPerUnit" className="block text-sm font-medium text-gray-700 mb-1">Avg Monthly Rent (per unit) ($)</label>
-          <CharlieTooltip message="This should be market rent, not current rent. What can you actually get? Drive the comps yourself.">
+          <CharlieTooltip message="This should be market rent, not current rent. What can the property actually command? Drive the comps personally.">
             <input
               type="text"
               id="avgMonthlyRentPerUnit"
@@ -1458,7 +1695,7 @@ export default function OfferAnalyzerPage() {
 
         <div className="mb-5">
           <label htmlFor="vacancyRate" className="block text-sm font-medium text-gray-700 mb-1">Vacancy Rate (%)</label>
-          <CharlieTooltip message="Don't be optimistic! Even the best properties have turnover. I use 5-10% minimum, higher for value-add deals.">
+          <CharlieTooltip message="Don't be optimistic! Even the best properties have turnover. Use 5-10% minimum, higher for value-add deals.">
             <input
               type="number"
               id="vacancyRate"
@@ -1474,7 +1711,7 @@ export default function OfferAnalyzerPage() {
 
         <div className="mb-5">
           <label htmlFor="annualRentalGrowthRate" className="block text-sm font-medium text-gray-700 mb-1">Annual Rental Growth Rate (%)</label>
-          <CharlieTooltip message="Inflation is your friend in real estate. But don't assume 2008 growth rates. Be realistic—1-3% is usually safe.">
+          <CharlieTooltip message="Inflation is an ally in real estate. But don't assume boom-era growth rates. Be realistic—1-3% is usually safe.">
             <input
               type="number"
               id="annualRentalGrowthRate"
@@ -1561,7 +1798,7 @@ export default function OfferAnalyzerPage() {
             
             <div className="mb-5">
               <label htmlFor="expenseGrowthRate" className="block text-sm font-medium text-gray-700 mb-1">Expense Growth Rate (%)</label>
-              <CharlieTooltip message="Expenses grow faster than rent in many markets. Don't assume they stay flat—that's rookie mistake #1.">
+              <CharlieTooltip message="Expenses grow faster than rent in many markets. Don't assume they stay flat—that's the #1 rookie mistake.">
                 <input
                   type="number"
                   id="expenseGrowthRate"
@@ -1698,7 +1935,7 @@ export default function OfferAnalyzerPage() {
 
         <div className="mb-5">
           <label htmlFor="gAndAAnnual" className="block text-sm font-medium text-gray-700 mb-1">G&A ($)</label>
-          <CharlieTooltip message="General & Administrative—the random stuff. Legal, accounting, office supplies. Usually 2-5% of gross income.">
+          <CharlieTooltip message="General & Administrative—the miscellaneous expenses. Legal, accounting, office supplies. Usually 2-5% of gross income.">
             <input
               type="text"
               id="gAndAAnnual"
@@ -1728,7 +1965,7 @@ export default function OfferAnalyzerPage() {
 
         <div className="mb-5">
           <label htmlFor="expenseGrowthRate" className="block text-sm font-medium text-gray-700 mb-1">Expense Growth Rate (%)</label>
-          <CharlieTooltip message="Expenses grow faster than rent in many markets. Don't assume they stay flat—that's rookie mistake #1.">
+          <CharlieTooltip message="Expenses grow faster than rent in many markets. Don't assume they stay flat—that's the #1 rookie mistake.">
             <input
               type="number"
               id="expenseGrowthRate"
@@ -1748,7 +1985,7 @@ export default function OfferAnalyzerPage() {
         </div>
         <div className="mb-5">
           <label htmlFor="capitalReservePerUnitAnnual" className="block text-sm font-medium text-gray-700 mb-1">Capital Reserve (per unit) ($)</label>
-          <CharlieTooltip message="This is your 'stuff breaks' fund. HVAC, roofs, parking lots—big ticket items. I use $300-500/unit minimum.">
+          <CharlieTooltip message="The 'stuff breaks' fund. HVAC, roofs, parking lots—big ticket items. Use $300-500/unit minimum.">
             <input
               type="text"
               id="capitalReservePerUnitAnnual"
@@ -1776,7 +2013,7 @@ export default function OfferAnalyzerPage() {
         </div>
         <div className="mb-6">
           <label htmlFor="holdingPeriodYears" className="block text-sm font-medium text-gray-700 mb-1">Holding Period (Years)</label>
-          <CharlieTooltip message="How long before you sell or refi? Longer holds smooth out market volatility but tie up your capital.">
+          <CharlieTooltip message="How long before selling or refinancing? Longer holds smooth out market volatility but tie up capital.">
             <div className="flex items-center">
               <input
                 type="range"
@@ -1800,6 +2037,81 @@ export default function OfferAnalyzerPage() {
       onStay={handleStayAndSave}
       onLeave={handleLeaveWithoutSaving}
     />
+    
+    {/* Save Offer Modal */}
+    <SaveOfferModal
+      isOpen={showSaveOfferModal}
+      onClose={() => setShowSaveOfferModal(false)}
+      onSave={handleSaveOffer}
+    />
+    
+    {/* Offers Modal */}
+    {showOffersModal && (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="bg-white rounded-lg p-6 max-w-2xl mx-4 w-full">
+          <div className="flex items-center justify-between mb-6">
+            <h3 className="text-lg font-medium text-gray-900">Select an Offer</h3>
+            <button
+              onClick={() => setShowOffersModal(false)}
+              className="text-gray-400 hover:text-gray-600"
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+          
+          <div className="space-y-3 max-h-96 overflow-y-auto">
+            {selectedPropertyOffers.length === 0 ? (
+              <p className="text-gray-500 text-center py-8">No offers have been created yet.</p>
+            ) : (
+              selectedPropertyOffers.map((offer) => (
+                <div
+                  key={offer.id}
+                  onClick={() => handleOfferSelection(offer)}
+                  className="border border-gray-200 rounded-lg p-4 cursor-pointer hover:bg-blue-50 hover:border-blue-300 transition-colors"
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <h4 className="text-lg font-semibold text-gray-900">{offer.name}</h4>
+                      <p className="text-sm text-gray-600 mt-1">{offer.description}</p>
+                      <p className="text-xs text-gray-500 mt-2">{offer.property_address}</p>
+                    </div>
+                    <div className="flex items-center space-x-3">
+                      <div className="text-right">
+                        <div className="text-lg font-semibold text-blue-600">{offer.offer_amount}</div>
+                        <div className="text-xs text-gray-500">{offer.created_date}</div>
+                      </div>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteOffer(offer.id);
+                        }}
+                        className="p-1.5 text-red-600 hover:bg-red-50 rounded-md transition-colors"
+                        title="Delete offer"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+          
+          <div className="flex justify-end mt-6">
+            <button
+              onClick={() => setShowOffersModal(false)}
+              className="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors font-medium"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
   </>
   );
 }

@@ -4,7 +4,7 @@
  * Supports printing, email generation, and CSV export functionality
  */
 
-import { Document, Packer, Paragraph, TextRun, AlignmentType } from 'docx';
+import { Document, Packer, Paragraph, TextRun, AlignmentType, ImageRun } from 'docx';
 import { saveAs } from 'file-saver';
 
 interface Property {
@@ -41,6 +41,19 @@ export async function generateMarketingLetter(
   outputType: 'print' | 'email' | 'csv' = 'print'
 ): Promise<MarketingLetterResult> {
   try {
+    // DEBUG: Log the property data to see what we're receiving
+    console.log('=== MARKETING LETTER DEBUG ===');
+    console.log('Property data received:', {
+      address_full: property.address_full,
+      address_state: property.address_state,
+      owner_first_name: property.owner_first_name,
+      owner_last_name: property.owner_last_name,
+      property_id: property.property_id,
+      hasFirstName: !!property.owner_first_name,
+      hasLastName: !!property.owner_last_name,
+      firstNameType: typeof property.owner_first_name,
+      lastNameType: typeof property.owner_last_name
+    });
     // Validate required sender information
     if (!senderInfo.name || !senderInfo.phone || !senderInfo.email) {
       return {
@@ -57,15 +70,31 @@ export async function generateMarketingLetter(
       };
     }
 
-    // Determine owner name
-    const ownerName = property.owner_first_name && property.owner_last_name
-      ? `${property.owner_first_name} ${property.owner_last_name}`
+    // Determine salutation based on owner name fields
+    const salutation = property.owner_first_name && property.owner_last_name
+      ? property.owner_first_name  // Use first name for personal greeting
+      : 'Property Owner';  // Use formal greeting when only last name or no name
+    
+    // Full owner name for address section
+    const ownerName = (property.owner_first_name || property.owner_last_name)
+      ? `${property.owner_first_name || ''} ${property.owner_last_name || ''}`.trim()
       : 'Property Owner';
 
     // Create marketing letter content
     const subject = `Inquiry About Your Property - ${property.address_full}`;
     
-    const letterBody = `Dear ${ownerName},
+    // Format phone number for readability
+    const formatPhoneNumber = (phone: string) => {
+      const cleaned = phone.replace(/\D/g, ''); // Remove non-digits
+      if (cleaned.length === 10) {
+        return `${cleaned.slice(0,3)}.${cleaned.slice(3,6)}.${cleaned.slice(6,10)}`;
+      }
+      return phone; // Return original if not 10 digits
+    };
+
+    const formattedPhone = formatPhoneNumber(senderInfo.phone);
+
+    const letterBody = `Dear ${salutation},
 
 I hope this note finds you well. I'm reaching out to express sincere interest in your property located at ${property.address_full}. I focus on acquiring multifamily properties in ${property.address_state || 'the area'}, and this building stood out due to its location, character, and the strength of the local rental market.
 
@@ -77,15 +106,7 @@ In past acquisitions, we've structured deals with flexible terms including delay
 
 If you'd simply like to know what your property might be worth in today's market, I'd be happy to offer an informal valuation – no pressure, no obligation.
 
-You can reach me directly at ${senderInfo.phone} or ${senderInfo.email}. Even if now isn't the right time, I'd welcome the opportunity to stay in touch.
-
-Thank you,
-
-${senderInfo.name}
-${senderInfo.title || ''}
-${senderInfo.business || ''}
-${senderInfo.phone}
-${senderInfo.email}`;
+You can reach me directly at ${formattedPhone} or ${senderInfo.email}. Even if now isn't the right time, I'd welcome the opportunity to stay in touch.`;
 
     // Handle different output types
     switch (outputType) {
@@ -129,61 +150,298 @@ async function generatePrintableDocument(
   senderInfo: SenderInfo
 ): Promise<void> {
   try {
+    const children = [];
+
+    // Format phone number for readability
+    const formatPhoneNumber = (phone: string) => {
+      const cleaned = phone.replace(/\D/g, ''); // Remove non-digits
+      if (cleaned.length === 10) {
+        return `${cleaned.slice(0,3)}.${cleaned.slice(3,6)}.${cleaned.slice(6,10)}`;
+      }
+      return phone; // Return original if not 10 digits
+    };
+
+    const formattedPhone = formatPhoneNumber(senderInfo.phone);
+
+    // Logo (if provided) - centered at top
+    if (senderInfo.logoBase64) {
+      try {
+        const logoData = senderInfo.logoBase64.replace(/^data:image\/[a-z]+;base64,/, '');
+        const logoBuffer = Buffer.from(logoData, 'base64');
+        
+        children.push(new Paragraph({
+          children: [
+            new ImageRun({
+              data: logoBuffer,
+              transformation: {
+                width: 180,
+                height: 60
+              },
+              type: 'png'
+            })
+          ],
+          alignment: AlignmentType.CENTER,
+          spacing: { after: 400 }
+        }));
+      } catch (error) {
+        console.log('Logo processing failed:', error);
+        children.push(new Paragraph({
+          children: [],
+          alignment: AlignmentType.CENTER,
+          spacing: { after: 200 }
+        }));
+      }
+    }
+
+    // Sender header with business info
+    children.push(
+      new Paragraph({
+        children: [
+          new TextRun({
+            text: senderInfo.name,
+            size: 22
+          })
+        ],
+        alignment: AlignmentType.LEFT,
+        spacing: { after: 100 }
+      })
+    );
+
+    if (senderInfo.business) {
+      children.push(
+        new Paragraph({
+          children: [
+            new TextRun({
+              text: senderInfo.business,
+              size: 22
+            })
+          ],
+          spacing: { after: 100 }
+        })
+      );
+    }
+
+    if (senderInfo.title) {
+      children.push(
+        new Paragraph({
+          children: [
+            new TextRun({
+              text: senderInfo.title,
+              size: 22
+            })
+          ],
+          spacing: { after: 200 }
+        })
+      );
+    }
+
+    // Sender contact info - each line separately
+    children.push(
+      new Paragraph({
+        children: [
+          new TextRun({
+            text: senderInfo.address,
+            size: 22
+          })
+        ],
+        spacing: { after: 80 }
+      })
+    );
+
+    children.push(
+      new Paragraph({
+        children: [
+          new TextRun({
+            text: `${senderInfo.city}, ${senderInfo.state} ${senderInfo.zip}`,
+            size: 22
+          })
+        ],
+        spacing: { after: 80 }
+      })
+    );
+
+    children.push(
+      new Paragraph({
+        children: [
+          new TextRun({
+            text: formattedPhone,
+            size: 22
+          })
+        ],
+        spacing: { after: 80 }
+      })
+    );
+
+    children.push(
+      new Paragraph({
+        children: [
+          new TextRun({
+            text: senderInfo.email,
+            size: 22
+          })
+        ],
+        spacing: { after: 400 }
+      })
+    );
+
+    // Date
+    children.push(
+      new Paragraph({
+        children: [
+          new TextRun({
+            text: new Date().toLocaleDateString('en-US', { 
+              year: 'numeric', 
+              month: 'long', 
+              day: 'numeric' 
+            }),
+            size: 22
+          })
+        ],
+        spacing: { after: 400 }
+      })
+    );
+
+    // Recipient address (Property Owner)
+    const ownerName = (property.owner_first_name || property.owner_last_name)
+      ? `${property.owner_first_name || ''} ${property.owner_last_name || ''}`.trim()
+      : 'Property Owner';
+
+    children.push(
+      new Paragraph({
+        children: [
+          new TextRun({
+            text: ownerName,
+            size: 22
+          })
+        ],
+        spacing: { after: 100 }
+      })
+    );
+
+    // Property address
+    const propertyAddressParts = property.address_full.split(', ');
+    const streetAddress = propertyAddressParts[0] || property.address_full;
+    const cityStateZip = propertyAddressParts.length > 1 
+      ? propertyAddressParts.slice(1).join(', ')
+      : (property.address_state ? `City, ${property.address_state}` : '');
+
+    children.push(
+      new Paragraph({
+        children: [
+          new TextRun({
+            text: streetAddress,
+            size: 22
+          })
+        ],
+        spacing: { after: 80 }
+      })
+    );
+
+    if (cityStateZip) {
+      children.push(
+        new Paragraph({
+          children: [
+            new TextRun({
+              text: cityStateZip,
+              size: 22
+            })
+          ],
+          spacing: { after: 400 }
+        })
+      );
+    } else {
+      children.push(
+        new Paragraph({
+          children: [],
+          spacing: { after: 400 }
+        })
+      );
+    }
+
+    // Letter content - exclude signature section
+    const paragraphs = letterBody.split('\n\n');
+    const bodyParagraphs = paragraphs.filter(p => !p.trim().startsWith('Thank you,'));
+    
+    bodyParagraphs.forEach((paragraph) => {
+      children.push(
+        new Paragraph({
+          children: [
+            new TextRun({
+              text: paragraph,
+              size: 22
+            })
+          ],
+          spacing: { after: 240 }
+        })
+      );
+    });
+
+    // Add signature section manually with proper paragraph breaks
+    children.push(
+      new Paragraph({
+        children: [
+          new TextRun({
+            text: 'Thank you,',
+            size: 22
+          })
+        ],
+        spacing: { after: 240 }
+      })
+    );
+
+    children.push(
+      new Paragraph({
+        children: [
+          new TextRun({
+            text: senderInfo.name,
+            size: 22
+          })
+        ],
+        spacing: { after: 100 }
+      })
+    );
+
+    if (senderInfo.title) {
+      children.push(
+        new Paragraph({
+          children: [
+            new TextRun({
+              text: senderInfo.title,
+              size: 22
+            })
+          ],
+          spacing: { after: 100 }
+        })
+      );
+    }
+
+    if (senderInfo.business) {
+      children.push(
+        new Paragraph({
+          children: [
+            new TextRun({
+              text: senderInfo.business,
+              size: 22
+            })
+          ],
+          spacing: { after: 200 }
+        })
+      );
+    }
+
     const doc = new Document({
       sections: [{
-        properties: {},
-        children: [
-          // Header with sender info
-          new Paragraph({
-            children: [
-              new TextRun({
-                text: senderInfo.name,
-                bold: true,
-                size: 24
-              })
-            ],
-            alignment: AlignmentType.LEFT,
-            spacing: { after: 120 }
-          }),
-          
-          new Paragraph({
-            children: [
-              new TextRun({
-                text: `${senderInfo.address}\n${senderInfo.city}, ${senderInfo.state} ${senderInfo.zip}\n${senderInfo.phone}\n${senderInfo.email}`,
-                size: 22
-              })
-            ],
-            spacing: { after: 240 }
-          }),
-
-          // Date
-          new Paragraph({
-            children: [
-              new TextRun({
-                text: new Date().toLocaleDateString('en-US', { 
-                  year: 'numeric', 
-                  month: 'long', 
-                  day: 'numeric' 
-                }),
-                size: 22
-              })
-            ],
-            spacing: { after: 240 }
-          }),
-
-          // Letter content
-          ...letterBody.split('\n\n').map(paragraph => 
-            new Paragraph({
-              children: [
-                new TextRun({
-                  text: paragraph,
-                  size: 22
-                })
-              ],
-              spacing: { after: 120 }
-            })
-          )
-        ]
+        properties: {
+          page: {
+            margin: {
+              top: 1152,    // 0.8 inch
+              right: 1152,  // 0.8 inch  
+              bottom: 1152, // 0.8 inch
+              left: 1152    // 0.8 inch
+            }
+          }
+        },
+        children: children
       }]
     });
 

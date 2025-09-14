@@ -7,20 +7,23 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { useSearchParams } from 'next/navigation';
-import { Search, Heart, Grid3x3, Map, BarChart3, Grid, Filter, ChevronDown, FileText, MapPin, Calculator, StickyNote, Columns } from 'lucide-react';
+import { useSearchParams, useRouter } from 'next/navigation';
+import { Search, Heart, Grid3x3, Map, Filter, ChevronDown, FileText, MapPin } from 'lucide-react';
 import PropertyMap from '@/components/v2/PropertyMap';
-import { generate10YearCashFlowReport } from '../offer-analyzer/cash-flow-report';
+import { generate10YearCashFlowReport } from '../property-analyzer/cash-flow-report';
+import { generateMarketingLetter, createMailtoLink } from '../templates/generateMarketingLetter';
+import { CashFlowReportsModal } from '@/components/v2/CashFlowReportsModal';
 import { useAuth } from "@/contexts/AuthContext";
 
 export default function EngagePage() {
   const { user, isLoading: authLoading } = useAuth();
   const searchParams = useSearchParams();
-  const [viewMode, setViewMode] = useState<'cards' | 'map' | 'analysis' | 'matrix' | 'pipeline'>(() => {
+  const router = useRouter();
+  const [viewMode, setViewMode] = useState<'cards' | 'map'>(() => {
     // Initialize view mode from URL parameter, defaulting to 'cards'
     const paramViewMode = searchParams.get('viewMode');
-    if (paramViewMode && ['cards', 'map', 'analysis', 'matrix', 'pipeline'].includes(paramViewMode)) {
-      return paramViewMode as 'cards' | 'map' | 'analysis' | 'matrix' | 'pipeline';
+    if (paramViewMode && ['cards', 'map'].includes(paramViewMode)) {
+      return paramViewMode as 'cards' | 'map';
     }
     return 'cards';
   });
@@ -36,6 +39,11 @@ export default function EngagePage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [userMarkets, setUserMarkets] = useState<any[]>([]);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
+  const [showOffersModal, setShowOffersModal] = useState(false);
+  const [selectedPropertyOffers, setSelectedPropertyOffers] = useState<any[]>([]);
+  const [showCashFlowReportsModal, setShowCashFlowReportsModal] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const statusDropdownRef = useRef<HTMLDivElement>(null);
   const marketDropdownRef = useRef<HTMLDivElement>(null);
@@ -64,15 +72,19 @@ export default function EngagePage() {
 
         const favoritesData = await favoritesResponse.json();
         
+        
         // Transform the data to match the expected format
         const transformedProperties = favoritesData.favorites.map((favorite: any) => {
           const propertyData = favorite.property_data;
+          
           if (!propertyData) {
             console.warn('No property data found for favorite:', favorite);
             return null;
           }
           
+          
           return {
+            // UI-specific transformed fields (for display)
             id: propertyData.property_id || favorite.property_id,
             address: propertyData.address_street || propertyData.address_full || 'Unknown Address',
             city: propertyData.address_city || 'Unknown City',
@@ -87,14 +99,28 @@ export default function EngagePage() {
             estEquity: propertyData.estimated_equity ? `$${parseInt(propertyData.estimated_equity).toLocaleString()}` : 'Unknown',
             market: favorite.market_name || propertyData.address_city || 'Unknown Market',
             pipelineStatus: favorite.status || 'Reviewing',
-            source: favorite.recommendation_type === 'algorithm' ? 'A' : 'M', // A = Auto (algorithm), M = Manual
+            source: favorite.recommendation_type === 'algorithm' ? 'A' : 'M',
             isFavorited: true,
             isSkipTraced: favorite.is_skip_traced || false,
-            hasPricingScenario: favorite.has_pricing_scenario || false,
+            createdAt: favorite.created_at,
+            owner_first_name: propertyData.owner_first_name,
+            owner_last_name: propertyData.owner_last_name,
+            skip_trace_data: favorite.skip_trace_data,
+            
+            // Include ALL raw database fields for CSV export
+            ...propertyData,
+            
+            // Override any propertyData fields with favorites table data
             notes: favorite.notes || '',
-            createdAt: favorite.created_at
+            favorite_status: favorite.status,
+            favorite_notes: favorite.notes,
+            market_name: favorite.market_name,
+            recommendation_type: favorite.recommendation_type,
+            is_skip_traced: favorite.is_skip_traced,
+            has_pricing_scenario: favorite.has_pricing_scenario
           };
         }).filter(Boolean); // Remove any null entries
+        
 
         setSavedProperties(transformedProperties);
 
@@ -171,31 +197,815 @@ export default function EngagePage() {
     );
   };
 
-  const handleMarketUpdate = (propertyId: string, newMarket: string) => {
-    setSavedProperties(prev => 
-      prev.map(property => 
-        property.id.toString() === propertyId 
-          ? { ...property, market: newMarket }
-          : property
-      )
-    );
+  const handleMarketUpdate = async (propertyId: string, newMarket: string) => {
+    try {
+      const response = await fetch('/api/v2/favorites/update-market', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          property_id: propertyId,
+          market_key: newMarket
+        })
+      });
+      
+      if (!response.ok) {
+        console.error('Failed to update market');
+      } else {
+        // Update local state only after successful API call
+        setSavedProperties(prev => 
+          prev.map(property => 
+            property.id.toString() === propertyId 
+              ? { ...property, market: newMarket }
+              : property
+          )
+        );
+      }
+    } catch (error) {
+      console.error('Error updating market:', error);
+    }
   };
 
-  const handleGenerateCashFlowReport = (propertyId: number) => {
+  const handleGenerateCashFlowReport = async (propertyId: number) => {
     const property = savedProperties.find(p => p.id === propertyId);
     if (!property) return;
 
-    // Check if property has pricing scenario data
-    if (!property.hasPricingScenario) {
-      alert(`To generate a 10-Year Cash Flow Report for ${property.address}, you must first complete an Offer Analysis. Click 'Offer Analysis' on the property card to set up the financial parameters needed for the cash flow report.`);
+
+    try {
+      // Fetch saved offer scenarios for this property
+      const response = await fetch(`/api/v2/offer-scenarios?propertyId=${propertyId}`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch pricing scenarios');
+      }
+
+      const data = await response.json();
+      if (!data.scenarios || data.scenarios.length === 0) {
+        alert('No pricing scenarios found for this property. Please create an offer analysis first.');
+        return;
+      }
+
+      // Use the most recent scenario
+      const scenario = data.scenarios[0];
+      const offerData = scenario.offer_data;
+      
+      if (!offerData) {
+        alert('No pricing data found for this property.');
+        return;
+      }
+
+      // Get user profile for report branding
+      const profileResponse = await fetch('/api/profile');
+      if (!profileResponse.ok) {
+        throw new Error('Failed to fetch user profile');
+      }
+      const profileData = await profileResponse.json();
+
+      // Generate the cash flow report
+      await generate10YearCashFlowReport({
+        // Property address (optional)
+        propertyStreet: property.address,
+        propertyCity: property.city,
+        propertyState: property.state,
+        
+        // Financial parameters from saved offer data
+        purchasePrice: parseFloat(offerData.purchasePrice) || 0,
+        downPaymentPercentage: parseFloat(offerData.downPaymentPercentage) || 20,
+        interestRate: parseFloat(offerData.interestRate) || 7.0,
+        loanStructure: offerData.loanStructure || 'amortizing',
+        amortizationPeriodYears: parseInt(offerData.amortizationPeriodYears) || 30,
+        interestOnlyPeriodYears: parseInt(offerData.interestOnlyPeriodYears) || 0,
+        closingCostsPercentage: parseFloat(offerData.closingCostsPercentage) || 3,
+        
+        // Income parameters
+        numUnits: parseInt(offerData.numUnits) || 1,
+        avgMonthlyRentPerUnit: parseFloat(offerData.avgMonthlyRentPerUnit) || 0,
+        vacancyRate: parseFloat(offerData.vacancyRate) || 10,
+        annualRentalGrowthRate: parseFloat(offerData.annualRentalGrowthRate) || 2,
+        otherIncomeAnnual: parseFloat(offerData.otherIncomeAnnual) || 0,
+        incomeReductionsAnnual: parseFloat(offerData.incomeReductionsAnnual) || 0,
+        
+        // Expense parameters
+        propertyTaxes: parseFloat(offerData.propertyTaxes) || 0,
+        insurance: parseFloat(offerData.insurance) || 0,
+        propertyManagementFeePercentage: parseFloat(offerData.propertyManagementFeePercentage) || 6,
+        maintenanceRepairsAnnual: parseFloat(offerData.maintenanceRepairsAnnual) || 0,
+        utilitiesAnnual: parseFloat(offerData.utilitiesAnnual) || 0,
+        contractServicesAnnual: parseFloat(offerData.contractServicesAnnual) || 0,
+        payrollAnnual: parseFloat(offerData.payrollAnnual) || 0,
+        marketingAnnual: parseFloat(offerData.marketingAnnual) || 0,
+        gAndAAnnual: parseFloat(offerData.gAndAAnnual) || 0,
+        otherExpensesAnnual: parseFloat(offerData.otherExpensesAnnual) || 0,
+        expenseGrowthRate: parseFloat(offerData.expenseGrowthRate) || 3,
+        
+        // Capital reserves
+        capitalReservePerUnitAnnual: parseFloat(offerData.capitalReservePerUnitAnnual) || 300,
+        
+        // Investment timeline
+        holdingPeriodYears: parseInt(offerData.holdingPeriodYears) || 10,
+        
+        // Mode settings
+        usePercentageMode: offerData.usePercentageMode || false,
+        operatingExpensePercentage: parseFloat(offerData.operatingExpensePercentage) || 50
+      });
+      
+      // Show success message
+      setSuccessMessage(`Cash flow report generated successfully for ${property.address}`);
+      setShowSuccessModal(true);
+      
+    } catch (error) {
+      console.error('Error generating cash flow report:', error);
+      alert('Failed to generate cash flow report. Please try again.');
+    }
+  };
+
+  const handleLOIGeneration = (propertyId: number) => {
+    const property = savedProperties.find(p => p.id === propertyId);
+    if (!property) return;
+
+    // Navigate to templates page with property data for LOI generation
+    const params = new URLSearchParams({
+      propertyAddress: `${property.address}, ${property.city}, ${property.state} ${property.zip}`,
+      ownerFirst: property.owner_first_name || '',
+      ownerLast: property.owner_last_name || '',
+      propertyId: property.id.toString()
+    });
+    router.push(`/v2/templates?${params.toString()}`);
+  };
+
+  const handleViewOffers = async () => {
+    if (!user) {
+      alert('Please log in to view offers.');
       return;
     }
 
-    // TODO: In a real implementation, we would:
-    // 1. Fetch saved offer analyzer scenario data from database
-    // 2. Call generate10YearCashFlowReport with the complete data
-    // For now, show placeholder message
-    alert(`10-Year Cash Flow Report generation for ${property.address} would be implemented here using saved offer analysis data.`);
+    try {
+      // Fetch offers from the offer_scenarios table (all user offers)
+      const response = await fetch('/api/v2/offer-scenarios?all=true');
+      if (!response.ok) {
+        throw new Error('Failed to fetch offers');
+      }
+
+      const data = await response.json();
+      
+      // Transform the data to match our UI format
+      const transformedOffers = data.scenarios.map((offer: any) => ({
+        id: offer.id,
+        name: offer.offer_name || `Offer ${offer.id}`,
+        description: offer.offer_description || 'No description',
+        property_address: offer.saved_properties?.address_full || 'Unknown Address',
+        offer_amount: offer.offer_data?.purchasePrice ? `$${parseInt(offer.offer_data.purchasePrice).toLocaleString()}` : 'N/A',
+        created_date: new Date(offer.created_at).toLocaleDateString(),
+        property_id: offer.property_id
+      }));
+
+      setSelectedPropertyOffers(transformedOffers);
+      setShowOffersModal(true);
+    } catch (error) {
+      console.error('Error fetching offers:', error);
+      alert('Failed to load offers. Please try again.');
+    }
+  };
+
+  const handleOfferSelection = (offerId: number, propertyId: string) => {
+    const property = savedProperties.find(p => p.id.toString() === propertyId);
+    if (!property) {
+      // If property not found in current saved properties, still navigate with minimal data
+      const params = new URLSearchParams({
+        offerId: offerId.toString(),
+        id: propertyId
+      });
+      router.push(`/offer-analyzer?${params.toString()}`);
+      setShowOffersModal(false);
+      return;
+    }
+
+    // Navigate to offer analyzer with the selected offer ID and property data
+    const params = new URLSearchParams({
+      address: property.address,
+      city: property.city,
+      state: property.state,
+      units: property.units.toString(),
+      assessed: property.assessed,
+      built: property.built.toString(),
+      id: property.id.toString(),
+      offerId: offerId.toString()
+    });
+    router.push(`/offer-analyzer?${params.toString()}`);
+    setShowOffersModal(false);
+  };
+
+  const handleDeleteOffer = async (offerId: string) => {
+    if (!confirm('Are you sure you want to delete this offer? This action cannot be undone.')) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/v2/offer-scenarios/${offerId}`, {
+        method: 'DELETE'
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Failed to delete offer');
+      }
+
+      // Remove from local state
+      setSelectedPropertyOffers(prev => prev.filter(offer => offer.id !== offerId));
+    } catch (error) {
+      console.error('Error deleting offer:', error);
+      alert('Failed to delete offer. Please try again.');
+    }
+  };
+
+  const handleCSVExport = () => {
+    try {
+      // Define comprehensive CSV headers (no date columns or JSONB fields)
+      const headers = [
+        // Property ID and Identifiers
+        'Property ID',
+        'Internal Property ID',
+        
+        // Property Address & Location
+        'Address Street',
+        'Address Full',
+        'Address City',
+        'Address State',
+        'Address Zip',
+        'County',
+        'Latitude',
+        'Longitude',
+        
+        // Mailing Address
+        'Mail Address Full',
+        'Mail Address Street',
+        'Mail Address City',
+        'Mail Address County',
+        'Mail Address State',
+        'Mail Address Zip',
+        
+        // Property Details
+        'Property Type',
+        'Units Count',
+        'Stories',
+        'Year Built',
+        'Effective Year Built',
+        'Square Feet',
+        'Building Square Feet',
+        'Lot Square Feet',
+        
+        // Financial Information
+        'Assessed Value',
+        'Assessed Land Value',
+        'Estimated Value',
+        'Estimated Equity',
+        'Equity Percent',
+        'Rent Estimate',
+        'Listing Price',
+        'Loan to Value Ratio',
+        
+        // Mortgage Information
+        'Mortgage Balance',
+        'Mortgage Rate First',
+        'Mortgage Amount First',
+        'Mortgage Type First',
+        'Total Open Mortgage Balance',
+        'Lender Name',
+        
+        // Sale History
+        'Last Sale Amount',
+        'Last Sale Arms Length',
+        'Years Owned',
+        'Years of Ownership',
+        
+        // Owner Information
+        'Owner First Name',
+        'Owner Last Name',
+        'Owner Type',
+        'Owner Phone',
+        'Owner Email',
+        'Out of State Absentee Owner',
+        'In State Absentee Owner',
+        'Owner Occupied',
+        'Corporate Owned',
+        'Investor Buyer',
+        'Owner Mailing Address Same as Property',
+        
+        // Property Status Flags
+        'MLS Active',
+        'For Sale',
+        'Assumable',
+        'Auction',
+        'REO',
+        'Tax Lien',
+        'Pre Foreclosure',
+        'Foreclosure',
+        'Private Lender',
+        'Distressed Property',
+        'Tax Delinquent',
+        
+        // Financial Distress
+        'Lien Amount',
+        'Judgment Amount',
+        
+        // Portfolio Information
+        'Total Portfolio Equity',
+        'Total Portfolio Mortgage Balance',
+        'Total Properties Owned',
+        
+        // Environmental
+        'Flood Zone',
+        'Flood Zone Description',
+        
+        // Neighborhood Information
+        'School District Name',
+        'School Rating',
+        'Neighborhood Name',
+        'Walk Score',
+        'Median Household Income',
+        
+        // User Workflow Data
+        'Pipeline Status',
+        'Market',
+        'Notes',
+        
+        // Legacy fields that might be used in frontend
+        'Legacy Address',
+        'Legacy City',
+        'Legacy State',
+        'Legacy Zip',
+        'Legacy Units',
+        'Legacy Built',
+        'Legacy Assessed',
+        'Source',
+      ];
+
+      // Convert properties to CSV rows
+      const csvRows = [
+        headers.join(','), // Header row
+        ...filteredProperties.map(property => {
+          // Get the raw property data from the database
+          // Since these are favorites, we need to fetch the original property_data
+          // For now, we'll work with what we have in the transformed object
+          
+          // Parse skip trace data if available
+          let ownerPhone = '';
+          let ownerEmail = '';
+          
+          if (property.skip_trace_data) {
+            try {
+              const skipTrace = typeof property.skip_trace_data === 'string' 
+                ? JSON.parse(property.skip_trace_data) 
+                : property.skip_trace_data;
+              ownerPhone = skipTrace.phone || '';
+              ownerEmail = skipTrace.email || '';
+            } catch (e) {
+              // Skip trace data parsing failed, use empty values
+            }
+          }
+
+          // Helper function to format currency values
+          const formatCurrency = (value: any) => value ? Number(value).toFixed(2) : '';
+          // Helper function to format percentage values  
+          const formatPercent = (value: any) => value ? Number(value).toFixed(2) : '';
+          // Helper function to format boolean values
+          const formatBoolean = (value: any) => value === true ? 'Yes' : value === false ? 'No' : '';
+          // Helper function to format dates
+          const formatDate = (value: any) => value ? new Date(value).toLocaleDateString() : '';
+
+          return [
+            // Property ID and Identifiers
+            `"${property.id || ''}"`,
+            `"${property.property_id || ''}"`,
+            
+            // Property Address & Location (using exact schema field names)
+            `"${property.address_street || ''}"`,
+            `"${property.address_full || ''}"`,
+            `"${property.address_city || ''}"`,
+            `"${property.address_state || ''}"`,
+            `"${property.address_zip || ''}"`,
+            `"${property.county || ''}"`,
+            `"${property.latitude || ''}"`,
+            `"${property.longitude || ''}"`,
+            
+            // Mailing Address (exact schema field names)
+            `"${property.mail_address_full || ''}"`,
+            `"${property.mail_address_street || ''}"`,
+            `"${property.mail_address_city || ''}"`,
+            `"${property.mail_address_county || ''}"`,
+            `"${property.mail_address_state || ''}"`,
+            `"${property.mail_address_zip || ''}"`,
+            
+            // Property Details (exact schema field names)
+            `"${property.property_type || ''}"`,
+            `"${property.units_count || property.units || ''}"`,
+            `"${property.stories || ''}"`,
+            `"${property.year_built || property.built || ''}"`,
+            `"${property.effective_year_built || ''}"`,
+            `"${property.square_feet || ''}"`,
+            `"${property.building_square_feet || ''}"`,
+            `"${property.lot_square_feet || ''}"`,
+            
+            // Financial Information (exact schema field names)
+            `"${formatCurrency(property.assessed_value)}"`,
+            `"${formatCurrency(property.assessed_land_value)}"`,
+            `"${formatCurrency(property.estimated_value)}"`,
+            `"${formatCurrency(property.estimated_equity)}"`,
+            `"${formatPercent(property.equity_percent)}"`,
+            `"${formatCurrency(property.rent_estimate)}"`,
+            `"${formatCurrency(property.listing_price)}"`,
+            `"${formatPercent(property.loan_to_value_ratio)}"`,
+            
+            // Mortgage Information (exact schema field names) - removed date fields
+            `"${formatCurrency(property.mortgage_balance)}"`,
+            `"${formatPercent(property.mortgage_rate_first)}"`,
+            `"${formatCurrency(property.mortgage_amount_first)}"`,
+            `"${property.mortgage_type_first || ''}"`,
+            `"${formatCurrency(property.total_open_mortgage_balance)}"`,
+            `"${property.lender_name || ''}"`,
+            
+            // Sale History (exact schema field names) - removed date fields
+            `"${formatCurrency(property.last_sale_amount)}"`,
+            `"${formatBoolean(property.last_sale_arms_length)}"`,
+            `"${property.years_owned || ''}"`,
+            `"${property.years_of_ownership || ''}"`,
+            
+            // Owner Information (exact schema field names)
+            `"${property.owner_first_name || ''}"`,
+            `"${property.owner_last_name || ''}"`,
+            `"${property.owner_type || ''}"`,
+            `"${ownerPhone}"`,
+            `"${ownerEmail}"`,
+            `"${formatBoolean(property.out_of_state_absentee_owner)}"`,
+            `"${formatBoolean(property.in_state_absentee_owner)}"`,
+            `"${formatBoolean(property.owner_occupied)}"`,
+            `"${formatBoolean(property.corporate_owned)}"`,
+            `"${formatBoolean(property.investor_buyer)}"`,
+            `"${formatBoolean(property.owner_mailing_address_same_as_property)}"`,
+            
+            // Property Status Flags (exact schema field names)
+            `"${formatBoolean(property.mls_active)}"`,
+            `"${formatBoolean(property.for_sale)}"`,
+            `"${formatBoolean(property.assumable)}"`,
+            `"${formatBoolean(property.auction)}"`,
+            `"${formatBoolean(property.reo)}"`,
+            `"${formatBoolean(property.tax_lien)}"`,
+            `"${formatBoolean(property.pre_foreclosure)}"`,
+            `"${formatBoolean(property.foreclosure)}"`,
+            `"${formatBoolean(property.private_lender)}"`,
+            `"${formatBoolean(property.distressed_property)}"`,
+            `"${formatBoolean(property.tax_delinquent)}"`,
+            
+            // Financial Distress (exact schema field names) - removed date fields
+            `"${formatCurrency(property.lien_amount)}"`,
+            `"${formatCurrency(property.judgment_amount)}"`,
+            
+            // Portfolio Information (exact schema field names)
+            `"${formatCurrency(property.total_portfolio_equity)}"`,
+            `"${formatCurrency(property.total_portfolio_mortgage_balance)}"`,
+            `"${property.total_properties_owned || ''}"`,
+            
+            // Environmental (exact schema field names)
+            `"${formatBoolean(property.flood_zone)}"`,
+            `"${property.flood_zone_description || ''}"`,
+            
+            // Neighborhood Information (exact schema field names)
+            `"${property.school_district_name || ''}"`,
+            `"${property.school_rating || ''}"`,
+            `"${property.neighborhood_name || ''}"`,
+            `"${property.walk_score || ''}"`,
+            `"${formatCurrency(property.median_household_income)}"`,
+            
+            // User Workflow Data
+            `"${property.pipelineStatus || ''}"`,
+            `"${property.market || ''}"`,
+            `"${(property.notes || '').replace(/"/g, '""')}"`, // Escape quotes in notes
+            
+            // Legacy fields that might be used in frontend
+            `"${property.address || property.address_street || ''}"`,
+            `"${property.city || property.address_city || ''}"`,
+            `"${property.state || property.address_state || ''}"`,
+            `"${property.zip || property.address_zip || ''}"`,
+            `"${property.units || property.units_count || ''}"`,
+            `"${property.built || property.year_built || ''}"`,
+            `"${property.assessed || property.assessed_value || ''}"`,
+            `"${property.source || ''}"`,
+,
+          ].join(',');
+        })
+      ];
+
+      // Create CSV content
+      const csvContent = csvRows.join('\n');
+
+      // Create and trigger download
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      
+      if (link.download !== undefined) {
+        const url = URL.createObjectURL(blob);
+        link.setAttribute('href', url);
+        
+        // Generate filename with current date and filter info
+        const currentDate = new Date().toISOString().split('T')[0];
+        const filterInfo = filteredProperties.length !== savedProperties.length ? '_filtered' : '';
+        const filename = `properties_${currentDate}${filterInfo}.csv`;
+        
+        link.setAttribute('download', filename);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        // Show success message
+        setSuccessMessage(`CSV export completed! Downloaded ${filteredProperties.length} properties.`);
+        setShowSuccessModal(true);
+      }
+    } catch (error) {
+      console.error('Error exporting CSV:', error);
+      alert('Failed to export CSV. Please try again.');
+    }
+  };
+
+  const handleGenerateReportFromModal = async (propertyWithOffer: any) => {
+    try {
+      // Extract the offer data and transform it for the cash flow report
+      const offerData = propertyWithOffer.offer_data;
+      
+      if (!offerData) {
+        alert('No pricing data found for this offer.');
+        return;
+      }
+
+      // Get user profile for report branding
+      const profileResponse = await fetch('/api/profile');
+      if (!profileResponse.ok) {
+        throw new Error('Failed to fetch user profile');
+      }
+      const profileData = await profileResponse.json();
+
+      // Generate the cash flow report
+      await generate10YearCashFlowReport({
+        // Property address from offer
+        propertyStreet: propertyWithOffer.property_address,
+        
+        // Financial parameters from saved offer data
+        purchasePrice: parseFloat(offerData.purchasePrice) || 0,
+        downPaymentPercentage: parseFloat(offerData.downPaymentPercentage) || 20,
+        interestRate: parseFloat(offerData.interestRate) || 7.0,
+        loanStructure: offerData.loanStructure || 'amortizing',
+        amortizationPeriodYears: parseInt(offerData.amortizationPeriodYears) || 30,
+        interestOnlyPeriodYears: parseInt(offerData.interestOnlyPeriodYears) || 0,
+        closingCostsPercentage: parseFloat(offerData.closingCostsPercentage) || 3,
+        
+        // Income parameters
+        numUnits: parseInt(offerData.numUnits) || 1,
+        avgMonthlyRentPerUnit: parseFloat(offerData.avgMonthlyRentPerUnit) || 0,
+        vacancyRate: parseFloat(offerData.vacancyRate) || 10,
+        annualRentalGrowthRate: parseFloat(offerData.annualRentalGrowthRate) || 2,
+        otherIncomeAnnual: parseFloat(offerData.otherIncomeAnnual) || 0,
+        incomeReductionsAnnual: parseFloat(offerData.incomeReductionsAnnual) || 0,
+        
+        // Expense parameters
+        propertyTaxes: parseFloat(offerData.propertyTaxes) || 0,
+        insurance: parseFloat(offerData.insurance) || 0,
+        propertyManagementFeePercentage: parseFloat(offerData.propertyManagementFeePercentage) || 6,
+        maintenanceRepairsAnnual: parseFloat(offerData.maintenanceRepairsAnnual) || 0,
+        utilitiesAnnual: parseFloat(offerData.utilitiesAnnual) || 0,
+        contractServicesAnnual: parseFloat(offerData.contractServicesAnnual) || 0,
+        payrollAnnual: parseFloat(offerData.payrollAnnual) || 0,
+        marketingAnnual: parseFloat(offerData.marketingAnnual) || 0,
+        gAndAAnnual: parseFloat(offerData.gAndAAnnual) || 0,
+        otherExpensesAnnual: parseFloat(offerData.otherExpensesAnnual) || 0,
+        expenseGrowthRate: parseFloat(offerData.expenseGrowthRate) || 3,
+        
+        // Capital reserves
+        capitalReservePerUnitAnnual: parseFloat(offerData.capitalReservePerUnitAnnual) || 300,
+        
+        // Investment timeline
+        holdingPeriodYears: parseInt(offerData.holdingPeriodYears) || 10,
+        
+        // Mode settings
+        usePercentageMode: offerData.usePercentageMode || false,
+        operatingExpensePercentage: parseFloat(offerData.operatingExpensePercentage) || 50
+      });
+      
+      // Show success message
+      setSuccessMessage(`Cash flow report generated successfully for ${propertyWithOffer.offer_name}`);
+      setShowSuccessModal(true);
+      
+    } catch (error) {
+      console.error('Error generating cash flow report:', error);
+      alert('Failed to generate cash flow report. Please try again.');
+    }
+  };
+
+  const handleEmailGeneration = async (propertyId: number) => {
+    const property = savedProperties.find(p => p.id === propertyId);
+    if (!property) return;
+
+    // DEBUG: Log the property object to see what skip_trace_data looks like
+    console.log('=== EMAIL DEBUG ===');
+    console.log('Full property object:', property);
+    console.log('property.skip_trace_data:', property.skip_trace_data);
+    console.log('Type of skip_trace_data:', typeof property.skip_trace_data);
+
+    // Parse skip trace data (it's a JSON blob)
+    let skipTraceData;
+    try {
+      if (property.skip_trace_data) {
+        if (typeof property.skip_trace_data === 'string') {
+          skipTraceData = JSON.parse(property.skip_trace_data);
+          console.log('Parsed from string:', skipTraceData);
+        } else {
+          skipTraceData = property.skip_trace_data;
+          console.log('Already an object:', skipTraceData);
+        }
+      } else {
+        skipTraceData = null;
+        console.log('No skip_trace_data found');
+      }
+    } catch (error) {
+      console.log('JSON parse error:', error);
+      skipTraceData = property.skip_trace_data; // In case it's already parsed
+    }
+
+    console.log('Final skipTraceData:', skipTraceData);
+    console.log('skipTraceData.email:', skipTraceData?.email);
+
+    // Check if property has skip trace data with email
+    if (!skipTraceData || !skipTraceData.email) {
+      console.log('Email check failed - skipTraceData exists:', !!skipTraceData);
+      console.log('Email exists:', !!skipTraceData?.email);
+      setSuccessMessage(`No email address found for ${property.address}. Skip trace data must be available to send emails.`);
+      setShowSuccessModal(true);
+      return;
+    }
+
+    try {
+      // Fetch user profile
+      const profileResponse = await fetch('/api/profile');
+      if (!profileResponse.ok) {
+        alert('Please complete your profile to generate emails.');
+        return;
+      }
+
+      const profileData = await profileResponse.json();
+      
+      // Map profile data to sender info format (same as marketing letters)
+      const senderInfo = {
+        name: profileData.full_name || `${profileData.first_name || ''} ${profileData.last_name || ''}`.trim() || user?.email || 'Your Name',
+        address: profileData.street_address || '',
+        city: profileData.city || '',
+        state: profileData.state || '',
+        zip: profileData.zipcode || '',
+        phone: profileData.phone_number || '',
+        email: profileData.email || user?.email || '',
+        business: profileData.business_name || '',
+        title: profileData.job_title || '',
+        logoBase64: profileData.logo_base64 || null
+      };
+
+      // Prepare property data (same logic as marketing letters)
+      const rawAddress = property.address;
+      const city = property.city;
+      const state = property.state;
+      const zip = property.zip;
+      
+      let cleanAddressFull;
+      if (rawAddress && rawAddress.includes(city) && rawAddress.includes(state)) {
+        cleanAddressFull = rawAddress;
+      } else {
+        cleanAddressFull = `${rawAddress}, ${city}, ${state}${zip ? ' ' + zip : ''}`.trim();
+      }
+      
+      const propertyData = {
+        address_full: cleanAddressFull,
+        address_state: property.state,
+        owner_first_name: property.owner_first_name || null,
+        owner_last_name: property.owner_last_name || null,
+        property_id: property.id.toString()
+      };
+
+      // Generate email content using existing function
+      console.log('Calling generateMarketingLetter with propertyData:', propertyData);
+      console.log('Calling generateMarketingLetter with senderInfo:', senderInfo);
+      console.log('SenderInfo validation - name:', senderInfo.name, 'phone:', senderInfo.phone, 'email:', senderInfo.email);
+      const result = await generateMarketingLetter(propertyData, senderInfo, 'email');
+      console.log('generateMarketingLetter result:', result);
+      
+      if (!result.success || !result.emailBody) {
+        alert(`Failed to generate email content: ${result.message || 'Unknown error'}. Please try again.`);
+        return;
+      }
+
+      // Create and open mailto link
+      const subject = `Inquiry About Your Property - ${propertyData.address_full}`;
+      const encodedSubject = encodeURIComponent(subject);
+      const encodedBody = encodeURIComponent(result.emailBody);
+      const recipientEmail = skipTraceData.email;
+      
+      const mailtoLink = `mailto:${recipientEmail}?subject=${encodedSubject}&body=${encodedBody}`;
+      window.location.href = mailtoLink;
+      
+    } catch (error) {
+      console.error('Error generating email:', error);
+      alert('Failed to generate email. Please try again.');
+    }
+  };
+
+  const handleGenerateMarketingLetters = async (propertyIds: number[]) => {
+    try {
+      // Get user profile info for sender details
+      if (!user) {
+        alert('Please log in to generate marketing letters.');
+        return;
+      }
+
+      // Fetch user profile from database
+      const profileResponse = await fetch('/api/profile');
+      const profileData = await profileResponse.json();
+      
+      if (!profileResponse.ok) {
+        alert('Unable to load your profile information. Please complete your profile to generate marketing letters.');
+        return;
+      }
+
+      // Map profile data to sender info format
+      const senderInfo = {
+        name: profileData.full_name || `${profileData.first_name || ''} ${profileData.last_name || ''}`.trim() || user.email || 'Your Name',
+        address: profileData.street_address || '',
+        city: profileData.city || '',
+        state: profileData.state || '',
+        zip: profileData.zipcode || '',
+        phone: profileData.phone_number || '',
+        email: profileData.email || user.email || '',
+        business: profileData.business_name || '',
+        title: profileData.job_title || '',
+        logoBase64: profileData.logo_base64 || null
+      };
+
+      // Validate required profile information
+      if (!senderInfo.name || !senderInfo.phone || !senderInfo.email) {
+        alert('Please complete your profile with name, phone, and email to generate marketing letters.');
+        return;
+      }
+
+      // Generate letters for selected properties
+      for (const propertyId of propertyIds) {
+        const property = savedProperties.find(p => p.id === propertyId);
+        if (property) {
+          // DEBUG: Log the raw property data from database
+          console.log('=== ENGAGE PAGE DEBUG ===');
+          console.log('Raw property from savedProperties:', {
+            id: property.id,
+            address: property.address,
+            owner_first_name: property.owner_first_name,
+            owner_last_name: property.owner_last_name,
+            hasOwnerFirstName: !!property.owner_first_name,
+            hasOwnerLastName: !!property.owner_last_name,
+            ownerFirstNameType: typeof property.owner_first_name,
+            ownerLastNameType: typeof property.owner_last_name
+          });
+          
+          // Smart address construction - check if city/state already in address_full
+          const rawAddress = property.address;
+          const city = property.city;
+          const state = property.state;
+          const zip = property.zip;
+          
+          let cleanAddressFull;
+          if (rawAddress && rawAddress.includes(city) && rawAddress.includes(state)) {
+            // Address already contains city/state, use as-is
+            cleanAddressFull = rawAddress;
+          } else {
+            // Need to construct full address
+            cleanAddressFull = `${rawAddress}, ${city}, ${state}${zip ? ' ' + zip : ''}`.trim();
+          }
+          
+          const propertyData = {
+            address_full: cleanAddressFull,
+            address_state: property.state,
+            owner_first_name: property.owner_first_name || null,
+            owner_last_name: property.owner_last_name || null,
+            property_id: property.id.toString()
+          };
+          
+          console.log('PropertyData being sent to generateMarketingLetter:', propertyData);
+
+          const result = await generateMarketingLetter(propertyData, senderInfo, 'print');
+          
+          if (!result.success) {
+            alert(`Error generating letter for ${property.address}: ${result.message}`);
+            return;
+          }
+        }
+      }
+
+      setSuccessMessage(`Marketing letters generated successfully for ${propertyIds.length} properties!`);
+      setShowSuccessModal(true);
+    } catch (error) {
+      console.error('Error generating marketing letters:', error);
+      alert('Failed to generate marketing letters. Please try again.');
+    }
   };
 
   const handleDocumentAction = (action: string) => {
@@ -206,18 +1016,55 @@ export default function EngagePage() {
     switch (action) {
       case 'marketing-letter':
         // Can handle multiple properties
+        if (selectedProperties.length === 0) {
+          alert('Please select at least one property to generate marketing letters.');
+          return;
+        }
+        
+        // Import and call marketing letter generator
+        handleGenerateMarketingLetters(selectedProperties);
+        break;
+      case 'view-offers':
+        // View offers doesn't require property selection - shows all offers
+        handleViewOffers();
+        break;
+      case 'cash-flow-report':
+        // Cash flow report doesn't require property selection - shows all offers
+        setShowCashFlowReportsModal(true);
+        break;
+      case 'csv':
+        // CSV export doesn't require property selection - exports filtered results
+        handleCSVExport();
         break;
       case 'email':
       case 'loi':
-      case 'cash-flow-report':
+      case 'purchase-sale':
+      case 'create-offer':
         // Should only allow 1 property
         if (selectedProperties.length !== 1) {
           alert(`${action.toUpperCase()} can only be generated for one property at a time.`);
           return;
         }
-        // Handle cash flow report generation
-        if (action === 'cash-flow-report') {
-          handleGenerateCashFlowReport(selectedProperties[0]);
+        // Handle specific actions
+        if (action === 'email') {
+          handleEmailGeneration(selectedProperties[0]);
+        } else if (action === 'loi') {
+          handleLOIGeneration(selectedProperties[0]);
+        } else if (action === 'create-offer') {
+          // Navigate to offer analyzer
+          const property = savedProperties.find(p => p.id === selectedProperties[0]);
+          if (property) {
+            const params = new URLSearchParams({
+              address: property.address,
+              city: property.city,
+              state: property.state,
+              units: property.units.toString(),
+              assessed: property.assessed,
+              built: property.built.toString(),
+              id: property.id.toString()
+            });
+            router.push(`/offer-analyzer?${params.toString()}`);
+          }
         }
         break;
       case 'csv':
@@ -298,18 +1145,22 @@ export default function EngagePage() {
                   className="flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors text-sm"
                 >
                   <FileText className="h-4 w-4 mr-2" />
-                  Generate Documents ({selectedProperties.length})
+                  Engagement Center ({selectedProperties.length})
                   <ChevronDown className="h-4 w-4 ml-2" />
                 </button>
 
                 {/* Document Generation Dropdown */}
                 {showDocumentDropdown && (
-                  <div className="absolute right-0 mt-2 w-56 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
+                  <div className="absolute right-0 mt-2 w-64 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
                     <div className="py-2">
+                      {/* Marketing Materials Section */}
+                      <div className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider border-b border-gray-100">
+                        Marketing Materials
+                      </div>
                       <button
                         onClick={() => handleDocumentAction('marketing-letter')}
                         disabled={selectedProperties.length === 0}
-                        className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed flex items-center"
+                        className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 disabled:text-gray-400 disabled:cursor-not-allowed flex items-center"
                       >
                         <FileText className="h-4 w-4 mr-3" />
                         <div>
@@ -317,50 +1168,97 @@ export default function EngagePage() {
                           <div className="text-xs text-gray-500">Batch multiple properties</div>
                         </div>
                       </button>
-                      
                       <button
                         onClick={() => handleDocumentAction('email')}
                         disabled={selectedProperties.length !== 1}
-                        className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed flex items-center"
+                        className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 disabled:text-gray-400 disabled:cursor-not-allowed flex items-center"
                       >
-                        <FileText className="h-4 w-4 mr-3" />
+                        <svg className="h-4 w-4 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                        </svg>
                         <div>
                           <div>Email</div>
-                          <div className="text-xs text-gray-500">Select exactly 1 property</div>
+                          <div className="text-xs text-gray-500">Select 1 property</div>
                         </div>
                       </button>
-                      
+
+                      {/* Legal Documents Section */}
+                      <div className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider border-b border-gray-100 mt-2">
+                        Legal Documents
+                      </div>
                       <button
                         onClick={() => handleDocumentAction('loi')}
                         disabled={selectedProperties.length !== 1}
-                        className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed flex items-center"
+                        className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 disabled:text-gray-400 disabled:cursor-not-allowed flex items-center"
                       >
                         <FileText className="h-4 w-4 mr-3" />
                         <div>
-                          <div>Letter of Intent (LOI)</div>
-                          <div className="text-xs text-gray-500">Select exactly 1 property</div>
+                          <div>Letters of Intent</div>
+                          <div className="text-xs text-gray-500">Select 1 property</div>
                         </div>
                       </button>
 
                       <button
-                        onClick={() => handleDocumentAction('cash-flow-report')}
+                        onClick={() => {/* Not implemented yet */}}
+                        disabled={true}
+                        className="w-full text-left px-4 py-2 text-sm text-gray-400 cursor-not-allowed flex items-center"
+                      >
+                        <FileText className="h-4 w-4 mr-3 text-gray-400" />
+                        <div>
+                          <div>Purchase & Sale</div>
+                          <div className="text-xs text-gray-400">Coming soon</div>
+                        </div>
+                      </button>
+
+                      {/* Financials Section */}
+                      <div className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider border-b border-gray-100 mt-2">
+                        Financials
+                      </div>
+                      <button
+                        onClick={() => handleDocumentAction('create-offer')}
                         disabled={selectedProperties.length !== 1}
-                        className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed flex items-center"
+                        className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 disabled:text-gray-400 disabled:cursor-not-allowed flex items-center"
+                      >
+                        <svg className="h-4 w-4 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                        </svg>
+                        <div>
+                          <div>Create Offer</div>
+                          <div className="text-xs text-gray-500">Select 1 property</div>
+                        </div>
+                      </button>
+                      
+                      <button
+                        onClick={() => handleDocumentAction('view-offers')}
+                        className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center"
+                      >
+                        <svg className="h-4 w-4 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+                        </svg>
+                        <div>
+                          <div>View Offers</div>
+                          <div className="text-xs text-gray-500">View all your offers</div>
+                        </div>
+                      </button>
+                      
+                      <button
+                        onClick={() => handleDocumentAction('cash-flow-report')}
+                        className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center"
                       >
                         <svg className="h-4 w-4 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a4 4 0 01-4-4V5a4 4 0 014-4h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a4 4 0 01-4 4z" />
                         </svg>
                         <div>
                           <div>10-Year Cash Flow Report</div>
-                          <div className="text-xs text-gray-500">Select exactly 1 property</div>
+                          <div className="text-xs text-gray-500">Select 1 property</div>
                         </div>
                       </button>
 
-                      <div className="border-t border-gray-200 my-1"></div>
+                      <div className="border-t border-gray-200 my-2"></div>
                       
                       <button
                         onClick={() => handleDocumentAction('csv')}
-                        className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center"
+                        className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center"
                       >
                         <FileText className="h-4 w-4 mr-3" />
                         <div>
@@ -549,28 +1447,6 @@ export default function EngagePage() {
               <Map className="h-4 w-4 mr-1.5" />
               Map
             </button>
-            <button
-              onClick={() => setViewMode('analysis')}
-              className={`flex items-center px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                viewMode === 'analysis' 
-                  ? 'bg-white text-gray-900 shadow-sm' 
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
-            >
-              <BarChart3 className="h-4 w-4 mr-1.5" />
-              Analytics
-            </button>
-            <button
-              onClick={() => setViewMode('matrix')}
-              className={`flex items-center px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                viewMode === 'matrix' 
-                  ? 'bg-white text-gray-900 shadow-sm' 
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
-            >
-              <Grid className="h-4 w-4 mr-1.5" />
-              Matrix
-            </button>
           </div>
         </div>
 
@@ -686,22 +1562,119 @@ export default function EngagePage() {
           </div>
         )}
 
-        {!isLoading && !error && viewMode === 'analysis' && (
-          <div className="bg-white rounded-lg border border-gray-200 p-8 text-center">
-            <BarChart3 className="h-16 w-16 mx-auto mb-4 text-gray-400" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">Analytics View</h3>
-            <p className="text-gray-600">Performance metrics and analysis for your {filteredProperties.length} properties</p>
-          </div>
-        )}
-
-        {!isLoading && !error && viewMode === 'matrix' && (
-          <div className="bg-white rounded-lg border border-gray-200 p-8 text-center">
-            <Grid className="h-16 w-16 mx-auto mb-4 text-gray-400" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">Matrix View</h3>
-            <p className="text-gray-600">Tabular view of all {filteredProperties.length} properties with detailed comparison</p>
-          </div>
-        )}
       </div>
+
+      {/* Success Modal */}
+      {showSuccessModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md mx-4 relative">
+            <div className="flex items-center space-x-3 mb-4">
+              <div className="flex-shrink-0">
+                <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                  <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
+              </div>
+              <div>
+                <h3 className="text-lg font-medium text-gray-900">Success</h3>
+                <p className="text-sm text-gray-600">{successMessage}</p>
+              </div>
+            </div>
+            <div className="flex justify-end">
+              <button
+                onClick={() => setShowSuccessModal(false)}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+              >
+                OK
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Offers Modal */}
+      {showOffersModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-2xl mx-4 w-full">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-lg font-medium text-gray-900">Select an Offer</h3>
+              <button
+                onClick={() => setShowOffersModal(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            
+            <div className="space-y-3 max-h-96 overflow-y-auto">
+              {selectedPropertyOffers.length === 0 ? (
+                <div className="text-center py-8">
+                  <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                    <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 4z" />
+                    </svg>
+                  </div>
+                  <h4 className="text-sm font-medium text-gray-900 mb-1">No offers found</h4>
+                  <p className="text-sm text-gray-500">No offers have been created yet.</p>
+                </div>
+              ) : (
+                selectedPropertyOffers.map((offer) => (
+                  <div
+                    key={offer.id}
+                    onClick={() => handleOfferSelection(offer.id, offer.property_id)}
+                    className="border border-gray-200 rounded-lg p-4 cursor-pointer hover:bg-blue-50 hover:border-blue-300 transition-colors"
+                  >
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <h4 className="text-lg font-semibold text-gray-900">{offer.name}</h4>
+                        <p className="text-sm text-gray-600 mt-1">{offer.description}</p>
+                        <p className="text-xs text-gray-500 mt-2">{offer.property_address}</p>
+                      </div>
+                      <div className="flex items-center space-x-3">
+                        <div className="text-right">
+                          <div className="text-lg font-semibold text-blue-600">{offer.offer_amount}</div>
+                          <div className="text-xs text-gray-500">{offer.created_date}</div>
+                        </div>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteOffer(offer.id);
+                          }}
+                          className="p-1.5 text-red-600 hover:bg-red-50 rounded-md transition-colors"
+                          title="Delete offer"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+            
+            <div className="flex justify-end mt-6">
+              <button
+                onClick={() => setShowOffersModal(false)}
+                className="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors font-medium"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Cash Flow Reports Modal */}
+      <CashFlowReportsModal
+        isOpen={showCashFlowReportsModal}
+        onClose={() => setShowCashFlowReportsModal(false)}
+        onGenerate={handleGenerateReportFromModal}
+      />
     </div>
   );
 }
@@ -723,9 +1696,11 @@ function PropertyCard({
   onMarketUpdate?: (propertyId: string, newMarket: string) => void;
   currentViewMode?: string;
 }) {
+  const router = useRouter();
   const [pipelineStatus, setPipelineStatus] = useState(property.pipelineStatus);
   const [market, setMarket] = useState(property.market);
   const [notes, setNotes] = useState(property.notes || '');
+  
 
   const updateFavoriteStatus = async (newStatus: string) => {
     try {
@@ -733,7 +1708,7 @@ function PropertyCard({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          property_id: property.id,
+          property_id: property.property_id || property.id,
           favorite_status: newStatus
         })
       });
@@ -753,7 +1728,7 @@ function PropertyCard({
 
   const updateFavoriteMarket = async (newMarket: string) => {
     try {
-      const response = await fetch('/api/favorites/update-market', {
+      const response = await fetch('/api/v2/favorites/update-market', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -787,19 +1762,6 @@ function PropertyCard({
     return property.source === 'A' ? 'text-blue-600' : 'text-red-500';
   };
 
-  const handleOfferAnalyzer = () => {
-    // Navigate to offer analyzer with property data
-    const params = new URLSearchParams({
-      address: property.address,
-      city: property.city,
-      state: property.state,
-      units: property.units.toString(),
-      assessed: property.assessed,
-      built: property.built.toString()
-    });
-    
-    window.open(`/offer-analyzer?${params.toString()}`, '_blank');
-  };
 
   const getStreetViewImage = () => {
     const address = `${property.address}, ${property.city}, ${property.state} ${property.zip}`;
@@ -842,15 +1804,6 @@ function PropertyCard({
           </div>
         </div>
         
-        {/* Selection Checkbox */}
-        <div className="absolute top-3 left-3">
-          <input
-            type="checkbox"
-            checked={isSelected}
-            onChange={onToggleSelect}
-            className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 shadow-sm"
-          />
-        </div>
         
         {/* Heart with Source Indicator */}
         <div className="absolute top-3 right-3">
@@ -881,10 +1834,15 @@ function PropertyCard({
           <h3 className="font-semibold text-gray-900 truncate">
             {property.address}
           </h3>
-          {/* Calculator Icon for Properties with Pricing Scenario */}
-          {property.hasPricingScenario && (
-            <Calculator className="h-4 w-4 text-blue-600 flex-shrink-0" />
-          )}
+          <div className="flex items-center space-x-2">
+            {/* Selection Checkbox */}
+            <input
+              type="checkbox"
+              checked={isSelected}
+              onChange={onToggleSelect}
+              className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 shadow-sm"
+            />
+          </div>
         </div>
         
         {/* Location and Basic Info */}
@@ -904,7 +1862,7 @@ function PropertyCard({
                 updateFavoriteMarket(newMarket);
                 // Update parent component state immediately
                 if (onMarketUpdate) {
-                  onMarketUpdate(property.id.toString(), newMarket);
+                  onMarketUpdate(property.property_id || property.id.toString(), newMarket);
                 }
               }}
               className="text-xs px-2 py-1 rounded-full font-medium border-0 focus:ring-2 focus:ring-blue-500 bg-gray-100 text-gray-700"
@@ -955,24 +1913,33 @@ function PropertyCard({
             placeholder="Add notes... Use @MM/DD/YY for reminders"
             className="w-full text-xs border border-gray-200 rounded px-2 py-1 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 resize-none"
             rows={2}
-            onBlur={() => {
-              // In a real app, this would save to database
-              console.log(`Notes updated for ${property.address}:`, notes);
+            onBlur={async () => {
+              
+              try {
+                const payload = {
+                  property_id: property.property_id,
+                  notes: notes
+                };
+                
+                const response = await fetch('/api/v2/favorites/update-notes', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify(payload)
+                });
+                
+                if (!response.ok) {
+                  const errorData = await response.text();
+                  console.error('Failed to update notes:', response.status, errorData);
+                }
+              } catch (error) {
+                console.error('Error updating notes:', error);
+              }
             }}
           />
         </div>
 
         {/* Bottom Actions */}
-        <div className="flex items-center justify-between pt-3 border-t border-gray-100">
-          {/* Offer Analyzer Button */}
-          <button 
-            onClick={handleOfferAnalyzer}
-            className="flex items-center text-blue-600 hover:text-blue-700 text-sm font-medium"
-          >
-            <Calculator className="h-3 w-3 mr-1" />
-            {property.hasPricingScenario ? 'Modify Offer' : 'Create Offer'}
-          </button>
-          
+        <div className="flex items-center justify-end pt-3 border-t border-gray-100">
           <button 
             onClick={() => {
               const baseUrl = new URL('/v2/engage', window.location.origin);
@@ -980,7 +1947,7 @@ function PropertyCard({
                 baseUrl.searchParams.set('viewMode', currentViewMode);
               }
               const backUrl = encodeURIComponent(baseUrl.toString());
-              window.location.href = `/v2/discover/property/${property.id}?context=engage&back=${backUrl}`;
+              window.location.href = `/v2/discover/property/${property.property_id || property.id}?context=engage&back=${backUrl}`;
             }}
             className="text-blue-600 hover:text-blue-700 text-sm font-medium"
           >

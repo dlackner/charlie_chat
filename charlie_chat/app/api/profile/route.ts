@@ -1,12 +1,14 @@
 /*
- * CHARLIE2 V2 - Update Favorite Status API
- * Allows updating the pipeline status (favorite_status) of saved properties
+ * CHARLIE2 V2 - User Profile API
+ * Fetch user profile information from the profiles table
+ * Used for marketing letter generation and other profile-dependent features
  */
-import { NextRequest, NextResponse } from "next/server";
+
+import { NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 
-export async function POST(req: NextRequest) {
+export async function GET() {
   try {
     const cookieStore = await cookies();
     const supabase = createServerClient(
@@ -31,26 +33,25 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { property_id, favorite_status } = await req.json();
-    
-    if (!property_id) {
-      return NextResponse.json({ error: 'Property ID is required' }, { status: 400 });
-    }
-
-    const { error } = await supabase
-      .from('user_favorites')
-      .update({ favorite_status })
+    // Fetch user profile from profiles table
+    const { data: profile, error } = await supabase
+      .from('profiles')
+      .select('*')
       .eq('user_id', user.id)
-      .eq('property_id', property_id);
+      .single();
 
     if (error) {
-      return NextResponse.json({ error: 'Failed to update favorite status' }, { status: 500 });
+      console.error('Error fetching profile:', error);
+      return NextResponse.json({ error: 'Failed to fetch profile' }, { status: 500 });
     }
 
-    return NextResponse.json({ success: true });
-    
+    if (!profile) {
+      return NextResponse.json({ error: 'Profile not found' }, { status: 404 });
+    }
+
+    return NextResponse.json(profile);
   } catch (error) {
-    console.error('Update favorite status API error:', error);
+    console.error('Profile API error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

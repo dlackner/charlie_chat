@@ -1,7 +1,7 @@
 /*
  * CHARLIE2 V2 - My Properties Page
  * Portfolio management and property tracking
- * Part of the new V2 application architecture
+ * Part of the new V2 application architecture. NOT USED. FUNCTIONALITY IN OTHER FILES NOW. 
  * TODO: Consider moving to app/v2/my-properties/ for proper V2 organization
  */
 "use client";
@@ -457,27 +457,33 @@ export default function MyPropertiesPage() {
 
     // Status update handler
     const handleStatusChange = async (propertyId: string, status: FavoriteStatus | null) => {
-        if (!user || !supabase) return;
+        if (!user) return;
 
         try {
-            const { error } = await supabase
-                .from("user_favorites")
-                .update({ favorite_status: status })
-                .eq("user_id", user.id)
-                .eq("property_id", propertyId);
-
-            if (error) {
-                console.error('Error updating status:', error);
-            } else {
-                // Update local state
-                setSavedProperties(prev =>
-                    prev.map(p =>
-                        p.property_id === propertyId
-                            ? { ...p, favorite_status: status }
-                            : p
-                    )
-                );
+            const response = await fetch('/api/favorites/update-status', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    property_id: propertyId,
+                    favorite_status: status
+                }),
+            });
+            
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || 'Failed to update status');
             }
+
+            // Update local state
+            setSavedProperties(prev =>
+                prev.map(p =>
+                    p.property_id === propertyId
+                        ? { ...p, favorite_status: status }
+                        : p
+                )
+            );
         } catch (error) {
             console.error('Error saving status:', error);
         }

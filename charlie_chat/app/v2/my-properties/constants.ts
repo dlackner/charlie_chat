@@ -1,5 +1,5 @@
 // Status options for property pursuit tracking
-export type FavoriteStatus = 'REVIEWED' | 'COMMUNICATED' | 'ENGAGED' | 'ANALYZED' | 'LOI_SENT' | 'ACQUIRED' | 'REJECTED';
+export type FavoriteStatus = 'Reviewing' | 'Communicating' | 'Engaged' | 'Analyzing' | 'LOI Sent' | 'Acquired' | 'Rejected';
 
 export interface StatusOption {
   value: FavoriteStatus;
@@ -9,37 +9,37 @@ export interface StatusOption {
 
 export const STATUS_OPTIONS: StatusOption[] = [
   {
-    value: 'REVIEWED',
+    value: 'Reviewing',
     label: 'Reviewing',
     description: 'Initial review to determine suitability'
   },
   {
-    value: 'COMMUNICATED',
+    value: 'Communicating',
     label: 'Communicating',
     description: 'Sent email or called them'
   },
   {
-    value: 'ENGAGED',
+    value: 'Engaged',
     label: 'Engaged',
     description: 'Actively engaged in discussions with the owner'
   },
   {
-    value: 'ANALYZED',
+    value: 'Analyzing',
     label: 'Analyzing',
     description: 'Detailed analysis, document review and site visit in progress'
   },
   {
-    value: 'LOI_SENT',
+    value: 'LOI Sent',
     label: 'LOI Sent',
     description: 'An offer has been submitted to the seller'
   },
   {
-    value: 'ACQUIRED',
+    value: 'Acquired',
     label: 'Acquired',
     description: 'Offer accepted'
   },
   {
-    value: 'REJECTED',
+    value: 'Rejected',
     label: 'Rejected',
     description: 'Offer rejected'
   }

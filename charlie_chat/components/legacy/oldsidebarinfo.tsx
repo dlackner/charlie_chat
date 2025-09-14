@@ -8,7 +8,7 @@ import { Document, Packer, Paragraph, TextRun, ISpacingProperties, LineRuleType 
 import { saveAs } from 'file-saver';
 import { createBrowserClient } from '@supabase/ssr';
 
-import type { Listing } from './listingTypes';
+import type { Listing } from '../ui/listingTypes';
 
 type Props = {
   onSearch: (filters: Record<string, any>) => Promise<void>;

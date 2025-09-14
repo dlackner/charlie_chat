@@ -6,14 +6,20 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
 export default function V2HomePage() {
-  const { user, signInWithGoogle } = useAuth();
+  const { user, supabase } = useAuth();
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
 
   const handleGoogleSignIn = async () => {
     setIsLoading(true);
     try {
-      await signInWithGoogle();
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/discover`
+        }
+      });
+      if (error) throw error;
     } catch (error) {
       console.error('Sign in error:', error);
     }

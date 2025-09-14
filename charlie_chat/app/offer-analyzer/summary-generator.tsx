@@ -478,7 +478,8 @@ const PropertySummaryButton = ({
                             </div>
 
                             <div className="flex flex-col sm:flex-row sm:space-x-3 space-y-2 sm:space-y-0 mt-6 pt-4 border-t border-gray-200">
-                                {/* 10-Year Cash Flow Report moved to Engage Generate Documents dropdown */}
+                                {/* 10-Year 
+                                 Report moved to Engage Generate Documents dropdown */}
                                 <button
                                     onClick={handlePrintSummary}
                                     className="bg-gray-600 hover:bg-gray-700 text-white font-medium py-3 px-5 rounded-lg transition-colors duration-150 flex items-center justify-center space-x-2 shadow-sm"

@@ -1,6 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import { useAuth } from "@/contexts/AuthContext";
+import PropertyIntelligenceChart from '@/components/v2/PropertyIntelligenceChart';
 import { 
   TrendingUp, 
   TrendingDown, 
@@ -20,6 +22,7 @@ import {
 } from 'lucide-react';
 
 export default function MetricsPage() {
+  const { user, isLoading: authLoading } = useAuth();
   const [propertyMetric, setPropertyMetric] = useState('properties');
   const [timeRange, setTimeRange] = useState('30');
 
@@ -47,15 +50,14 @@ export default function MetricsPage() {
         </div>
 
         {/* Action Center - Full Width */}
-        <ActionCenter />
+        <ActionCenter user={user} authLoading={authLoading} />
 
         {/* 4-Quadrant Dashboard */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8">
-          {/* Property Intelligence */}
+          {/* Property Pipeline */}
           <PropertyIntelligence 
-            metric={propertyMetric} 
-            setMetric={setPropertyMetric}
-            timeRange={timeRange} 
+            user={user}
+            authLoading={authLoading}
           />
 
           {/* Outreach Performance */}
@@ -73,33 +75,40 @@ export default function MetricsPage() {
 }
 
 // Action Center Component
-function ActionCenter() {
-  const reminders = [
-    { 
-      id: 1, 
-      property: '103 Gibbs Ave', 
-      note: 'Follow up with owner', 
-      date: '2025-09-08', 
-      type: 'today', 
-      priority: 'high' 
-    },
-    { 
-      id: 2, 
-      property: '9-11 Sherman St', 
-      note: 'Schedule site visit', 
-      date: '2025-09-10', 
-      type: 'upcoming', 
-      priority: 'medium' 
-    },
-    { 
-      id: 3, 
-      property: 'Kingston Ave', 
-      note: 'Review financials', 
-      date: '2025-09-05', 
-      type: 'overdue', 
-      priority: 'high' 
-    }
-  ];
+function ActionCenter({ user, authLoading }: { user: any; authLoading: boolean }) {
+  const [reminders, setReminders] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Fetch reminders from API
+  useEffect(() => {
+    const fetchReminders = async () => {
+      if (!user || authLoading) {
+        return;
+      }
+
+      setIsLoading(true);
+      setError(null);
+
+      try {
+        const response = await fetch('/api/v2/reminders');
+        if (!response.ok) {
+          throw new Error('Failed to fetch reminders');
+        }
+
+        const data = await response.json();
+        setReminders(data.reminders || []);
+      } catch (err: any) {
+        console.error('Error fetching reminders:', err);
+        setError(err.message || 'Failed to load reminders');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchReminders();
+  }, [user, authLoading]);
+
 
   return (
     <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-8">
@@ -108,98 +117,306 @@ function ActionCenter() {
         Reminders
       </h2>
       
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {/* Today's Reminders */}
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-          <h3 className="font-semibold text-red-800 mb-2 flex items-center">
-            <Clock className="h-4 w-4 mr-1" />
-            Today ({reminders.filter(r => r.type === 'today').length})
-          </h3>
-          {reminders.filter(r => r.type === 'today').map(reminder => (
-            <ReminderCard key={reminder.id} reminder={reminder} />
-          ))}
+      {isLoading ? (
+        <div className="flex items-center justify-center py-8">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          <span className="ml-3 text-gray-600">Loading reminders...</span>
         </div>
+      ) : error ? (
+        <div className="text-center py-8">
+          <AlertCircle className="h-8 w-8 mx-auto mb-2 text-red-500" />
+          <p className="text-red-600">{error}</p>
+        </div>
+      ) : reminders.length === 0 ? (
+        <div className="text-center py-8">
+          <Calendar className="h-8 w-8 mx-auto mb-2 text-gray-400" />
+          <p className="text-gray-600">No reminders found</p>
+          <p className="text-sm text-gray-500 mt-1">Add reminders to your property notes using @MM/DD/YYYY format</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Today's Reminders */}
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+            <h3 className="font-semibold text-red-800 mb-2 flex items-center">
+              <Clock className="h-4 w-4 mr-1" />
+              Today ({reminders.filter(r => r.type === 'today').length})
+            </h3>
+            <div className="max-h-48 overflow-y-auto">
+              {reminders.filter(r => r.type === 'today').map(reminder => (
+                <ReminderCard key={reminder.id} reminder={reminder} />
+              ))}
+              {reminders.filter(r => r.type === 'today').length === 0 && (
+                <p className="text-sm text-gray-600 italic">No reminders for today</p>
+              )}
+            </div>
+          </div>
 
-        {/* Upcoming Reminders */}
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-          <h3 className="font-semibold text-yellow-800 mb-2 flex items-center">
-            <Calendar className="h-4 w-4 mr-1" />
-            This Week ({reminders.filter(r => r.type === 'upcoming').length})
-          </h3>
-          {reminders.filter(r => r.type === 'upcoming').map(reminder => (
-            <ReminderCard key={reminder.id} reminder={reminder} />
-          ))}
+          {/* This Week Reminders (upcoming only) */}
+          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+            <h3 className="font-semibold text-yellow-800 mb-2 flex items-center">
+              <Calendar className="h-4 w-4 mr-1" />
+              This Week ({reminders.filter(r => r.type === 'upcoming').length})
+            </h3>
+            <div className="max-h-48 overflow-y-auto">
+              {reminders.filter(r => r.type === 'upcoming').map(reminder => (
+                <ReminderCard key={reminder.id} reminder={reminder} />
+              ))}
+              {reminders.filter(r => r.type === 'upcoming').length === 0 && (
+                <p className="text-sm text-gray-600 italic">No upcoming reminders</p>
+              )}
+            </div>
+          </div>
         </div>
-
-        {/* Overdue Reminders */}
-        <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
-          <h3 className="font-semibold text-orange-800 mb-2 flex items-center">
-            <AlertCircle className="h-4 w-4 mr-1" />
-            Overdue ({reminders.filter(r => r.type === 'overdue').length})
-          </h3>
-          {reminders.filter(r => r.type === 'overdue').map(reminder => (
-            <ReminderCard key={reminder.id} reminder={reminder} />
-          ))}
-        </div>
-      </div>
+      )}
     </div>
   );
 }
 
-// Property Intelligence Quadrant
-function PropertyIntelligence({ metric, setMetric, timeRange }: { 
-  metric: string; 
-  setMetric: (value: string) => void; 
-  timeRange: string; 
-}) {
-  const metrics = {
-    properties: { label: 'Properties Favorited', value: 47, change: '+12', icon: Building },
-    units: { label: 'Total Units', value: 1247, change: '+85', icon: Users },
-    value: { label: 'Assessed Value', value: '$24.8M', change: '+$2.1M', icon: DollarSign },
-    volume: { label: 'Deal Volume', value: 18, change: '+3', icon: BarChart3 }
+// Property Pipeline Quadrant
+function PropertyIntelligence({ user, authLoading }: { user: any; authLoading: boolean }) {
+  const [intelligenceData, setIntelligenceData] = useState<any[]>([]);
+  const [summary, setSummary] = useState<any>({});
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  
+  // Filter states
+  const [selectedMarkets, setSelectedMarkets] = useState<string[]>([]);
+  const [selectedSources, setSelectedSources] = useState<string[]>([]);
+  const [chartType, setChartType] = useState<'mixed' | 'funnel' | 'pie'>('mixed');
+  
+  // Available options
+  const [availableMarkets, setAvailableMarkets] = useState<string[]>([]);
+  const availableSources = ['manual', 'algorithm'];
+  
+  // Dropdown states
+  const [showMarketDropdown, setShowMarketDropdown] = useState(false);
+  const [showSourceDropdown, setShowSourceDropdown] = useState(false);
+  
+  // Refs for click-outside handling
+  const marketDropdownRef = useRef<HTMLDivElement>(null);
+  const sourceDropdownRef = useRef<HTMLDivElement>(null);
+
+  // Fetch available markets
+  useEffect(() => {
+    const fetchMarkets = async () => {
+      if (!user || authLoading) return;
+      
+      try {
+        const response = await fetch(`/api/v2/user-markets?userId=${user.id}`);
+        if (response.ok) {
+          const data = await response.json();
+          setAvailableMarkets(data.markets?.map((m: any) => m.name) || []);
+        }
+      } catch (err) {
+        console.error('Error fetching markets:', err);
+      }
+    };
+    
+    fetchMarkets();
+  }, [user, authLoading]);
+
+  // Fetch intelligence data
+  useEffect(() => {
+    const fetchIntelligenceData = async () => {
+      if (!user || authLoading) return;
+      
+      setIsLoading(true);
+      setError(null);
+      
+      try {
+        const params = new URLSearchParams();
+        params.set('userId', user.id);
+        if (selectedMarkets.length > 0) {
+          params.set('markets', selectedMarkets.join(','));
+        }
+        if (selectedSources.length > 0) {
+          params.set('sources', selectedSources.join(','));
+        }
+        
+        const response = await fetch(`/api/v2/metrics/property-intelligence?${params.toString()}`);
+        
+        const result = await response.json();
+        
+        if (!response.ok) {
+          throw new Error(result.details || result.error || 'Failed to fetch intelligence data');
+        }
+        setIntelligenceData(result.data || []);
+        setSummary(result.summary || {});
+      } catch (err: any) {
+        console.error('Error fetching intelligence data:', err);
+        setError(err.message || 'Failed to load data');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    fetchIntelligenceData();
+  }, [user, authLoading, selectedMarkets, selectedSources]);
+
+  const handleMarketChange = (market: string) => {
+    setSelectedMarkets(prev => 
+      prev.includes(market) 
+        ? prev.filter(m => m !== market)
+        : [...prev, market]
+    );
   };
 
-  const currentMetric = metrics[metric as keyof typeof metrics];
+  const handleSourceChange = (source: string) => {
+    setSelectedSources(prev =>
+      prev.includes(source)
+        ? prev.filter(s => s !== source) 
+        : [...prev, source]
+    );
+  };
+
+  // Click outside to close dropdowns
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (marketDropdownRef.current && !marketDropdownRef.current.contains(event.target as Node)) {
+        setShowMarketDropdown(false);
+      }
+      if (sourceDropdownRef.current && !sourceDropdownRef.current.contains(event.target as Node)) {
+        setShowSourceDropdown(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   return (
     <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-lg font-semibold text-gray-900">Property Intelligence</h3>
-        <select
-          value={metric}
-          onChange={(e) => setMetric(e.target.value)}
-          className="px-3 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500"
-        >
-          <option value="properties">Properties</option>
-          <option value="units">Units</option>
-          <option value="value">Assessed Value</option>
-          <option value="volume">Deal Volume</option>
-        </select>
-      </div>
-
-      <div className="mb-4">
+        <h3 className="text-lg font-semibold text-gray-900">Property Pipeline</h3>
         <div className="flex items-center space-x-3">
-          <div className="p-3 bg-blue-50 rounded-lg">
-            <currentMetric.icon className="h-6 w-6 text-blue-600" />
+          {/* Chart Type Toggle */}
+          <select
+            value={chartType}
+            onChange={(e) => setChartType(e.target.value as 'mixed' | 'funnel' | 'pie')}
+            className="px-3 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="mixed">Bar/Line Chart</option>
+            <option value="funnel">Funnel Chart</option>
+            <option value="pie">Pie Chart</option>
+          </select>
+        </div>
+      </div>
+
+      {/* Filters */}
+      <div className="flex flex-wrap gap-3 mb-4">
+        {/* Market Filter */}
+        <div className="relative" ref={marketDropdownRef}>
+          <button
+            onClick={() => setShowMarketDropdown(!showMarketDropdown)}
+            className="appearance-none bg-white border border-gray-300 rounded-lg px-3 py-2 pr-8 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 min-w-[140px] text-left"
+          >
+            Markets ({selectedMarkets.length} selected)
+          </button>
+          <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+          
+          {showMarketDropdown && (
+            <div 
+              className="absolute top-full left-0 mt-1 bg-white border border-gray-300 rounded-lg shadow-lg z-50 min-w-[200px] max-h-60 overflow-y-auto"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="p-2">
+                {availableMarkets.map((market) => (
+                  <label key={market} className="flex items-center p-2 hover:bg-gray-50 text-sm cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={selectedMarkets.includes(market)}
+                      onChange={() => handleMarketChange(market)}
+                      className="mr-2 h-3 w-3 text-blue-600"
+                    />
+                    {market}
+                  </label>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Source Filter */}
+        <div className="relative" ref={sourceDropdownRef}>
+          <button
+            onClick={() => setShowSourceDropdown(!showSourceDropdown)}
+            className="appearance-none bg-white border border-gray-300 rounded-lg px-3 py-2 pr-8 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 min-w-[140px] text-left"
+          >
+            Sources ({selectedSources.length} selected)
+          </button>
+          <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+          
+          {showSourceDropdown && (
+            <div 
+              className="absolute top-full left-0 mt-1 bg-white border border-gray-300 rounded-lg shadow-lg z-50 min-w-[200px]"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="p-2">
+                {availableSources.map((source) => (
+                  <label key={source} className="flex items-center p-2 hover:bg-gray-50 text-sm cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={selectedSources.includes(source)}
+                      onChange={() => handleSourceChange(source)}
+                      className="mr-2 h-3 w-3 text-blue-600"
+                    />
+                    {source.charAt(0).toUpperCase() + source.slice(1)}
+                  </label>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Summary Stats */}
+      <div className="mb-4">
+        <div className="grid grid-cols-2 gap-4">
+          <div className="flex items-center space-x-3">
+            <div className="p-3 bg-blue-50 rounded-lg">
+              <Building className="h-6 w-6 text-blue-600" />
+            </div>
+            <div>
+              <div className="text-2xl font-bold text-gray-900">{summary.total_properties || 0}</div>
+              <div className="text-sm text-gray-600">Total Properties</div>
+            </div>
           </div>
-          <div>
-            <div className="text-2xl font-bold text-gray-900">{currentMetric.value}</div>
-            <div className="text-sm text-gray-600">{currentMetric.label}</div>
-          </div>
-          <div className="flex items-center text-sm font-medium text-green-600">
-            <TrendingUp className="h-4 w-4 mr-1" />
-            {currentMetric.change}
+          <div className="flex items-center space-x-3">
+            <div className="p-3 bg-green-50 rounded-lg">
+              <DollarSign className="h-6 w-6 text-green-600" />
+            </div>
+            <div>
+              <div className="text-2xl font-bold text-gray-900">
+                ${summary.total_estimated_value ? (summary.total_estimated_value / 1000000).toFixed(1) : 0}M
+              </div>
+              <div className="text-sm text-gray-600">Estimated Value</div>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Placeholder for trend chart */}
-      <div className="h-32 bg-gradient-to-r from-blue-50 to-green-50 rounded-lg flex items-center justify-center">
-        <div className="text-center text-gray-500">
-          <TrendingUp className="h-8 w-8 mx-auto mb-1" />
-          <p className="text-xs">Trend Chart</p>
+      {/* Chart */}
+      {isLoading ? (
+        <div className="h-64 bg-gradient-to-r from-blue-50 to-green-50 rounded-lg flex items-center justify-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
         </div>
-      </div>
+      ) : error ? (
+        <div className="h-64 bg-red-50 rounded-lg flex items-center justify-center">
+          <div className="text-center text-red-600">
+            <AlertCircle className="h-8 w-8 mx-auto mb-1" />
+            <p className="text-sm">{error}</p>
+          </div>
+        </div>
+      ) : intelligenceData.length === 0 ? (
+        <div className="h-64 bg-gray-50 rounded-lg flex items-center justify-center">
+          <div className="text-center text-gray-500">
+            <BarChart3 className="h-8 w-8 mx-auto mb-1" />
+            <p className="text-sm">No data available with current filters</p>
+          </div>
+        </div>
+      ) : (
+        <PropertyIntelligenceChart data={intelligenceData} chartType={chartType} />
+      )}
     </div>
   );
 }
@@ -317,17 +534,23 @@ function UserEngagement() {
 
 // Reminder Card Component
 function ReminderCard({ reminder }: { reminder: any }) {
+  const formatDate = (dateStr: string) => {
+    const date = new Date(dateStr);
+    return date.toLocaleDateString('en-US', { 
+      month: 'short', 
+      day: 'numeric',
+      year: date.getFullYear() !== new Date().getFullYear() ? 'numeric' : undefined
+    });
+  };
+
   return (
     <div className="bg-white rounded p-3 mb-2 border border-gray-200">
       <div className="flex items-center justify-between">
-        <div>
-          <div className="font-medium text-sm text-gray-900">{reminder.property}</div>
-          <div className="text-xs text-gray-600">{reminder.note}</div>
-          <div className="text-xs text-gray-500 mt-1">{reminder.date}</div>
+        <div className="flex-1">
+          <div className="font-medium text-sm text-gray-900">{reminder.property_address}</div>
+          <div className="text-xs text-gray-600">{reminder.reminder_text}</div>
+          <div className="text-xs text-gray-500 mt-1">{formatDate(reminder.reminder_date)}</div>
         </div>
-        <button className="text-green-600 hover:text-green-700">
-          <CheckCircle className="h-4 w-4" />
-        </button>
       </div>
     </div>
   );

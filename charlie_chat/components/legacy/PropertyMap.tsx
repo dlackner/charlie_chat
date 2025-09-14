@@ -125,7 +125,7 @@ export default function PropertyMap({
           
           return (
             <Marker
-              key={property.id || property.property_id || `marker-${index}`}
+              key={property.id || `marker-${index}`}
               longitude={Number(property.longitude)}
               latitude={Number(property.latitude)}
               onClick={(e) => {

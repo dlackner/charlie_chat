@@ -249,7 +249,7 @@ export async function GET(req: NextRequest) {
           notes,
           recommendation_type,
           saved_at,
-          saved_properties:property_id (*)
+          saved_properties:property_id (*, skip_trace_data)
         `)
         .eq('user_id', user.id)
         .eq('is_active', true)
@@ -289,6 +289,7 @@ export async function GET(req: NextRequest) {
         has_pricing_scenario: false, // TODO: Create offers table to track user offer analyses
         recommendation_type: fav.recommendation_type,
         created_at: fav.saved_at,
+        skip_trace_data: (fav.saved_properties as any)?.skip_trace_data,
         property_data: fav.saved_properties
       }));
 
