@@ -1,4 +1,5 @@
 // Simple cron endpoint that calls the SQL trigger function
+//NEED TO CONFIRM THAT WE STILL USE THIS
 import { NextResponse } from 'next/server';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 

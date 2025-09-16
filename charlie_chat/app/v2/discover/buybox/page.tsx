@@ -31,6 +31,7 @@ if (typeof document !== 'undefined' && !document.getElementById('card-animations
 import { useState, useEffect } from 'react';
 import { Settings, Heart, X, Star, Grid3x3, Map, Trash2 } from 'lucide-react';
 import { BuyBoxModal } from '@/components/v2/BuyBoxModal';
+import { StandardModalWithActions } from '@/components/v2/StandardModal';
 import { useAuth } from '@/contexts/AuthContext';
 import { StreetViewImage } from '@/components/ui/StreetViewImage';
 import { updateMarketConvergence } from '@/lib/v2/convergenceAnalysis';
@@ -104,6 +105,66 @@ export default function BuyBoxPage() {
   const [decidedProperties, setDecidedProperties] = useState<Set<string>>(new Set()); // Track properties user has decided on
   const [animatingProperties, setAnimatingProperties] = useState<{ [propertyId: string]: 'heart' | 'reject' }>({}); // Track animating properties
   const [marketConvergence, setMarketConvergence] = useState<{ [marketKey: string]: { phase: 'discovery' | 'learning' | 'mastery' | 'production'; progress: number } }>({});
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [marketToDelete, setMarketToDelete] = useState<{ key: string; name: string; favoriteCount?: number } | null>(null);
+
+  // Handle delete confirmation
+  const handleDeleteMarket = async () => {
+    if (!marketToDelete || !user || !supabase) return;
+    
+    try {
+      // First, delete all favorites associated with this market
+      const { error: favoritesError } = await supabase
+        .from('user_favorites')
+        .delete()
+        .eq('user_id', user.id)
+        .eq('market_key', marketToDelete.key);
+      
+      if (favoritesError) {
+        console.error('Error deleting favorites:', favoritesError);
+        // Continue with market deletion even if favorites cleanup fails
+      }
+      
+      // Delete the market from database
+      const { error } = await supabase
+        .from('user_markets')
+        .delete()
+        .eq('user_id', user.id)
+        .eq('market_key', marketToDelete.key);
+      
+      if (error) {
+        alert('Failed to delete market. Please try again.');
+        return;
+      }
+      
+      // Remove from local state
+      const updatedMarkets = userMarkets.filter(m => m.market_key !== marketToDelete.key);
+      setUserMarkets(updatedMarkets);
+      
+      // Remove recommendations for this market
+      setMarketRecommendations(prev => {
+        const updated = { ...prev };
+        delete updated[marketToDelete.key];
+        return updated;
+      });
+      
+      // Select a different market or null
+      if (updatedMarkets.length > 0) {
+        setSelectedMarketKey(updatedMarkets[0].market_key);
+      } else {
+        setSelectedMarketKey(null);
+      }
+      
+      // Close modal and reset state
+      setShowDeleteModal(false);
+      setMarketToDelete(null);
+      
+    } catch (error) {
+      alert('Failed to delete market. Please try again.');
+      setShowDeleteModal(false);
+      setMarketToDelete(null);
+    }
+  };
 
   // Load user markets and existing recommendations
   useEffect(() => {
@@ -642,9 +703,25 @@ export default function BuyBoxPage() {
                   Edit Criteria
                 </button>
                 <button
-                  onClick={() => {
-                    // TODO: Add delete market functionality
-                    console.log('Delete market:', selectedMarketKey);
+                  onClick={async () => {
+                    if (!selectedMarketKey || !selectedMarket || !supabase || !user) return;
+                    
+                    // Get count of favorites for this market
+                    const { count } = await supabase
+                      .from('user_favorites')
+                      .select('*', { count: 'exact', head: true })
+                      .eq('user_id', user.id)
+                      .eq('market_key', selectedMarketKey)
+                      .eq('is_active', true);
+                    
+                    // Set up delete confirmation modal
+                    const marketName = getMarketDisplayName(selectedMarket);
+                    setMarketToDelete({ 
+                      key: selectedMarketKey, 
+                      name: marketName,
+                      favoriteCount: count || 0
+                    });
+                    setShowDeleteModal(true);
                   }}
                   className="flex h-8 w-8 items-center justify-center rounded-lg text-red-600 hover:bg-red-50 hover:text-red-700 transition-all duration-200"
                   title="Delete market"
@@ -759,6 +836,38 @@ export default function BuyBoxPage() {
           }}
           focusedMarket={focusedMarket}
         />
+
+        {/* Delete Confirmation Modal */}
+        <StandardModalWithActions
+          isOpen={showDeleteModal}
+          onClose={() => {
+            setShowDeleteModal(false);
+            setMarketToDelete(null);
+          }}
+          title="Delete Market"
+          size="sm"
+          primaryAction={{
+            label: "Delete Market",
+            onClick: handleDeleteMarket,
+            variant: "danger"
+          }}
+          secondaryAction={{
+            label: "Cancel",
+            onClick: () => {
+              setShowDeleteModal(false);
+              setMarketToDelete(null);
+            }
+          }}
+        >
+          <div className="space-y-4">
+            <p className="text-gray-700 text-base">
+              Are you sure you want to delete the <span className="font-semibold">"{marketToDelete?.name}"</span> market?
+            </p>
+            <p className="text-sm text-red-600 bg-red-50 rounded-lg p-3">
+              <strong>This action cannot be undone.</strong> All recommendations and settings for this market will be permanently removed.
+            </p>
+          </div>
+        </StandardModalWithActions>
       </div>
     </div>
   );

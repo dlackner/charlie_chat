@@ -108,7 +108,7 @@ export default function PropertyIntelligenceChart({ data, chartType }: PropertyI
     }));
 
     return (
-      <div className="h-64">
+      <div className="h-full">
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
             <Pie
@@ -144,7 +144,7 @@ export default function PropertyIntelligenceChart({ data, chartType }: PropertyI
       }));
 
     return (
-      <div className="h-64">
+      <div className="h-full">
         <ResponsiveContainer width="100%" height="100%">
           <FunnelChart>
             <defs>
@@ -179,7 +179,7 @@ export default function PropertyIntelligenceChart({ data, chartType }: PropertyI
   }));
 
   return (
-    <div className="h-64">
+    <div className="h-full">
       <ResponsiveContainer width="100%" height="100%">
         <ComposedChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 60 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />

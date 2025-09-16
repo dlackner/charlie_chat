@@ -1,3 +1,5 @@
+//MAYK NEED TO REFACTOR FOR V2 RELEASE
+//IMPORTS RENTAL DATA FROM CSV FILE
 import { updateRentalRatesData } from '../../../components/utils/rental_rates.js';
 
 export async function GET() {

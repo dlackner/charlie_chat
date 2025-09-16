@@ -271,17 +271,25 @@ export const performSkipTrace = async (
 
     // Save skip trace results to Supabase
     const supabase = createSupabaseBrowserClient();
-    const { error } = await supabase
-
+    console.log('💾 Saving skip trace data for property_id:', property.id);
+    console.log('💾 Data being saved:', data);
+    
+    const { data: updateResult, error } = await supabase
         .from('saved_properties')
         .update({
             skip_trace_data: data,
             last_skip_trace: new Date().toISOString(),
         })
-        .eq('id', property.id);
+        .eq('property_id', property.id)
+        .select();
 
     if (error) {
-        console.warn('⚠️ Failed to save skip trace data to Supabase:', error.message);
+        console.error('❌ Failed to save skip trace data:', error);
+    } else {
+        console.log('✅ Save result:', updateResult);
+        if (!updateResult || updateResult.length === 0) {
+            console.warn('⚠️ No rows updated - property_id may not exist in saved_properties');
+        }
     }
 
     return {

@@ -1,10 +1,16 @@
+/*
+ * CHARLIE2 V2 - MultifamilyOS Landing Page
+ * Modern marketing landing page for MultifamilyOS branding
+ * Part of the new V2 component architecture
+ */
 "use client";
 
 import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { ChevronLeft, ChevronRight, TrendingUp, FileText, Mail, DollarSign, Building, Users, Target, Zap, Globe, Brain, BarChart3, MessageSquare, Calendar, CheckCircle } from 'lucide-react';
+import TypewriterChatDemo from '@/components/ui/TypewriterChatDemo';
 
-export default function LoginPage() {
+export default function LoginNewPage() {
   const { supabase } = useAuth();
   const [email, setEmail] = useState('');
   const [otp, setOtp] = useState('');
@@ -115,14 +121,19 @@ export default function LoginPage() {
       icon: <FileText className="w-6 h-6" />,
       title: "Document Creation",
       description: "Streamline the production of LOIs and P&S agreements"
+    },
+    {
+      icon: <Users className="w-6 h-6" />,
+      title: "Expert AI Advisor",
+      description: "Get instant answers to complex investment questions from your personal AI coach"
     }
   ];
 
   const benefits = [
     {
       icon: <Users className="w-6 h-6" />,
-      title: "Democratization",
-      description: "Level the playing field between solo investors and institutional firms"
+      title: "Expert Team Built-In",
+      description: "Access a full team of real estate professionals—broker, analyst, attorney, marketer—all in one platform"
     },
     {
       icon: <Zap className="w-6 h-6" />,
@@ -143,6 +154,11 @@ export default function LoginPage() {
       icon: <Calendar className="w-6 h-6" />,
       title: "Efficiency",
       description: "Move from sourcing to closing in days, not months"
+    },
+    {
+      icon: <Building className="w-6 h-6" />,
+      title: "Flexible Pricing",
+      description: "Start free and scale to pro—designed for everyone from new investors to experienced pros"
     }
   ];
 
@@ -225,7 +241,7 @@ export default function LoginPage() {
           </div>
 
           {/* Value Proposition */}
-          <div className="max-w-5xl mx-auto text-center mb-20">
+          <div className="max-w-5xl mx-auto text-center mb-12">
             <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-8">
               Transform Into a Full-Spectrum Investment Firm
             </h2>
@@ -241,6 +257,22 @@ export default function LoginPage() {
               </p>
             </div>
           </div>
+        </div>
+      </div>
+
+      {/* Built-In AI Property Coach */}
+      <div className="bg-gray-50 py-12">
+        <div className="max-w-7xl mx-auto px-6">
+          <div className="text-center mb-8">
+            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
+              Built-In AI Property Coach
+            </h2>
+            <p className="text-xl text-gray-600">
+              Get instant, expert-level insights on any multifamily investment question
+            </p>
+          </div>
+          
+          <TypewriterChatDemo />
         </div>
       </div>
 
@@ -277,33 +309,33 @@ export default function LoginPage() {
       </div>
 
       {/* Why MultifamilyOS */}
-      <div className="bg-gradient-to-r from-blue-600 to-purple-600 py-20">
+      <div className="bg-gray-900 py-20">
         <div className="max-w-7xl mx-auto px-6">
           <div className="text-center mb-16">
             <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
               Why MultifamilyOS?
             </h2>
-            <p className="text-xl text-blue-100">
+            <p className="text-xl text-gray-300">
               Built specifically for the modern multifamily investor
             </p>
           </div>
           
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8">
             {benefits.map((benefit, index) => (
-              <div key={index} className="bg-white bg-opacity-10 backdrop-blur-sm rounded-xl p-8 hover:bg-opacity-20 transition-all duration-200">
-                <div className="flex items-center mb-4">
-                  <div className="p-3 bg-white bg-opacity-20 rounded-lg mr-4">
-                    <div className="text-white">
+              <div key={index} className="bg-white rounded-xl p-6 hover:shadow-xl transition-all duration-300 border border-gray-200">
+                <div className="flex flex-col items-start">
+                  <div className="p-3 bg-blue-100 rounded-lg mb-4">
+                    <div className="text-blue-600">
                       {benefit.icon}
                     </div>
                   </div>
-                  <h3 className="text-xl font-semibold text-white">
+                  <h3 className="text-xl font-semibold text-gray-900 mb-3">
                     {benefit.title}
                   </h3>
+                  <p className="text-gray-600 leading-relaxed">
+                    {benefit.description}
+                  </p>
                 </div>
-                <p className="text-blue-100">
-                  {benefit.description}
-                </p>
               </div>
             ))}
           </div>
@@ -317,8 +349,36 @@ export default function LoginPage() {
             Ready to Transform Your Investment Business?
           </h2>
           <p className="text-xl text-gray-600 mb-8">
-            The future of multifamily deal-making runs on MultifamilyOS.
+            The future of multifamily deal-making runs on MultifamilyOS.ai
           </p>
+
+          {/* Trial Value Proposition */}
+          <div className="bg-gray-50 rounded-2xl p-8 mb-8">
+            <div className="text-center mb-6">
+              <h3 className="text-2xl font-bold text-gray-900 mb-2">7-Day Free Trial</h3>
+              <div className="text-4xl font-bold text-blue-600 mb-2">$0</div>
+              <p className="text-gray-600">Full access • No credit card required</p>
+            </div>
+            
+            <div className="grid md:grid-cols-2 gap-4 text-left max-w-lg mx-auto">
+              <div className="flex items-center">
+                <CheckCircle className="w-5 h-5 text-green-500 mr-3 flex-shrink-0" />
+                <span>Full platform access</span>
+              </div>
+              <div className="flex items-center">
+                <CheckCircle className="w-5 h-5 text-green-500 mr-3 flex-shrink-0" />
+                <span>Unlimited property searches</span>
+              </div>
+              <div className="flex items-center">
+                <CheckCircle className="w-5 h-5 text-green-500 mr-3 flex-shrink-0" />
+                <span>AI-powered analysis</span>
+              </div>
+              <div className="flex items-center">
+                <CheckCircle className="w-5 h-5 text-green-500 mr-3 flex-shrink-0" />
+                <span>Document generation</span>
+              </div>
+            </div>
+          </div>
 
           {/* Email Sign In Form */}
           <div className="max-w-md mx-auto">
@@ -344,7 +404,7 @@ export default function LoginPage() {
                   disabled={isLoading || !otp}
                   className="w-full bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl font-semibold text-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed transform hover:scale-105"
                 >
-                  {isLoading ? 'Verifying...' : 'Verify & Start Free Trial'}
+                  {isLoading ? 'Verifying...' : 'Verify & Start 7-Day Free Trial'}
                 </button>
                 <button
                   onClick={() => setOtpSent(false)}
@@ -368,57 +428,20 @@ export default function LoginPage() {
                   disabled={isLoading || !email}
                   className="w-full bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl font-semibold text-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed transform hover:scale-105"
                 >
-                  {isLoading ? 'Sending...' : 'Start Free Trial'}
+                  {isLoading ? 'Sending...' : 'Start 7-Day Free Trial'}
                 </button>
                 <p className="text-sm text-gray-500">
-                  No credit card required • Get started in 30 seconds
+                  Get started in 30 seconds • No commitment required
                 </p>
               </div>
             )}
           </div>
-        </div>
-      </div>
 
-      {/* Pricing Section Placeholder */}
-      <div id="pricing" className="bg-gray-50 py-20">
-        <div className="max-w-4xl mx-auto px-6 text-center">
-          <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
-            Simple, Transparent Pricing
-          </h2>
-          <p className="text-xl text-gray-600 mb-12">
-            Start free, scale as you grow
-          </p>
-          
-          <div className="bg-white rounded-2xl shadow-xl p-8 max-w-md mx-auto">
-            <div className="text-center">
-              <h3 className="text-2xl font-bold text-gray-900 mb-2">Free Trial</h3>
-              <div className="text-4xl font-bold text-blue-600 mb-4">$0</div>
-              <p className="text-gray-600 mb-6">For 14 days</p>
-              <ul className="text-left space-y-3 mb-8">
-                <li className="flex items-center">
-                  <CheckCircle className="w-5 h-5 text-green-500 mr-3" />
-                  <span>Full platform access</span>
-                </li>
-                <li className="flex items-center">
-                  <CheckCircle className="w-5 h-5 text-green-500 mr-3" />
-                  <span>Unlimited property searches</span>
-                </li>
-                <li className="flex items-center">
-                  <CheckCircle className="w-5 h-5 text-green-500 mr-3" />
-                  <span>AI-powered analysis</span>
-                </li>
-                <li className="flex items-center">
-                  <CheckCircle className="w-5 h-5 text-green-500 mr-3" />
-                  <span>Document generation</span>
-                </li>
-              </ul>
-              <button
-                onClick={() => document.getElementById('signup-form')?.scrollIntoView({ behavior: 'smooth' })}
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl font-semibold transition-all duration-200"
-              >
-                Start Your Free Trial
-              </button>
-            </div>
+          {/* Link to Full Pricing */}
+          <div className="mt-8">
+            <a href="/pricing" className="text-blue-600 hover:text-blue-700 text-sm font-medium">
+              View detailed pricing plans →
+            </a>
           </div>
         </div>
       </div>

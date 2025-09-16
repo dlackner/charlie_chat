@@ -1,3 +1,4 @@
+//THIS IS THE OLD VERSION. WE HAVE REPLACED IT. 
 // app/api/weekly-recommendations/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';

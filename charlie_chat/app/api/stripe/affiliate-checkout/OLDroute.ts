@@ -1,3 +1,5 @@
+//WE SHOULD BE ABLE TO DELETE THIS
+
 import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";

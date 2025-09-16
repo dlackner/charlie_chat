@@ -194,6 +194,69 @@ export async function POST(req: NextRequest) {
   }
 }
 
+export async function DELETE(req: NextRequest) {
+  try {
+    const cookieStore = await cookies();
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll() {
+            return cookieStore.getAll();
+          },
+          setAll(cookiesToSet) {
+            cookiesToSet.forEach(({ name, value, options }) => {
+              cookieStore.set(name, value, options);
+            });
+          },
+        },
+      }
+    );
+    
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const { property_id } = await req.json();
+    
+    if (!property_id) {
+      return NextResponse.json({ error: 'Property ID is required' }, { status: 400 });
+    }
+
+    // Delete from user_favorites table
+    const { data: deletedData, error } = await supabase
+      .from('user_favorites')
+      .delete()
+      .eq('user_id', user.id)
+      .eq('property_id', property_id)
+      .select();
+
+    if (error) {
+      console.error('Error deleting favorite:', error);
+      return NextResponse.json({ error: 'Failed to delete favorite' }, { status: 500 });
+    }
+
+    console.log('Successfully deleted favorite:', { 
+      user_id: user.id, 
+      property_id, 
+      deletedRows: deletedData?.length || 0,
+      deletedData 
+    });
+
+    return NextResponse.json({ 
+      success: true, 
+      deletedRows: deletedData?.length || 0,
+      message: `Deleted ${deletedData?.length || 0} records`
+    });
+    
+  } catch (error) {
+    console.error('Favorites DELETE API error:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
+}
+
 export async function GET(req: NextRequest) {
   try {
     const cookieStore = await cookies();

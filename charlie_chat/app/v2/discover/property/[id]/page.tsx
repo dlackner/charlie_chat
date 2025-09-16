@@ -68,18 +68,26 @@ export default function PropertyDetailsPage() {
           setProperty(foundProperty);
 
           // Check for existing skip trace data in saved_properties table if in ENGAGE context
+          console.log('🔍 isEngageContext:', isEngageContext);
+          console.log('🔍 context from URL:', context);
           if (isEngageContext) {
+            console.log('🔍 Checking for existing skip trace data for property_id:', foundProperty.id);
             const supabase = createSupabaseBrowserClient();
             const { data: savedProperty, error: savedError } = await supabase
               .from('saved_properties')
               .select('skip_trace_data, last_skip_trace')
-              .eq('property_id', foundProperty.property_id)
+              .eq('property_id', foundProperty.id)
               .single();
 
+            console.log('🔍 Database query result:', { savedProperty, savedError });
             if (!savedError && savedProperty?.skip_trace_data) {
-              console.log('Found existing skip trace data');
+              console.log('✅ Found existing skip trace data:', savedProperty.skip_trace_data);
               setSkipTraceData(savedProperty.skip_trace_data);
+            } else {
+              console.log('❌ No skip trace data found or error occurred');
             }
+          } else {
+            console.log('🔍 Skipping skip trace check - not in engage context');
           }
         } else {
           console.log('No property data found. API response:', data);
@@ -163,6 +171,31 @@ export default function PropertyDetailsPage() {
       const apiData = await response.json();
 
       if (!response.ok) {
+        // Handle specific "property not found" error without throwing
+        if (apiData.message && apiData.message.includes('Unable to locate valid property')) {
+          // Update database to record failed skip trace attempt
+          try {
+            const supabase = createSupabaseBrowserClient();
+            await supabase
+              .from('saved_properties')
+              .update({
+                last_skip_trace: new Date().toISOString()
+              })
+              .eq('property_id', property.id);
+          } catch (dbError) {
+            console.error('Failed to update skip trace timestamp:', dbError);
+          }
+          
+          setSkipTraceData({
+            error: 'No skip trace data available - property address not found in database',
+            contacts: [],
+            confidence: 'Failed',
+            traceDate: new Date().toLocaleDateString()
+          });
+          setIsSkipTraceExpanded(true);
+          setIsSkipTracing(false);
+          return;
+        }
         throw new Error(apiData.message || apiData.error || 'Skip trace failed');
       }
 
@@ -232,7 +265,7 @@ export default function PropertyDetailsPage() {
               skip_trace_data: processedData,
               last_skip_trace: new Date().toISOString()
             })
-            .eq('property_id', property.property_id);
+            .eq('property_id', property.id);
 
           if (updateError) {
             console.warn('Failed to save skip trace data to database:', updateError.message);
@@ -439,15 +472,9 @@ export default function PropertyDetailsPage() {
                           <Zap className="h-6 w-6 text-red-600" />
                         </div>
                         <h3 className="text-lg font-medium text-gray-900 mb-2">Skip Trace Failed</h3>
-                        <p className="text-sm text-gray-600 mb-4 max-w-md mx-auto">
+                        <p className="text-sm text-gray-600 max-w-md mx-auto">
                           {skipTraceData.error}
                         </p>
-                        <button
-                          onClick={handleSkipTrace}
-                          className="text-sm text-blue-600 hover:text-blue-700 font-medium"
-                        >
-                          Try Again
-                        </button>
                       </div>
                     ) : (
                       <>

@@ -1,3 +1,5 @@
+//NEED TO REFACTOR FOR V2.  MAY NOT NEED AFFILATE CODE IN HERE
+
 "use client";
 
 import { useState, useEffect, Suspense } from "react";

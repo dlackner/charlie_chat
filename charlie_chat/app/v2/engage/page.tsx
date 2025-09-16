@@ -8,7 +8,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { Search, Heart, Grid3x3, Map, Filter, ChevronDown, FileText, MapPin } from 'lucide-react';
+import { Search, Heart, Grid3x3, Map, Filter, ChevronDown, FileText, MapPin, Trash2 } from 'lucide-react';
 import PropertyMap from '@/components/v2/PropertyMap';
 import { generate10YearCashFlowReport } from '../property-analyzer/cash-flow-report';
 import { generateMarketingLetter, createMailtoLink } from '../templates/generateMarketingLetter';
@@ -44,6 +44,7 @@ export default function EngagePage() {
   const [showOffersModal, setShowOffersModal] = useState(false);
   const [selectedPropertyOffers, setSelectedPropertyOffers] = useState<any[]>([]);
   const [showCashFlowReportsModal, setShowCashFlowReportsModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const statusDropdownRef = useRef<HTMLDivElement>(null);
   const marketDropdownRef = useRef<HTMLDivElement>(null);
@@ -86,6 +87,8 @@ export default function EngagePage() {
           return {
             // UI-specific transformed fields (for display)
             id: propertyData.property_id || favorite.property_id,
+            // Keep the original property_id for database operations
+            original_property_id: favorite.property_id,
             address: propertyData.address_street || propertyData.address_full || 'Unknown Address',
             city: propertyData.address_city || 'Unknown City',
             state: propertyData.address_state || 'Unknown State',
@@ -98,6 +101,7 @@ export default function EngagePage() {
             estimated: propertyData.estimated_value ? `$${parseInt(propertyData.estimated_value).toLocaleString()}` : 'Unknown',
             estEquity: propertyData.estimated_equity ? `$${parseInt(propertyData.estimated_equity).toLocaleString()}` : 'Unknown',
             market: favorite.market_name || propertyData.address_city || 'Unknown Market',
+            market_key: favorite.market_key, // Keep original market_key for filtering
             pipelineStatus: favorite.status || 'Reviewing',
             source: favorite.recommendation_type === 'algorithm' ? 'A' : 'M',
             isFavorited: true,
@@ -151,8 +155,8 @@ export default function EngagePage() {
   const uniqueStatuses = statusOrder.filter(status => 
     savedProperties.some(p => p.pipelineStatus === status)
   );
-  // Use user markets from database, limited to 5 markets
-  const uniqueMarkets = userMarkets.slice(0, 5).map(market => market.name);
+  // Use user markets from database, limited to 5 markets, plus "No market" option
+  const uniqueMarkets = ['No market', ...userMarkets.slice(0, 5).map(market => market.name)];
   // Also create validMarkets list for property card dropdowns from user markets
   const validMarkets = userMarkets.slice(0, 5).map(market => market.name);
   const uniqueSources = ['All', 'Algorithm', 'Manual'];
@@ -160,7 +164,9 @@ export default function EngagePage() {
   // Filter properties based on selections
   const filteredProperties = savedProperties.filter(property => {
     const matchesStatus = selectedStatuses.length === 0 || selectedStatuses.includes(property.pipelineStatus);
-    const matchesMarket = selectedMarkets.length === 0 || selectedMarkets.includes(property.market);
+    const matchesMarket = selectedMarkets.length === 0 || 
+      selectedMarkets.includes(property.market) ||
+      (selectedMarkets.includes('No market') && !property.market_key);
     const matchesSource = selectedSource === 'All' || 
       (selectedSource === 'Algorithm' && property.source === 'A') ||
       (selectedSource === 'Manual' && property.source === 'M');
@@ -222,6 +228,58 @@ export default function EngagePage() {
       }
     } catch (error) {
       console.error('Error updating market:', error);
+    }
+  };
+
+  const handleRemoveFromFavorites = (propertyId: string) => {
+    // Remove property from the savedProperties list using original_property_id
+    setSavedProperties(prev => prev.filter(property => 
+      (property.original_property_id || property.id).toString() !== propertyId
+    ));
+    
+    // Also remove from selected properties if it was selected
+    setSelectedProperties(prev => prev.filter(id => id.toString() !== propertyId));
+  };
+
+  const handleMassDelete = async () => {
+    try {
+      // Delete all selected properties from favorites
+      const deletePromises = selectedProperties.map(async (propertyId) => {
+        const response = await fetch('/api/favorites', {
+          method: 'DELETE',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            property_id: propertyId
+          })
+        });
+        
+        if (!response.ok) {
+          throw new Error(`Failed to delete property ${propertyId}`);
+        }
+        
+        return propertyId;
+      });
+
+      await Promise.all(deletePromises);
+
+      // Remove all deleted properties from the UI
+      setSavedProperties(prev => prev.filter(property => 
+        !selectedProperties.includes((property.original_property_id || property.id).toString())
+      ));
+
+      // Clear selections
+      setSelectedProperties([]);
+      setShowDeleteModal(false);
+
+      // Show success message
+      setSuccessMessage(`Successfully deleted ${deletePromises.length} properties from favorites.`);
+      setShowSuccessModal(true);
+
+    } catch (error) {
+      console.error('Error deleting selected properties:', error);
+      alert('Failed to delete some properties. Please try again.');
     }
   };
 
@@ -1122,6 +1180,17 @@ export default function EngagePage() {
                 <span className="text-sm text-gray-700">Select All</span>
               </div>
 
+              {/* Delete Selected Button */}
+              {selectedProperties.length > 0 && (
+                <button
+                  onClick={() => setShowDeleteModal(true)}
+                  className="flex items-center space-x-2 px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm font-medium"
+                >
+                  <Trash2 className="h-4 w-4" />
+                  <span>Delete Selected ({selectedProperties.length})</span>
+                </button>
+              )}
+
               {/* Search */}
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -1409,11 +1478,12 @@ export default function EngagePage() {
               </div>
               
               {/* Clear Filters Button */}
-              {(selectedStatuses.length > 0 || selectedMarkets.length > 0) && (
+              {(selectedStatuses.length > 0 || selectedMarkets.length > 0 || selectedSource !== 'All') && (
                 <button
                   onClick={() => {
                     setSelectedStatuses([]);
                     setSelectedMarkets([]);
+                    setSelectedSource('All');
                   }}
                   className="text-sm text-blue-600 hover:text-blue-700 font-medium"
                 >
@@ -1515,6 +1585,7 @@ export default function EngagePage() {
                 onStatusUpdate={handleStatusUpdate}
                 onMarketUpdate={handleMarketUpdate}
                 currentViewMode={viewMode}
+                onRemoveFromFavorites={handleRemoveFromFavorites}
               />
             ))}
           </div>
@@ -1545,6 +1616,7 @@ export default function EngagePage() {
                     onStatusUpdate={handleStatusUpdate}
                     onMarketUpdate={handleMarketUpdate}
                     currentViewMode={viewMode}
+                    onRemoveFromFavorites={handleRemoveFromFavorites}
                   />
                 ))}
               </div>
@@ -1563,6 +1635,49 @@ export default function EngagePage() {
         )}
 
       </div>
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md mx-4 relative">
+            {/* Brand Header */}
+            <div className="flex items-center space-x-3 mb-6">
+              <div className="flex-shrink-0">
+                <div className="w-10 h-10 bg-gradient-to-r from-red-500 to-red-600 rounded-lg flex items-center justify-center">
+                  <Trash2 className="w-5 h-5 text-white" />
+                </div>
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-gray-900">Delete Selected Properties</h3>
+                <p className="text-sm text-gray-600">MultifamilyOS.ai</p>
+              </div>
+            </div>
+
+            {/* Warning Content */}
+            <div className="mb-6">
+              <p className="text-gray-600 text-sm">
+                Are you sure you want to continue? This will remove these properties from your investment pipeline.
+              </p>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex space-x-3">
+              <button
+                onClick={() => setShowDeleteModal(false)}
+                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleMassDelete}
+                className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium"
+              >
+                Delete {selectedProperties.length} Properties
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Success Modal */}
       {showSuccessModal && (
@@ -1686,7 +1801,8 @@ function PropertyCard({
   validMarkets,
   onStatusUpdate,
   onMarketUpdate,
-  currentViewMode
+  currentViewMode,
+  onRemoveFromFavorites
 }: { 
   property: any; 
   isSelected: boolean; 
@@ -1695,10 +1811,12 @@ function PropertyCard({
   onStatusUpdate?: (propertyId: string, newStatus: string) => void;
   onMarketUpdate?: (propertyId: string, newMarket: string) => void;
   currentViewMode?: string;
+  onRemoveFromFavorites?: (propertyId: string) => void;
 }) {
   const router = useRouter();
   const [pipelineStatus, setPipelineStatus] = useState(property.pipelineStatus);
   const [market, setMarket] = useState(property.market);
+  const [isFavorited, setIsFavorited] = useState(true); // Start as favorited since this is engage page
   const [notes, setNotes] = useState(property.notes || '');
   
 
@@ -1758,7 +1876,55 @@ function PropertyCard({
     }
   };
 
+  const handleHeartClick = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    
+    if (!isFavorited) return; // Already unfavorited
+    
+    try {
+      // Optimistically update UI
+      setIsFavorited(false);
+      
+      // Call API to delete from favorites
+      console.log('🗑️ Attempting to delete favorite:', property.id);
+      const response = await fetch('/api/favorites', {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          property_id: property.original_property_id || property.id
+        })
+      });
+
+      const result = await response.json();
+      console.log('🗑️ Delete API response:', result);
+
+      if (!response.ok) {
+        // Revert if API call fails
+        setIsFavorited(true);
+        console.error('❌ Failed to remove from favorites:', result);
+        return;
+      }
+
+      console.log('✅ Successfully deleted favorite from API');
+      
+      // Notify parent component to remove from list
+      if (onRemoveFromFavorites) {
+        console.log('🔄 Removing from UI list');
+        onRemoveFromFavorites(property.original_property_id || property.id);
+      }
+    } catch (error) {
+      // Revert if error occurs
+      setIsFavorited(true);
+      console.error('Error removing from favorites:', error);
+    }
+  };
+
   const getHeartColor = () => {
+    if (!isFavorited) {
+      return 'text-gray-400';
+    }
     return property.source === 'A' ? 'text-blue-600' : 'text-red-500';
   };
 
@@ -1807,12 +1973,16 @@ function PropertyCard({
         
         {/* Heart with Source Indicator */}
         <div className="absolute top-3 right-3">
-          <div className={`p-2 bg-white/90 rounded-full hover:bg-white shadow-sm transition-colors ${getHeartColor()}`}>
-            <Heart className="h-4 w-4 fill-current" />
+          <button 
+            onClick={handleHeartClick}
+            className={`p-2 bg-white/90 rounded-full hover:bg-white shadow-sm transition-colors cursor-pointer ${getHeartColor()}`}
+            title={isFavorited ? "Remove from favorites" : "Removed from favorites"}
+          >
+            <Heart className={`h-4 w-4 ${isFavorited ? 'fill-current' : 'stroke-current fill-none'}`} />
             <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-white rounded-full flex items-center justify-center text-xs font-bold border border-gray-200">
               {property.source}
             </div>
-          </div>
+          </button>
         </div>
 
         {/* Zillow Icon */}

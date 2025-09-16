@@ -1,3 +1,4 @@
+//WE MAY BE ABLE TO GET RID OF THIS SINCE WE WILL NOT BE SELLING CREDIT PACKS
 "use client";
 
 import { useEffect, useState, Suspense } from "react";

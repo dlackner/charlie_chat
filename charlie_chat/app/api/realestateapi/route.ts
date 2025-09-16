@@ -1,3 +1,5 @@
+//PART OF THE NEW V2 VERSION
+
 import { NextRequest, NextResponse } from "next/server";
 
 // Transform external API camelCase response to snake_case for consistent frontend usage

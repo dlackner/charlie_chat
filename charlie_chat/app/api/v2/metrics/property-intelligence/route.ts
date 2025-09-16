@@ -30,6 +30,8 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'User ID required' }, { status: 400 });
     }
 
+    console.log('PropertyIntelligence API - Querying for user_id:', userId);
+
     // Get market names for filtering
     const { data: userMarkets } = await supabase
       .from('user_markets')
@@ -73,6 +75,10 @@ export async function GET(req: NextRequest) {
     }
 
     const { data: favorites, error } = await query;
+
+    // Debug: Log what we received
+    console.log('PropertyIntelligence API - Raw data received:', favorites?.length, 'favorites');
+    console.log('PropertyIntelligence API - Sample data:', favorites?.slice(0, 2));
 
     if (error) {
       console.error('Error fetching property intelligence data:', error);

@@ -625,20 +625,35 @@ export default function DiscoverPage() {
     }
 
     try {
-      const requestPayload = {
-        property_id: propertyId,
-        property_data: property,
-        action
-      };
+      let response;
       
-      
-      const response = await fetch('/api/favorites', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(requestPayload),
-      });
+      if (action === 'remove') {
+        // Use DELETE method for removing favorites
+        response = await fetch('/api/favorites', {
+          method: 'DELETE',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            property_id: propertyId
+          }),
+        });
+      } else {
+        // Use POST method for adding favorites
+        const requestPayload = {
+          property_id: propertyId,
+          property_data: property,
+          action: 'add'
+        };
+        
+        response = await fetch('/api/favorites', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(requestPayload),
+        });
+      }
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
@@ -646,35 +661,9 @@ export default function DiscoverPage() {
         throw new Error(`Failed to update favorite: ${errorData.error || response.statusText}`);
       }
 
-      // If adding favorite, refresh recent properties to show newly saved item
-      if (action === 'add') {
-        // For pagination: just add the new property to the beginning of the list
-        // In a real app, you'd want to refresh from the server to get actual property data
-        const newProperty = {
-          property_id: propertyId,
-          saved_at: new Date().toISOString(),
-          address_full: property.address_full || property.address_street || 'New Favorite',
-          address_city: property.address_city || 'Newport',
-          address_state: property.address_state || 'RI',
-          address_zip: property.address_zip || '02840',
-          units: property.units_count || Math.floor(Math.random() * 20) + 2,
-          year_built: property.year_built || Math.floor(Math.random() * 50) + 1970,
-          assessed_value: property.assessed_value || (Math.floor(Math.random() * 2000000) + 500000).toString(),
-          estimated_value: property.estimated_value || (Math.floor(Math.random() * 2500000) + 600000).toString()
-        };
-        
-        // Add to all favorites and refresh the display
-        setAllFavorites(prev => [newProperty, ...prev]);
-        setTotalFavoritesCount(prev => prev + 1);
-        
-        // Refresh filtered view
-        const updatedAllFavorites = [newProperty, ...allFavorites];
-        const filteredFavorites = filterFavoritesByLocation(updatedAllFavorites, locationFilter);
-        const firstPage = filteredFavorites.slice(0, FAVORITES_PER_PAGE);
-        setRecentProperties(firstPage);
-        setPropertyCount(firstPage.length);
-        setCurrentFavoritesPage(0);
-      }
+      // Note: We don't update recentProperties display state here
+      // Properties remain visible until page refresh for better UX
+      // Only the heart state (favoritePropertyIds) changes immediately
 
     } catch (error) {
       console.error('Error updating favorite:', error);
@@ -2259,6 +2248,7 @@ export default function DiscoverPage() {
                         viewMode={viewMode}
                         recentProperties={recentProperties}
                         searchResults={searchResults}
+                        favoritePropertyIds={favoritePropertyIds}
                       />
                     ))}
                   </div>
@@ -2289,6 +2279,7 @@ export default function DiscoverPage() {
                             hasSearched={hasSearched}
                             viewMode={viewMode}
                             recentProperties={recentProperties}
+                            favoritePropertyIds={favoritePropertyIds}
                           />
                         ))}
                       </div>
@@ -3027,7 +3018,8 @@ function RecentPropertyCard({
   onToggleFavorite,
   viewMode = 'cards',
   recentProperties = [],
-  searchResults = []
+  searchResults = [],
+  favoritePropertyIds = []
 }: { 
   property: any;
   searchQuery?: string;
@@ -3036,6 +3028,7 @@ function RecentPropertyCard({
   viewMode?: string;
   recentProperties?: any[];
   searchResults?: any[];
+  favoritePropertyIds?: string[];
 }) {
   return (
     <div className="bg-white rounded-lg border border-gray-200 overflow-hidden hover:shadow-lg transition-all duration-200">
@@ -3075,12 +3068,16 @@ function RecentPropertyCard({
           </div>
         </div>
         
-        {/* Heart Favorite Button - Already favorited */}
+        {/* Heart Favorite Button */}
         <button 
           onClick={(e) => onToggleFavorite?.(property, e)}
           className="absolute top-3 right-3 p-2 bg-white/90 rounded-full hover:bg-white shadow-sm transition-colors cursor-pointer"
         >
-          <Heart className="h-4 w-4 text-red-500 fill-current" />
+          {favoritePropertyIds.includes(property.property_id || property.id) ? (
+            <Heart className="h-4 w-4 text-red-500 fill-current" />
+          ) : (
+            <Heart className="h-4 w-4 text-gray-600 hover:text-red-500" />
+          )}
         </button>
         
         {/* Zillow Button */}

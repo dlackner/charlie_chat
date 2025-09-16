@@ -1,3 +1,5 @@
+//DOES NOT SEEM LIKE WE WILL NEED THIS BUT MAY LEVERAGE SOME OF THE PROMPTING IN NEW AI COACH
+
 import { AssistantResponse } from "ai";
 import OpenAI from "openai";
 

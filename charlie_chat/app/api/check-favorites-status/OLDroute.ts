@@ -1,4 +1,4 @@
-// Temporary API to check user favorites status for debugging
+// Temporary API to check user favorites status for debugging. WE SHOULD BE ABLE TO DELETE THIS
 import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 

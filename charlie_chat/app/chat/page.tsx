@@ -1,3 +1,4 @@
+//THIS WILL BE THE NEW CHAT FUNCTION IN V2 VERSION
 export default function ChatPage() {
   return (
     <div className="p-6">

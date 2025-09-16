@@ -1,3 +1,5 @@
+
+//MAT NOT NEED THIS AS IT SEEMS TO REFER TO PROPERTY CREDITS
 "use client";
 
 import { useEffect, useState, Suspense } from "react";

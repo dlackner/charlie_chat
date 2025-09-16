@@ -46,14 +46,7 @@ const TypewriterChatDemo = () => {
   }, [currentText, currentQuestionIndex, isTyping, questions]);
 
   return (
-    <div className="max-w-5xl mx-auto mb-16">
-      {/* Large heading text */}
-      <div className="text-center mb-8">
-        <h2 className="text-4xl lg:text-5xl font-light text-gray-900 leading-tight">
-          Energize your investment decisions with AI
-        </h2>
-      </div>
-      
+    <div className="max-w-5xl mx-auto">
       <div className="relative">
         <div className="bg-white border border-gray-200 rounded-2xl px-8 py-8 shadow-lg">
           <div className="flex items-center">

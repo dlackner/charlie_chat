@@ -1,3 +1,5 @@
+//THIS NEEDS TO BE REFACTORED FOR V2 VERSION
+
 'use client';
 
 import { useState } from 'react';

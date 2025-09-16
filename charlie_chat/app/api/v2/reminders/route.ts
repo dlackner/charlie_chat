@@ -52,14 +52,26 @@ function parseRemindersFromNote(note: string): { date: string; text: string }[] 
 }
 
 function categorizeReminder(reminderDate: string): { type: 'today' | 'upcoming' | 'overdue'; priority: 'high' | 'medium' | 'low' } {
+  // Use local timezone for both dates to avoid UTC conversion issues
   const today = new Date();
   today.setHours(0, 0, 0, 0); // Reset time for accurate date comparison
   
-  const reminder = new Date(reminderDate);
+  // Parse date components manually to avoid timezone issues
+  const [year, month, day] = reminderDate.split('-').map(Number);
+  const reminder = new Date(year, month - 1, day); // month is 0-based in Date constructor
   reminder.setHours(0, 0, 0, 0);
+  
+  // Debug logging
+  console.log('🔍 Debug reminder categorization:');
+  console.log('  - Today:', today.toISOString().split('T')[0]);
+  console.log('  - Reminder date:', reminderDate);
+  console.log('  - Reminder parsed:', reminder.toISOString().split('T')[0]);
   
   const diffTime = reminder.getTime() - today.getTime();
   const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  
+  console.log('  - Diff time:', diffTime);
+  console.log('  - Diff days:', diffDays);
   
   // Get start of current week (Sunday)
   const startOfWeek = new Date(today);
@@ -79,6 +91,8 @@ function categorizeReminder(reminderDate: string): { type: 'today' | 'upcoming' 
     type = 'overdue'; // Past dates or dates beyond this week
   }
   
+  console.log('  - Final type:', type);
+  
   // Determine priority based on how overdue or close it is
   let priority: 'high' | 'medium' | 'low';
   if (type === 'overdue') {
@@ -88,6 +102,8 @@ function categorizeReminder(reminderDate: string): { type: 'today' | 'upcoming' 
   } else {
     priority = diffDays <= 7 ? 'medium' : 'low';
   }
+  
+  console.log('  - Final priority:', priority);
   
   return { type, priority };
 }

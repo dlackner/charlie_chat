@@ -1,3 +1,5 @@
+
+//OLD CODE FROM AFFILIATE SIGN UP PROCESS
 'use client';
 
 import { useEffect, Suspense } from 'react';

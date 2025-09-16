@@ -1,3 +1,5 @@
+//NEED TO REFACTOR SLIGHTLY FOR NEW PRODUCT NAMES
+//THIS PRODUCES THE DAILY REPORT
 // app/api/daily-digest/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { createBrowserClient } from '@supabase/ssr';

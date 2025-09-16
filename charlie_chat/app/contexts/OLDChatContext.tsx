@@ -1,3 +1,5 @@
+//OLD CODE THAT WE CAN LIKELY GET RID OF
+
 'use client';
 
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
