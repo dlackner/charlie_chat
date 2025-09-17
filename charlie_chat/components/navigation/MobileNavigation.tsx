@@ -10,6 +10,8 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
+import { useModal } from '@/contexts/ModalContext';
+import { SubscriptionModal } from '@/app/v2/components/SubscriptionModal';
 import { 
   Home, 
   Search, 
@@ -39,6 +41,7 @@ export default function MobileNavigation() {
   const pathname = usePathname();
   const router = useRouter();
   const { supabase } = useAuth();
+  const { showSubscriptionModal, setShowSubscriptionModal } = useModal();
 
   // Sign out handler
   const handleSignOut = async () => {
@@ -48,7 +51,7 @@ export default function MobileNavigation() {
     } else {
       setIsOpen(false);
       setOpenSubmenus({});
-      router.push("/");
+      router.push("/v2/loginnew");
     }
   };
 
@@ -80,7 +83,7 @@ export default function MobileNavigation() {
     },
     { 
       name: 'AI COACH', 
-      href: '/chat', 
+      href: '/v2/ai-coach', 
       icon: MessageCircle
     },
     { 
@@ -94,7 +97,7 @@ export default function MobileNavigation() {
       icon: User,
       submenu: [
         { name: 'Profile', href: '/account/profile' },
-        { name: 'Subscription', href: '/account/subscription' },
+        { name: 'Subscription', action: () => setShowSubscriptionModal(true) },
         { name: 'Sign Out', action: handleSignOut }
       ]
     },
@@ -261,7 +264,7 @@ export default function MobileNavigation() {
       </div>
 
       {/* Desktop Navigation - Horizontal Bar */}
-      <div className="hidden lg:block bg-white border-b border-gray-200 shadow-sm">
+      <div className="hidden lg:block fixed top-0 left-0 right-0 z-50 bg-white border-b border-gray-200 shadow-sm">
         <div className="px-4 sm:px-6 lg:px-8">
           <div className="flex items-center h-16">
             {/* Logo */}
@@ -490,6 +493,12 @@ export default function MobileNavigation() {
           </div>
         </div>
       </div>
+
+      {/* Subscription Modal */}
+      <SubscriptionModal 
+        isOpen={showSubscriptionModal} 
+        onClose={() => setShowSubscriptionModal(false)} 
+      />
     </>
   );
 }

@@ -1,3 +1,9 @@
+/*
+ * CHARLIE2 V2 - Subscription Management Modal
+ * Dynamic subscription modal with real Stripe integration and Supabase data
+ * Displays current subscription status, billing info, and payment methods
+ * Part of the new V2 application architecture
+ */
 "use client";
 
 import { useState, useEffect } from 'react';
@@ -8,17 +14,17 @@ import { Dialog } from "@headlessui/react";
 
 // Product ID to plan name mapping
 const PRODUCT_NAMES: { [key: string]: string } = {
-  // Charlie Chat Plans
-  [process.env.NEXT_PUBLIC_CHARLIE_CHAT_MONTHLY_PRODUCT!]: "Charlie Chat",
-  [process.env.NEXT_PUBLIC_CHARLIE_CHAT_ANNUAL_PRODUCT!]: "Charlie Chat",
+  // Core Plans
+  [process.env.NEXT_PUBLIC_CHARLIE_CHAT_MONTHLY_PRODUCT!]: "Core",
+  [process.env.NEXT_PUBLIC_CHARLIE_CHAT_ANNUAL_PRODUCT!]: "Core",
   
-  // Charlie Chat Plus Plans  
-  [process.env.NEXT_PUBLIC_CHARLIE_CHAT_PLUS_MONTHLY_PRODUCT!]: "Charlie Chat Plus",
-  [process.env.NEXT_PUBLIC_CHARLIE_CHAT_PLUS_ANNUAL_PRODUCT!]: "Charlie Chat Plus",
+  // Plus Plans  
+  [process.env.NEXT_PUBLIC_CHARLIE_CHAT_PLUS_MONTHLY_PRODUCT!]: "Plus",
+  [process.env.NEXT_PUBLIC_CHARLIE_CHAT_PLUS_ANNUAL_PRODUCT!]: "Plus",
   
-  // Charlie Chat Pro Plans
-  [process.env.NEXT_PUBLIC_CHARLIE_CHAT_PRO_MONTHLY_PRODUCT!]: "Charlie Chat Professional", 
-  [process.env.NEXT_PUBLIC_CHARLIE_CHAT_PRO_ANNUAL_PRODUCT!]: "Charlie Chat Professional",
+  // Pro Plans
+  [process.env.NEXT_PUBLIC_CHARLIE_CHAT_PRO_MONTHLY_PRODUCT!]: "Pro", 
+  [process.env.NEXT_PUBLIC_CHARLIE_CHAT_PRO_ANNUAL_PRODUCT!]: "Pro",
   
   // Credit Packs
   [process.env.NEXT_PUBLIC_CHARLIE_CHAT_25_PACK_PRODUCT!]: "25 Credit Pack",
@@ -73,6 +79,7 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, on
   const [creditPurchases, setCreditPurchases] = useState<CreditPurchase[]>([]);
   const [billingAmount, setBillingAmount] = useState<number | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | null>(null);
+  const [userClass, setUserClass] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -85,6 +92,20 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, on
       setError(null);
 
       try {
+        // Fetch user profile data including user_class
+        const { data: profile, error: profileError } = await supabase
+          .from('profiles')
+          .select('user_class')
+          .eq('user_id', currentUser.id)
+          .single();
+
+        if (profileError && profileError.code !== 'PGRST116') {
+          console.error('Error fetching user profile:', profileError);
+        } else {
+          setUserClass(profile?.user_class || null);
+        }
+
+        // Fetch subscription data
         const { data, error } = await supabase
           .from('subscriptions')
           .select('stripe_price_id, status, current_period_start, current_period_end, cancel_at_period_end, canceled_at, ended_at, metadata')
@@ -184,6 +205,7 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, on
       setCreditPurchases([]);
       setBillingAmount(null);
       setPaymentMethod(null);
+      setUserClass(null);
       setError(null);
     }
   }, [isOpen]);
@@ -203,13 +225,59 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, on
     };
   };
 
+  const getUserClassDisplayInfo = () => {
+    // Add debug logging to see what we're getting from DB
+    console.log('Debug - user_class from DB:', userClass);
+    
+    if (!userClass) return null;
+    
+    switch (userClass) {
+      case 'trial':
+        return {
+          planName: 'Trial',
+          status: 'Trial Active',
+          description: 'Limited access with trial credits'
+        };
+      case 'charlie_chat':
+        return {
+          planName: 'Core',
+          status: 'Active',
+          description: 'Basic MultifamilyOS features'
+        };
+      case 'charlie_chat_plus':
+        return {
+          planName: 'Plus',
+          status: 'Active', 
+          description: 'Enhanced MultifamilyOS features'
+        };
+      case 'charlie_chat_pro':
+        return {
+          planName: 'Pro',
+          status: 'Active',
+          description: 'Full MultifamilyOS with training & coaching'
+        };
+      case 'cohort':
+        return {
+          planName: 'Cohort',
+          status: 'Active',
+          description: 'Exclusive cohort program access'
+        };
+      default:
+        return {
+          planName: 'MultifamilyOS.ai (Free)',
+          status: 'Free',
+          description: 'Basic access'
+        };
+    }
+  };
+
   const handleUpgrade = () => {
     onClose();
     window.open('/pricing', '_blank');
   };
 
   const handleGetHelp = () => {
-    onClose(); // Close subscription modal first
+    onClose();
     setShowSubscriptionSupport(true);
   };
 
@@ -250,7 +318,7 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, on
                 <Dialog.Title className="text-xl font-semibold text-gray-900">
                   Subscription Management
                 </Dialog.Title>
-                <p className="text-sm text-gray-600">Manage your Charlie Chat subscription</p>
+                <p className="text-sm text-gray-600">Manage your MultifamilyOS.ai subscription</p>
               </div>
             </div>
             <button
@@ -368,69 +436,96 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, on
                     })()}
                   </div>
                 ) : (
-                  /* No Active Subscription */
+                  /* No Active Subscription - Show User Class Info */
                   <div>
-                    <div className="text-center py-6">
-                      <div className="p-3 bg-gray-100 rounded-full w-16 h-16 mx-auto mb-4 flex items-center justify-center">
-                        <CreditCard className="w-8 h-8 text-gray-500" />
-                      </div>
-                      <h2 className="text-xl font-semibold text-gray-900 mb-2">Charlie Chat (Free)</h2>
-                      <p className="text-gray-600 mb-6">You're currently on the free plan</p>
-                      <button
-                        onClick={handleUpgrade}
-                        className="bg-orange-600 text-white px-6 py-3 rounded-lg hover:bg-orange-700 transition-colors font-semibold"
-                      >
-                        Upgrade Now
-                      </button>
-                    </div>
+                    {(() => {
+                      const userInfo = getUserClassDisplayInfo();
+                      const isTrialOrFree = userClass === 'trial' || !userClass;
+                      
+                      return (
+                        <div className="text-center py-6">
+                          <div className={`p-3 rounded-full w-16 h-16 mx-auto mb-4 flex items-center justify-center ${
+                            userClass === 'trial' ? 'bg-blue-100' : 'bg-gray-100'
+                          }`}>
+                            <CreditCard className={`w-8 h-8 ${
+                              userClass === 'trial' ? 'text-blue-600' : 'text-gray-500'
+                            }`} />
+                          </div>
+                          <h2 className="text-xl font-semibold text-gray-900 mb-2">
+                            {userInfo?.planName || 'MultifamilyOS.ai (Free)'}
+                          </h2>
+                          <div className="flex items-center justify-center space-x-2 mb-4">
+                            <CheckCircle className={`w-5 h-5 ${
+                              userClass === 'trial' ? 'text-blue-500' : 'text-gray-500'
+                            }`} />
+                            <span className={`text-sm font-medium ${
+                              userClass === 'trial' ? 'text-blue-600' : 'text-gray-600'
+                            }`}>
+                              {userInfo?.status || 'Free'}
+                            </span>
+                          </div>
+                          <p className="text-gray-600 mb-6">
+                            {userInfo?.description || "You're currently on the free plan"}
+                          </p>
+                          {isTrialOrFree && (
+                            <button
+                              onClick={handleUpgrade}
+                              className="bg-orange-600 text-white px-6 py-3 rounded-lg hover:bg-orange-700 transition-colors font-semibold"
+                            >
+                              Upgrade Now
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })()}
+                  </div>
+                )}
 
-                    {/* Recent Credit Purchases */}
-                    {creditPurchases.length > 0 && (
-                      <div className="mt-8 pt-6 border-t border-gray-200">
-                        <h3 className="text-lg font-semibold text-gray-900 mb-4">Recent Credit Purchases</h3>
-                        <div className="space-y-3">
-                          {creditPurchases.map((purchase) => (
-                            <div key={purchase.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                              <div className="flex items-center space-x-3">
-                                <div className="p-2 bg-orange-100 rounded-lg">
-                                  <CreditCard className="w-4 h-4 text-orange-600" />
-                                </div>
-                                <div>
-                                  <p className="font-medium text-gray-900">{purchase.credit_amount} Credits</p>
-                                  <p className="text-sm text-gray-600">{new Date(purchase.purchased_at).toLocaleDateString()}</p>
-                                </div>
-                              </div>
-                              <div className="flex items-center space-x-2">
-                                <span className={`text-xs px-2 py-1 rounded-full font-medium ${
-                                  purchase.status === 'completed' || purchase.status === 'paid' 
-                                    ? 'bg-green-100 text-green-800' 
-                                    : 'bg-yellow-100 text-yellow-800'
-                                }`}>
-                                  {purchase.status === 'completed' || purchase.status === 'paid' ? 'Completed' : purchase.status}
-                                </span>
-                              </div>
+                {/* Recent Credit Purchases */}
+                {creditPurchases.length > 0 && (
+                  <div className="mt-8 pt-6 border-t border-gray-200">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Recent Credit Purchases</h3>
+                    <div className="space-y-3">
+                      {creditPurchases.map((purchase) => (
+                        <div key={purchase.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                          <div className="flex items-center space-x-3">
+                            <div className="p-2 bg-orange-100 rounded-lg">
+                              <CreditCard className="w-4 h-4 text-orange-600" />
                             </div>
-                          ))}
+                            <div>
+                              <p className="font-medium text-gray-900">{purchase.credit_amount} Credits</p>
+                              <p className="text-sm text-gray-600">{new Date(purchase.purchased_at).toLocaleDateString()}</p>
+                            </div>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <span className={`text-xs px-2 py-1 rounded-full font-medium ${
+                              purchase.status === 'completed' || purchase.status === 'paid' 
+                                ? 'bg-green-100 text-green-800' 
+                                : 'bg-yellow-100 text-yellow-800'
+                            }`}>
+                              {purchase.status === 'completed' || purchase.status === 'paid' ? 'Completed' : purchase.status}
+                            </span>
+                          </div>
                         </div>
-                      </div>
-                    )}
+                      ))}
+                    </div>
+                  </div>
+                )}
 
-                    {/* Payment Method for Credit Pack Users */}
-                    {paymentMethod && (
-                      <div className="mt-6 pt-6 border-t border-gray-200">
-                        <div className="flex items-center space-x-3">
-                          <div className="p-2 bg-blue-100 rounded-lg">
-                            <Shield className="w-4 h-4 text-blue-600" />
-                          </div>
-                          <div>
-                            <p className="text-sm font-medium text-gray-900">Payment Method on File</p>
-                            <p className="text-sm text-gray-600">
-                              {paymentMethod.brand.charAt(0).toUpperCase() + paymentMethod.brand.slice(1)} •••• {paymentMethod.last4} • Expires {paymentMethod.expMonth.toString().padStart(2, '0')}/{paymentMethod.expYear}
-                            </p>
-                          </div>
-                        </div>
+                {/* Payment Method for Credit Pack Users */}
+                {paymentMethod && !subscription && (
+                  <div className="mt-6 pt-6 border-t border-gray-200">
+                    <div className="flex items-center space-x-3">
+                      <div className="p-2 bg-blue-100 rounded-lg">
+                        <Shield className="w-4 h-4 text-blue-600" />
                       </div>
-                    )}
+                      <div>
+                        <p className="text-sm font-medium text-gray-900">Payment Method on File</p>
+                        <p className="text-sm text-gray-600">
+                          {paymentMethod.brand.charAt(0).toUpperCase() + paymentMethod.brand.slice(1)} •••• {paymentMethod.last4} • Expires {paymentMethod.expMonth.toString().padStart(2, '0')}/{paymentMethod.expYear}
+                        </p>
+                      </div>
+                    </div>
                   </div>
                 )}
               </div>

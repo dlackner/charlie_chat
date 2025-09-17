@@ -269,7 +269,7 @@ export default function PricingPage() {
           </p>
           <ul className="text-sm space-y-1 text-gray-800 mb-4 flex flex-col">
             <li className="flex items-start"><span className="w-2 h-2 bg-green-500 rounded-full mt-2 mr-3 flex-shrink-0"></span>Unlimited Property Search</li>
-            <li className="flex items-start"><span className="w-2 h-2 bg-green-500 rounded-full mt-2 mr-3 flex-shrink-0"></span>Personal Dashboard</li>
+            <li className="flex items-start"><span className="w-2 h-2 bg-green-500 rounded-full mt-2 mr-3 flex-shrink-0"></span>Community Dashboard</li>
             <li className="flex items-start"><span className="w-2 h-2 bg-green-500 rounded-full mt-2 mr-3 flex-shrink-0"></span>AI-powered Investment Advisor</li>
           </ul>
           <button
@@ -299,14 +299,14 @@ export default function PricingPage() {
             </>
           )}
           <p className="text-sm text-gray-700 mb-4">
-            Everything in Core plus a complete AI-powered real estate team - all in one integrated platform.
+            Everything in Core plus a complete AI-powered real estate team — all in one integrated platform.
           </p>
           <ul className="text-sm space-y-1 text-gray-800 mb-4 flex flex-col">
-            <li className="flex items-start"><span className="w-2 h-2 bg-blue-600 rounded-full mt-2 mr-3 flex-shrink-0"></span>Broker - Scout off-market opportunities</li>
-            <li className="flex items-start"><span className="w-2 h-2 bg-blue-600 rounded-full mt-2 mr-3 flex-shrink-0"></span>Marketing Assistant - Create letters and emails</li>
-            <li className="flex items-start"><span className="w-2 h-2 bg-blue-600 rounded-full mt-2 mr-3 flex-shrink-0"></span>MBA Analyst - Model offers and generate financial statements</li>
-            <li className="flex items-start"><span className="w-2 h-2 bg-blue-600 rounded-full mt-2 mr-3 flex-shrink-0"></span>Attorney - Generate LOIs and Purchase & Sale Agreements</li>
-            <li className="flex items-start"><span className="w-2 h-2 bg-blue-600 rounded-full mt-2 mr-3 flex-shrink-0"></span>Financing Advisor - Identify lenders and capital sources</li>
+            <li className="flex items-start"><span className="w-2 h-2 bg-blue-600 rounded-full mt-2 mr-3 flex-shrink-0"></span>Broker — Scout off-market opportunities</li>
+            <li className="flex items-start"><span className="w-2 h-2 bg-blue-600 rounded-full mt-2 mr-3 flex-shrink-0"></span>Marketing Assistant — Create letters and emails</li>
+            <li className="flex items-start"><span className="w-2 h-2 bg-blue-600 rounded-full mt-2 mr-3 flex-shrink-0"></span>MBA Analyst — Model offers and generate financial statements</li>
+            <li className="flex items-start"><span className="w-2 h-2 bg-blue-600 rounded-full mt-2 mr-3 flex-shrink-0"></span>Attorney — Generate LOIs and Purchase & Sale Agreements</li>
+            <li className="flex items-start"><span className="w-2 h-2 bg-blue-600 rounded-full mt-2 mr-3 flex-shrink-0"></span>Financing Advisor — Identify banks and S&L's</li>
           </ul>
           <button
             onClick={() => handleCheckout(isAnnual ? CHARLIE_CHAT_PLUS_ANNUAL : CHARLIE_CHAT_PLUS_MONTHLY, isAnnual ? "annual" : "monthly")}
@@ -338,6 +338,7 @@ export default function PricingPage() {
             Everything in Plus and more. Access to Charles Dobens Master Class Training and participation in weekly group coaching sessions.
           </p>
           <ul className="text-sm space-y-1 text-gray-800 mb-4 flex flex-col">
+            <li className="flex items-start"><span className="w-2 h-2 bg-indigo-600 rounded-full mt-2 mr-3 flex-shrink-0"></span>Debt and Equity Syndication Club</li>
             <li className="flex items-start"><span className="w-2 h-2 bg-indigo-600 rounded-full mt-2 mr-3 flex-shrink-0"></span>Weekly Coaching Calls with Charles Dobens</li>
             <li className="flex items-start"><span className="w-2 h-2 bg-indigo-600 rounded-full mt-2 mr-3 flex-shrink-0"></span>Master Class Training</li>
             <li className="flex items-start"><span className="w-2 h-2 bg-indigo-600 rounded-full mt-2 mr-3 flex-shrink-0"></span>Community Access</li>
@@ -379,7 +380,7 @@ export default function PricingPage() {
       <div className="max-w-6xl mx-auto mt-16">
         <div className="mb-8">
           <p className="text-lg text-gray-700 leading-relaxed">
-            We have solutions for every type of investor—from beginners just starting out to seasoned professionals 
+            We have solutions for every type of investor — from beginners just starting out to seasoned professionals 
             looking to build their business faster and smarter. Here's exactly what you get with each plan:
           </p>
         </div>
@@ -390,16 +391,16 @@ export default function PricingPage() {
           <div className="bg-gradient-to-r from-gray-50 to-gray-100 border-b border-gray-200">
             <div className="grid grid-cols-4 gap-0">
               <div className="px-6 py-4">
-                <div className="text-base font-semibold text-gray-900">Compare Features</div>
+                <div className="text-lg font-bold text-gray-900">Compare Features</div>
               </div>
               <div className="px-6 py-4 text-center border-l border-gray-200">
-                <div className="text-sm font-semibold text-gray-900">Core</div>
+                <div className="text-lg font-bold text-gray-900">Core</div>
               </div>
               <div className="px-6 py-4 text-center border-l border-gray-200">
-                <div className="text-sm font-semibold text-gray-900">Plus</div>
+                <div className="text-lg font-bold text-gray-900">Plus</div>
               </div>
               <div className="px-6 py-4 text-center border-l border-gray-200">
-                <div className="text-sm font-semibold text-gray-900">Professional</div>
+                <div className="text-lg font-bold text-gray-900">Professional</div>
               </div>
             </div>
           </div>
@@ -437,7 +438,7 @@ export default function PricingPage() {
             </div>
 
             <div className="grid grid-cols-4 gap-0 hover:bg-gray-50/50 transition-colors">
-              <div className="px-6 py-4 text-sm font-medium text-gray-900">Personal Dashboard</div>
+              <div className="px-6 py-4 text-sm font-medium text-gray-900">Community Dashboard</div>
               <div className="px-6 py-4 text-center border-l border-gray-100">
                 <div className="w-5 h-5 rounded-full bg-green-500 mx-auto flex items-center justify-center">
                   <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
@@ -494,7 +495,7 @@ export default function PricingPage() {
           
           <div className="divide-y divide-gray-100">
             <div className="grid grid-cols-4 gap-0 hover:bg-gray-50/50 transition-colors">
-              <div className="px-6 py-4 text-sm font-medium text-gray-900">Broker - Scout off-market opportunities</div>
+              <div className="px-6 py-4 text-sm font-medium text-gray-900">Broker — Scout off-market opportunities</div>
               <div className="px-6 py-4 text-center border-l border-gray-100">
                 <div className="w-5 h-5 rounded-full bg-gray-200 mx-auto flex items-center justify-center">
                   <div className="w-2 h-0.5 bg-gray-400"></div>
@@ -517,7 +518,7 @@ export default function PricingPage() {
             </div>
 
             <div className="grid grid-cols-4 gap-0 hover:bg-gray-50/50 transition-colors">
-              <div className="px-6 py-4 text-sm font-medium text-gray-900">Marketing Assistant - Create letters and emails</div>
+              <div className="px-6 py-4 text-sm font-medium text-gray-900">Marketing Assistant — Create letters and emails</div>
               <div className="px-6 py-4 text-center border-l border-gray-100">
                 <div className="w-5 h-5 rounded-full bg-gray-200 mx-auto flex items-center justify-center">
                   <div className="w-2 h-0.5 bg-gray-400"></div>
@@ -540,7 +541,7 @@ export default function PricingPage() {
             </div>
 
             <div className="grid grid-cols-4 gap-0 hover:bg-gray-50/50 transition-colors">
-              <div className="px-6 py-4 text-sm font-medium text-gray-900">MBA Analyst - Model offers and generate financial statements</div>
+              <div className="px-6 py-4 text-sm font-medium text-gray-900">MBA Analyst — Model offers and generate financial statements</div>
               <div className="px-6 py-4 text-center border-l border-gray-100">
                 <div className="w-5 h-5 rounded-full bg-gray-200 mx-auto flex items-center justify-center">
                   <div className="w-2 h-0.5 bg-gray-400"></div>
@@ -563,7 +564,7 @@ export default function PricingPage() {
             </div>
 
             <div className="grid grid-cols-4 gap-0 hover:bg-gray-50/50 transition-colors">
-              <div className="px-6 py-4 text-sm font-medium text-gray-900">Attorney - Generate LOIs and Purchase & Sale Agreements</div>
+              <div className="px-6 py-4 text-sm font-medium text-gray-900">Attorney — Generate LOIs and Purchase & Sale Agreements</div>
               <div className="px-6 py-4 text-center border-l border-gray-100">
                 <div className="w-5 h-5 rounded-full bg-gray-200 mx-auto flex items-center justify-center">
                   <div className="w-2 h-0.5 bg-gray-400"></div>
@@ -586,7 +587,7 @@ export default function PricingPage() {
             </div>
 
             <div className="grid grid-cols-4 gap-0 hover:bg-gray-50/50 transition-colors">
-              <div className="px-6 py-4 text-sm font-medium text-gray-900">Financing Advisor - Identify lenders and capital sources</div>
+              <div className="px-6 py-4 text-sm font-medium text-gray-900">Financing Advisor — Identify banks and S&L's</div>
               <div className="px-6 py-4 text-center border-l border-gray-100">
                 <div className="w-5 h-5 rounded-full bg-gray-200 mx-auto flex items-center justify-center">
                   <div className="w-2 h-0.5 bg-gray-400"></div>
@@ -876,6 +877,26 @@ export default function PricingPage() {
           
           <div className="divide-y divide-gray-100">
             <div className="grid grid-cols-4 gap-0 hover:bg-gray-50/50 transition-colors">
+              <div className="px-6 py-4 text-sm font-medium text-gray-900">Property Syndication Club — Get access to investors</div>
+              <div className="px-6 py-4 text-center border-l border-gray-100">
+                <div className="w-5 h-5 rounded-full bg-gray-200 mx-auto flex items-center justify-center">
+                  <div className="w-2 h-0.5 bg-gray-400"></div>
+                </div>
+              </div>
+              <div className="px-6 py-4 text-center border-l border-gray-100">
+                <div className="w-5 h-5 rounded-full bg-gray-200 mx-auto flex items-center justify-center">
+                  <div className="w-2 h-0.5 bg-gray-400"></div>
+                </div>
+              </div>
+              <div className="px-6 py-4 text-center border-l border-gray-100">
+                <div className="w-5 h-5 rounded-full bg-indigo-600 mx-auto flex items-center justify-center">
+                  <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                  </svg>
+                </div>
+              </div>
+            </div>
+            <div className="grid grid-cols-4 gap-0 hover:bg-gray-50/50 transition-colors">
               <div className="px-6 py-4 text-sm font-medium text-gray-900">Weekly Coaching Calls with Charles Dobens</div>
               <div className="px-6 py-4 text-center border-l border-gray-100">
                 <div className="w-5 h-5 rounded-full bg-gray-200 mx-auto flex items-center justify-center">
@@ -947,111 +968,93 @@ export default function PricingPage() {
         <div className="space-y-6">
           {/* FAQ Item 1 */}
           <div className="bg-white border border-gray-200 rounded-lg p-6 shadow hover:shadow-lg transition duration-200">
-            <h3 className="text-xl font-bold text-blue-600 mb-3">What can Charlie Chat do for me?</h3>
+            <h3 className="text-xl font-bold text-blue-600 mb-3">What can MultifamilyOS do for investors?</h3>
             <div className="text-sm text-gray-700">
-              <p className="mb-3">Charlie Chat is your AI co‑pilot in multifamily investing. It lets you:</p>
+              <p className="mb-3">MultifamilyOS is the AI-powered operating system for multifamily investing. It gives solo investors and small firms the capabilities of a full-scale team:</p>
               <ul className="list-disc pl-6 space-y-1">
-                <li>Discover, organize, and view properties in card, matrix, and interactive map formats</li>
-                <li>Quickly run skip traces to uncover owner contact info</li>
-                <li>Generate personalized marketing letters and LOIs in seconds</li>
-                <li>Export property data for spreadsheets or CRMs</li>
-                <li>Run deep investment analyses—IRR, Cash-on-Cash, Cap Rate, DSCR, NOI projections, cash‑flow modeling, and break-even checks</li>
-                <li>Deliver AI-powered recommendations to help you decide faster</li>
+                <li>Scout properties with broker-level insights — including off-market opportunities.</li>
+                <li>Analyze deals with MBA-level precision — IRR, Cap Rate, DSCR, NOI, and more.</li>
+                <li>Generate documents instantly — personalized letters, LOIs, and contracts.</li>
+                <li>Engage owners and investors with professional outreach at scale.</li>
+                <li>Secure financing with AI-guided lender recommendations.</li>
               </ul>
-              <p className="mt-3">From property search to signed LOI, do it all in one place—fast, smart, seamless.</p>
+              <p className="mt-3">From property search to closing, MultifamilyOS enables investors to handle 10x more deal flow with institutional-level efficiency.</p>
             </div>
           </div>
 
           {/* FAQ Item 2 */}
           <div className="bg-white border border-gray-200 rounded-lg p-6 shadow hover:shadow-lg transition duration-200">
-            <h3 className="text-xl font-bold text-blue-600 mb-3">Who is Charles Dobens?</h3>
+            <h3 className="text-xl font-bold text-blue-600 mb-3">Who is MultifamilyOS designed for?</h3>
             <div className="text-sm text-gray-700">
-              <p className="mb-3">Charles Dobens—known industry-wide as the Multifamily Attorney—is the founder and visionary behind MultifamilyOS™. With 25+ years of experience, he has:</p>
+              <p className="mb-3">MultifamilyOS was built for:</p>
               <ul className="list-disc pl-6 space-y-1">
-                <li>Personally invested in and operated $50M+ in multifamily property</li>
-                <li>Mentored clients through $3B+ in investments</li>
-                <li>Charles leads with honesty and integrity, and treats his students like clients—providing access, support, and mentorship that's rare in this industry.</li>
+                <li>Solo investors who want to scale without hiring expensive staff.</li>
+                <li>Small firms seeking institutional-grade tools without institutional overhead.</li>
+                <li>Experienced operators looking to streamline sourcing, analysis, and outreach.</li>
               </ul>
+              <p className="mt-3">If you've ever felt stuck between "doing it all yourself" and "hiring a team," MultifamilyOS is the solution.</p>
             </div>
           </div>
 
           {/* FAQ Item 3 */}
           <div className="bg-white border border-gray-200 rounded-lg p-6 shadow hover:shadow-lg transition duration-200">
-            <h3 className="text-xl font-bold text-blue-600 mb-3">Where does your property data come from?</h3>
+            <h3 className="text-xl font-bold text-blue-600 mb-3">Where does the property data come from?</h3>
             <div className="text-sm text-gray-700">
-              <p className="mb-3">Charlie Chat compiles insights from public records, MLS feeds, market analytics, and proprietary algorithms. We combine this data with the built-in multifamily expertise of Charles Dobens, giving you:</p>
+              <p className="mb-3">MultifamilyOS unifies multiple sources into a single platform:</p>
               <ul className="list-disc pl-6 space-y-1">
-                <li>Access to every U.S. multifamily property—whether on or off market</li>
-                <li>Skip trace data for direct outreach</li>
-                <li>Market intelligence to help you spot high-potential deals</li>
+                <li>Public records, MLS feeds, and market analytics</li>
+                <li>Proprietary algorithms that surface high-potential deals</li>
+                <li>Integrated skip-tracing for direct-to-owner outreach</li>
               </ul>
-              <p className="mt-3">Plus built-in tools to immediately generate outreach letters and LOIs so you can act as soon as you see opportunity.</p>
+              <p className="mt-3">The result is comprehensive visibility across every U.S. multifamily property — both on and off market.</p>
             </div>
           </div>
 
           {/* FAQ Item 4 */}
-          <div id="charlie-chat-pro-details" className="bg-white border border-gray-200 rounded-lg p-6 shadow hover:shadow-lg transition duration-200">
-            <h3 className="text-xl font-bold text-blue-600 mb-3">What's so special about Charlie Chat Pro?</h3>
+          <div className="bg-white border border-gray-200 rounded-lg p-6 shadow hover:shadow-lg transition duration-200">
+            <h3 className="text-xl font-bold text-blue-600 mb-3">How does MultifamilyOS compare to hiring a team?</h3>
             <div className="text-sm text-gray-700">
-              <p className="mb-3"><strong>Master Class Training:</strong></p>
-              <p className="mb-3">The Charlie Chat Multifamily Video Training is your complete, start-to-finish roadmap for finding, funding, and closing profitable multifamily deals. Across 90+ lessons, you'll learn how to choose the right markets, protect your assets, master sales and marketing, structure irresistible offers, uncover hidden opportunities, analyze deals with precision, raise capital confidently, and navigate due diligence—all the way to a smooth closing. Designed for both new and experienced investors, this program gives you the tools, strategies, and confidence to scale a portfolio that generates long-term wealth.</p>
-              
-              <p className="mb-3 mt-4"><strong>Group Coaching:</strong></p>
-              <p>Monday Night Live Coaching and Community calls are your weekly deep-dive into real-world multifamily investing—where theory meets action. Each session combines group coaching with open Q&A, deal analysis, and market updates, giving you direct access to expert guidance and a supportive community of like-minded investors. Whether you're stuck on an offer, raising capital, or navigating due diligence, you'll get actionable answers in real time—plus the motivation and accountability to keep moving forward.</p>
+              <p className="mb-3">Most investors rely on brokers, analysts, attorneys, marketers, and lenders to move deals forward. MultifamilyOS brings those same roles into one intelligent system:</p>
+              <ul className="list-disc pl-6 space-y-1">
+                <li>Broker → Off-market property scouting</li>
+                <li>Analyst → Financial modeling and scenario testing</li>
+                <li>Attorney → Drafting LOIs and contracts</li>
+                <li>Marketing assistant → Outreach campaigns and letters</li>
+                <li>Financing advisor → Lender and capital source recommendations</li>
+              </ul>
+              <p className="mt-3">It's like having a $10M+ investment team on call, 24/7 — without the payroll.</p>
             </div>
           </div>
 
           {/* FAQ Item 5 */}
-          <div className="bg-white border border-gray-200 rounded-lg p-6 shadow hover:shadow-lg transition duration-200">
-            <h3 className="text-xl font-bold text-blue-600 mb-3">Can I upgrade or downgrade my plan anytime?</h3>
+          <div id="charlie-chat-pro-details" className="bg-white border border-gray-200 rounded-lg p-6 shadow hover:shadow-lg transition duration-200">
+            <h3 className="text-xl font-bold text-blue-600 mb-3">What's included in MultifamilyOS Professional?</h3>
             <div className="text-sm text-gray-700">
-              <p className="mb-3">Absolutely.</p>
+              <p className="mb-3">The Professional plan adds depth through:</p>
               <ul className="list-disc pl-6 space-y-1">
-                <li>Upgrades take effect immediately, so your workflow never skips a beat</li>
-                <li>Downgrades apply at your next billing cycle with no penalty</li>
-              </ul>
-              <p className="mt-3">Your plan flexes with your needs—no surprises.</p>
-            </div>
-          </div>
-
-          {/* FAQ Item 7 */}
-          <div className="bg-white border border-gray-200 rounded-lg p-6 shadow hover:shadow-lg transition duration-200">
-            <h3 className="text-xl font-bold text-blue-600 mb-3">Is there a free trial?</h3>
-            <div className="text-sm text-gray-700">
-              <p className="mb-3">Yes—get started without paying a dime:</p>
-              <ul className="list-disc pl-6 space-y-1">
-                <li>250 free credits to explore properties, run analyses, and send outreach</li>
-                <li>No credit card required</li>
-              </ul>
-              <p className="mt-3">Try it real, risk‑free—and then decide.</p>
-            </div>
-          </div>
-
-          {/* FAQ Item 9 */}
-          <div className="bg-white border border-gray-200 rounded-lg p-6 shadow hover:shadow-lg transition duration-200">
-            <h3 className="text-xl font-bold text-blue-600 mb-3">Can I cancel anytime?</h3>
-            <div className="text-sm text-gray-700">
-              <p className="mb-3">You can. Totally.</p>
-              <ul className="list-disc pl-6 space-y-1">
-                <li>No cancellation fees.</li>
-                <li>Access continues through the end of your current billing period.</li>
-                <li>Most subscribers come back quickly—because once you try Charlie Chat, it gets hard to compete without it.</li>
+                <li><strong>Debt Syndication Club</strong> – Connect with lending partners and investors focused on debt placements. Structure financing packages, access competitive loan terms, and bring certainty to closings.</li>
+                <li><strong>Equity Syndication Club</strong> – Engage with a network of qualified equity investors who can help underwrite deals and participate in funding. Accelerate capital raising and enjoy the confidence of having a network of backers behind your offers.</li>
+                <li><strong>Master Class Training</strong> – 90+ lessons led by Charles Dobens, the Multifamily Attorney, covering markets, deal structuring, capital raising, due diligence, and scaling. With $50M+ in personal investing experience and $3B+ in client transactions, Charles brings practical, field-tested strategies to every lesson.</li>
+                <li><strong>Weekly Coaching</strong> – Live calls with Charles Dobens that combine deal analysis, market updates, and expert Q&A. These sessions provide direct access to one of the most respected educators in multifamily investing.</li>
+                <li><strong>Community Access</strong> – Direct connection to experienced peers and mentors for accountability, support, and networking opportunities.</li>
               </ul>
             </div>
           </div>
 
-          {/* FAQ Item 10 */}
+          {/* FAQ Item 6 */}
           <div className="bg-white border border-gray-200 rounded-lg p-6 shadow hover:shadow-lg transition duration-200">
-            <h3 className="text-xl font-bold text-blue-600 mb-3">Do you offer discounts for annual billing?</h3>
+            <h3 className="text-xl font-bold text-blue-600 mb-3">Can users upgrade, downgrade, or cancel anytime?</h3>
             <div className="text-sm text-gray-700">
-              <p className="mb-3">Yes—save big when you commit:</p>
+              <p className="mb-3">Yes. MultifamilyOS adapts to your investing journey:</p>
               <ul className="list-disc pl-6 space-y-1">
-                <li>Pay annually and save 19% or more</li>
-                <li>Secure a full year of resources at a lower rate</li>
+                <li>Upgrades take effect immediately, unlocking new features on demand.</li>
+                <li>Downgrades apply at the next billing cycle — no penalties.</li>
+                <li>Cancellations are simple — no fees, and access continues until the end of your billing period.</li>
               </ul>
-              <p className="mt-3">Accelerate your business—and keep more equity in your pocket.</p>
+              <p className="mt-3">Your subscription is as flexible as your business needs.</p>
             </div>
           </div>
+
         </div>
       </div>
 

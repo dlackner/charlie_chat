@@ -1,53 +1,138 @@
 /*
- * CHARLIE2 V2 - MultifamilyOS Landing Page
- * Modern marketing landing page for MultifamilyOS branding
+ * CHARLIE2 V2 - MultifamilyOS Landing Page with Signup Integration
+ * Modern marketing landing page with integrated signup functionality and trial flow
+ * Features: Passwordless auth, email capture, affiliate tracking, V2 dashboard redirect
  * Part of the new V2 component architecture
  */
 "use client";
 
 import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { ChevronLeft, ChevronRight, TrendingUp, FileText, Mail, DollarSign, Building, Users, Target, Zap, Globe, Brain, BarChart3, MessageSquare, Calendar, CheckCircle } from 'lucide-react';
+import { ChevronLeft, ChevronRight, TrendingUp, FileText, Mail, DollarSign, Building, Users, Target, Zap, Globe, Brain, BarChart3, MessageSquare, Calendar, CheckCircle, X } from 'lucide-react';
+import { Dialog } from '@headlessui/react';
 import TypewriterChatDemo from '@/components/ui/TypewriterChatDemo';
+import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 
 export default function LoginNewPage() {
   const { supabase } = useAuth();
   const [email, setEmail] = useState('');
-  const [otp, setOtp] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const [otpSent, setOtpSent] = useState(false);
   const [currentSlide, setCurrentSlide] = useState(0);
+  
+  // Signup states
+  const [signupEmail, setSignupEmail] = useState('');
+  const [signupError, setSignupError] = useState<string | null>(null);
+  const [signupLinkSent, setSignupLinkSent] = useState(false);
+  const [isSigningUp, setIsSigningUp] = useState(false);
+  const [showTopEmailForm, setShowTopEmailForm] = useState(false);
 
-  const handleEmailSignIn = async () => {
-    if (!email) return;
-    
-    setIsLoading(true);
-    const { error } = await supabase.auth.signInWithOtp({
-      email,
+  // Sign-in modal states
+  const [showSignInModal, setShowSignInModal] = useState(false);
+  const [signinEmail, setSigninEmail] = useState('');
+  const [signinOtp, setSigninOtp] = useState('');
+  const [signinError, setSigninError] = useState<string | null>(null);
+  const [signinOtpSent, setSigninOtpSent] = useState(false);
+  const [isSigningIn, setIsSigningIn] = useState(false);
+
+  const supabaseClient = createSupabaseBrowserClient();
+
+
+
+  // New signup logic extracted from header component
+  const handleSignUp = async (emailToUse: string) => {
+    setSignupError(null);
+    setIsSigningUp(true);
+
+    // Send magic link (OTP via email) for passwordless signup
+    const { error: signUpError } = await supabaseClient.auth.signInWithOtp({
+      email: emailToUse,
+      options: {
+        shouldCreateUser: true, // Creates user if they don't exist
+        emailRedirectTo: `${window.location.origin}/v2/auth/callback`
+      }
     });
-    
-    if (error) {
-      console.error('Sign in error:', error);
+
+    if (signUpError) {
+      setSignupError(signUpError.message);
     } else {
-      setOtpSent(true);
+      setSignupLinkSent(true); // Show success message
+      
+      // Add affiliate tracking
+      if (typeof window !== 'undefined' && (window as any).gr) {
+        (window as any).gr('track', 'conversion', { email: emailToUse });
+      }
     }
-    setIsLoading(false);
+    setIsSigningUp(false);
   };
 
-  const handleOtpVerify = async () => {
-    if (!email || !otp) return;
-    
-    setIsLoading(true);
-    const { error } = await supabase.auth.verifyOtp({
-      email,
-      token: otp,
-      type: 'email'
-    });
-    
-    if (error) {
-      console.error('OTP verification error:', error);
+  // Top button signup handler - shows email form first
+  const handleTopSignup = () => {
+    setShowTopEmailForm(true);
+  };
+
+  // Top email form submission
+  const handleTopEmailSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (signupEmail) {
+      await handleSignUp(signupEmail);
     }
-    setIsLoading(false);
+  };
+
+  // Bottom form signup handler - email already captured
+  const handleBottomSignup = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (email) {
+      await handleSignUp(email);
+    }
+  };
+
+  // Sign-in handlers (6-digit code flow for existing users)
+  const handleSignIn = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSigninError(null);
+
+    if (!signinOtpSent) {
+      // Step 1: Send OTP to email for existing users
+      setIsSigningIn(true);
+      const { error: signInError } = await supabaseClient.auth.signInWithOtp({
+        email: signinEmail,
+        options: {
+          shouldCreateUser: false // Existing users only
+        }
+      });
+
+      if (signInError) {
+        setSigninError(signInError.message);
+      } else {
+        setSigninOtpSent(true);
+      }
+      setIsSigningIn(false);
+    } else {
+      // Step 2: Verify OTP
+      setIsSigningIn(true);
+      const { error: verifyError } = await supabaseClient.auth.verifyOtp({
+        email: signinEmail,
+        token: signinOtp,
+        type: 'email',
+      });
+
+      if (verifyError) {
+        setSigninError(verifyError.message);
+      } else {
+        // Success - redirect to V2 metrics dashboard
+        closeSignInModal();
+        window.location.href = '/v2/dashboard/metrics';
+      }
+      setIsSigningIn(false);
+    }
+  };
+
+  // Reset sign-in modal state when closing
+  const closeSignInModal = () => {
+    setShowSignInModal(false);
+    setSigninEmail('');
+    setSigninOtp('');
+    setSigninOtpSent(false);
+    setSigninError(null);
   };
 
   const carouselSlides = [
@@ -179,20 +264,62 @@ export default function LoginNewPage() {
               Run your investment business like a $10M+ fund—without the overhead.
             </p>
 
+            {/* Error message display */}
+            {signupError && (
+              <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl max-w-md mx-auto">
+                <p className="text-red-600 text-center">{signupError}</p>
+              </div>
+            )}
+
             {/* CTA Buttons */}
             <div className="flex flex-col sm:flex-row gap-4 justify-center mb-12">
-              <button 
-                onClick={() => document.getElementById('signup-form')?.scrollIntoView({ behavior: 'smooth' })}
-                className="px-8 py-4 bg-blue-600 hover:bg-blue-700 text-white text-lg font-semibold rounded-xl transition-all duration-200 transform hover:scale-105 shadow-lg"
-              >
-                Start Free Trial
-              </button>
-              <button 
-                onClick={() => document.getElementById('pricing')?.scrollIntoView({ behavior: 'smooth' })}
-                className="px-8 py-4 border-2 border-blue-600 text-blue-600 hover:bg-blue-600 hover:text-white text-lg font-semibold rounded-xl transition-all duration-200"
-              >
-                See Pricing
-              </button>
+              {!showTopEmailForm && !signupLinkSent ? (
+                <>
+                  <button 
+                    onClick={handleTopSignup}
+                    className="flex-1 sm:flex-none sm:min-w-[180px] px-8 py-4 bg-blue-600 hover:bg-blue-700 text-white text-lg font-semibold rounded-xl transition-all duration-200 transform hover:scale-105 shadow-lg"
+                  >
+                    Start Free Trial
+                  </button>
+                  <button 
+                    onClick={() => setShowSignInModal(true)}
+                    className="flex-1 sm:flex-none sm:min-w-[180px] px-8 py-4 border-2 border-blue-600 text-blue-600 hover:bg-blue-600 hover:text-white text-lg font-semibold rounded-xl transition-all duration-200"
+                  >
+                    Sign In
+                  </button>
+                </>
+              ) : showTopEmailForm && !signupLinkSent ? (
+                <form onSubmit={handleTopEmailSubmit} className="flex flex-col sm:flex-row gap-4 items-center">
+                  <input
+                    type="email"
+                    value={signupEmail}
+                    onChange={(e) => setSignupEmail(e.target.value)}
+                    placeholder="Enter your email"
+                    className="px-4 py-3 border border-gray-300 rounded-xl text-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 min-w-[300px]"
+                    required
+                  />
+                  <button
+                    type="submit"
+                    disabled={isSigningUp}
+                    className="px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white text-lg font-semibold rounded-xl transition-all duration-200 transform hover:scale-105 shadow-lg disabled:opacity-50"
+                  >
+                    {isSigningUp ? 'Sending...' : 'Start Trial'}
+                  </button>
+                </form>
+              ) : (
+                <div className="text-center p-4 bg-green-50 border border-green-200 rounded-xl">
+                  <CheckCircle className="h-8 w-8 text-green-600 mx-auto mb-2" />
+                  <p className="text-green-600 font-medium mb-4">
+                    Check your email for the confirmation link!
+                  </p>
+                  <p className="text-sm text-gray-600">
+                    We've sent a magic link to <strong>{signupEmail}</strong>. Click the link in your email to complete your registration and start your 7-day free trial.
+                  </p>
+                  <p className="text-xs text-gray-500 mt-3">
+                    Didn't receive the email? Check your spam folder.
+                  </p>
+                </div>
+              )}
             </div>
           </div>
 
@@ -380,40 +507,9 @@ export default function LoginNewPage() {
             </div>
           </div>
 
-          {/* Email Sign In Form */}
+          {/* Email Sign Up Form */}
           <div className="max-w-md mx-auto">
-            {otpSent ? (
-              <div className="space-y-4">
-                <div className="text-center p-4 bg-green-50 border border-green-200 rounded-lg mb-4">
-                  <div className="flex items-center justify-center mb-2">
-                    <CheckCircle className="w-6 h-6 text-green-600 mr-2" />
-                    <p className="text-green-800 font-medium">Check your email!</p>
-                  </div>
-                  <p className="text-green-700 text-sm">We sent you a verification code</p>
-                </div>
-                <input
-                  type="text"
-                  placeholder="Enter verification code"
-                  value={otp}
-                  onChange={(e) => setOtp(e.target.value)}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-center text-lg"
-                  disabled={isLoading}
-                />
-                <button
-                  onClick={handleOtpVerify}
-                  disabled={isLoading || !otp}
-                  className="w-full bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl font-semibold text-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed transform hover:scale-105"
-                >
-                  {isLoading ? 'Verifying...' : 'Verify & Start 7-Day Free Trial'}
-                </button>
-                <button
-                  onClick={() => setOtpSent(false)}
-                  className="w-full text-gray-600 hover:text-gray-800 text-sm mt-2"
-                >
-                  ← Back to email
-                </button>
-              </div>
-            ) : (
+            {!signupLinkSent ? (
               <div className="space-y-4">
                 <input
                   type="email"
@@ -421,17 +517,38 @@ export default function LoginNewPage() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-lg"
-                  disabled={isLoading}
+                  disabled={isSigningUp}
                 />
                 <button
-                  onClick={handleEmailSignIn}
-                  disabled={isLoading || !email}
-                  className="w-full bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl font-semibold text-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed transform hover:scale-105"
+                  onClick={handleBottomSignup}
+                  disabled={isSigningUp || !email}
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl font-semibold text-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed transform hover:scale-105 mb-3"
                 >
-                  {isLoading ? 'Sending...' : 'Start 7-Day Free Trial'}
+                  {isSigningUp ? 'Sending...' : 'Start 7-Day Free Trial'}
                 </button>
+                <div className="text-center">
+                  <p className="text-sm text-gray-500 mb-2">Already have an account?</p>
+                  <button 
+                    onClick={() => setShowSignInModal(true)}
+                    className="text-blue-600 hover:text-blue-700 text-sm font-medium"
+                  >
+                    Sign in here →
+                  </button>
+                </div>
                 <p className="text-sm text-gray-500">
                   Get started in 30 seconds • No commitment required
+                </p>
+              </div>
+            ) : (
+              <div className="text-center p-4 bg-green-50 border border-green-200 rounded-xl">
+                <CheckCircle className="h-8 w-8 text-green-600 mx-auto mb-2" />
+                <h3 className="font-medium text-green-800 mb-1">Check Your Email</h3>
+                <p className="text-green-600 text-sm">
+                  A confirmation link has been sent to <strong>{email}</strong>. 
+                  Click the link to complete your registration and start your 7-day free trial.
+                </p>
+                <p className="text-xs text-gray-500 mt-3">
+                  Didn't receive the email? Check your spam folder.
                 </p>
               </div>
             )}
@@ -440,7 +557,7 @@ export default function LoginNewPage() {
           {/* Link to Full Pricing */}
           <div className="mt-8">
             <a href="/pricing" className="text-blue-600 hover:text-blue-700 text-sm font-medium">
-              View detailed pricing plans →
+              View pricing plans and product comparisons →
             </a>
           </div>
         </div>
@@ -455,6 +572,91 @@ export default function LoginNewPage() {
           </p>
         </div>
       </div>
+
+      {/* Sign In Modal */}
+      <Dialog open={showSignInModal} onClose={closeSignInModal} className="relative z-50">
+        <div className="fixed inset-0 bg-black/50" aria-hidden="true" />
+        <div className="fixed inset-0 flex items-center justify-center p-4">
+          <Dialog.Panel className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-2xl font-semibold text-gray-800">Sign in to your account</h2>
+              <button
+                onClick={closeSignInModal}
+                className="text-gray-400 hover:text-gray-600 text-xl"
+              >
+                <X size={24} />
+              </button>
+            </div>
+            
+            <form onSubmit={handleSignIn} className="space-y-4">
+              {!signinOtpSent ? (
+                // Email input step
+                <div>
+                  <label htmlFor="signin-email" className="block text-sm font-medium text-gray-600 mb-2">
+                    Email Address
+                  </label>
+                  <input
+                    id="signin-email"
+                    type="email"
+                    value={signinEmail}
+                    onChange={(e) => setSigninEmail(e.target.value)}
+                    placeholder="Enter your registered email"
+                    className="w-full border border-gray-300 rounded-lg px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    autoComplete="email"
+                    required
+                    autoFocus
+                  />
+                </div>
+              ) : (
+                // OTP input step
+                <div>
+                  <p className="text-sm text-gray-700 mb-4">
+                    A login code has been sent to <strong>{signinEmail}</strong>.
+                  </p>
+                  <label htmlFor="signin-otp" className="block text-sm font-medium text-gray-600 mb-2">
+                    6-Digit Code
+                  </label>
+                  <input
+                    id="signin-otp"
+                    type="text"
+                    value={signinOtp}
+                    onChange={(e) => setSigninOtp(e.target.value)}
+                    placeholder="Enter 6-digit code"
+                    className="w-full border border-gray-300 rounded-lg px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-center"
+                    maxLength={6}
+                    required
+                    autoFocus
+                  />
+                </div>
+              )}
+
+              {signinError && <p className="text-red-600 text-sm text-center">{signinError}</p>}
+              
+              <button
+                type="submit"
+                disabled={isSigningIn}
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 px-4 rounded-lg font-medium transition-colors duration-150 disabled:opacity-50"
+              >
+                {isSigningIn ? 'Processing...' : (!signinOtpSent ? "Send Login Code" : "Verify Code")}
+              </button>
+              
+              {signinOtpSent && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSigninOtpSent(false);
+                    setSigninOtp('');
+                    setSigninError(null);
+                  }}
+                  className="w-full text-gray-600 hover:text-gray-800 text-sm mt-2"
+                >
+                  ← Back to email
+                </button>
+              )}
+            </form>
+          </Dialog.Panel>
+        </div>
+      </Dialog>
     </div>
   );
 }

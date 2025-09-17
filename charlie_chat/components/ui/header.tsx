@@ -148,7 +148,7 @@ export default function Header() {
       console.error("Error signing out:", error);
     } else {
       setShowAccountMenu(false);
-      router.push("/login");
+      router.push("/v2/loginnew");
     }
   };
 

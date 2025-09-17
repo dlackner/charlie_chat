@@ -314,7 +314,7 @@ function Home() {
         mail_address_state,
         mail_address_zip
       `)
-        .eq('property_id', propertyId)
+        .eq('id', propertyId)
         .single();
 
       if (error || !data) {

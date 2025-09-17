@@ -73,20 +73,7 @@ export default function MetricsPage() {
             <OffersCreatedCard user={user} timeRange={timeRange} />
 
             {/* LOIs Created */}
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">LOIs Created</h3>
-              <div className="flex items-center justify-between mb-4">
-                <div className="text-3xl font-bold text-green-600">0</div>
-                <div className="text-sm text-gray-600">Today</div>
-              </div>
-              {/* Placeholder for weekly trend chart */}
-              <div className="h-20 bg-gradient-to-r from-green-50 to-green-100 rounded-lg flex items-center justify-center">
-                <div className="text-center text-gray-500">
-                  <BarChart3 className="h-6 w-6 mx-auto mb-1" />
-                  <p className="text-xs">Weekly Trend</p>
-                </div>
-              </div>
-            </div>
+            <LOIsCreatedCard user={user} timeRange={timeRange} />
 
           </div>
 
@@ -94,36 +81,10 @@ export default function MetricsPage() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
             {/* Marketing Letters Created */}
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Marketing Letters</h3>
-              <div className="flex items-center justify-between mb-4">
-                <div className="text-3xl font-bold text-purple-600">0</div>
-                <div className="text-sm text-gray-600">Today</div>
-              </div>
-              {/* Placeholder for weekly trend chart */}
-              <div className="h-20 bg-gradient-to-r from-purple-50 to-purple-100 rounded-lg flex items-center justify-center">
-                <div className="text-center text-gray-500">
-                  <BarChart3 className="h-6 w-6 mx-auto mb-1" />
-                  <p className="text-xs">Weekly Trend</p>
-                </div>
-              </div>
-            </div>
+            <MarketingLettersCreatedCard user={user} timeRange={timeRange} />
 
             {/* Emails Sent */}
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Emails Sent</h3>
-              <div className="flex items-center justify-between mb-4">
-                <div className="text-3xl font-bold text-orange-600">0</div>
-                <div className="text-sm text-gray-600">Today</div>
-              </div>
-              {/* Placeholder for weekly trend chart */}
-              <div className="h-20 bg-gradient-to-r from-orange-50 to-orange-100 rounded-lg flex items-center justify-center">
-                <div className="text-center text-gray-500">
-                  <BarChart3 className="h-6 w-6 mx-auto mb-1" />
-                  <p className="text-xs">Weekly Trend</p>
-                </div>
-              </div>
-            </div>
+            <EmailsSentCard user={user} timeRange={timeRange} />
 
           </div>
         </div>
@@ -453,6 +414,297 @@ function OffersCreatedCard({ user, timeRange }: { user: any; timeRange: string }
             <div className="text-center">
               <BarChart3 className="h-6 w-6 mx-auto mb-2" />
               <p className="text-xs">No offers yet</p>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// LOIs Created Card
+function LOIsCreatedCard({ user, timeRange }: { user: any; timeRange: string }) {
+  const [todayCount, setTodayCount] = useState(0);
+  const [weeklyData, setWeeklyData] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    if (!user) return;
+
+    const fetchData = async () => {
+      setIsLoading(true);
+      try {
+        // Fetch today's count from activity counts table
+        const today = new Date().toISOString().split('T')[0];
+        const todayResponse = await fetch(`/api/v2/metrics/activity-daily?userId=${user.id}&activityType=lois_created&date=${today}`);
+        if (todayResponse.ok) {
+          const todayData = await todayResponse.json();
+          setTodayCount(todayData.count || 0);
+        }
+
+        // Fetch weekly trend data using the selected timeRange
+        const weeklyResponse = await fetch(`/api/v2/metrics/lois-over-time?userId=${user.id}&timeRange=${timeRange}`);
+        if (weeklyResponse.ok) {
+          const weeklyResult = await weeklyResponse.json();
+          setWeeklyData(weeklyResult || []);
+        }
+      } catch (error) {
+        console.error('Error fetching LOI data:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [user, timeRange]);
+
+  return (
+    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+      <h3 className="text-lg font-semibold text-gray-900 mb-4">LOIs Created</h3>
+      <div className="flex items-center justify-between mb-4">
+        <div className="text-3xl font-bold text-purple-600">{todayCount}</div>
+        <div className="text-sm text-gray-600">Today</div>
+      </div>
+      
+      {/* Weekly trend chart - matching Properties Favorited style */}
+      <div className="h-32">
+        {isLoading ? (
+          <div className="h-full flex items-center justify-center">
+            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-purple-600"></div>
+          </div>
+        ) : weeklyData.length > 0 ? (
+          <>
+            <div className="h-full flex items-end space-x-2 p-4">
+              {weeklyData.map((item, index) => {
+                const maxCount = Math.max(...weeklyData.map(d => d.count));
+                const maxHeight = 80; // Fixed max height in pixels
+                const heightPx = Math.max((item.count / maxCount) * maxHeight, 10); // Minimum 10px height
+                return (
+                  <div key={index} className="flex-1 flex flex-col items-center justify-end min-w-0 group relative">
+                    <div 
+                      className="w-full bg-purple-500 rounded-t hover:bg-purple-600 transition-colors cursor-pointer"
+                      style={{ height: `${heightPx}px`, minWidth: '20px' }}
+                    ></div>
+                    <div className="text-xs text-gray-600 mt-2 text-center">
+                      {item.date}
+                    </div>
+                    
+                    {/* Tooltip - matching pipeline chart style */}
+                    <div className="absolute bottom-full mb-2 left-1/2 transform -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-50">
+                      <div className="bg-white p-3 border border-gray-200 rounded-lg shadow-lg whitespace-nowrap">
+                        <p className="font-medium text-gray-900">Week of {item.date}</p>
+                        <p className="text-purple-600">{item.count} {item.count === 1 ? 'LOI' : 'LOIs'}</p>
+                        <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-2 h-2 bg-white border-r border-b border-gray-200 transform rotate-45 -mt-1"></div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            {/* X-axis label */}
+            <div className="text-center -mt-2">
+              <span className="text-sm text-gray-500">Week Of</span>
+            </div>
+          </>
+        ) : (
+          <div className="h-full flex items-center justify-center text-gray-500">
+            <div className="text-center">
+              <BarChart3 className="h-6 w-6 mx-auto mb-2" />
+              <p className="text-xs">No LOIs yet</p>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// Marketing Letters Created Card
+function MarketingLettersCreatedCard({ user, timeRange }: { user: any; timeRange: string }) {
+  const [todayCount, setTodayCount] = useState(0);
+  const [weeklyData, setWeeklyData] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    if (!user) return;
+
+    const fetchData = async () => {
+      setIsLoading(true);
+      try {
+        // Fetch today's count from activity counts table
+        const today = new Date().toISOString().split('T')[0];
+        const todayResponse = await fetch(`/api/v2/metrics/activity-daily?userId=${user.id}&activityType=marketing_letters_created&date=${today}`);
+        if (todayResponse.ok) {
+          const todayData = await todayResponse.json();
+          setTodayCount(todayData.count || 0);
+        }
+
+        // Fetch weekly trend data using the selected timeRange
+        const weeklyResponse = await fetch(`/api/v2/metrics/marketing-letters-over-time?userId=${user.id}&timeRange=${timeRange}`);
+        if (weeklyResponse.ok) {
+          const weeklyResult = await weeklyResponse.json();
+          setWeeklyData(weeklyResult || []);
+        }
+      } catch (error) {
+        console.error('Error fetching marketing letters data:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [user, timeRange]);
+
+  return (
+    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+      <h3 className="text-lg font-semibold text-gray-900 mb-4">Marketing Letters Created</h3>
+      <div className="flex items-center justify-between mb-4">
+        <div className="text-3xl font-bold text-orange-600">{todayCount}</div>
+        <div className="text-sm text-gray-600">Today</div>
+      </div>
+      
+      {/* Weekly trend chart - matching Properties Favorited style */}
+      <div className="h-32">
+        {isLoading ? (
+          <div className="h-full flex items-center justify-center">
+            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-orange-600"></div>
+          </div>
+        ) : weeklyData.length > 0 ? (
+          <>
+            <div className="h-full flex items-end space-x-2 p-4">
+              {weeklyData.map((item, index) => {
+                const maxCount = Math.max(...weeklyData.map(d => d.count));
+                const maxHeight = 80; // Fixed max height in pixels
+                const heightPx = Math.max((item.count / maxCount) * maxHeight, 10); // Minimum 10px height
+                return (
+                  <div key={index} className="flex-1 flex flex-col items-center justify-end min-w-0 group relative">
+                    <div 
+                      className="w-full bg-orange-500 rounded-t hover:bg-orange-600 transition-colors cursor-pointer"
+                      style={{ height: `${heightPx}px`, minWidth: '20px' }}
+                    ></div>
+                    <div className="text-xs text-gray-600 mt-2 text-center">
+                      {item.date}
+                    </div>
+                    
+                    {/* Tooltip - matching pipeline chart style */}
+                    <div className="absolute bottom-full mb-2 left-1/2 transform -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-50">
+                      <div className="bg-white p-3 border border-gray-200 rounded-lg shadow-lg whitespace-nowrap">
+                        <p className="font-medium text-gray-900">Week of {item.date}</p>
+                        <p className="text-orange-600">{item.count} {item.count === 1 ? 'letter' : 'letters'}</p>
+                        <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-2 h-2 bg-white border-r border-b border-gray-200 transform rotate-45 -mt-1"></div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            {/* X-axis label */}
+            <div className="text-center -mt-2">
+              <span className="text-sm text-gray-500">Week Of</span>
+            </div>
+          </>
+        ) : (
+          <div className="h-full flex items-center justify-center text-gray-500">
+            <div className="text-center">
+              <BarChart3 className="h-6 w-6 mx-auto mb-2" />
+              <p className="text-xs">No letters yet</p>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// Emails Sent Card
+function EmailsSentCard({ user, timeRange }: { user: any; timeRange: string }) {
+  const [todayCount, setTodayCount] = useState(0);
+  const [weeklyData, setWeeklyData] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    if (!user) return;
+
+    const fetchData = async () => {
+      setIsLoading(true);
+      try {
+        // Fetch today's count from activity counts table
+        const today = new Date().toISOString().split('T')[0];
+        const todayResponse = await fetch(`/api/v2/metrics/activity-daily?userId=${user.id}&activityType=emails_sent&date=${today}`);
+        if (todayResponse.ok) {
+          const todayData = await todayResponse.json();
+          setTodayCount(todayData.count || 0);
+        }
+
+        // Fetch weekly trend data using the selected timeRange
+        const weeklyResponse = await fetch(`/api/v2/metrics/emails-over-time?userId=${user.id}&timeRange=${timeRange}`);
+        if (weeklyResponse.ok) {
+          const weeklyResult = await weeklyResponse.json();
+          setWeeklyData(weeklyResult || []);
+        }
+      } catch (error) {
+        console.error('Error fetching emails data:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [user, timeRange]);
+
+  return (
+    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+      <h3 className="text-lg font-semibold text-gray-900 mb-4">Emails Sent</h3>
+      <div className="flex items-center justify-between mb-4">
+        <div className="text-3xl font-bold text-green-600">{todayCount}</div>
+        <div className="text-sm text-gray-600">Today</div>
+      </div>
+      
+      {/* Weekly trend chart - matching Properties Favorited style */}
+      <div className="h-32">
+        {isLoading ? (
+          <div className="h-full flex items-center justify-center">
+            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-green-600"></div>
+          </div>
+        ) : weeklyData.length > 0 ? (
+          <>
+            <div className="h-full flex items-end space-x-2 p-4">
+              {weeklyData.map((item, index) => {
+                const maxCount = Math.max(...weeklyData.map(d => d.count));
+                const maxHeight = 80; // Fixed max height in pixels
+                const heightPx = Math.max((item.count / maxCount) * maxHeight, 10); // Minimum 10px height
+                return (
+                  <div key={index} className="flex-1 flex flex-col items-center justify-end min-w-0 group relative">
+                    <div 
+                      className="w-full bg-green-500 rounded-t hover:bg-green-600 transition-colors cursor-pointer"
+                      style={{ height: `${heightPx}px`, minWidth: '20px' }}
+                    ></div>
+                    <div className="text-xs text-gray-600 mt-2 text-center">
+                      {item.date}
+                    </div>
+                    
+                    {/* Tooltip - matching pipeline chart style */}
+                    <div className="absolute bottom-full mb-2 left-1/2 transform -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-50">
+                      <div className="bg-white p-3 border border-gray-200 rounded-lg shadow-lg whitespace-nowrap">
+                        <p className="font-medium text-gray-900">Week of {item.date}</p>
+                        <p className="text-green-600">{item.count} {item.count === 1 ? 'email' : 'emails'}</p>
+                        <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-2 h-2 bg-white border-r border-b border-gray-200 transform rotate-45 -mt-1"></div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            {/* X-axis label */}
+            <div className="text-center -mt-2">
+              <span className="text-sm text-gray-500">Week Of</span>
+            </div>
+          </>
+        ) : (
+          <div className="h-full flex items-center justify-center text-gray-500">
+            <div className="text-center">
+              <BarChart3 className="h-6 w-6 mx-auto mb-2" />
+              <p className="text-xs">No emails yet</p>
             </div>
           </div>
         )}

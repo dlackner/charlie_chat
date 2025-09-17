@@ -14,6 +14,7 @@ import { generate10YearCashFlowReport } from '../property-analyzer/cash-flow-rep
 import { generateMarketingLetter, createMailtoLink } from '../templates/generateMarketingLetter';
 import { CashFlowReportsModal } from '@/components/v2/CashFlowReportsModal';
 import { useAuth } from "@/contexts/AuthContext";
+import { incrementActivityCount } from '@/lib/v2/activityCounter';
 
 export default function EngagePage() {
   const { user, isLoading: authLoading } = useAuth();
@@ -387,6 +388,11 @@ export default function EngagePage() {
       propertyId: property.id.toString()
     });
     router.push(`/v2/templates?${params.toString()}`);
+
+    // Increment activity count for LOI creation initiated
+    if (user?.id) {
+      incrementActivityCount(user.id, 'lois_created');
+    }
   };
 
   const handleViewOffers = async () => {
@@ -887,12 +893,29 @@ export default function EngagePage() {
     }
 
     console.log('Final skipTraceData:', skipTraceData);
-    console.log('skipTraceData.email:', skipTraceData?.email);
+    console.log('skipTraceData.contacts:', skipTraceData?.contacts);
+
+    // Extract email from contacts array (new skip trace format)
+    let emailAddress = null;
+    if (skipTraceData?.contacts && Array.isArray(skipTraceData.contacts)) {
+      for (const contact of skipTraceData.contacts) {
+        if (contact.email) {
+          emailAddress = contact.email;
+          break;
+        }
+      }
+    }
+    // Fallback to old format if exists
+    if (!emailAddress && skipTraceData?.email) {
+      emailAddress = skipTraceData.email;
+    }
+
+    console.log('Found email address:', emailAddress);
 
     // Check if property has skip trace data with email
-    if (!skipTraceData || !skipTraceData.email) {
+    if (!skipTraceData || !emailAddress) {
       console.log('Email check failed - skipTraceData exists:', !!skipTraceData);
-      console.log('Email exists:', !!skipTraceData?.email);
+      console.log('Email exists:', !!emailAddress);
       setSuccessMessage(`No email address found for ${property.address}. Skip trace data must be available to send emails.`);
       setShowSuccessModal(true);
       return;
@@ -959,10 +982,15 @@ export default function EngagePage() {
       const subject = `Inquiry About Your Property - ${propertyData.address_full}`;
       const encodedSubject = encodeURIComponent(subject);
       const encodedBody = encodeURIComponent(result.emailBody);
-      const recipientEmail = skipTraceData.email;
+      const recipientEmail = emailAddress;
       
       const mailtoLink = `mailto:${recipientEmail}?subject=${encodedSubject}&body=${encodedBody}`;
       window.location.href = mailtoLink;
+
+      // Increment activity count for emails sent
+      if (user?.id) {
+        await incrementActivityCount(user.id, 'emails_sent');
+      }
       
     } catch (error) {
       console.error('Error generating email:', error);
@@ -1060,6 +1088,11 @@ export default function EngagePage() {
 
       setSuccessMessage(`Marketing letters generated successfully for ${propertyIds.length} properties!`);
       setShowSuccessModal(true);
+
+      // Increment activity count for marketing letters created
+      if (user?.id) {
+        await incrementActivityCount(user.id, 'marketing_letters_created');
+      }
     } catch (error) {
       console.error('Error generating marketing letters:', error);
       alert('Failed to generate marketing letters. Please try again.');
@@ -1122,6 +1155,11 @@ export default function EngagePage() {
               id: property.id.toString()
             });
             router.push(`/offer-analyzer?${params.toString()}`);
+
+            // Increment activity count for offer creation initiated
+            if (user?.id) {
+              incrementActivityCount(user.id, 'offers_created');
+            }
           }
         }
         break;

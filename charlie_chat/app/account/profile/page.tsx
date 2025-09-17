@@ -1,27 +1,86 @@
-//THIS NEEDS TO BE FACTORED FOR V2 VERSION
-
+/*
+ * CHARLIE2 V2 - Profile Management Page
+ * Dynamic profile page with live Supabase database integration
+ * Fetches and saves real user profile data
+ * Part of the new V2 application architecture
+ */
 
 'use client';
 
-import { useState } from 'react';
-import { User, Upload, Save, X } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { User, Upload, Save, X, ArrowLeft } from 'lucide-react';
 import Image from 'next/image';
+import { useRouter } from 'next/navigation';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function ProfilePage() {
+  const { user: currentUser, supabase } = useAuth();
+  const router = useRouter();
   const [formData, setFormData] = useState({
-    firstName: 'Dan',
-    lastName: 'Lackner',
-    streetAddress: '69 Rhode Island Avenue',
-    city: 'Newport',
-    state: 'RI',
-    zipCode: '02840',
-    phoneNumber: '7036579348',
-    businessName: 'Charlie Chat Enterprises',
-    jobTitle: 'Partner'
+    firstName: '',
+    lastName: '',
+    streetAddress: '',
+    city: '',
+    state: '',
+    zipCode: '',
+    phoneNumber: '',
+    businessName: '',
+    jobTitle: ''
   });
 
   const [logoFile, setLogoFile] = useState<File | null>(null);
-  const [logoPreview, setLogoPreview] = useState('/multifamily-investing-academy-logo.png');
+  const [logoPreview, setLogoPreview] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+  // Load profile data when component mounts
+  useEffect(() => {
+    const fetchProfile = async () => {
+      if (!currentUser || !supabase) return;
+
+      setLoading(true);
+      setError(null);
+
+      try {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('user_id', currentUser.id)
+          .single();
+
+        if (error && error.code !== 'PGRST116') {
+          throw error;
+        }
+
+        if (data) {
+          setFormData({
+            firstName: data.first_name || '',
+            lastName: data.last_name || '',
+            streetAddress: data.street_address || '',
+            city: data.city || '',
+            state: data.state || '',
+            zipCode: data.zipcode || '',  // Note: column name is 'zipcode' not 'zip_code'
+            phoneNumber: data.phone_number || '',
+            businessName: data.business_name || '',
+            jobTitle: data.job_title || ''
+          });
+          
+          if (data.logo_base64) {
+            setLogoPreview(data.logo_base64);
+          }
+        }
+      } catch (err) {
+        console.error('Error fetching profile:', err);
+        setError('Failed to load profile information');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProfile();
+  }, [currentUser, supabase]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -45,27 +104,139 @@ export default function ProfilePage() {
     }
   };
 
-  const handleSave = () => {
-    // Save logic would go here
-    console.log('Saving profile:', formData, logoFile);
-    alert('Profile saved successfully!');
+  const handleSave = async () => {
+    if (!currentUser || !supabase) {
+      setError('Authentication required');
+      return;
+    }
+
+    setSaving(true);
+    setError(null);
+    setSuccessMessage(null);
+
+    try {
+      // Check if required fields are filled
+      if (!formData.firstName.trim() || !formData.lastName.trim()) {
+        setError('First name and last name are required.');
+        return;
+      }
+
+      // Prepare profile data for database
+      const profileData = {
+        user_id: currentUser.id,
+        first_name: formData.firstName.trim(),
+        last_name: formData.lastName.trim(),
+        street_address: formData.streetAddress.trim() || null,
+        city: formData.city.trim() || null,
+        state: formData.state.trim() || null,
+        zipcode: formData.zipCode.trim() || null,  // Note: column name is 'zipcode' not 'zip_code'
+        phone_number: formData.phoneNumber.trim() || null,
+        business_name: formData.businessName.trim() || null,
+        job_title: formData.jobTitle.trim() || null,
+        updated_at: new Date().toISOString()
+      };
+
+      console.log('Attempting to save profile data:', profileData);
+
+      // TODO: Handle logo file upload to storage if logoFile exists
+      // For now, we'll save the profile data without the logo
+
+      const { data, error } = await supabase
+        .from('profiles')
+        .upsert(profileData, {
+          onConflict: 'user_id'
+        })
+        .select();
+
+      console.log('Supabase response:', { data, error });
+
+      if (error) {
+        throw error;
+      }
+
+      setSuccessMessage('Profile saved successfully!');
+      
+      // Clear success message after 3 seconds
+      setTimeout(() => {
+        setSuccessMessage(null);
+      }, 3000);
+
+    } catch (err) {
+      console.error('Error saving profile:', err);
+      // Show more detailed error information
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
+      setError(`Failed to save profile: ${errorMessage}. Please try again.`);
+    } finally {
+      setSaving(false);
+    }
   };
+
+  // Show loading state
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 p-6">
+        <div className="max-w-2xl mx-auto">
+          <div className="text-center py-8">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <p className="text-gray-600">Loading profile...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Show authentication required state
+  if (!currentUser) {
+    return (
+      <div className="min-h-screen bg-gray-50 p-6">
+        <div className="max-w-2xl mx-auto">
+          <div className="text-center py-8">
+            <h1 className="text-2xl font-bold text-gray-900 mb-4">Authentication Required</h1>
+            <p className="text-gray-600">Please log in to view your profile.</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="max-w-2xl mx-auto">
         {/* Header */}
         <div className="mb-6">
-          <div className="flex items-center space-x-3 mb-2">
-            <div className="p-2 bg-blue-50 rounded-lg">
-              <User className="h-6 w-6 text-blue-600" />
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center space-x-3">
+              <div className="p-2 bg-blue-50 rounded-lg">
+                <User className="h-6 w-6 text-blue-600" />
+              </div>
+              <div>
+                <h1 className="text-2xl font-bold text-gray-900">Profile</h1>
+                <p className="text-gray-600">Manage your personal information and preferences</p>
+              </div>
             </div>
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">Profile</h1>
-              <p className="text-gray-600">Manage your personal information and preferences</p>
-            </div>
+            <button
+              onClick={() => router.back()}
+              className="flex items-center space-x-2 px-4 py-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              <span>Back</span>
+            </button>
           </div>
         </div>
+
+        {/* Error Message */}
+        {error && (
+          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+            <p className="text-red-600">{error}</p>
+          </div>
+        )}
+
+        {/* Success Message */}
+        {successMessage && (
+          <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
+            <p className="text-green-600">{successMessage}</p>
+          </div>
+        )}
 
         {/* Profile Form */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
@@ -242,10 +413,20 @@ export default function ProfilePage() {
               <button
                 type="button"
                 onClick={handleSave}
-                className="inline-flex items-center px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors"
+                disabled={saving}
+                className="inline-flex items-center px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <Save className="h-4 w-4 mr-2" />
-                Save Profile
+                {saving ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <Save className="h-4 w-4 mr-2" />
+                    Save Profile
+                  </>
+                )}
               </button>
             </div>
           </form>
