@@ -877,7 +877,7 @@ export default function PricingPage() {
           
           <div className="divide-y divide-gray-100">
             <div className="grid grid-cols-4 gap-0 hover:bg-gray-50/50 transition-colors">
-              <div className="px-6 py-4 text-sm font-medium text-gray-900">Property Syndication Club — Get access to investors</div>
+              <div className="px-6 py-4 text-sm font-medium text-gray-900">Debt & Equity Syndication Club (with Annual Subscription)</div>
               <div className="px-6 py-4 text-center border-l border-gray-100">
                 <div className="w-5 h-5 rounded-full bg-gray-200 mx-auto flex items-center justify-center">
                   <div className="w-2 h-0.5 bg-gray-400"></div>

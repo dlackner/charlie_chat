@@ -12,6 +12,9 @@ import { MessageCircle, Plus, Trash2 } from 'lucide-react';
 import { AICoachThread } from './components/AICoachThread';
 import { usePersistedChatRuntime } from './hooks/usePersistedChatRuntime';
 import { AttachmentProvider, useAttachments } from './context/AttachmentContext';
+import { useAuth } from '@/contexts/AuthContext';
+import { createSupabaseBrowserClient } from '@/lib/supabase/client';
+import { useState, useEffect } from 'react';
 
 interface AICoachContentProps {
   threads: Array<{
@@ -27,6 +30,32 @@ interface AICoachContentProps {
 }
 
 const AICoachContent = ({ threads, loadingThreads, loadThread, createNewThread, deleteThread, runtime }: AICoachContentProps) => {
+  const { user } = useAuth();
+  const [userClass, setUserClass] = useState<string | null>(null);
+  
+  // Fetch user class
+  useEffect(() => {
+    if (user?.id && !userClass) {
+      const fetchUserClass = async () => {
+        try {
+          const supabase = createSupabaseBrowserClient();
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('user_class')
+            .eq('user_id', user.id)
+            .single();
+            
+          if (profile?.user_class) {
+            setUserClass(profile.user_class);
+          }
+        } catch (error) {
+          console.error('Error fetching user class:', error);
+        }
+      };
+      
+      fetchUserClass();
+    }
+  }, [user?.id, userClass]);
   
   const handleDeleteThread = (threadId: string) => {
     deleteThread(threadId);
@@ -36,13 +65,7 @@ const AICoachContent = ({ threads, loadingThreads, loadThread, createNewThread, 
       {/* Header Navigation - Always Visible */}
       <div className="flex-shrink-0 bg-white border-b border-gray-200 shadow-sm">
         <div className="px-4 py-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-2">
-              <div className="p-2 bg-blue-50 rounded-lg">
-                <MessageCircle className="h-5 w-5 text-blue-600" />
-              </div>
-              <h1 className="text-lg font-semibold text-gray-900">AI Coach</h1>
-            </div>
+          <div className="flex items-center justify-end">
             <button
               onClick={createNewThread}
               className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
@@ -98,7 +121,7 @@ const AICoachContent = ({ threads, loadingThreads, loadThread, createNewThread, 
         {/* Main Chat Area */}
         <div className="flex-1 flex flex-col bg-white">
           <AssistantRuntimeProvider runtime={runtime}>
-            <AICoachThread />
+            <AICoachThread userClass={userClass} />
           </AssistantRuntimeProvider>
         </div>
       </div>

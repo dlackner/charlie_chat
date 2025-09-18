@@ -34,6 +34,10 @@ import { cn } from "@/lib/utils";
 // Removed unused Button import
 import { MarkdownText } from "@/components/assistant-ui/markdown-text";
 import { useAttachments } from '../context/AttachmentContext';
+import { hasAccess } from '@/lib/v2/accessControl';
+import type { UserClass } from '@/lib/v2/accessControl';
+import { StandardModalWithActions } from '@/components/v2/StandardModal';
+import { useRouter } from 'next/navigation';
 
 // Real estate focused suggested prompts
 const WELCOME_SUGGESTIONS = [
@@ -87,7 +91,13 @@ const AttachmentFile: FC = () => (
   </div>
 );
 
-export const AICoachThread: FC = () => {
+interface AICoachThreadProps {
+  userClass?: string | null;
+}
+
+export const AICoachThread: FC<AICoachThreadProps> = ({ userClass }) => {
+  const router = useRouter();
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   return (
     <ThreadPrimitive.Root
       className="bg-background box-border flex h-full flex-col overflow-hidden"
@@ -116,9 +126,44 @@ export const AICoachThread: FC = () => {
       <div className="flex-shrink-0 border-t border-gray-200 bg-white p-4">
         <div className="flex w-full max-w-[var(--thread-max-width)] flex-col items-center justify-end mx-auto relative">
           <ThreadScrollToBottom />
-          <Composer />
+          <Composer userClass={userClass} setShowUpgradeModal={setShowUpgradeModal} />
         </div>
       </div>
+      
+      {/* Upgrade Modal */}
+      <StandardModalWithActions
+        isOpen={showUpgradeModal}
+        onClose={() => setShowUpgradeModal(false)}
+        title="Upgrade Required"
+        showCloseButton={true}
+        primaryAction={{
+          label: "View Plans",
+          onClick: () => {
+            setShowUpgradeModal(false);
+            router.push('/pricing');
+          }
+        }}
+        secondaryAction={{
+          label: "Maybe Later",
+          onClick: () => setShowUpgradeModal(false)
+        }}
+      >
+        <div className="p-6">
+          <div className="flex items-center gap-4 mb-4">
+            <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center">
+              <Paperclip className="w-6 h-6 text-orange-600" />
+            </div>
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900">File Attachments</h3>
+              <p className="text-gray-600">Upload files to enhance your AI conversations</p>
+            </div>
+          </div>
+          <p className="text-gray-700">
+            Upgrade your plan to attach files and get more detailed AI assistance. 
+            Choose from our Plus or Pro plans to unlock this feature and many more!
+          </p>
+        </div>
+      </StandardModalWithActions>
     </ThreadPrimitive.Root>
   );
 };
@@ -178,7 +223,12 @@ const ThreadScrollToBottom: FC = () => {
   );
 };
 
-const Composer: FC = () => {
+interface ComposerProps {
+  userClass?: string | null;
+  setShowUpgradeModal: (show: boolean) => void;
+}
+
+const Composer: FC<ComposerProps> = ({ userClass, setShowUpgradeModal }) => {
   const { attachments, addAttachment, removeAttachment } = useAttachments();
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -253,7 +303,13 @@ const Composer: FC = () => {
           className="hidden"
         />
         <button
-          onClick={() => fileInputRef.current?.click()}
+          onClick={() => {
+            if (!hasAccess(userClass as UserClass, 'ai_coach_attachments')) {
+              setShowUpgradeModal(true);
+            } else {
+              fileInputRef.current?.click();
+            }
+          }}
           disabled={uploading}
           className="my-2.5 flex h-8 w-8 items-center justify-center rounded-md text-gray-500 hover:bg-gray-100 transition-colors disabled:opacity-50"
         >

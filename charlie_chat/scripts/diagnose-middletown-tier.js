@@ -1,5 +1,6 @@
 // scripts/diagnose-middletown-tier.js
 // Diagnostic script to trace tier assignment for Middletown, RI coordinates
+// LIKELY CAN DELETE THIS
 // Coordinates: 41.4912414456759, -71.2809178270402
 
 const { createClient } = require('@supabase/supabase-js');

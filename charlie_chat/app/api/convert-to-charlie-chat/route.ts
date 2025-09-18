@@ -1,3 +1,4 @@
+//NOT SURE IF THIS IS STILL BEING USED
 //THIS NEEDS TO BE REFACTORED FOR V2 TO SUPPORT TRIAL USER PROCESS
 import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';

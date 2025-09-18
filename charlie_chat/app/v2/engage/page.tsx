@@ -1195,11 +1195,6 @@ export default function EngagePage() {
     <div className="min-h-screen bg-gray-50 py-6">
       <div className="px-4 sm:px-6 lg:px-8">
         
-        {/* Header */}
-        <div className="mb-6">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Engage</h1>
-          <p className="text-gray-600">{filteredProperties.length} saved investment opportunities</p>
-        </div>
 
         {/* Filters and Actions Bar */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-6">
@@ -1241,6 +1236,11 @@ export default function EngagePage() {
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
                 />
+              </div>
+              
+              {/* Property Count */}
+              <div className="text-sm text-gray-600">
+                {filteredProperties.length} saved investment opportunities
               </div>
             </div>
 

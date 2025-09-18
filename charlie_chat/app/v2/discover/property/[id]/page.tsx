@@ -13,12 +13,15 @@ import { StreetViewImage } from '@/components/ui/StreetViewImage';
 import { PropertyInfoSections } from '@/components/v2/property-details/PropertyInfoSections';
 import { AIInvestmentAnalysis } from '@/components/v2/property-details/AIInvestmentAnalysis';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function PropertyDetailsPage() {
   const params = useParams();
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { user } = useAuth();
   const [property, setProperty] = useState<any>(null);
+  const [userClass, setUserClass] = useState<string | null>(null);
   
   // Determine if we're in DISCOVER, ENGAGE, or BUYBOX context
   const context = searchParams.get('context');
@@ -31,6 +34,30 @@ export default function PropertyDetailsPage() {
   const [isSkipTraceExpanded, setIsSkipTraceExpanded] = useState(false);
   const [isSkipTracing, setIsSkipTracing] = useState(false);
   const [skipTraceData, setSkipTraceData] = useState<any>(null);
+
+  // Fetch user class
+  useEffect(() => {
+    if (user?.id && !userClass) {
+      const fetchUserClass = async () => {
+        try {
+          const supabase = createSupabaseBrowserClient();
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('user_class')
+            .eq('user_id', user.id)
+            .single();
+            
+          if (profile?.user_class) {
+            setUserClass(profile.user_class);
+          }
+        } catch (error) {
+          console.error('Error fetching user class:', error);
+        }
+      };
+      
+      fetchUserClass();
+    }
+  }, [user?.id, userClass]);
 
   // Fetch property data when component mounts
   useEffect(() => {
@@ -407,7 +434,8 @@ export default function PropertyDetailsPage() {
         {/* AI Investment Analysis Component */}
         <AIInvestmentAnalysis 
           property={property} 
-          isEngageContext={isEngageContext} 
+          isEngageContext={isEngageContext}
+          userClass={userClass}
         />
 
         {/* Skip Trace Section - Full Width - Only show in ENGAGE context */}

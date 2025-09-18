@@ -238,7 +238,7 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, on
           status: 'Trial Active',
           description: 'Limited access with trial credits'
         };
-      case 'charlie_chat':
+      case 'core':
         return {
           planName: 'Core',
           status: 'Active',
@@ -337,14 +337,14 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, on
                 <p className="text-gray-600 mb-4">{error}</p>
                 <button 
                   onClick={() => window.location.reload()} 
-                  className="bg-orange-600 text-white px-4 py-2 rounded hover:bg-orange-700 transition-colors"
+                  className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition-colors"
                 >
                   Try Again
                 </button>
               </div>
             ) : loading ? (
               <div className="text-center py-8">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-600 mx-auto mb-4"></div>
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
                 <p className="text-gray-600">Loading subscription information...</p>
               </div>
             ) : (
@@ -358,8 +358,8 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, on
                           {/* Current Plan */}
                           <div className="flex items-start justify-between">
                             <div className="flex items-center space-x-3">
-                              <div className="p-2 bg-orange-100 rounded-lg">
-                                <CreditCard className="w-5 h-5 text-orange-600" />
+                              <div className="p-2 bg-blue-100 rounded-lg">
+                                <CreditCard className="w-5 h-5 text-blue-600" />
                               </div>
                               <div>
                                 <h2 className="text-xl font-semibold text-gray-900">{info.planName}</h2>
@@ -416,7 +416,7 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, on
                             <div className="flex flex-col sm:flex-row gap-3">
                               <button
                                 onClick={handleUpgrade}
-                                className="flex items-center justify-center space-x-2 bg-orange-600 text-white px-6 py-2 rounded-lg hover:bg-orange-700 transition-colors"
+                                className="flex items-center justify-center space-x-2 bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors"
                               >
                                 <ArrowRight className="w-4 h-4" />
                                 <span>Upgrade Plan</span>
@@ -441,39 +441,98 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, on
                     {(() => {
                       const userInfo = getUserClassDisplayInfo();
                       const isTrialOrFree = userClass === 'trial' || !userClass;
+                      const isCoreUser = userClass === 'core';
                       
                       return (
-                        <div className="text-center py-6">
-                          <div className={`p-3 rounded-full w-16 h-16 mx-auto mb-4 flex items-center justify-center ${
-                            userClass === 'trial' ? 'bg-blue-100' : 'bg-gray-100'
-                          }`}>
-                            <CreditCard className={`w-8 h-8 ${
-                              userClass === 'trial' ? 'text-blue-600' : 'text-gray-500'
-                            }`} />
-                          </div>
-                          <h2 className="text-xl font-semibold text-gray-900 mb-2">
-                            {userInfo?.planName || 'MultifamilyOS.ai (Free)'}
-                          </h2>
-                          <div className="flex items-center justify-center space-x-2 mb-4">
-                            <CheckCircle className={`w-5 h-5 ${
-                              userClass === 'trial' ? 'text-blue-500' : 'text-gray-500'
-                            }`} />
-                            <span className={`text-sm font-medium ${
-                              userClass === 'trial' ? 'text-blue-600' : 'text-gray-600'
-                            }`}>
-                              {userInfo?.status || 'Free'}
-                            </span>
-                          </div>
-                          <p className="text-gray-600 mb-6">
-                            {userInfo?.description || "You're currently on the free plan"}
-                          </p>
-                          {isTrialOrFree && (
-                            <button
-                              onClick={handleUpgrade}
-                              className="bg-orange-600 text-white px-6 py-3 rounded-lg hover:bg-orange-700 transition-colors font-semibold"
-                            >
-                              Upgrade Now
-                            </button>
+                        <div className="py-6">
+                          {isCoreUser ? (
+                            /* Core User - Sales-focused content */
+                            <div className="text-center">
+                              <div className="p-3 rounded-full w-16 h-16 mx-auto mb-6 flex items-center justify-center bg-blue-100">
+                                <CreditCard className="w-8 h-8 text-blue-600" />
+                              </div>
+                              
+                              <h2 className="text-2xl font-bold text-gray-900 mb-2">
+                                You're using MultifamilyOS.ai Core (Free)
+                              </h2>
+                              
+                              <div className="flex items-center justify-center space-x-2 mb-6">
+                                <CheckCircle className="w-5 h-5 text-blue-500" />
+                                <span className="text-sm font-medium text-blue-600">Core Plan Active</span>
+                              </div>
+
+                              <div className="bg-gradient-to-r from-blue-50 to-gray-50 rounded-lg p-6 mb-6">
+                                <h3 className="text-xl font-semibold text-gray-900 mb-4">
+                                  Ready to Unlock Your Investment Potential?
+                                </h3>
+                                <p className="text-gray-700 mb-4 leading-relaxed">
+                                  You're just scratching the surface! Upgrade to <strong>Plus</strong> or <strong>Pro</strong> to access the full power of our multifamily investment platform:
+                                </p>
+                                
+                                <div className="text-left space-y-3 mb-6">
+                                  <div className="flex items-start space-x-3">
+                                    <span className="text-gray-700"><strong>AI-Powered Recommendations</strong> - Get personalized investment insights</span>
+                                  </div>
+                                  <div className="flex items-start space-x-3">
+                                    <span className="text-gray-700"><strong>Advanced Search & Filtering</strong> - Find hidden gems faster</span>
+                                  </div>
+                                  <div className="flex items-start space-x-3">
+                                    <span className="text-gray-700"><strong>Unlimited Favorites & Lists</strong> - Track all your opportunities</span>
+                                  </div>
+                                  <div className="flex items-start space-x-3">
+                                    <span className="text-gray-700"><strong>File Uploads in AI Coach</strong> - Analyze your own deals</span>
+                                  </div>
+                                </div>
+                              </div>
+
+                              <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                                <button
+                                  onClick={handleUpgrade}
+                                  className="bg-gradient-to-r from-blue-600 to-blue-700 text-white px-8 py-3 rounded-lg hover:from-blue-700 hover:to-blue-800 transition-all duration-200 font-semibold text-lg shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+                                >
+                                  Upgrade to Plus or Pro Now
+                                </button>
+                              </div>
+                              
+                              <p className="text-sm text-gray-500 mt-4">
+                                Join hundreds of successful multifamily investors already using our platform
+                              </p>
+                            </div>
+                          ) : (
+                            /* Trial/Free Users - Original content */
+                            <div className="text-center">
+                              <div className={`p-3 rounded-full w-16 h-16 mx-auto mb-4 flex items-center justify-center ${
+                                userClass === 'trial' ? 'bg-blue-100' : 'bg-gray-100'
+                              }`}>
+                                <CreditCard className={`w-8 h-8 ${
+                                  userClass === 'trial' ? 'text-blue-600' : 'text-gray-500'
+                                }`} />
+                              </div>
+                              <h2 className="text-xl font-semibold text-gray-900 mb-2">
+                                {userInfo?.planName || 'MultifamilyOS.ai (Free)'}
+                              </h2>
+                              <div className="flex items-center justify-center space-x-2 mb-4">
+                                <CheckCircle className={`w-5 h-5 ${
+                                  userClass === 'trial' ? 'text-blue-500' : 'text-gray-500'
+                                }`} />
+                                <span className={`text-sm font-medium ${
+                                  userClass === 'trial' ? 'text-blue-600' : 'text-gray-600'
+                                }`}>
+                                  {userInfo?.status || 'Free'}
+                                </span>
+                              </div>
+                              <p className="text-gray-600 mb-6">
+                                {userInfo?.description || "You're currently on the free plan"}
+                              </p>
+                              {isTrialOrFree && (
+                                <button
+                                  onClick={handleUpgrade}
+                                  className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors font-semibold"
+                                >
+                                  Upgrade Now
+                                </button>
+                              )}
+                            </div>
                           )}
                         </div>
                       );
@@ -489,8 +548,8 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, on
                       {creditPurchases.map((purchase) => (
                         <div key={purchase.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
                           <div className="flex items-center space-x-3">
-                            <div className="p-2 bg-orange-100 rounded-lg">
-                              <CreditCard className="w-4 h-4 text-orange-600" />
+                            <div className="p-2 bg-blue-100 rounded-lg">
+                              <CreditCard className="w-4 h-4 text-blue-600" />
                             </div>
                             <div>
                               <p className="font-medium text-gray-900">{purchase.credit_amount} Credits</p>

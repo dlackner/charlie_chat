@@ -1,3 +1,10 @@
+/*
+ * CHARLIE2 V2 - Customer Support Help Widget
+ * Interactive help widget for customer support inquiries
+ * Positioned as dropdown from header navigation
+ * Part of the new V2 application architecture
+ */
+
 'use client';
 import React, { useState, useEffect, useRef } from 'react';
 import { X, Send } from 'lucide-react';
@@ -12,7 +19,6 @@ const MultiFamilyChatWidget = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [userProfile, setUserProfile] = useState<{first_name?: string, last_name?: string} | null>(null);
   const widgetRef = useRef<HTMLDivElement>(null);
-  const ignoreNextClickRef = useRef(false);
 
   // Fetch user profile when user is available
   useEffect(() => {
@@ -138,18 +144,18 @@ const MultiFamilyChatWidget = () => {
 
   return (
     <>
-      {/* Help Button - Integrated into header */}
+      {/* Help Button - Integrated into V2 header */}
       <div className="relative" ref={widgetRef}>
         <button
           onClick={() => setShowHelpWidget(!showHelpWidget)}
-          className="text-gray-800 hover:bg-gray-100 transition rounded-md px-3 py-1 font-medium"
+          className="flex items-center px-3 py-2 rounded-md text-sm font-medium transition-colors text-gray-600 hover:text-gray-900 hover:bg-gray-50"
         >
-          <span className="text-sm font-medium">Help</span>
+          HELP
         </button>
 
         {/* Chat Widget */}
         {showHelpWidget && (
-          <div className="absolute top-12 right-0 w-80 bg-white rounded-2xl shadow-2xl overflow-hidden border border-gray-200 z-50">
+          <div className="absolute top-full right-0 mt-2 w-80 bg-white rounded-2xl shadow-2xl overflow-hidden border border-gray-200 z-50">
           {/* Close Button */}
           <button
             onClick={() => setShowHelpWidget(false)}
@@ -157,16 +163,15 @@ const MultiFamilyChatWidget = () => {
           >
             <X size={20} />
           </button>
+          
           {/* Header */}
-          <div className="p-6 text-white" style={{ 
-            backgroundColor: '#1C599F'
-          }}>
+          <div className="p-6 text-white bg-gradient-to-r from-blue-600 to-blue-700">
             <div className="flex items-center gap-3 mb-3">
-              {/* Building icon SVG */}
+              {/* MultifamilyOS Building icon */}
               <div className="w-8 h-6 flex items-center justify-center">
                 <svg viewBox="0 0 100 60" className="w-full h-full">
-                  {/* Left building (orange/red) */}
-                  <polygon points="0,60 0,15 15,0 25,10 25,60" fill="#F97316" />
+                  {/* Left building (blue accent) */}
+                  <polygon points="0,60 0,15 15,0 25,10 25,60" fill="#3B82F6" />
                   <rect x="5" y="20" width="3" height="3" fill="white" opacity="0.8" />
                   <rect x="5" y="28" width="3" height="3" fill="white" opacity="0.8" />
                   <rect x="5" y="36" width="3" height="3" fill="white" opacity="0.8" />
@@ -174,8 +179,8 @@ const MultiFamilyChatWidget = () => {
                   <rect x="12" y="33" width="3" height="3" fill="white" opacity="0.8" />
                   <rect x="18" y="30" width="3" height="3" fill="white" opacity="0.8" />
                   
-                  {/* Right building (blue) */}
-                  <rect x="25" y="10" width="50" height="50" fill="#3B82F6" />
+                  {/* Right building (darker blue) */}
+                  <rect x="25" y="10" width="50" height="50" fill="#1E40AF" />
                   <rect x="30" y="18" width="4" height="4" fill="white" opacity="0.8" />
                   <rect x="38" y="18" width="4" height="4" fill="white" opacity="0.8" />
                   <rect x="46" y="18" width="4" height="4" fill="white" opacity="0.8" />
@@ -218,24 +223,18 @@ const MultiFamilyChatWidget = () => {
                     onChange={(e) => setMessage(e.target.value)}
                     onKeyDown={handleKeyDown}
                     placeholder="Pass along your questions and input."
-                    className="w-full px-3 py-3 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 resize-none"
-                    style={{
-                      ['--tw-ring-color' as any]: '#1C599F'
-                    }}
-                    onFocus={(e) => e.target.style.borderColor = '#1C599F'}
-                    onBlur={(e) => e.target.style.borderColor = '#E5E7EB'}
+                    className="w-full px-3 py-3 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none transition-colors"
                     rows={3}
                     disabled={isLoading}
                   />
                   <button
                     onClick={handleSendMessage}
                     disabled={!message.trim() || isLoading}
-                    className="w-full px-4 py-2 text-white rounded-lg font-medium transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                    style={{ 
-                      background: message.trim() && !isLoading
-                        ? 'linear-gradient(135deg, #F97316 0%, #EA580C 100%)'
-                        : '#D1D5DB'
-                    }}
+                    className={`w-full px-4 py-2 text-white rounded-lg font-medium transition-all duration-200 disabled:cursor-not-allowed flex items-center justify-center gap-2 ${
+                      message.trim() && !isLoading
+                        ? 'bg-blue-600 hover:bg-blue-700'
+                        : 'bg-gray-400 hover:bg-gray-500'
+                    }`}
                   >
                     <Send size={16} />
                     {isLoading ? 'Sending...' : 'Send Message'}
@@ -259,13 +258,13 @@ const MultiFamilyChatWidget = () => {
               {faqItems.map((item, index) => (
                 <button
                   key={index}
-                  className="w-full text-left p-3 rounded-lg border border-gray-200 hover:bg-gray-50 hover:border-orange-200 transition-colors text-sm group"
+                  className="w-full text-left p-3 rounded-lg border border-gray-200 hover:bg-gray-50 hover:border-blue-200 transition-colors text-sm group"
                   onClick={() => {
                     // FAQ functionality placeholder
                   }}
                 >
-                  <span className="text-gray-700 group-hover:text-orange-600">{item}</span>
-                  <span className="float-right text-orange-500 group-hover:text-orange-600">›</span>
+                  <span className="text-gray-700 group-hover:text-blue-600">{item}</span>
+                  <span className="float-right text-blue-500 group-hover:text-blue-600">›</span>
                 </button>
               ))}
             </div>
@@ -275,8 +274,8 @@ const MultiFamilyChatWidget = () => {
           <div className="border-t border-gray-100 p-4">
             <div className="flex justify-center">
               <div className="flex items-center gap-2 text-xs text-gray-500">
-                <div className="w-4 h-4 rounded" style={{ background: 'linear-gradient(135deg, #F97316 0%, #3B82F6 100%)' }}></div>
-                <span>MultiFamilyOS Support</span>
+                <div className="w-4 h-4 rounded bg-gradient-to-r from-blue-500 to-blue-600"></div>
+                <span>MultifamilyOS Support</span>
               </div>
             </div>
           </div>

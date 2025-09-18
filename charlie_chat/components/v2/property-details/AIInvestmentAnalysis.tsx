@@ -6,7 +6,11 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Bot, ChevronDown, ChevronUp, Calculator } from 'lucide-react';
+import { hasAccess } from '@/lib/v2/accessControl';
+import type { UserClass } from '@/lib/v2/accessControl';
+import { StandardModalWithActions } from '@/components/v2/StandardModal';
 
 interface PropertyData {
   address_street?: string;
@@ -56,13 +60,16 @@ interface AnalysisResult {
 interface AIInvestmentAnalysisProps {
   property: PropertyData;
   isEngageContext: boolean;
+  userClass?: string | null;
 }
 
-export function AIInvestmentAnalysis({ property, isEngageContext }: AIInvestmentAnalysisProps) {
+export function AIInvestmentAnalysis({ property, isEngageContext, userClass }: AIInvestmentAnalysisProps) {
+  const router = useRouter();
   const [isAIAnalysisExpanded, setIsAIAnalysisExpanded] = useState(true);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisError, setAnalysisError] = useState<string | null>(null);
   const [investmentAnalysis, setInvestmentAnalysis] = useState<AnalysisResult | null>(null);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
 
   const handleAnalyzeProperty = async () => {
     setIsAnalyzing(true);
@@ -100,6 +107,11 @@ export function AIInvestmentAnalysis({ property, isEngageContext }: AIInvestment
       
       setInvestmentAnalysis(analysisResult);
       setIsAIAnalysisExpanded(true);
+      
+      // Show upgrade modal immediately for core users
+      if (!hasAccess(userClass as UserClass, 'discover_investment_analysis')) {
+        setShowUpgradeModal(true);
+      }
       
     } catch (error) {
       console.error('Analysis error:', error);
@@ -200,8 +212,10 @@ export function AIInvestmentAnalysis({ property, isEngageContext }: AIInvestment
                 </div>
               )}
 
-              {/* Key Metrics Grid - Always visible */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
+              {/* Key Metrics Grid - Access Controlled */}
+              <div className={`relative grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6 ${
+                !hasAccess(userClass as UserClass, 'discover_investment_analysis') ? 'overflow-hidden' : ''
+              }`}>
                 {/* Financial Strength */}
                 <div className="bg-green-50 rounded-lg p-4 border border-green-200">
                   <h4 className="font-semibold text-green-800 mb-3 flex items-center">
@@ -292,10 +306,26 @@ export function AIInvestmentAnalysis({ property, isEngageContext }: AIInvestment
                     </div>
                   )}
                 </div>
+                
+                {/* Blur overlay for core users on summary cards - uniform blur across entire content */}
+                {!hasAccess(userClass as UserClass, 'discover_investment_analysis') && (
+                  <div 
+                    className="absolute inset-0 cursor-pointer"
+                    style={{
+                      backdropFilter: 'blur(4px)',
+                      backgroundColor: 'rgba(255, 255, 255, 0.1)'
+                    }}
+                    onClick={() => setShowUpgradeModal(true)}
+                  />
+                )}
               </div>
 
-              {/* Investment Analysis Narrative - Always Visible */}
-              <div className="bg-gray-50 rounded-lg p-6 border border-gray-200 mb-6">
+              {/* Detailed Analysis Section - Access Controlled */}
+              <div className={`relative ${
+                !hasAccess(userClass as UserClass, 'discover_investment_analysis') ? 'overflow-hidden' : ''
+              }`}>
+                {/* Investment Analysis Narrative */}
+                <div className="bg-gray-50 rounded-lg p-6 border border-gray-200 mb-6">
                 <h4 className="font-semibold text-gray-800 mb-4 flex items-center">
                   <div className="p-1.5 bg-gradient-to-r from-gray-600 to-gray-700 rounded-lg mr-3">
                     <Bot className="w-4 h-4 text-white" />
@@ -395,6 +425,19 @@ export function AIInvestmentAnalysis({ property, isEngageContext }: AIInvestment
                 </div>
               )}
               
+                {/* Blur overlay for core users */}
+                {!hasAccess(userClass as UserClass, 'discover_investment_analysis') && (
+                  <div 
+                    className="absolute inset-0 cursor-pointer"
+                    onClick={() => setShowUpgradeModal(true)}
+                    style={{
+                      backdropFilter: 'blur(4px)',
+                      backgroundColor: 'rgba(255, 255, 255, 0.1)'
+                    }}
+                  />
+                )}
+              </div>
+              
               {/* Footer with Actions - Only show in ENGAGE context */}
               {isEngageContext && (
                 <div className="flex items-center justify-between pt-4 border-t border-gray-200">
@@ -426,6 +469,41 @@ export function AIInvestmentAnalysis({ property, isEngageContext }: AIInvestment
           )}
         </div>
       )}
+      
+      {/* Upgrade Modal */}
+      <StandardModalWithActions
+        isOpen={showUpgradeModal}
+        onClose={() => setShowUpgradeModal(false)}
+        title="Upgrade Required"
+        showCloseButton={true}
+        primaryAction={{
+          label: "View Plans",
+          onClick: () => {
+            setShowUpgradeModal(false);
+            router.push('/pricing');
+          }
+        }}
+        secondaryAction={{
+          label: "Maybe Later",
+          onClick: () => setShowUpgradeModal(false)
+        }}
+      >
+        <div className="p-6">
+          <div className="flex items-center gap-4 mb-4">
+            <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center">
+              <Calculator className="w-6 h-6 text-orange-600" />
+            </div>
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900">AI Investment Analysis</h3>
+              <p className="text-gray-600">Get detailed property insights and recommendations</p>
+            </div>
+          </div>
+          <p className="text-gray-700">
+            Upgrade your plan to get an AI property analysis and recommendation. 
+            Choose from our Plus or Pro plans to unlock this feature and many more!
+          </p>
+        </div>
+      </StandardModalWithActions>
     </div>
   );
 }

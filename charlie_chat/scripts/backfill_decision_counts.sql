@@ -1,5 +1,6 @@
 -- One-time script to backfill total_decisions_made in user_markets table
 -- This counts existing decisions and updates the cached counts
+--LIKELY CAN DELETE THIS
 
 UPDATE user_markets 
 SET total_decisions_made = COALESCE(decision_counts.count, 0),

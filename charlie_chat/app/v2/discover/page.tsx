@@ -9,7 +9,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter, useSearchParams } from 'next/navigation';
-import { createBrowserClient } from '@supabase/ssr';
+import { hasAccess } from '@/lib/v2/accessControl';
+import type { UserClass } from '@/lib/v2/accessControl';
 import { Search, MapPin, SlidersHorizontal, ChevronDown, ChevronUp, X, Heart, Bookmark, Target, AlertTriangle, Wrench, Activity, CreditCard, DollarSign, Home, Building, Users, Grid3x3, Map, ArrowUpDown, Trash2, Edit } from 'lucide-react';
 import { StandardModalWithActions } from '@/components/v2/StandardModal';
 import PropertyMap from '@/components/v2/PropertyMap';
@@ -149,6 +150,12 @@ export default function DiscoverPage() {
   const { user, supabase } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
+  
+  // User class for access control
+  const [userClass, setUserClass] = useState<string | null>(null);
+  
+  // Modal states
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   
   // Initialize state from URL parameters if available
   const [searchQuery, setSearchQuery] = useState(searchParams.get('q') || '');
@@ -403,6 +410,29 @@ export default function DiscoverPage() {
     restoreSearchState();
   }, []); // Only run on mount
 
+  // Fetch user class for access control
+  useEffect(() => {
+    if (user?.id && supabase && !userClass) {
+      const fetchUserClass = async () => {
+        try {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('user_class')
+            .eq('user_id', user.id)
+            .single();
+            
+          if (profile?.user_class) {
+            setUserClass(profile.user_class);
+          }
+        } catch (error) {
+          console.error('Error fetching user class:', error);
+        }
+      };
+      
+      fetchUserClass();
+    }
+  }, [user?.id, supabase, userClass]);
+
   // Load recent favorited properties on page load
   useEffect(() => {
     const loadRecentProperties = async () => {
@@ -484,12 +514,14 @@ export default function DiscoverPage() {
           setPropertyCount(0);
           setTotalFavoritesCount(0);
           setHasSearched(false);
+          setIsLoadingRecent(false);
         } else {
           setAllFavorites([]);
           setRecentProperties([]);
           setPropertyCount(0);
           setTotalFavoritesCount(0);
           setHasSearched(false);
+          setIsLoadingRecent(false);
         }
 
       } catch (error) {
@@ -523,13 +555,8 @@ export default function DiscoverPage() {
       const endIndex = startIndex + FAVORITES_PER_PAGE;
       const nextPageIds = filteredFavorites.slice(startIndex, endIndex);
       
-      if (nextPageIds.length > 0) {
-        // Fetch actual property data from database
-        const supabase = createBrowserClient(
-          process.env.NEXT_PUBLIC_SUPABASE_URL!,
-          process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-        );
-        
+      if (nextPageIds.length > 0 && supabase) {
+        // Fetch actual property data from database using existing supabase client
         const { data: propertiesData, error: propertiesError } = await supabase
           .from('saved_properties')
           .select('*')
@@ -598,6 +625,13 @@ export default function DiscoverPage() {
 
   const toggleFavorite = async (property: any, event: React.MouseEvent) => {
     event.stopPropagation();
+    
+    // Check if user has permission to favorite properties
+    const currentUserClass = userClass as UserClass;
+    if (!hasAccess(currentUserClass, 'discover_favorite_properties')) {
+      setShowUpgradeModal(true);
+      return;
+    }
     
     // TEMPORARY: Skip auth check for testing
     // if (!user) {
@@ -2249,6 +2283,8 @@ export default function DiscoverPage() {
                         recentProperties={recentProperties}
                         searchResults={searchResults}
                         favoritePropertyIds={favoritePropertyIds}
+                        userClass={userClass}
+                        setShowUpgradeModal={setShowUpgradeModal}
                       />
                     ))}
                   </div>
@@ -2957,6 +2993,44 @@ export default function DiscoverPage() {
           </p>
         </div>
       </StandardModalWithActions>
+
+      {/* Upgrade Plan Modal */}
+      <StandardModalWithActions
+        isOpen={showUpgradeModal}
+        onClose={() => setShowUpgradeModal(false)}
+        title="Upgrade Required"
+        showCloseButton={true}
+        modalId="upgrade-modal"
+        primaryAction={{
+          label: "View Plans",
+          onClick: () => {
+            setShowUpgradeModal(false);
+            router.push('/pricing');
+          },
+          variant: "primary"
+        }}
+        secondaryAction={{
+          label: "Maybe Later",
+          onClick: () => setShowUpgradeModal(false),
+          variant: "secondary"
+        }}
+      >
+        <div className="p-6">
+          <div className="flex items-center gap-4 mb-4">
+            <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center">
+              <Heart className="w-6 h-6 text-orange-600" />
+            </div>
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900">Save Your Favorite Properties</h3>
+              <p className="text-gray-600">Keep track of properties you're interested in</p>
+            </div>
+          </div>
+          <p className="text-gray-700">
+            Upgrade your plan to save favorite properties and access them anytime. 
+            Choose from our Plus or Pro plans to unlock this feature and many more!
+          </p>
+        </div>
+      </StandardModalWithActions>
     </div>
     </div>
   );
@@ -3019,7 +3093,9 @@ function RecentPropertyCard({
   viewMode = 'cards',
   recentProperties = [],
   searchResults = [],
-  favoritePropertyIds = []
+  favoritePropertyIds = [],
+  userClass = null,
+  setShowUpgradeModal
 }: { 
   property: any;
   searchQuery?: string;
@@ -3029,6 +3105,8 @@ function RecentPropertyCard({
   recentProperties?: any[];
   searchResults?: any[];
   favoritePropertyIds?: string[];
+  userClass?: string | null;
+  setShowUpgradeModal?: (show: boolean) => void;
 }) {
   return (
     <div className="bg-white rounded-lg border border-gray-200 overflow-hidden hover:shadow-lg transition-all duration-200">
@@ -3070,13 +3148,29 @@ function RecentPropertyCard({
         
         {/* Heart Favorite Button */}
         <button 
-          onClick={(e) => onToggleFavorite?.(property, e)}
-          className="absolute top-3 right-3 p-2 bg-white/90 rounded-full hover:bg-white shadow-sm transition-colors cursor-pointer"
+          onClick={(e) => {
+            const currentUserClass = userClass as UserClass;
+            if (!hasAccess(currentUserClass, 'discover_favorite_properties')) {
+              // Trigger the modal in the parent component
+              setShowUpgradeModal?.(true);
+              return;
+            }
+            onToggleFavorite?.(property, e);
+          }}
+          className={`absolute top-3 right-3 p-2 bg-white/90 rounded-full shadow-sm transition-colors ${
+            hasAccess(userClass as UserClass, 'discover_favorite_properties') 
+              ? 'hover:bg-white cursor-pointer' 
+              : 'cursor-not-allowed opacity-50'
+          }`}
         >
           {favoritePropertyIds.includes(property.property_id || property.id) ? (
             <Heart className="h-4 w-4 text-red-500 fill-current" />
           ) : (
-            <Heart className="h-4 w-4 text-gray-600 hover:text-red-500" />
+            <Heart className={`h-4 w-4 ${
+              hasAccess(userClass as UserClass, 'discover_favorite_properties')
+                ? 'text-gray-600 hover:text-red-500'
+                : 'text-gray-400'
+            }`} />
           )}
         </button>
         

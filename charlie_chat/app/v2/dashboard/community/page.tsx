@@ -77,7 +77,6 @@ const HeatMapComponent = dynamic(() => import('react-map-gl/mapbox').then((mod) 
 
 export default function CommunityPage() {
   const [selectedTimeRange, setSelectedTimeRange] = useState('30');
-  const [selectedMarketType, setSelectedMarketType] = useState('all');
   const [showLendersModal, setShowLendersModal] = useState(false);
   const [communityData, setCommunityData] = useState({
     totalUsers: 0,
@@ -119,7 +118,7 @@ export default function CommunityPage() {
         </div>
 
         {/* Time Range Selector */}
-        <div className="mb-6 flex items-center justify-between">
+        <div className="mb-6">
           <div className="flex items-center space-x-4">
             <label className="text-sm font-medium text-gray-700">Time Range:</label>
             <select
@@ -131,20 +130,6 @@ export default function CommunityPage() {
               <option value="30">Last 30 days</option>
               <option value="90">Last 90 days</option>
               <option value="365">Last year</option>
-            </select>
-          </div>
-
-          <div className="flex items-center space-x-4">
-            <label className="text-sm font-medium text-gray-700">Market Focus:</label>
-            <select
-              value={selectedMarketType}
-              onChange={(e) => setSelectedMarketType(e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            >
-              <option value="all">All Markets</option>
-              <option value="primary">Primary Markets</option>
-              <option value="secondary">Secondary Markets</option>
-              <option value="emerging">Emerging Markets</option>
             </select>
           </div>
         </div>
@@ -193,7 +178,7 @@ export default function CommunityPage() {
             <ActivityTrendsChart timeRange={selectedTimeRange} />
 
             {/* Regional Heat Map */}
-            <RegionalHeatMap marketType={selectedMarketType} timeRange={selectedTimeRange} />
+            <RegionalHeatMap timeRange={selectedTimeRange} />
           </div>
 
           {/* Right Column - Market Insights */}
@@ -456,7 +441,7 @@ function ActivityTrendsChart({ timeRange }: { timeRange: string }) {
 }
 
 // Regional Heat Map Component
-function RegionalHeatMap({ marketType, timeRange }: { marketType: string; timeRange: string }) {
+function RegionalHeatMap({ timeRange }: { timeRange: string }) {
   const [heatmapData, setHeatmapData] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [mapLoaded, setMapLoaded] = useState(false);
@@ -597,9 +582,6 @@ function RegionalHeatMap({ marketType, timeRange }: { marketType: string; timeRa
     <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
       <div className="flex items-center justify-between mb-6">
         <h3 className="text-lg font-semibold text-gray-900">Property Activity Heat Map</h3>
-        <div className="text-sm text-gray-500">
-          {marketType === 'all' ? 'All Markets' : `${marketType.charAt(0).toUpperCase() + marketType.slice(1)} Markets`}
-        </div>
       </div>
       
       {/* Heat Map */}

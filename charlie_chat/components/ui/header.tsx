@@ -17,7 +17,7 @@ import { useModal } from "@/contexts/ModalContext";
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import { useMyPropertiesAccess } from "@/app/my-properties/components/useMyPropertiesAccess";
 import { Dialog } from "@headlessui/react";
-import MultiFamilyChatWidget from "./MultiFamilyChatWidget";
+import MultiFamilyChatWidget from "@/app/v2/components/help/MultiFamilyChatWidget";
 
 export default function Header() {
   const { user: currentUser, isLoading: isLoadingAuth, supabase, session } = useAuth();

@@ -1,3 +1,5 @@
+//NOT SURE IF THIS IS STILL BEING USED
+
 import NextAuth from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 

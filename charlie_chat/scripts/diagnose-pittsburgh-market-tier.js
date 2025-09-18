@@ -1,5 +1,6 @@
 // scripts/diagnose-pittsburgh-market-tier.js
 // Diagnostic script to query database and show exact Pittsburgh market tier data
+// LIKELY CAN DELETE THIS
 
 const { createClient } = require('@supabase/supabase-js');
 
