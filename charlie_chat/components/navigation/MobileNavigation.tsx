@@ -416,7 +416,7 @@ export default function MobileNavigation() {
                   <div 
                     key={item.name} 
                     className="relative"
-                    onMouseLeave={() => isSubmenuOpen && closeAllSubmenus()}
+                    //onMouseLeave={() => isSubmenuOpen && closeAllSubmenus()}
                   >
                     {item.submenu ? (
                       // Items with submenu - show dropdown
@@ -574,7 +574,7 @@ export default function MobileNavigation() {
                 return (
                   <div 
                     className="relative"
-                    onMouseLeave={() => isSubmenuOpen && closeAllSubmenus()}
+                   // onMouseLeave={() => isSubmenuOpen && closeAllSubmenus()}
                   >
                     {accountItem.submenu ? (
                       <>
