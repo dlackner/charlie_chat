@@ -1,3 +1,9 @@
+/*
+ * CHARLIE2 V2 - Charlie Recommendation Widget Component
+ * Floating widget that notifies users of new weekly property recommendations
+ * Features real-time updates, smart notifications, and animated UI feedback
+ * Part of the new V2 application architecture
+ */
 "use client";
 
 import React, { useState, useEffect } from 'react';

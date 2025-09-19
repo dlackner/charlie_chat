@@ -96,10 +96,10 @@ export default function CommunityPage() {
           const data = await response.json();
           setCommunityData(data);
         } else {
-          console.error('Failed to fetch community insights');
+          // Failed to fetch community insights
         }
       } catch (error) {
-        console.error('Error fetching community insights:', error);
+        // Error fetching community insights
       } finally {
         setIsLoading(false);
       }
@@ -253,10 +253,10 @@ function ActivityTrendsChart({ timeRange }: { timeRange: string }) {
           const data = await response.json();
           setChartData(data || []);
         } else {
-          console.error('Failed to fetch community activity trends');
+          // Failed to fetch community activity trends
         }
       } catch (error) {
-        console.error('Error fetching community activity trends:', error);
+        // Error fetching community activity trends
       } finally {
         setIsLoading(false);
       }
@@ -455,10 +455,10 @@ function RegionalHeatMap({ timeRange }: { timeRange: string }) {
           const data = await response.json();
           setHeatmapData(data || []);
         } else {
-          console.error('Failed to fetch heatmap data');
+          // Failed to fetch heatmap data
         }
       } catch (error) {
-        console.error('Error fetching heatmap data:', error);
+        // Error fetching heatmap data
       } finally {
         setIsLoading(false);
       }
@@ -669,7 +669,7 @@ function MarketInsights() {
         throw new Error('Failed to fetch insights');
       }
     } catch (error) {
-      console.error('Error fetching market insights:', error);
+      // Error fetching market insights
       setError('Failed to load insights');
     } finally {
       setIsLoading(false);

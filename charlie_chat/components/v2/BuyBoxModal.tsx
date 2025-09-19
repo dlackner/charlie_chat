@@ -71,8 +71,8 @@ const parseLocationInput = (locationInput: string): { type: 'city' | 'zip' | 'co
         const lastPart = locationParts[1].trim();
         const stateZipMatch = lastPart.match(/^([a-zA-Z]{2})\s*(\d{5}(?:-\d{4})?)?$/);
         
-        let parsedData = {
-            type: 'city' as const,
+        let parsedData: { type: 'city' | 'zip' | 'county', city: string, state: string, zip: string, county: string } = {
+            type: 'city',
             city: '',
             state: '',
             zip: '',

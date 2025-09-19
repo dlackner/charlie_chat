@@ -61,7 +61,7 @@ export function usePersistedChatRuntime(attachments?: any[], clearAttachments?: 
         setThreads(data.threads || []);
       }
     } catch (error) {
-      console.error('Error loading threads:', error);
+      // Error loading threads
     } finally {
       setLoadingThreads(false);
     }
@@ -77,7 +77,7 @@ export function usePersistedChatRuntime(attachments?: any[], clearAttachments?: 
       // The runtime will automatically handle the thread context via the threadId in the API body
       
     } catch (error) {
-      console.error('Error loading thread:', error);
+      // Error loading thread
     }
   }, []);
 
@@ -106,10 +106,10 @@ export function usePersistedChatRuntime(attachments?: any[], clearAttachments?: 
         // Refresh threads list
         loadThreads();
       } else {
-        console.error('Failed to delete thread');
+        // Failed to delete thread
       }
     } catch (error) {
-      console.error('Error deleting thread:', error);
+      // Error deleting thread
     }
   }, [currentThreadId, runtime, loadThreads]);
 

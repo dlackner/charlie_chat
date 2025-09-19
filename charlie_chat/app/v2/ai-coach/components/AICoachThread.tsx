@@ -252,11 +252,10 @@ const Composer: FC<ComposerProps> = ({ userClass, setShowUpgradeModal }) => {
         addAttachment(result);
       } else {
         const error = await response.json();
-        alert(error.error || 'Upload failed');
+        // Upload failed - could add proper error notification here
       }
     } catch (error) {
-      console.error('Upload error:', error);
-      alert('Upload failed');
+      // Upload failed - could add proper error notification here
     } finally {
       setUploading(false);
       if (fileInputRef.current) {
@@ -416,7 +415,7 @@ const BranchPicker: FC<BranchPickerProps> = ({ className }) => {
         <ChevronLeftIcon className="size-4" />
         <span className="sr-only">Previous</span>
       </BranchPickerPrimitive.Previous>
-      <BranchPickerPrimitive.Number className="text-gray-500 font-medium px-2" />
+      <BranchPickerPrimitive.Number />
       <BranchPickerPrimitive.Next className="hover:bg-gray-100 p-2 rounded cursor-pointer">
         <ChevronRightIcon className="size-4" />
         <span className="sr-only">Next</span>

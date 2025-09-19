@@ -36,6 +36,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { StreetViewImage } from '@/components/ui/StreetViewImage';
 import { updateMarketConvergence } from '@/lib/v2/convergenceAnalysis';
 import PropertyMap from '@/components/v2/PropertyMap';
+import { useAlert } from '@/components/v2/AlertModal';
 
 // Enhanced interfaces matching weekly recommendations system
 interface MMRProperty {
@@ -92,6 +93,7 @@ interface UserMarket {
 
 export default function BuyBoxPage() {
   const { user, supabase } = useAuth();
+  const { showError, showWarning, AlertComponent } = useAlert();
   const [userMarkets, setUserMarkets] = useState<UserMarket[]>([]);
   const [selectedMarketKey, setSelectedMarketKey] = useState<string | null>(null);
   const [marketRecommendations, setMarketRecommendations] = useState<{ [marketKey: string]: MMRProperty[] }>({});
@@ -121,7 +123,6 @@ export default function BuyBoxPage() {
         .eq('market_key', marketToDelete.key);
       
       if (favoritesError) {
-        console.error('Error deleting favorites:', favoritesError);
         // Continue with market deletion even if favorites cleanup fails
       }
       
@@ -133,7 +134,7 @@ export default function BuyBoxPage() {
         .eq('market_key', marketToDelete.key);
       
       if (error) {
-        alert('Failed to delete market. Please try again.');
+        showError('Failed to delete market. Please try again.', 'Delete Failed');
         return;
       }
       
@@ -160,7 +161,7 @@ export default function BuyBoxPage() {
       setMarketToDelete(null);
       
     } catch (error) {
-      alert('Failed to delete market. Please try again.');
+      showError('Failed to delete market. Please try again.', 'Delete Failed');
       setShowDeleteModal(false);
       setMarketToDelete(null);
     }
@@ -484,7 +485,6 @@ export default function BuyBoxPage() {
       if (error) {
         // Silently handle logging errors
       } else {
-        
         // Increment total_decisions_made for this market
         const currentCount = market.total_decisions_made || 0;
         await supabase
@@ -607,7 +607,7 @@ export default function BuyBoxPage() {
                     
                     if (realMarketCount >= maxMarkets) {
                       // User is at limit - show upgrade message or modal
-                      alert(`You've reached your limit of ${maxMarkets} market${maxMarkets > 1 ? 's' : ''}. Please upgrade your plan to add more markets.`);
+                      showWarning(`You've reached your limit of ${maxMarkets} market${maxMarkets > 1 ? 's' : ''}. Please upgrade your plan to add more markets.`, 'Market Limit Reached');
                       return;
                     }
                     
@@ -868,6 +868,9 @@ export default function BuyBoxPage() {
             </p>
           </div>
         </StandardModalWithActions>
+
+        {/* Alert Modal */}
+        {AlertComponent}
       </div>
     </div>
   );
@@ -1012,10 +1015,16 @@ function RecommendationCard({
           </p>
 
           <div className="mb-3">
-            <div className="text-xl font-bold text-gray-900">
-              {formatCurrency(property.assessed_value)}
-            </div>
-            {property.estimated_equity && (
+            {property.assessed_value && property.assessed_value > 0 ? (
+              <div className="text-xl font-bold text-gray-900">
+                {formatCurrency(property.assessed_value)}
+              </div>
+            ) : (
+              <div className="text-xl font-bold text-gray-900">
+                Price not available
+              </div>
+            )}
+            {property.estimated_equity != null && property.estimated_equity > 0 && (
               <div className="text-sm text-gray-600">
                 Est. Equity: <span className="font-medium text-green-600">{formatCurrency(property.estimated_equity)}</span>
               </div>

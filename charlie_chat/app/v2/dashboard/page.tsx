@@ -73,7 +73,7 @@ export default function DashboardPage() {
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-xl font-semibold text-gray-900">Recent Activity</h2>
-                <Link href="/dashboard/metrics" className="text-blue-600 hover:text-blue-700 text-sm font-medium">
+                <Link href="/v2/dashboard/metrics" className="text-blue-600 hover:text-blue-700 text-sm font-medium">
                   View All
                 </Link>
               </div>
@@ -193,7 +193,7 @@ export default function DashboardPage() {
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-semibold text-gray-900">Deal Pipeline</h3>
-                <Link href="/dashboard/pipeline" className="text-blue-600 hover:text-blue-700 text-sm">
+                <Link href="/v2/dashboard/pipeline" className="text-blue-600 hover:text-blue-700 text-sm">
                   View All
                 </Link>
               </div>

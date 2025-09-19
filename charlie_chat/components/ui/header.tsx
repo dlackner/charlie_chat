@@ -9,13 +9,13 @@ import { RecommendationsIconModal, RecommendationsIconModalRef } from '@/compone
 import { WeeklyRecommendationsModalMMR } from "@/components/WeeklyRecommendationsModalMMR";
 import { ProfileModal } from "@/components/ProfileModal";
 import { BuyBoxModal } from "@/components/v2/BuyBoxModal";
-import { SubscriptionModal } from "@/components/SubscriptionModal";
+import { SubscriptionModal } from "@/app/v2/components/SubscriptionModal";
 import SubscriptionSupportModal from "@/components/ui/SubscriptionSupportModal";
 
 import { useAuth } from "@/contexts/AuthContext";
 import { useModal } from "@/contexts/ModalContext";
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
-import { useMyPropertiesAccess } from "@/app/my-properties/components/useMyPropertiesAccess";
+import { useMyPropertiesAccess } from "@/app/v2/my-properties/components/useMyPropertiesAccess";
 import { Dialog } from "@headlessui/react";
 import MultiFamilyChatWidget from "@/app/v2/components/help/MultiFamilyChatWidget";
 
@@ -148,7 +148,7 @@ export default function Header() {
       console.error("Error signing out:", error);
     } else {
       setShowAccountMenu(false);
-      router.push("/v2/loginnew");
+      router.push("/");
     }
   };
 

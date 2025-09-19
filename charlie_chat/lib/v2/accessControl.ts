@@ -28,6 +28,7 @@ export type Feature =
   | 'discover'
   | 'discover_buybox'
   | 'discover_saved'
+  | 'discover_saved_searches'
   | 'discover_property_details'
   | 'discover_favorite_properties'
   | 'discover_investment_analysis'
@@ -35,6 +36,7 @@ export type Feature =
   | 'engage_templates'
   | 'ai_coach'
   | 'ai_coach_attachments'
+  | 'ai_coach_threads'
   | 'pricing'
   | 'account'
   | 'property_analyzer';
@@ -51,11 +53,13 @@ const PERMISSIONS: Record<Exclude<UserClass, null>, Feature[]> = {
     'discover',
     'discover_buybox',
     'discover_saved',
+    'discover_saved_searches',
     'discover_property_details',
     'discover_favorite_properties',
     'discover_investment_analysis',
     'ai_coach',
     'ai_coach_attachments',
+    'ai_coach_threads',
     'pricing',
     'account',
     'property_analyzer'
@@ -88,6 +92,7 @@ const PERMISSIONS: Record<Exclude<UserClass, null>, Feature[]> = {
     'discover',
     'discover_buybox',
     'discover_saved',
+    'discover_saved_searches',
     'discover_property_details',
     'discover_favorite_properties',
     'discover_investment_analysis', 
@@ -95,6 +100,7 @@ const PERMISSIONS: Record<Exclude<UserClass, null>, Feature[]> = {
     'engage_templates',
     'ai_coach',
     'ai_coach_attachments',
+    'ai_coach_threads',
     'pricing',
     'account',
     'property_analyzer'
@@ -110,6 +116,7 @@ const PERMISSIONS: Record<Exclude<UserClass, null>, Feature[]> = {
     'discover',
     'discover_buybox', 
     'discover_saved',
+    'discover_saved_searches',
     'discover_property_details',
     'discover_favorite_properties',
     'discover_investment_analysis',
@@ -117,6 +124,7 @@ const PERMISSIONS: Record<Exclude<UserClass, null>, Feature[]> = {
     'engage_templates', 
     'ai_coach',
     'ai_coach_attachments',
+    'ai_coach_threads',
     'pricing',
     'account',
     'property_analyzer'
@@ -132,13 +140,77 @@ const PERMISSIONS: Record<Exclude<UserClass, null>, Feature[]> = {
     'discover',
     'discover_buybox',
     'discover_saved',
+    'discover_saved_searches',
     'discover_property_details',
     'discover_favorite_properties',
     'discover_investment_analysis',
     'engage',
     'engage_templates',
     'ai_coach',
-    'ai_coach_attachments', 
+    'ai_coach_attachments',
+    'ai_coach_threads', 
+    'pricing',
+    'account',
+    'property_analyzer'
+  ],
+
+  // Legacy user classes - mapped to their new equivalents
+  charlie_chat: [
+    'dashboard',
+    'dashboard_community',
+    'dashboard_metrics',
+    'dashboard_pipeline',
+    'dashboard_onboarding',
+    'discover',
+    'discover_buybox',
+    'discover_property_details',
+    'ai_coach',
+    'pricing',
+    'account',
+    'property_analyzer'
+  ],
+
+  charlie_chat_plus: [
+    'dashboard',
+    'dashboard_community', 
+    'dashboard_metrics',
+    'dashboard_pipeline',
+    'dashboard_onboarding',
+    'discover',
+    'discover_buybox',
+    'discover_saved',
+    'discover_saved_searches',
+    'discover_property_details',
+    'discover_favorite_properties',
+    'discover_investment_analysis',
+    'engage',
+    'engage_templates',
+    'ai_coach',
+    'ai_coach_attachments',
+    'ai_coach_threads',
+    'pricing',
+    'account',
+    'property_analyzer'
+  ],
+
+  charlie_chat_pro: [
+    'dashboard',
+    'dashboard_community',
+    'dashboard_metrics', 
+    'dashboard_pipeline',
+    'dashboard_onboarding',
+    'discover',
+    'discover_buybox', 
+    'discover_saved',
+    'discover_saved_searches',
+    'discover_property_details',
+    'discover_favorite_properties',
+    'discover_investment_analysis',
+    'engage',
+    'engage_templates', 
+    'ai_coach',
+    'ai_coach_attachments',
+    'ai_coach_threads',
     'pricing',
     'account',
     'property_analyzer'

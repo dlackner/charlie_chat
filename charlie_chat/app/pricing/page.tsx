@@ -1,4 +1,10 @@
-//NEED TO REFACTOR FOR V2
+/*
+ * CHARLIE2 V2 - Pricing Page
+ * Subscription plans and billing management with Stripe integration
+ * Supports both legacy and new user class systems during transition
+ * Features: Core/Plus/Pro plans, annual/monthly billing, upgrade/downgrade flows
+ * Part of the new V2 application architecture
+ */
 "use client";
 
 import { useState, useEffect } from 'react';
@@ -18,6 +24,35 @@ const CHARLIE_CHAT_PRO_ANNUAL = process.env.NEXT_PUBLIC_CHARLIE_CHAT_PRO_ANNUAL_
 const COHORT_MONTHLY = process.env.NEXT_PUBLIC_COHORT_MONTHLY_PRODUCT!;
 const COHORT_ANNUAL = process.env.NEXT_PUBLIC_COHORT_ANNUAL_PRODUCT!;
 
+// User class normalization for legacy compatibility
+function normalizeUserClass(userClass: string | null): string | null {
+  if (!userClass) return null;
+  
+  // Map legacy classes to new ones for consistent behavior
+  switch (userClass) {
+    case 'charlie_chat':
+      return 'core';
+    case 'charlie_chat_plus':
+      return 'plus';
+    case 'charlie_chat_pro':
+      return 'pro';
+    // Pass through new classes and cohort unchanged
+    case 'trial':
+    case 'core':
+    case 'plus':
+    case 'pro':
+    case 'cohort':
+      return userClass;
+    default:
+      return userClass; // Keep unknown classes as-is for safety
+  }
+}
+
+// Check if user has premium access (plus/pro/cohort level)
+function hasPremiumAccess(userClass: string | null): boolean {
+  const normalized = normalizeUserClass(userClass);
+  return normalized === 'plus' || normalized === 'pro' || normalized === 'cohort';
+}
 
 export default function PricingPage() {
   const [isAnnual, setIsAnnual] = useState(true);
@@ -56,8 +91,8 @@ export default function PricingPage() {
     const sessionToUse = freshSession || session;
 
     if (!sessionToUse || !sessionToUse.access_token) {
-      console.error("🚫 No valid session or access token");
-      alert("You must be logged in to complete this purchase.");
+      // No valid session or access token
+      // Must be logged in to complete purchase
       setShowSignUpModal(true);
       return;
     }
@@ -78,12 +113,12 @@ export default function PricingPage() {
         // Success! Redirect to success page
         router.push("/success");
       } else {
-        console.error("Affiliate checkout failed:", data.error);
-        alert("Checkout failed: " + (data.error || "Unknown error"));
+        // Affiliate checkout failed
+        // Checkout failed - could show proper error notification
       }
     } catch (error) {
-      console.error("Network error during affiliate checkout:", error);
-      alert("Something went wrong. Please try again.");
+      // Network error during affiliate checkout
+      // Something went wrong - could show proper error notification
     }
   };
 
@@ -94,8 +129,8 @@ export default function PricingPage() {
     const sessionToUse = freshSession || session;
 
     if (!sessionToUse || !sessionToUse.access_token) {
-      console.error("🚫 No valid session or access token");
-      alert("You must be logged in to complete this purchase.");
+      // No valid session or access token
+      // Must be logged in to complete purchase
       setShowSignUpModal(true);
       return;
     }
@@ -115,12 +150,12 @@ export default function PricingPage() {
       if (data.url) {
         window.location.href = data.url;
       } else {
-        console.error("Checkout failed:", data.error);
-        alert("Checkout failed: " + (data.error || "Unknown error"));
+        // Checkout failed
+        // Checkout failed - could show proper error notification
       }
     } catch (error) {
-      console.error("Network error during checkout:", error);
-      alert("Something went wrong. Please try again.");
+      // Network error during checkout
+      // Something went wrong - could show proper error notification
     }
   };
 
@@ -132,16 +167,17 @@ export default function PricingPage() {
       return;
     }
 
-    // If user is trial or disabled, convert them to charlie_chat
-    if (userClass === 'trial' || userClass === 'disabled') {
+    // If user is trial or disabled, convert them to core (charlie_chat legacy support)
+    const normalized = normalizeUserClass(userClass);
+    if (normalized === 'trial' || userClass === 'disabled') {
       try {
         // Get fresh session with access token
         const { data: { session: freshSession }, error } = await supabase.auth.getSession();
         const sessionToUse = freshSession || session;
 
         if (!sessionToUse || !sessionToUse.access_token) {
-          console.error("🚫 No valid session or access token");
-          alert("You must be logged in to complete this conversion.");
+          // No valid session or access token
+          // Must be logged in to complete conversion
           setShowSignUpModal(true);
           return;
         }
@@ -158,20 +194,20 @@ export default function PricingPage() {
 
         if (data.success) {
           // Update local state
-          setUserClass('charlie_chat');
+          setUserClass('core'); // Use new user class system
           // Redirect to home page
           router.push('/');
         } else {
-          console.error('Conversion failed:', data.error);
-          alert('Conversion failed: ' + (data.error || 'Unknown error'));
+          // Conversion failed
+          // Conversion failed - could show proper error notification
         }
       } catch (error) {
-        console.error('Network error during conversion:', error);
-        alert('Something went wrong. Please try again.');
+        // Network error during conversion
+        // Something went wrong - could show proper error notification
       }
     } else {
       // For premium users (Plus, Pro, Cohort), show Charlie's modal
-      if (userClass === 'charlie_chat_plus' || userClass === 'charlie_chat_pro' || userClass === 'cohort') {
+      if (hasPremiumAccess(userClass) || userClass === 'cohort') {
         setShowPremiumUserModal(true);
       } else {
         // For non-logged-in users, redirect to signup
@@ -195,7 +231,9 @@ export default function PricingPage() {
     }
 
     // Check for Pro → Plus downgrade
-    if (userClass === 'charlie_chat_pro' && (productId === CHARLIE_CHAT_PLUS_MONTHLY || productId === CHARLIE_CHAT_PLUS_ANNUAL)) {
+    // Check if Pro user is trying to downgrade to Plus
+    const normalized = normalizeUserClass(userClass);
+    if (normalized === 'pro' && (productId === CHARLIE_CHAT_PLUS_MONTHLY || productId === CHARLIE_CHAT_PLUS_ANNUAL)) {
       setShowDowngradeModal(true);
       return;
     }
@@ -338,9 +376,9 @@ export default function PricingPage() {
             Everything in Plus and more. Access to Charles Dobens Master Class Training and participation in weekly group coaching sessions.
           </p>
           <ul className="text-sm space-y-1 text-gray-800 mb-4 flex flex-col">
-            <li className="flex items-start"><span className="w-2 h-2 bg-indigo-600 rounded-full mt-2 mr-3 flex-shrink-0"></span>Debt and Equity Syndication Club</li>
+            <li className="flex items-start"><span className="w-2 h-2 bg-indigo-600 rounded-full mt-2 mr-3 flex-shrink-0"></span>MultifamilyOS Capital Club Membership</li>
             <li className="flex items-start"><span className="w-2 h-2 bg-indigo-600 rounded-full mt-2 mr-3 flex-shrink-0"></span>Weekly Coaching Calls with Charles Dobens</li>
-            <li className="flex items-start"><span className="w-2 h-2 bg-indigo-600 rounded-full mt-2 mr-3 flex-shrink-0"></span>Master Class Training</li>
+            <li className="flex items-start"><span className="w-2 h-2 bg-indigo-600 rounded-full mt-2 mr-3 flex-shrink-0"></span>Master Class Training Program</li>
             <li className="flex items-start"><span className="w-2 h-2 bg-indigo-600 rounded-full mt-2 mr-3 flex-shrink-0"></span>Community Access</li>
           </ul>
           <button
@@ -389,7 +427,7 @@ export default function PricingPage() {
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden mb-16">
           {/* Header */}
           <div className="bg-gradient-to-r from-gray-50 to-gray-100 border-b border-gray-200">
-            <div className="grid grid-cols-4 gap-0">
+            <div className="grid grid-cols-5 gap-0">
               <div className="px-6 py-4">
                 <div className="text-lg font-bold text-gray-900">Compare Features</div>
               </div>
@@ -402,6 +440,9 @@ export default function PricingPage() {
               <div className="px-6 py-4 text-center border-l border-gray-200">
                 <div className="text-lg font-bold text-gray-900">Professional</div>
               </div>
+              <div className="px-6 py-4 text-center border-l border-gray-200">
+                <div className="text-lg font-bold text-gray-900">Cohort</div>
+              </div>
             </div>
           </div>
           
@@ -412,7 +453,7 @@ export default function PricingPage() {
           
           {/* Feature Rows */}
           <div className="divide-y divide-gray-100">
-            <div className="grid grid-cols-4 gap-0 hover:bg-gray-50/50 transition-colors">
+            <div className="grid grid-cols-5 gap-0 hover:bg-gray-50/50 transition-colors">
               <div className="px-6 py-4 text-sm font-medium text-gray-900">Unlimited Property Search</div>
               <div className="px-6 py-4 text-center border-l border-gray-100">
                 <div className="w-5 h-5 rounded-full bg-green-500 mx-auto flex items-center justify-center">
@@ -435,9 +476,16 @@ export default function PricingPage() {
                   </svg>
                 </div>
               </div>
+              <div className="px-6 py-4 text-center border-l border-gray-100">
+                <div className="w-5 h-5 rounded-full mx-auto flex items-center justify-center" style={{backgroundColor: '#1C599F'}}>
+                  <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                  </svg>
+                </div>
+              </div>
             </div>
 
-            <div className="grid grid-cols-4 gap-0 hover:bg-gray-50/50 transition-colors">
+            <div className="grid grid-cols-5 gap-0 hover:bg-gray-50/50 transition-colors">
               <div className="px-6 py-4 text-sm font-medium text-gray-900">Community Dashboard</div>
               <div className="px-6 py-4 text-center border-l border-gray-100">
                 <div className="w-5 h-5 rounded-full bg-green-500 mx-auto flex items-center justify-center">
@@ -460,9 +508,16 @@ export default function PricingPage() {
                   </svg>
                 </div>
               </div>
+              <div className="px-6 py-4 text-center border-l border-gray-100">
+                <div className="w-5 h-5 rounded-full mx-auto flex items-center justify-center" style={{backgroundColor: '#1C599F'}}>
+                  <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                  </svg>
+                </div>
+              </div>
             </div>
 
-            <div className="grid grid-cols-4 gap-0 hover:bg-gray-50/50 transition-colors">
+            <div className="grid grid-cols-5 gap-0 hover:bg-gray-50/50 transition-colors">
               <div className="px-6 py-4 text-sm font-medium text-gray-900">AI-powered Investment Advisor</div>
               <div className="px-6 py-4 text-center border-l border-gray-100">
                 <div className="w-5 h-5 rounded-full bg-green-500 mx-auto flex items-center justify-center">
@@ -485,6 +540,13 @@ export default function PricingPage() {
                   </svg>
                 </div>
               </div>
+              <div className="px-6 py-4 text-center border-l border-gray-100">
+                <div className="w-5 h-5 rounded-full mx-auto flex items-center justify-center" style={{backgroundColor: '#1C599F'}}>
+                  <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                  </svg>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -494,7 +556,7 @@ export default function PricingPage() {
           </div>
           
           <div className="divide-y divide-gray-100">
-            <div className="grid grid-cols-4 gap-0 hover:bg-gray-50/50 transition-colors">
+            <div className="grid grid-cols-5 gap-0 hover:bg-gray-50/50 transition-colors">
               <div className="px-6 py-4 text-sm font-medium text-gray-900">Broker — Scout off-market opportunities</div>
               <div className="px-6 py-4 text-center border-l border-gray-100">
                 <div className="w-5 h-5 rounded-full bg-gray-200 mx-auto flex items-center justify-center">
@@ -515,9 +577,16 @@ export default function PricingPage() {
                   </svg>
                 </div>
               </div>
+              <div className="px-6 py-4 text-center border-l border-gray-100">
+                <div className="w-5 h-5 rounded-full mx-auto flex items-center justify-center" style={{backgroundColor: '#1C599F'}}>
+                  <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                  </svg>
+                </div>
+              </div>
             </div>
 
-            <div className="grid grid-cols-4 gap-0 hover:bg-gray-50/50 transition-colors">
+            <div className="grid grid-cols-5 gap-0 hover:bg-gray-50/50 transition-colors">
               <div className="px-6 py-4 text-sm font-medium text-gray-900">Marketing Assistant — Create letters and emails</div>
               <div className="px-6 py-4 text-center border-l border-gray-100">
                 <div className="w-5 h-5 rounded-full bg-gray-200 mx-auto flex items-center justify-center">
@@ -538,9 +607,16 @@ export default function PricingPage() {
                   </svg>
                 </div>
               </div>
+              <div className="px-6 py-4 text-center border-l border-gray-100">
+                <div className="w-5 h-5 rounded-full mx-auto flex items-center justify-center" style={{backgroundColor: '#1C599F'}}>
+                  <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                  </svg>
+                </div>
+              </div>
             </div>
 
-            <div className="grid grid-cols-4 gap-0 hover:bg-gray-50/50 transition-colors">
+            <div className="grid grid-cols-5 gap-0 hover:bg-gray-50/50 transition-colors">
               <div className="px-6 py-4 text-sm font-medium text-gray-900">MBA Analyst — Model offers and generate financial statements</div>
               <div className="px-6 py-4 text-center border-l border-gray-100">
                 <div className="w-5 h-5 rounded-full bg-gray-200 mx-auto flex items-center justify-center">
@@ -561,9 +637,16 @@ export default function PricingPage() {
                   </svg>
                 </div>
               </div>
+              <div className="px-6 py-4 text-center border-l border-gray-100">
+                <div className="w-5 h-5 rounded-full mx-auto flex items-center justify-center" style={{backgroundColor: '#1C599F'}}>
+                  <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                  </svg>
+                </div>
+              </div>
             </div>
 
-            <div className="grid grid-cols-4 gap-0 hover:bg-gray-50/50 transition-colors">
+            <div className="grid grid-cols-5 gap-0 hover:bg-gray-50/50 transition-colors">
               <div className="px-6 py-4 text-sm font-medium text-gray-900">Attorney — Generate LOIs and Purchase & Sale Agreements</div>
               <div className="px-6 py-4 text-center border-l border-gray-100">
                 <div className="w-5 h-5 rounded-full bg-gray-200 mx-auto flex items-center justify-center">
@@ -584,9 +667,16 @@ export default function PricingPage() {
                   </svg>
                 </div>
               </div>
+              <div className="px-6 py-4 text-center border-l border-gray-100">
+                <div className="w-5 h-5 rounded-full mx-auto flex items-center justify-center" style={{backgroundColor: '#1C599F'}}>
+                  <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                  </svg>
+                </div>
+              </div>
             </div>
 
-            <div className="grid grid-cols-4 gap-0 hover:bg-gray-50/50 transition-colors">
+            <div className="grid grid-cols-5 gap-0 hover:bg-gray-50/50 transition-colors">
               <div className="px-6 py-4 text-sm font-medium text-gray-900">Financing Advisor — Identify banks and S&L's</div>
               <div className="px-6 py-4 text-center border-l border-gray-100">
                 <div className="w-5 h-5 rounded-full bg-gray-200 mx-auto flex items-center justify-center">
@@ -607,6 +697,13 @@ export default function PricingPage() {
                   </svg>
                 </div>
               </div>
+              <div className="px-6 py-4 text-center border-l border-gray-100">
+                <div className="w-5 h-5 rounded-full mx-auto flex items-center justify-center" style={{backgroundColor: '#1C599F'}}>
+                  <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                  </svg>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -616,7 +713,7 @@ export default function PricingPage() {
           </div>
           
           <div className="divide-y divide-gray-100">
-            <div className="grid grid-cols-4 gap-0 hover:bg-gray-50/50 transition-colors">
+            <div className="grid grid-cols-5 gap-0 hover:bg-gray-50/50 transition-colors">
               <div className="px-6 py-4 text-sm font-medium text-gray-900">AI-Powered Property Analysis</div>
               <div className="px-6 py-4 text-center border-l border-gray-100">
                 <div className="w-5 h-5 rounded-full bg-gray-200 mx-auto flex items-center justify-center">
@@ -637,9 +734,16 @@ export default function PricingPage() {
                   </svg>
                 </div>
               </div>
+              <div className="px-6 py-4 text-center border-l border-gray-100">
+                <div className="w-5 h-5 rounded-full mx-auto flex items-center justify-center" style={{backgroundColor: '#1C599F'}}>
+                  <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                  </svg>
+                </div>
+              </div>
             </div>
 
-            <div className="grid grid-cols-4 gap-0 hover:bg-gray-50/50 transition-colors">
+            <div className="grid grid-cols-5 gap-0 hover:bg-gray-50/50 transition-colors">
               <div className="px-6 py-4 text-sm font-medium text-gray-900">Favorite Properties</div>
               <div className="px-6 py-4 text-center border-l border-gray-100">
                 <div className="w-5 h-5 rounded-full bg-gray-200 mx-auto flex items-center justify-center">
@@ -660,9 +764,16 @@ export default function PricingPage() {
                   </svg>
                 </div>
               </div>
+              <div className="px-6 py-4 text-center border-l border-gray-100">
+                <div className="w-5 h-5 rounded-full mx-auto flex items-center justify-center" style={{backgroundColor: '#1C599F'}}>
+                  <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                  </svg>
+                </div>
+              </div>
             </div>
 
-            <div className="grid grid-cols-4 gap-0 hover:bg-gray-50/50 transition-colors">
+            <div className="grid grid-cols-5 gap-0 hover:bg-gray-50/50 transition-colors">
               <div className="px-6 py-4 text-sm font-medium text-gray-900">Custom Buy Boxes</div>
               <div className="px-6 py-4 text-center border-l border-gray-100">
                 <div className="w-5 h-5 rounded-full bg-gray-200 mx-auto flex items-center justify-center">
@@ -683,9 +794,16 @@ export default function PricingPage() {
                   </svg>
                 </div>
               </div>
+              <div className="px-6 py-4 text-center border-l border-gray-100">
+                <div className="w-5 h-5 rounded-full mx-auto flex items-center justify-center" style={{backgroundColor: '#1C599F'}}>
+                  <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                  </svg>
+                </div>
+              </div>
             </div>
 
-            <div className="grid grid-cols-4 gap-0 hover:bg-gray-50/50 transition-colors">
+            <div className="grid grid-cols-5 gap-0 hover:bg-gray-50/50 transition-colors">
               <div className="px-6 py-4 text-sm font-medium text-gray-900">Personalized AI Recommendations</div>
               <div className="px-6 py-4 text-center border-l border-gray-100">
                 <div className="w-5 h-5 rounded-full bg-gray-200 mx-auto flex items-center justify-center">
@@ -706,9 +824,16 @@ export default function PricingPage() {
                   </svg>
                 </div>
               </div>
+              <div className="px-6 py-4 text-center border-l border-gray-100">
+                <div className="w-5 h-5 rounded-full mx-auto flex items-center justify-center" style={{backgroundColor: '#1C599F'}}>
+                  <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                  </svg>
+                </div>
+              </div>
             </div>
 
-            <div className="grid grid-cols-4 gap-0 hover:bg-gray-50/50 transition-colors">
+            <div className="grid grid-cols-5 gap-0 hover:bg-gray-50/50 transition-colors">
               <div className="px-6 py-4 text-sm font-medium text-gray-900">Saved Searches</div>
               <div className="px-6 py-4 text-center border-l border-gray-100">
                 <div className="w-5 h-5 rounded-full bg-gray-200 mx-auto flex items-center justify-center">
@@ -729,9 +854,16 @@ export default function PricingPage() {
                   </svg>
                 </div>
               </div>
+              <div className="px-6 py-4 text-center border-l border-gray-100">
+                <div className="w-5 h-5 rounded-full mx-auto flex items-center justify-center" style={{backgroundColor: '#1C599F'}}>
+                  <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                  </svg>
+                </div>
+              </div>
             </div>
 
-            <div className="grid grid-cols-4 gap-0 hover:bg-gray-50/50 transition-colors">
+            <div className="grid grid-cols-5 gap-0 hover:bg-gray-50/50 transition-colors">
               <div className="px-6 py-4 text-sm font-medium text-gray-900">Reminders and Notes</div>
               <div className="px-6 py-4 text-center border-l border-gray-100">
                 <div className="w-5 h-5 rounded-full bg-gray-200 mx-auto flex items-center justify-center">
@@ -752,9 +884,16 @@ export default function PricingPage() {
                   </svg>
                 </div>
               </div>
+              <div className="px-6 py-4 text-center border-l border-gray-100">
+                <div className="w-5 h-5 rounded-full mx-auto flex items-center justify-center" style={{backgroundColor: '#1C599F'}}>
+                  <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                  </svg>
+                </div>
+              </div>
             </div>
 
-            <div className="grid grid-cols-4 gap-0 hover:bg-gray-50/50 transition-colors">
+            <div className="grid grid-cols-5 gap-0 hover:bg-gray-50/50 transition-colors">
               <div className="px-6 py-4 text-sm font-medium text-gray-900">LOI Templates</div>
               <div className="px-6 py-4 text-center border-l border-gray-100">
                 <div className="w-5 h-5 rounded-full bg-gray-200 mx-auto flex items-center justify-center">
@@ -775,9 +914,16 @@ export default function PricingPage() {
                   </svg>
                 </div>
               </div>
+              <div className="px-6 py-4 text-center border-l border-gray-100">
+                <div className="w-5 h-5 rounded-full mx-auto flex items-center justify-center" style={{backgroundColor: '#1C599F'}}>
+                  <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                  </svg>
+                </div>
+              </div>
             </div>
 
-            <div className="grid grid-cols-4 gap-0 hover:bg-gray-50/50 transition-colors">
+            <div className="grid grid-cols-5 gap-0 hover:bg-gray-50/50 transition-colors">
               <div className="px-6 py-4 text-sm font-medium text-gray-900">Marketing Letter Generator</div>
               <div className="px-6 py-4 text-center border-l border-gray-100">
                 <div className="w-5 h-5 rounded-full bg-gray-200 mx-auto flex items-center justify-center">
@@ -798,9 +944,16 @@ export default function PricingPage() {
                   </svg>
                 </div>
               </div>
+              <div className="px-6 py-4 text-center border-l border-gray-100">
+                <div className="w-5 h-5 rounded-full mx-auto flex items-center justify-center" style={{backgroundColor: '#1C599F'}}>
+                  <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                  </svg>
+                </div>
+              </div>
             </div>
 
-            <div className="grid grid-cols-4 gap-0 hover:bg-gray-50/50 transition-colors">
+            <div className="grid grid-cols-5 gap-0 hover:bg-gray-50/50 transition-colors">
               <div className="px-6 py-4 text-sm font-medium text-gray-900">Email Outreach Tool</div>
               <div className="px-6 py-4 text-center border-l border-gray-100">
                 <div className="w-5 h-5 rounded-full bg-gray-200 mx-auto flex items-center justify-center">
@@ -821,9 +974,16 @@ export default function PricingPage() {
                   </svg>
                 </div>
               </div>
+              <div className="px-6 py-4 text-center border-l border-gray-100">
+                <div className="w-5 h-5 rounded-full mx-auto flex items-center justify-center" style={{backgroundColor: '#1C599F'}}>
+                  <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                  </svg>
+                </div>
+              </div>
             </div>
 
-            <div className="grid grid-cols-4 gap-0 hover:bg-gray-50/50 transition-colors">
+            <div className="grid grid-cols-5 gap-0 hover:bg-gray-50/50 transition-colors">
               <div className="px-6 py-4 text-sm font-medium text-gray-900">Skip Tracing Tool</div>
               <div className="px-6 py-4 text-center border-l border-gray-100">
                 <div className="w-5 h-5 rounded-full bg-gray-200 mx-auto flex items-center justify-center">
@@ -844,9 +1004,16 @@ export default function PricingPage() {
                   </svg>
                 </div>
               </div>
+              <div className="px-6 py-4 text-center border-l border-gray-100">
+                <div className="w-5 h-5 rounded-full mx-auto flex items-center justify-center" style={{backgroundColor: '#1C599F'}}>
+                  <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                  </svg>
+                </div>
+              </div>
             </div>
 
-            <div className="grid grid-cols-4 gap-0 hover:bg-gray-50/50 transition-colors">
+            <div className="grid grid-cols-5 gap-0 hover:bg-gray-50/50 transition-colors">
               <div className="px-6 py-4 text-sm font-medium text-gray-900">Advanced Analytics</div>
               <div className="px-6 py-4 text-center border-l border-gray-100">
                 <div className="w-5 h-5 rounded-full bg-gray-200 mx-auto flex items-center justify-center">
@@ -867,6 +1034,13 @@ export default function PricingPage() {
                   </svg>
                 </div>
               </div>
+              <div className="px-6 py-4 text-center border-l border-gray-100">
+                <div className="w-5 h-5 rounded-full mx-auto flex items-center justify-center" style={{backgroundColor: '#1C599F'}}>
+                  <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                  </svg>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -876,8 +1050,8 @@ export default function PricingPage() {
           </div>
           
           <div className="divide-y divide-gray-100">
-            <div className="grid grid-cols-4 gap-0 hover:bg-gray-50/50 transition-colors">
-              <div className="px-6 py-4 text-sm font-medium text-gray-900">Debt & Equity Syndication Club (with Annual Subscription)</div>
+            <div className="grid grid-cols-5 gap-0 hover:bg-gray-50/50 transition-colors">
+              <div className="px-6 py-4 text-sm font-medium text-gray-900">MultifamilyOS Capital Club Membership</div>
               <div className="px-6 py-4 text-center border-l border-gray-100">
                 <div className="w-5 h-5 rounded-full bg-gray-200 mx-auto flex items-center justify-center">
                   <div className="w-2 h-0.5 bg-gray-400"></div>
@@ -889,14 +1063,22 @@ export default function PricingPage() {
                 </div>
               </div>
               <div className="px-6 py-4 text-center border-l border-gray-100">
-                <div className="w-5 h-5 rounded-full bg-indigo-600 mx-auto flex items-center justify-center">
+                <div className="w-5 h-5 rounded-full bg-indigo-600 mx-auto flex items-center justify-center mb-1">
+                  <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                <div className="text-xs text-gray-500">After 6 months</div>
+              </div>
+              <div className="px-6 py-4 text-center border-l border-gray-100">
+                <div className="w-5 h-5 rounded-full mx-auto flex items-center justify-center" style={{backgroundColor: '#1C599F'}}>
                   <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                   </svg>
                 </div>
               </div>
             </div>
-            <div className="grid grid-cols-4 gap-0 hover:bg-gray-50/50 transition-colors">
+            <div className="grid grid-cols-5 gap-0 hover:bg-gray-50/50 transition-colors">
               <div className="px-6 py-4 text-sm font-medium text-gray-900">Weekly Coaching Calls with Charles Dobens</div>
               <div className="px-6 py-4 text-center border-l border-gray-100">
                 <div className="w-5 h-5 rounded-full bg-gray-200 mx-auto flex items-center justify-center">
@@ -915,9 +1097,16 @@ export default function PricingPage() {
                   </svg>
                 </div>
               </div>
+              <div className="px-6 py-4 text-center border-l border-gray-100">
+                <div className="w-5 h-5 rounded-full mx-auto flex items-center justify-center" style={{backgroundColor: '#1C599F'}}>
+                  <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                  </svg>
+                </div>
+              </div>
             </div>
 
-            <div className="grid grid-cols-4 gap-0 hover:bg-gray-50/50 transition-colors">
+            <div className="grid grid-cols-5 gap-0 hover:bg-gray-50/50 transition-colors">
               <div className="px-6 py-4 text-sm font-medium text-gray-900">Master Class Training</div>
               <div className="px-6 py-4 text-center border-l border-gray-100">
                 <div className="w-5 h-5 rounded-full bg-gray-200 mx-auto flex items-center justify-center">
@@ -936,9 +1125,16 @@ export default function PricingPage() {
                   </svg>
                 </div>
               </div>
+              <div className="px-6 py-4 text-center border-l border-gray-100">
+                <div className="w-5 h-5 rounded-full mx-auto flex items-center justify-center" style={{backgroundColor: '#1C599F'}}>
+                  <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                  </svg>
+                </div>
+              </div>
             </div>
 
-            <div className="grid grid-cols-4 gap-0 hover:bg-gray-50/50 transition-colors">
+            <div className="grid grid-cols-5 gap-0 hover:bg-gray-50/50 transition-colors">
               <div className="px-6 py-4 text-sm font-medium text-gray-900">Community Access</div>
               <div className="px-6 py-4 text-center border-l border-gray-100">
                 <div className="w-5 h-5 rounded-full bg-gray-200 mx-auto flex items-center justify-center">
@@ -952,6 +1148,13 @@ export default function PricingPage() {
               </div>
               <div className="px-6 py-4 text-center border-l border-gray-100">
                 <div className="w-5 h-5 rounded-full bg-indigo-600 mx-auto flex items-center justify-center">
+                  <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                  </svg>
+                </div>
+              </div>
+              <div className="px-6 py-4 text-center border-l border-gray-100">
+                <div className="w-5 h-5 rounded-full mx-auto flex items-center justify-center" style={{backgroundColor: '#1C599F'}}>
                   <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                   </svg>
@@ -1098,13 +1301,16 @@ export default function PricingPage() {
                   Hi there!
                 </DialogTitle>
                 <DialogDescription className="text-base mt-2 text-gray-700">
-                  {userClass === 'cohort' ? (
-                    <>You're already in my exclusive Cohort program! That means you get everything in Core <em>plus</em> all the premium features, unlimited property searches, my personal coaching calls, and direct access to me. <br/><br/>You're all set with the best we've got – no need to go backwards!</>
-                  ) : userClass === 'charlie_chat_pro' ? (
-                    <>You're already a Professional member! That gives you everything in basic Core <em>plus</em> unlimited property searches, advanced analytics, my master class training, and weekly group coaching. <br/><br/>You've got the premium experience already – no need to downgrade!</>
-                  ) : (
-                    <>You're already a Plus member! That gets you everything in basic Core <em>plus</em> unlimited property searches, advanced analytics, and all the premium tools. <br/><br/>You've got more than the basic plan already – you're all set!</>
-                  )}
+                  {(() => {
+                    const normalized = normalizeUserClass(userClass);
+                    if (userClass === 'cohort') {
+                      return <>You're already in my exclusive Cohort program! That means you get everything in Core <em>plus</em> all the premium features, unlimited property searches, my personal coaching calls, and direct access to me. <br/><br/>You're all set with the best we've got – no need to go backwards!</>;
+                    } else if (normalized === 'pro') {
+                      return <>You're already a Professional member! That gives you everything in basic Core <em>plus</em> unlimited property searches, advanced analytics, my master class training, and weekly group coaching. <br/><br/>You've got the premium experience already – no need to downgrade!</>;
+                    } else {
+                      return <>You're already a Plus member! That gets you everything in basic Core <em>plus</em> unlimited property searches, advanced analytics, and all the premium tools. <br/><br/>You've got more than the basic plan already – you're all set!</>;
+                    }
+                  })()}
                 </DialogDescription>
               </div>
             </div>

@@ -9,15 +9,17 @@
 import { useState, useEffect, useRef } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Search, Heart, Grid3x3, Map, Filter, ChevronDown, FileText, MapPin, Trash2 } from 'lucide-react';
-import PropertyMap from '@/components/v2/PropertyMap';
+import PropertyMapWithRents from '@/components/v2/PropertyMapWithRents';
 import { generate10YearCashFlowReport } from '../property-analyzer/cash-flow-report';
 import { generateMarketingLetter, createMailtoLink } from '../templates/generateMarketingLetter';
 import { CashFlowReportsModal } from '@/components/v2/CashFlowReportsModal';
 import { useAuth } from "@/contexts/AuthContext";
 import { incrementActivityCount } from '@/lib/v2/activityCounter';
+import { useAlert } from '@/components/v2/AlertModal';
 
 export default function EngagePage() {
   const { user, isLoading: authLoading } = useAuth();
+  const { showError, showWarning, showSuccess, AlertComponent } = useAlert();
   const searchParams = useSearchParams();
   const router = useRouter();
   const [viewMode, setViewMode] = useState<'cards' | 'map'>(() => {
@@ -80,7 +82,6 @@ export default function EngagePage() {
           const propertyData = favorite.property_data;
           
           if (!propertyData) {
-            console.warn('No property data found for favorite:', favorite);
             return null;
           }
           
@@ -134,12 +135,12 @@ export default function EngagePage() {
           const marketsData = await marketsResponse.json();
           setUserMarkets(marketsData.markets || []);
         } else {
-          console.warn('Failed to fetch user markets, using fallback');
+          // Failed to fetch user markets, using fallback
           setUserMarkets([]);
         }
 
       } catch (error) {
-        console.error('Error fetching data:', error);
+        // Error fetching data
         setError('Failed to load saved properties');
       } finally {
         setIsLoading(false);
@@ -216,7 +217,7 @@ export default function EngagePage() {
       });
       
       if (!response.ok) {
-        console.error('Failed to update market');
+        // Failed to update market
       } else {
         // Update local state only after successful API call
         setSavedProperties(prev => 
@@ -228,7 +229,7 @@ export default function EngagePage() {
         );
       }
     } catch (error) {
-      console.error('Error updating market:', error);
+      // Error updating market
     }
   };
 
@@ -279,8 +280,8 @@ export default function EngagePage() {
       setShowSuccessModal(true);
 
     } catch (error) {
-      console.error('Error deleting selected properties:', error);
-      alert('Failed to delete some properties. Please try again.');
+      // Error deleting selected properties
+      showError('Failed to delete some properties. Please try again.', 'Delete Failed');
     }
   };
 
@@ -298,7 +299,7 @@ export default function EngagePage() {
 
       const data = await response.json();
       if (!data.scenarios || data.scenarios.length === 0) {
-        alert('No pricing scenarios found for this property. Please create an offer analysis first.');
+        showWarning('No pricing scenarios found for this property. Please create an offer analysis first.', 'No Pricing Data');
         return;
       }
 
@@ -307,7 +308,7 @@ export default function EngagePage() {
       const offerData = scenario.offer_data;
       
       if (!offerData) {
-        alert('No pricing data found for this property.');
+        showWarning('No pricing data found for this property.', 'No Pricing Data');
         return;
       }
 
@@ -371,8 +372,8 @@ export default function EngagePage() {
       setShowSuccessModal(true);
       
     } catch (error) {
-      console.error('Error generating cash flow report:', error);
-      alert('Failed to generate cash flow report. Please try again.');
+      // Error generating cash flow report
+      showError('Failed to generate cash flow report. Please try again.', 'Report Generation Failed');
     }
   };
 
@@ -397,7 +398,7 @@ export default function EngagePage() {
 
   const handleViewOffers = async () => {
     if (!user) {
-      alert('Please log in to view offers.');
+      showWarning('Please log in to view offers.', 'Login Required');
       return;
     }
 
@@ -424,8 +425,8 @@ export default function EngagePage() {
       setSelectedPropertyOffers(transformedOffers);
       setShowOffersModal(true);
     } catch (error) {
-      console.error('Error fetching offers:', error);
-      alert('Failed to load offers. Please try again.');
+      // Error fetching offers
+      showError('Failed to load offers. Please try again.', 'Load Failed');
     }
   };
 
@@ -475,8 +476,8 @@ export default function EngagePage() {
       // Remove from local state
       setSelectedPropertyOffers(prev => prev.filter(offer => offer.id !== offerId));
     } catch (error) {
-      console.error('Error deleting offer:', error);
-      alert('Failed to delete offer. Please try again.');
+      // Error deleting offer
+      showError('Failed to delete offer. Please try again.', 'Delete Failed');
     }
   };
 
@@ -784,8 +785,8 @@ export default function EngagePage() {
         setShowSuccessModal(true);
       }
     } catch (error) {
-      console.error('Error exporting CSV:', error);
-      alert('Failed to export CSV. Please try again.');
+      // Error exporting CSV
+      showError('Failed to export CSV. Please try again.', 'Export Failed');
     }
   };
 
@@ -795,7 +796,7 @@ export default function EngagePage() {
       const offerData = propertyWithOffer.offer_data;
       
       if (!offerData) {
-        alert('No pricing data found for this offer.');
+        showWarning('No pricing data found for this offer.', 'No Pricing Data');
         return;
       }
 
@@ -857,8 +858,8 @@ export default function EngagePage() {
       setShowSuccessModal(true);
       
     } catch (error) {
-      console.error('Error generating cash flow report:', error);
-      alert('Failed to generate cash flow report. Please try again.');
+      // Error generating cash flow report
+      showError('Failed to generate cash flow report. Please try again.', 'Report Generation Failed');
     }
   };
 
@@ -866,11 +867,7 @@ export default function EngagePage() {
     const property = savedProperties.find(p => p.id === propertyId);
     if (!property) return;
 
-    // DEBUG: Log the property object to see what skip_trace_data looks like
-    console.log('=== EMAIL DEBUG ===');
-    console.log('Full property object:', property);
-    console.log('property.skip_trace_data:', property.skip_trace_data);
-    console.log('Type of skip_trace_data:', typeof property.skip_trace_data);
+    // Parse skip trace data to extract email address
 
     // Parse skip trace data (it's a JSON blob)
     let skipTraceData;
@@ -878,22 +875,21 @@ export default function EngagePage() {
       if (property.skip_trace_data) {
         if (typeof property.skip_trace_data === 'string') {
           skipTraceData = JSON.parse(property.skip_trace_data);
-          console.log('Parsed from string:', skipTraceData);
+          // Parsed skip trace data from string
         } else {
           skipTraceData = property.skip_trace_data;
-          console.log('Already an object:', skipTraceData);
+          // Skip trace data already parsed
         }
       } else {
         skipTraceData = null;
-        console.log('No skip_trace_data found');
+        // No skip trace data found
       }
     } catch (error) {
-      console.log('JSON parse error:', error);
+      // JSON parse error, using raw data
       skipTraceData = property.skip_trace_data; // In case it's already parsed
     }
 
-    console.log('Final skipTraceData:', skipTraceData);
-    console.log('skipTraceData.contacts:', skipTraceData?.contacts);
+    // Extract email from skip trace data
 
     // Extract email from contacts array (new skip trace format)
     let emailAddress = null;
@@ -910,12 +906,11 @@ export default function EngagePage() {
       emailAddress = skipTraceData.email;
     }
 
-    console.log('Found email address:', emailAddress);
+    // Extract email address for outreach
 
     // Check if property has skip trace data with email
     if (!skipTraceData || !emailAddress) {
-      console.log('Email check failed - skipTraceData exists:', !!skipTraceData);
-      console.log('Email exists:', !!emailAddress);
+      // No email address available for outreach
       setSuccessMessage(`No email address found for ${property.address}. Skip trace data must be available to send emails.`);
       setShowSuccessModal(true);
       return;
@@ -925,7 +920,7 @@ export default function EngagePage() {
       // Fetch user profile
       const profileResponse = await fetch('/api/profile');
       if (!profileResponse.ok) {
-        alert('Please complete your profile to generate emails.');
+        showWarning('Please complete your profile to generate emails.', 'Profile Incomplete');
         return;
       }
 
@@ -967,14 +962,11 @@ export default function EngagePage() {
       };
 
       // Generate email content using existing function
-      console.log('Calling generateMarketingLetter with propertyData:', propertyData);
-      console.log('Calling generateMarketingLetter with senderInfo:', senderInfo);
-      console.log('SenderInfo validation - name:', senderInfo.name, 'phone:', senderInfo.phone, 'email:', senderInfo.email);
+      // Generate marketing letter with property and sender data
       const result = await generateMarketingLetter(propertyData, senderInfo, 'email');
-      console.log('generateMarketingLetter result:', result);
       
       if (!result.success || !result.emailBody) {
-        alert(`Failed to generate email content: ${result.message || 'Unknown error'}. Please try again.`);
+        showError(`Failed to generate email content: ${result.message || 'Unknown error'}. Please try again.`, 'Email Generation Failed');
         return;
       }
 
@@ -993,8 +985,8 @@ export default function EngagePage() {
       }
       
     } catch (error) {
-      console.error('Error generating email:', error);
-      alert('Failed to generate email. Please try again.');
+      // Error generating email
+      showError('Failed to generate email. Please try again.', 'Email Generation Failed');
     }
   };
 
@@ -1002,7 +994,7 @@ export default function EngagePage() {
     try {
       // Get user profile info for sender details
       if (!user) {
-        alert('Please log in to generate marketing letters.');
+        showWarning('Please log in to generate marketing letters.', 'Login Required');
         return;
       }
 
@@ -1011,7 +1003,7 @@ export default function EngagePage() {
       const profileData = await profileResponse.json();
       
       if (!profileResponse.ok) {
-        alert('Unable to load your profile information. Please complete your profile to generate marketing letters.');
+        showWarning('Unable to load your profile information. Please complete your profile to generate marketing letters.', 'Profile Error');
         return;
       }
 
@@ -1031,7 +1023,7 @@ export default function EngagePage() {
 
       // Validate required profile information
       if (!senderInfo.name || !senderInfo.phone || !senderInfo.email) {
-        alert('Please complete your profile with name, phone, and email to generate marketing letters.');
+        showWarning('Please complete your profile with name, phone, and email to generate marketing letters.', 'Profile Incomplete');
         return;
       }
 
@@ -1039,18 +1031,7 @@ export default function EngagePage() {
       for (const propertyId of propertyIds) {
         const property = savedProperties.find(p => p.id === propertyId);
         if (property) {
-          // DEBUG: Log the raw property data from database
-          console.log('=== ENGAGE PAGE DEBUG ===');
-          console.log('Raw property from savedProperties:', {
-            id: property.id,
-            address: property.address,
-            owner_first_name: property.owner_first_name,
-            owner_last_name: property.owner_last_name,
-            hasOwnerFirstName: !!property.owner_first_name,
-            hasOwnerLastName: !!property.owner_last_name,
-            ownerFirstNameType: typeof property.owner_first_name,
-            ownerLastNameType: typeof property.owner_last_name
-          });
+          // Process property data for marketing letter generation
           
           // Smart address construction - check if city/state already in address_full
           const rawAddress = property.address;
@@ -1075,12 +1056,12 @@ export default function EngagePage() {
             property_id: property.id.toString()
           };
           
-          console.log('PropertyData being sent to generateMarketingLetter:', propertyData);
+          // Generate marketing letter with property data
 
           const result = await generateMarketingLetter(propertyData, senderInfo, 'print');
           
           if (!result.success) {
-            alert(`Error generating letter for ${property.address}: ${result.message}`);
+            showError(`Error generating letter for ${property.address}: ${result.message}`, 'Letter Generation Error');
             return;
           }
         }
@@ -1094,13 +1075,13 @@ export default function EngagePage() {
         await incrementActivityCount(user.id, 'marketing_letters_created');
       }
     } catch (error) {
-      console.error('Error generating marketing letters:', error);
-      alert('Failed to generate marketing letters. Please try again.');
+      // Error generating marketing letters
+      showError('Failed to generate marketing letters. Please try again.', 'Generation Failed');
     }
   };
 
   const handleDocumentAction = (action: string) => {
-    console.log(`${action} requested for properties:`, selectedProperties);
+    // Process bulk action for selected properties
     setShowDocumentDropdown(false);
     
     // TODO: Implement document generation logic
@@ -1108,7 +1089,7 @@ export default function EngagePage() {
       case 'marketing-letter':
         // Can handle multiple properties
         if (selectedProperties.length === 0) {
-          alert('Please select at least one property to generate marketing letters.');
+          showWarning('Please select at least one property to generate marketing letters.', 'No Selection');
           return;
         }
         
@@ -1133,7 +1114,7 @@ export default function EngagePage() {
       case 'create-offer':
         // Should only allow 1 property
         if (selectedProperties.length !== 1) {
-          alert(`${action.toUpperCase()} can only be generated for one property at a time.`);
+          showWarning(`${action.toUpperCase()} can only be generated for one property at a time.`, 'Single Property Only');
           return;
         }
         // Handle specific actions
@@ -1313,7 +1294,7 @@ export default function EngagePage() {
                         <FileText className="h-4 w-4 mr-3 text-gray-400" />
                         <div>
                           <div>Purchase & Sale</div>
-                          <div className="text-xs text-gray-400">Coming soon</div>
+                          <div className="text-xs text-gray-400">Select 1 property</div>
                         </div>
                       </button>
 
@@ -1633,7 +1614,7 @@ export default function EngagePage() {
           <div className="flex gap-6 h-[600px]">
             {/* Left: Map */}
             <div className="w-2/5">
-              <PropertyMap
+              <PropertyMapWithRents
                 properties={filteredProperties}
                 className="h-full rounded-lg border border-gray-200"
                 context="engage"
@@ -1828,6 +1809,9 @@ export default function EngagePage() {
         onClose={() => setShowCashFlowReportsModal(false)}
         onGenerate={handleGenerateReportFromModal}
       />
+
+      {/* Alert Modal */}
+      {AlertComponent}
     </div>
   );
 }
@@ -1870,7 +1854,7 @@ function PropertyCard({
       });
       
       if (!response.ok) {
-        console.error('Failed to update favorite status');
+        // Failed to update favorite status
       } else {
         // Update parent component's state
         if (onStatusUpdate) {
@@ -1878,7 +1862,7 @@ function PropertyCard({
         }
       }
     } catch (error) {
-      console.error('Error updating favorite status:', error);
+      // Error updating favorite status
     }
   };
 
@@ -1894,10 +1878,10 @@ function PropertyCard({
       });
       
       if (!response.ok) {
-        console.error('Failed to update favorite market');
+        // Failed to update favorite market
       }
     } catch (error) {
-      console.error('Error updating favorite market:', error);
+      // Error updating favorite market
     }
   };
 
@@ -1924,7 +1908,7 @@ function PropertyCard({
       setIsFavorited(false);
       
       // Call API to delete from favorites
-      console.log('🗑️ Attempting to delete favorite:', property.id);
+      // Attempting to delete favorite
       const response = await fetch('/api/favorites', {
         method: 'DELETE',
         headers: {
@@ -1936,26 +1920,26 @@ function PropertyCard({
       });
 
       const result = await response.json();
-      console.log('🗑️ Delete API response:', result);
+      // Process delete response
 
       if (!response.ok) {
         // Revert if API call fails
         setIsFavorited(true);
-        console.error('❌ Failed to remove from favorites:', result);
+        // Failed to remove from favorites
         return;
       }
 
-      console.log('✅ Successfully deleted favorite from API');
+      // Successfully deleted favorite from API
       
       // Notify parent component to remove from list
       if (onRemoveFromFavorites) {
-        console.log('🔄 Removing from UI list');
+        // Removing from UI list
         onRemoveFromFavorites(property.original_property_id || property.id);
       }
     } catch (error) {
       // Revert if error occurs
       setIsFavorited(true);
-      console.error('Error removing from favorites:', error);
+      // Error removing from favorites
     }
   };
 
@@ -2137,10 +2121,10 @@ function PropertyCard({
                 
                 if (!response.ok) {
                   const errorData = await response.text();
-                  console.error('Failed to update notes:', response.status, errorData);
+                  // Failed to update notes
                 }
               } catch (error) {
-                console.error('Error updating notes:', error);
+                // Error updating notes
               }
             }}
           />

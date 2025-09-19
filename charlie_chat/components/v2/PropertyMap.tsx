@@ -1,13 +1,15 @@
 /*
  * CHARLIE2 V2 - Shared Property Map Component
- * Reusable Mapbox map for displaying properties across discover and engage pages
- * Features: Dynamic centering, popups, context-aware navigation
+ * Consolidated map component for discover, engage, and other property display pages
+ * Features: Dynamic centering, popups, context-aware navigation, rental data overlay
+ * Replaces inline DiscoverMap and provides unified map experience
  */
 'use client';
 
 import { useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import 'mapbox-gl/dist/mapbox-gl.css';
+import { ProcessedRentData, getRentColorQuintiles } from '@/lib/v2/rentDataProcessor';
 
 interface PropertyMapProps {
   properties: any[];
@@ -17,10 +19,12 @@ interface PropertyMapProps {
   isShowingFavorites?: boolean;
   searchQuery?: string;
   hasSearched?: boolean;
+  rentData?: ProcessedRentData[];
+  showRentOverlay?: boolean;
 }
 
 const PropertyMap = dynamic(() => import('react-map-gl/mapbox').then((mod) => {
-  const { Map, Marker, Popup } = mod;
+  const { Map, Marker, Popup, Source, Layer } = mod;
   
   return function PropertyMapComponent({ 
     properties, 
@@ -29,7 +33,9 @@ const PropertyMap = dynamic(() => import('react-map-gl/mapbox').then((mod) => {
     currentViewMode, 
     isShowingFavorites, 
     searchQuery, 
-    hasSearched 
+    hasSearched,
+    rentData,
+    showRentOverlay = true
   }: PropertyMapProps) {
     const [viewState, setViewState] = useState({
       longitude: -71.3128,
@@ -111,6 +117,103 @@ const PropertyMap = dynamic(() => import('react-map-gl/mapbox').then((mod) => {
           mapStyle="mapbox://styles/mapbox/streets-v12"
           style={{ width: '100%', height: '100%' }}
         >
+          {/* Rental Data Overlay - Geographic circles that maintain size */}
+          {showRentOverlay && rentData && rentData.length > 0 && (
+            <Source
+              id="rental-data"
+              type="geojson"
+              data={{
+                type: 'FeatureCollection',
+                features: rentData
+                  .filter(metro => metro.latitude && metro.longitude)
+                  .map((metro, index) => {
+                    // Create a circle polygon with geographic radius
+                    const radiusMiles = metro.radius || 25;
+                    const radiusKm = radiusMiles * 1.60934; // Convert miles to km
+                    const center = [Number(metro.longitude), Number(metro.latitude)];
+                    
+                    // Create circle coordinates (approximate circle with polygon)
+                    const points = [];
+                    const numPoints = 32;
+                    for (let i = 0; i < numPoints; i++) {
+                      const angle = (i / numPoints) * 2 * Math.PI;
+                      const dx = radiusKm / 111.32 * Math.cos(angle); // 111.32 km per degree longitude at equator
+                      const dy = radiusKm / 110.574 * Math.sin(angle); // 110.574 km per degree latitude
+                      
+                      // Adjust longitude for latitude
+                      const adjustedDx = dx / Math.cos(center[1] * Math.PI / 180);
+                      
+                      points.push([center[0] + adjustedDx, center[1] + dy]);
+                    }
+                    points.push(points[0]); // Close the polygon
+                    
+                    return {
+                      type: 'Feature',
+                      geometry: {
+                        type: 'Polygon',
+                        coordinates: [points]
+                      },
+                      properties: {
+                        id: `rent-${index}`,
+                        averageRent: metro.averageRent,
+                        radius: radiusMiles,
+                        RegionName: metro.RegionName,
+                        sizeRank: metro.sizeRank,
+                        yoyPercent: metro.yoyPercent,
+                        color: getRentColorQuintiles(metro.averageRent),
+                        center: center
+                      }
+                    };
+                  })
+              }}
+            >
+              <Layer
+                id="rental-circles"
+                type="fill"
+                paint={{
+                  'fill-color': ['get', 'color'],
+                  'fill-opacity': 0.3
+                }}
+              />
+              <Layer
+                id="rental-circles-stroke"
+                type="line"
+                paint={{
+                  'line-color': '#ffffff',
+                  'line-width': 2,
+                  'line-opacity': 1
+                }}
+              />
+            </Source>
+          )}
+          
+          {/* Add rental data markers for click events */}
+          {showRentOverlay && rentData?.map((metro, index) => {
+            if (!metro.latitude || !metro.longitude) return null;
+            
+            return (
+              <Marker
+                key={`rent-marker-${index}`}
+                longitude={Number(metro.longitude)}
+                latitude={Number(metro.latitude)}
+                onClick={(e) => {
+                  e.originalEvent?.stopPropagation();
+                  setPopupInfo({
+                    ...metro,
+                    isRentData: true,
+                    id: `rent-${index}`
+                  });
+                }}
+              >
+                <div 
+                  className="w-4 h-4 rounded-full cursor-pointer opacity-0 hover:opacity-30 transition-opacity"
+                  style={{ backgroundColor: getRentColorQuintiles(metro.averageRent) }}
+                />
+              </Marker>
+            );
+          })}
+          
+          {/* Property Markers */}
           {properties?.filter(p => p.latitude && p.longitude).map((property, index) => {
             return (
               <Marker
@@ -140,31 +243,55 @@ const PropertyMap = dynamic(() => import('react-map-gl/mapbox').then((mod) => {
               closeOnClick={false}
               offset={10}
             >
-              <div 
-                className="p-3 max-w-64 cursor-pointer hover:bg-gray-50 transition-colors"
-                onClick={handlePopupClick}
-              >
-                <h3 className="font-semibold text-gray-900 mb-2 text-sm break-words leading-tight">
-                  {popupInfo.address_street || popupInfo.address || 'Property'}
-                </h3>
-                <div className="text-xs text-gray-600 mb-2">
-                  {popupInfo.units_count || popupInfo.units || 'N/A'} Units • Built {popupInfo.year_built || popupInfo.built || 'Unknown'}
-                </div>
-                <div className="border-t border-gray-200 pt-2">
-                  <div className="text-sm font-bold text-gray-900">
-                    {popupInfo.assessed_value ? 
-                      `$${parseInt(popupInfo.assessed_value.toString()).toLocaleString()}` : 
-                      popupInfo.assessed || 'N/A'
-                    }
+              {popupInfo.isRentData ? (
+                // Rental data popup
+                <div className="p-3 max-w-64">
+                  <h3 className="font-semibold text-gray-900 mb-2 text-sm break-words leading-tight">
+                    {popupInfo.RegionName}
+                  </h3>
+                  <div className="text-xs text-gray-600 mb-2">
+                    Average Rent: <span className="font-bold text-gray-900">${popupInfo.averageRent?.toLocaleString()}</span>
                   </div>
-                  <div className="text-xs text-gray-600">
-                    Assessed Value
+                  <div className="text-xs text-gray-600 mb-2">
+                    Market Size Rank: #{popupInfo.sizeRank}
+                  </div>
+                  {popupInfo.yoyPercent && (
+                    <div className="text-xs text-gray-600">
+                      YoY Change: {typeof popupInfo.yoyPercent === 'number' ? 
+                        `${popupInfo.yoyPercent > 0 ? '+' : ''}${popupInfo.yoyPercent.toFixed(1)}%` : 
+                        popupInfo.yoyPercent
+                      }
+                    </div>
+                  )}
+                </div>
+              ) : (
+                // Property popup
+                <div 
+                  className="p-3 max-w-64 cursor-pointer hover:bg-gray-50 transition-colors"
+                  onClick={handlePopupClick}
+                >
+                  <h3 className="font-semibold text-gray-900 mb-2 text-sm break-words leading-tight">
+                    {popupInfo.address_street || popupInfo.address || 'Property'}
+                  </h3>
+                  <div className="text-xs text-gray-600 mb-2">
+                    {popupInfo.units_count || popupInfo.units || 'N/A'} Units • Built {popupInfo.year_built || popupInfo.built || 'Unknown'}
+                  </div>
+                  <div className="border-t border-gray-200 pt-2">
+                    <div className="text-sm font-bold text-gray-900">
+                      {popupInfo.assessed_value ? 
+                        `$${parseInt(popupInfo.assessed_value.toString()).toLocaleString()}` : 
+                        popupInfo.assessed || 'N/A'
+                      }
+                    </div>
+                    <div className="text-xs text-gray-600">
+                      Assessed Value
+                    </div>
+                  </div>
+                  <div className="mt-2 text-xs text-blue-600 font-medium">
+                    Click for details →
                   </div>
                 </div>
-                <div className="mt-2 text-xs text-blue-600 font-medium">
-                  Click for details →
-                </div>
-              </div>
+              )}
             </Popup>
           )}
         </Map>

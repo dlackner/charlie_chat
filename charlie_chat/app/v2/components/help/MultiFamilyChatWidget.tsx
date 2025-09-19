@@ -10,10 +10,12 @@ import React, { useState, useEffect, useRef } from 'react';
 import { X, Send } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useModal } from '@/contexts/ModalContext';
+import { useAlert } from '@/components/v2/AlertModal';
 
 const MultiFamilyChatWidget = () => {
   const { user, supabase } = useAuth();
   const { showHelpWidget, setShowHelpWidget } = useModal();
+  const { showError, AlertComponent } = useAlert();
   const [message, setMessage] = useState('');
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -111,15 +113,15 @@ const MultiFamilyChatWidget = () => {
           }, 3000);
         } else {
           console.error('Function returned error:', result);
-          alert(`Failed to send message: ${result.error || 'Please try again.'}`);
+          showError(`Failed to send message: ${result.error || 'Please try again.'}`, 'Send Failed');
         }
       } catch (error) {
         console.error('Error sending message:', error);
         
         if (error instanceof Error && error.message.includes('failed to fetch')) {
-          alert('Network error - please check your connection and try again.');
+          showError('Network error - please check your connection and try again.', 'Network Error');
         } else if (error instanceof Error && error.message.includes('CORS')) {
-          alert('CORS error - please contact support.');
+          showError('CORS error - please contact support.', 'CORS Error');
         }
       } finally {
         setIsLoading(false);
@@ -282,6 +284,9 @@ const MultiFamilyChatWidget = () => {
           </div>
         )}
       </div>
+      
+      {/* Alert Modal */}
+      {AlertComponent}
     </>
   );
 };

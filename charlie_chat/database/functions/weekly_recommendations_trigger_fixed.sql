@@ -1,3 +1,10 @@
+/*
+ * CHARLIE2 V2 - Weekly Recommendations Database Trigger
+ * Automated PostgreSQL function for generating weekly property recommendations
+ * Integrates with cron scheduling and API endpoints for user notification
+ * Part of the new V2 application architecture
+ */
+
 -- Fixed Weekly Recommendations Automated Trigger
 -- This fixes the data type mismatch error
 

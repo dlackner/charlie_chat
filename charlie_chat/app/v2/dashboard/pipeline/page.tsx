@@ -1,3 +1,9 @@
+/*
+ * CHARLIE2 V2 - Dashboard Pipeline Page
+ * Interactive Kanban-style property pipeline management with drag-and-drop functionality
+ * Features: Deal quality matrix, property intelligence charts, pipeline analytics
+ * Part of the new V2 application architecture
+ */
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
@@ -201,7 +207,7 @@ export default function PipelinePage() {
         
         setPropertiesData(transformedProperties);
       } catch (err) {
-        console.error('Error loading favorites:', err);
+        // Error loading favorites
         setError('Failed to load properties');
       } finally {
         setIsLoading(false);
@@ -242,7 +248,7 @@ export default function PipelinePage() {
         setIntelligenceData(result.data || []);
         setIntelligenceSummary(result.summary || {});
       } catch (err: any) {
-        console.error('Error fetching intelligence data:', err);
+        // Error fetching intelligence data
         setIntelligenceError(err.message || 'Failed to load data');
       } finally {
         setIntelligenceLoading(false);
@@ -406,9 +412,9 @@ export default function PipelinePage() {
         throw new Error('Failed to update property status');
       }
 
-      console.log(`Successfully moved property ${activeId} to ${newStatus}`);
+      // Successfully moved property
     } catch (error) {
-      console.error('Error updating property status:', error);
+      // Error updating property status
       // Revert the change on error
       setPropertiesData(prev => 
         prev.map(property => 
@@ -709,7 +715,7 @@ function DealQualityMatrix({ user, authLoading }: { user: any; authLoading: bool
           process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
         );
 
-        console.log('DealQualityMatrix - Querying for user_id:', user.id);
+        // Querying for user data
         
         const { data, error } = await supabase
           .from('user_favorites')
@@ -743,10 +749,7 @@ function DealQualityMatrix({ user, authLoading }: { user: any; authLoading: bool
           throw new Error(`Database error: ${error.message}`);
         }
 
-        // Debug: Log the raw data received
-        console.log('DealQualityMatrix - Raw data received:', data?.length, 'favorites');
-        console.log('DealQualityMatrix - Sample data:', data?.slice(0, 2));
-        console.log('DealQualityMatrix - Query was filtering by user_id:', user.id, 'and is_active: true');
+        // Process the raw data received
 
         // Transform the data to flatten the property information
         const properties = data?.map(favorite => ({
@@ -818,7 +821,7 @@ function DealQualityMatrix({ user, authLoading }: { user: any; authLoading: bool
         setQuadrantCounts(counts);
         
       } catch (err: any) {
-        console.error('Error fetching matrix data:', err);
+        // Error fetching matrix data
         setError(err.message || 'Failed to load matrix data');
       } finally {
         setIsLoading(false);

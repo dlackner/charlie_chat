@@ -308,7 +308,6 @@ export default function PropertyDetailsPage() {
       setIsSkipTraceExpanded(true);
 
     } catch (error) {
-      console.error('Skip trace error:', error);
       
       let errorMessage = 'Skip trace failed';
       if (error instanceof Error) {

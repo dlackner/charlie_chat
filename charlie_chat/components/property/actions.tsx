@@ -202,10 +202,12 @@ export const PropertyActions = ({ listing }: PropertyActionsProps) => {
                   <span>Assessed:&nbsp;</span>
                   <span className="font-medium text-green-600">{formatCurrency(listing.assessed_value)}</span>
                 </div>
-                <div className="flex">
-                  <span>Est. Equity:&nbsp;</span>
-                  <span className="font-medium text-blue-600">{formatCurrency(listing.estimated_equity)}</span>
-                </div>
+                {listing.estimated_equity && listing.estimated_equity > 0 && (
+                  <div className="flex">
+                    <span>Est. Equity:&nbsp;</span>
+                    <span className="font-medium text-blue-600">{formatCurrency(listing.estimated_equity)}</span>
+                  </div>
+                )}
               </div>
 
               {/* Investment flags */}

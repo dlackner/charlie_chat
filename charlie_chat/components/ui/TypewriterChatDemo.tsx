@@ -9,11 +9,11 @@ const TypewriterChatDemo = () => {
   const [isTyping, setIsTyping] = useState(true);
   
   const questions = [
-    "What are the top 5 markets for multifamily investing?",
-    "Analyze the attached property at 73 Rhode Island Ave in Newport, RI",
+    "What's the cap rate for multifamily properties in Pittsburgh, PA?",
+    "Analyze the attached property brochure for the apartment at 73 Rhode Island Ave in Newport, RI",
     "What are key principles in building a multifamily business?",
     "The owner rejected my first offer. Give me some suggestions on how to improve the offer without giving up leverage.",
-    "What's the average rent per unit for a 1 bedroom apartment in Nashua, NH?"
+    "What's the typical rent for a 1-bedroom apartment in Nashua, NH?"
   ];
 
   useEffect(() => {

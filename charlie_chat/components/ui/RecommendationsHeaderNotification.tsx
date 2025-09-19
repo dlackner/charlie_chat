@@ -1,3 +1,9 @@
+/*
+ * CHARLIE2 V2 - Recommendations Header Notification Component
+ * Compact notification banner for new weekly property recommendations
+ * Integrates with main navigation header for user awareness
+ * Part of the new V2 application architecture
+ */
 "use client";
 
 import React, { useState, useEffect } from 'react';

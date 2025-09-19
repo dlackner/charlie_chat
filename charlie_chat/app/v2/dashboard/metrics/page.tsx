@@ -1,3 +1,9 @@
+/*
+ * CHARLIE2 V2 - Dashboard Metrics Page
+ * Real-time activity tracking and performance metrics for real estate investors
+ * Features: Activity coaching, time-based charts, property tracking metrics
+ * Part of the new V2 application architecture
+ */
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -119,7 +125,7 @@ function ActionCenter({ user, authLoading }: { user: any; authLoading: boolean }
         const data = await response.json();
         setReminders(data.reminders || []);
       } catch (err: any) {
-        console.error('Error fetching reminders:', err);
+        // Error fetching reminders
         setError(err.message || 'Failed to load reminders');
       } finally {
         setIsLoading(false);
@@ -238,19 +244,15 @@ function PropertiesFavoritedChart({ user, timeRange }: { user: any; timeRange: s
     const fetchData = async () => {
       setIsLoading(true);
       try {
-        console.log('Fetching favorites chart data for timeRange:', timeRange);
         const response = await fetch(`/api/v2/metrics/favorites-over-time?days=${timeRange}`);
-        console.log('Favorites API response status:', response.status);
         if (response.ok) {
           const data = await response.json();
-          console.log('Favorites chart data received:', data);
-          console.log('Setting chartData to:', data.chartData || []);
           setChartData(data.chartData || []);
         } else {
-          console.error('Favorites API error:', response.status, await response.text());
+          // Favorites API error
         }
       } catch (error) {
-        console.error('Error fetching favorites chart data:', error);
+        // Error fetching favorites chart data
       } finally {
         setIsLoading(false);
       }
@@ -268,21 +270,13 @@ function PropertiesFavoritedChart({ user, timeRange }: { user: any; timeRange: s
         </div>
       ) : (
         <div className="h-48">
-          {(() => {
-            console.log('Favorites chart rendering with chartData:', chartData, 'length:', chartData.length);
-            if (chartData.length > 0) {
-              console.log('Sample chart item:', chartData[0]);
-              console.log('Max count:', Math.max(...chartData.map(d => d.count)));
-            }
-            return chartData.length > 0;
-          })() ? (
+          {chartData.length > 0 ? (
             <>
               <div className="h-full flex items-end space-x-2 p-4">
                 {chartData.map((item, index) => {
                   const maxCount = Math.max(...chartData.map(d => d.count));
                   const maxHeight = 120; // Fixed max height in pixels
                   const heightPx = Math.max((item.count / maxCount) * maxHeight, 10); // Minimum 10px height
-                  console.log(`Bar ${index}: count=${item.count}, maxCount=${maxCount}, height=${heightPx}px`);
                   return (
                     <div key={index} className="flex-1 flex flex-col items-center justify-end min-w-0 group relative">
                       <div 
@@ -351,7 +345,7 @@ function OffersCreatedCard({ user, timeRange }: { user: any; timeRange: string }
           setWeeklyData(weeklyResult.chartData || []);
         }
       } catch (error) {
-        console.error('Error fetching offers data:', error);
+        // Error fetching offers data
       } finally {
         setIsLoading(false);
       }
@@ -449,7 +443,7 @@ function LOIsCreatedCard({ user, timeRange }: { user: any; timeRange: string }) 
           setWeeklyData(weeklyResult || []);
         }
       } catch (error) {
-        console.error('Error fetching LOI data:', error);
+        // Error fetching LOI data
       } finally {
         setIsLoading(false);
       }
@@ -546,7 +540,7 @@ function MarketingLettersCreatedCard({ user, timeRange }: { user: any; timeRange
           setWeeklyData(weeklyResult || []);
         }
       } catch (error) {
-        console.error('Error fetching marketing letters data:', error);
+        // Error fetching marketing letters data
       } finally {
         setIsLoading(false);
       }
@@ -643,7 +637,7 @@ function EmailsSentCard({ user, timeRange }: { user: any; timeRange: string }) {
           setWeeklyData(weeklyResult || []);
         }
       } catch (error) {
-        console.error('Error fetching emails data:', error);
+        // Error fetching emails data
       } finally {
         setIsLoading(false);
       }
@@ -725,18 +719,15 @@ function MarketActivityChart({ user, timeRange }: { user: any; timeRange: string
     const fetchData = async () => {
       setIsLoading(true);
       try {
-        console.log('Fetching market activity data for timeRange:', timeRange);
         const response = await fetch(`/api/v2/metrics/market-activity?days=${timeRange}`);
-        console.log('Market activity API response status:', response.status);
         if (response.ok) {
           const data = await response.json();
-          console.log('Market activity data received:', data);
           setChartData(data.chartData || []);
         } else {
-          console.error('Market activity API error:', response.status, await response.text());
+          // Market activity API error
         }
       } catch (error) {
-        console.error('Error fetching market activity data:', error);
+        // Error fetching market activity data
       } finally {
         setIsLoading(false);
       }

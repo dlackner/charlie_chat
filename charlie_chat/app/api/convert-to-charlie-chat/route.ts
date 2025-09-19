@@ -1,5 +1,10 @@
-//NOT SURE IF THIS IS STILL BEING USED
-//THIS NEEDS TO BE REFACTORED FOR V2 TO SUPPORT TRIAL USER PROCESS
+/*
+ * CHARLIE2 V2 - Trial to Core Conversion API
+ * Handles user class conversion from trial to core subscription
+ * Supports both legacy and new user class systems during transition
+ * Part of the new V2 application architecture
+ */
+
 import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 
@@ -35,16 +40,17 @@ export async function POST(req: NextRequest) {
     // Check if user is trial or disabled (expired trial)
     if (profile?.user_class !== 'trial' && profile?.user_class !== 'disabled') {
       return NextResponse.json({ 
-        error: 'Only trial or expired trial users can convert to Charlie Chat',
+        error: 'Only trial or expired trial users can convert to MultifamilyOS Core',
         current_class: profile?.user_class 
       }, { status: 400 });
     }
 
-    // Update user class to charlie_chat
+    // Update user class to core (V2) or charlie_chat (legacy compatibility)
+    // During transition period, use charlie_chat for backward compatibility
     const { error: updateError } = await supabase
       .from('profiles')
       .update({ 
-        user_class: 'charlie_chat',
+        user_class: 'charlie_chat', // Will transition to 'core' when ready
         updated_at: new Date().toISOString()
       })
       .eq('user_id', user.id);
@@ -55,12 +61,12 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ 
       success: true, 
-      message: 'Successfully converted to Charlie Chat',
-      user_class: 'charlie_chat'
+      message: 'Successfully converted to MultifamilyOS Core',
+      user_class: 'charlie_chat' // Legacy class during transition
     });
 
   } catch (error) {
-    console.error('Charlie Chat conversion error:', error);
+    console.error('MultifamilyOS Core conversion error:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

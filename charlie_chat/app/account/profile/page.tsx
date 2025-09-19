@@ -72,7 +72,6 @@ export default function ProfilePage() {
           }
         }
       } catch (err) {
-        console.error('Error fetching profile:', err);
         setError('Failed to load profile information');
       } finally {
         setLoading(false);
@@ -100,7 +99,7 @@ export default function ProfilePage() {
       };
       reader.readAsDataURL(file);
     } else {
-      alert('Please select an image file under 1MB');
+      setError('Please select an image file under 1MB');
     }
   };
 
@@ -136,7 +135,7 @@ export default function ProfilePage() {
         updated_at: new Date().toISOString()
       };
 
-      console.log('Attempting to save profile data:', profileData);
+      // Preparing to save profile data
 
       // TODO: Handle logo file upload to storage if logoFile exists
       // For now, we'll save the profile data without the logo
@@ -148,7 +147,7 @@ export default function ProfilePage() {
         })
         .select();
 
-      console.log('Supabase response:', { data, error });
+      // Process save response
 
       if (error) {
         throw error;
@@ -162,7 +161,6 @@ export default function ProfilePage() {
       }, 3000);
 
     } catch (err) {
-      console.error('Error saving profile:', err);
       // Show more detailed error information
       const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
       setError(`Failed to save profile: ${errorMessage}. Please try again.`);

@@ -27,7 +27,9 @@ import {
   X,
   ChevronDown,
   ChevronUp,
-  DollarSign
+  DollarSign,
+  House,
+  BarChart3
 } from 'lucide-react';
 
 interface NavigationItem {
@@ -43,6 +45,7 @@ interface NavigationItem {
 export default function MobileNavigation() {
   const [isOpen, setIsOpen] = useState(false);
   const [openSubmenus, setOpenSubmenus] = useState<{ [key: string]: boolean }>({});
+  const [mouseLeaveTimeout, setMouseLeaveTimeout] = useState<NodeJS.Timeout | null>(null);
   const pathname = usePathname();
   const router = useRouter();
   const { supabase, user } = useAuth();
@@ -75,6 +78,15 @@ export default function MobileNavigation() {
     }
   }, [user?.id, supabase, localUserClass]);
 
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (mouseLeaveTimeout) {
+        clearTimeout(mouseLeaveTimeout);
+      }
+    };
+  }, [mouseLeaveTimeout]);
+
   // Sign out handler
   const handleSignOut = async () => {
     const { error } = await supabase.auth.signOut();
@@ -83,7 +95,7 @@ export default function MobileNavigation() {
     } else {
       setIsOpen(false);
       setOpenSubmenus({});
-      router.push("/v2/loginnew");
+      router.push("/");
     }
   };
 
@@ -96,11 +108,19 @@ export default function MobileNavigation() {
 
     // Build all navigation items with access control
     const allItems: (NavigationItem & { disabled?: boolean })[] = [
+      // Home - always available for all users
+      {
+        name: 'HOME',
+        href: '/',
+        icon: House,
+        disabled: false
+      },
+
       // Dashboard - always show, but control submenu access
       {
         name: 'DASHBOARD',
         href: '/v2/dashboard',
-        icon: Home,
+        icon: BarChart3,
         disabled: isLoadingUserClass ? false : !canAccessDashboard(currentUserClass),
         submenu: [
           { 
@@ -201,6 +221,29 @@ export default function MobileNavigation() {
     setOpenSubmenus({});
   };
 
+  // Handle delayed mouse leave for dropdown menus
+  const handleMouseLeave = () => {
+    // Clear any existing timeout
+    if (mouseLeaveTimeout) {
+      clearTimeout(mouseLeaveTimeout);
+    }
+    
+    // Set a new timeout to close menus after a brief delay
+    const timeout = setTimeout(() => {
+      closeAllSubmenus();
+    }, 300); // 300ms delay allows time to move mouse to submenu
+    
+    setMouseLeaveTimeout(timeout);
+  };
+
+  const handleMouseEnter = () => {
+    // Cancel the close timeout when mouse enters the menu area
+    if (mouseLeaveTimeout) {
+      clearTimeout(mouseLeaveTimeout);
+      setMouseLeaveTimeout(null);
+    }
+  };
+
   return (
     <>
       {/* Mobile Menu Button */}
@@ -234,7 +277,7 @@ export default function MobileNavigation() {
           {/* Header */}
           <div className="p-6 border-b border-gray-200">
             <Image 
-              src="/MFOS.png" 
+              src="/MFOS AI Logo.png" 
               alt="Charlie Chat AI" 
               width={160} 
               height={40}
@@ -245,7 +288,7 @@ export default function MobileNavigation() {
           {/* Navigation Items */}
           <nav className="flex-1 p-4 space-y-1">
             {navigation.map((item) => {
-              const isActive = pathname.startsWith(item.href);
+              const isActive = item.href === '/' ? pathname === '/' : pathname.startsWith(item.href);
               const isSubmenuOpen = openSubmenus[item.name];
               const Icon = item.icon;
               
@@ -380,7 +423,7 @@ export default function MobileNavigation() {
               Mobile-First Real Estate Platform
             </div>
             <div className="text-xs text-red-500 text-center mt-1">
-              Debug: userClass = {userClass || 'null'}
+           {/*}  Debug: userClass = {userClass || 'null'}*/}
             </div>
           </div>
         </div>
@@ -393,14 +436,14 @@ export default function MobileNavigation() {
             {/* Logo */}
             <div className="flex-shrink-0">
               <Image 
-                src="/MFOS.png" 
+                src="/MFOS AI Logo.png" 
                 alt="Charlie Chat AI" 
                 width={160} 
                 height={40}
                 className="h-8 w-auto"
               />
               <div className="text-xs text-red-500 mt-1">
-                Debug: userClass = {localUserClass || userClass || 'null'}
+             {/* Debug: userClass = {localUserClass || userClass || 'null'}*/}
               </div>
             </div>
 
@@ -408,7 +451,7 @@ export default function MobileNavigation() {
             <nav className="flex-1 flex justify-center">
               <div className="flex space-x-4">
               {navigation.filter(item => item.name !== 'ACCOUNT' && item.name !== 'PRICING').map((item) => {
-                const isActive = pathname.startsWith(item.href);
+                const isActive = item.href === '/' ? pathname === '/' : pathname.startsWith(item.href);
                 const isSubmenuOpen = openSubmenus[item.name];
                 const Icon = item.icon;
                 
@@ -416,7 +459,8 @@ export default function MobileNavigation() {
                   <div 
                     key={item.name} 
                     className="relative"
-                    //onMouseLeave={() => isSubmenuOpen && closeAllSubmenus()}
+                    onMouseLeave={handleMouseLeave}
+                    onMouseEnter={handleMouseEnter}
                   >
                     {item.submenu ? (
                       // Items with submenu - show dropdown
@@ -541,7 +585,7 @@ export default function MobileNavigation() {
                 const pricingItem = navigation.find(item => item.name === 'PRICING');
                 if (!pricingItem) return null;
                 
-                const isActive = pathname.startsWith(pricingItem.href);
+                const isActive = pricingItem.href === '/' ? pathname === '/' : pathname.startsWith(pricingItem.href);
                 const Icon = pricingItem.icon;
                 
                 return (
@@ -567,24 +611,28 @@ export default function MobileNavigation() {
                 const accountItem = navigation.find(item => item.name === 'ACCOUNT');
                 if (!accountItem) return null;
                 
-                const isActive = pathname.startsWith(accountItem.href);
+                const isActive = accountItem.href === '/' ? pathname === '/' : pathname.startsWith(accountItem.href);
                 const isSubmenuOpen = openSubmenus[accountItem.name];
                 const Icon = accountItem.icon;
                 
                 return (
                   <div 
                     className="relative"
-                   // onMouseLeave={() => isSubmenuOpen && closeAllSubmenus()}
+                    onMouseLeave={handleMouseLeave}
+                    onMouseEnter={handleMouseEnter}
                   >
                     {accountItem.submenu ? (
                       <>
                         <button
-                          onClick={() => toggleSubmenu(accountItem.name)}
+                          onClick={() => !accountItem.disabled && toggleSubmenu(accountItem.name)}
+                          disabled={accountItem.disabled}
                           className={`
                             flex items-center px-3 py-2 rounded-md text-sm font-medium transition-colors
-                            ${isActive 
-                              ? 'text-blue-700 bg-blue-50' 
-                              : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                            ${accountItem.disabled
+                              ? 'text-gray-400 cursor-not-allowed opacity-50'
+                              : isActive 
+                                ? 'text-blue-700 bg-blue-50' 
+                                : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
                             }
                           `}
                         >
@@ -593,7 +641,7 @@ export default function MobileNavigation() {
                           <ChevronDown className={`h-3 w-3 ml-1 transition-transform ${isSubmenuOpen ? 'rotate-180' : ''}`} />
                         </button>
                         
-                        {isSubmenuOpen && (
+                        {isSubmenuOpen && !accountItem.disabled && (
                           <div className="absolute top-full right-0 mt-1 w-56 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50">
                             {accountItem.submenu.map((subItem) => {
                               const isSubActive = subItem.href && pathname === subItem.href;

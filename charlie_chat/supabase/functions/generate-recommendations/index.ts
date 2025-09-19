@@ -1,3 +1,10 @@
+/*
+ * CHARLIE2 V2 - MMR Recommendation Generation Engine
+ * Advanced property recommendation system using Maximal Marginal Relevance algorithm
+ * Supports learning phases and adaptive user preference optimization
+ * Part of the new V2 application architecture
+ */
+
 // Supabase Edge Function for MMR Recommendation Generation
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
@@ -312,7 +319,7 @@ serve(async (req) => {
           success: true, 
           batchId: null,
           recommendationCount: 0,
-          totalCandidates: candidates.length,
+          totalCandidates: allProperties.length,
           lambda,
           weekStart,
           error: 'No diverse recommendations found'

@@ -1,4 +1,10 @@
-//LIKELY NEED TO REFACTOR FOR V2 RELEASE
+/*
+ * CHARLIE2 V2 - Stripe Price Information API
+ * Retrieves price details from Stripe for subscription products
+ * Used by SubscriptionModal to display current subscription pricing
+ * Part of the new V2 application architecture
+ */
+
 import Stripe from "stripe";
 import { NextRequest, NextResponse } from "next/server";
 

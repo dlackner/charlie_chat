@@ -1,6 +1,6 @@
 // components/utils/selection.ts
 
-import type { Listing } from '../legacy/sidebar';
+import type { Listing } from '../ui/listingTypes';
 
 /**
  * Checks if all current listings are selected

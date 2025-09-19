@@ -1,3 +1,10 @@
+/*
+ * CHARLIE2 V2 - Stripe Webhook Handler
+ * Critical payment processing system handling all Stripe events
+ * Manages subscriptions, credit purchases, and customer data synchronization
+ * Part of the new V2 application architecture
+ */
+
 // supabase/functions/stripe-webhook/index.ts
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';

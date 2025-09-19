@@ -1,3 +1,9 @@
+/*
+ * CHARLIE2 V2 - Weekly Recommendations Modal Component
+ * Advanced MMR-based property recommendation interface with user learning system
+ * Features swipeable property cards, decision tracking, and convergence analysis
+ * Part of the new V2 application architecture
+ */
 "use client";
 
 import React, { useState, useEffect } from 'react';

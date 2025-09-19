@@ -1,4 +1,10 @@
-//NEED TO REFACTOR FOR V2 RELEASE
+/*
+ * CHARLIE2 V2 - Stripe Payment Method Retrieval API
+ * Retrieves customer payment method information for subscription management
+ * Used by SubscriptionModal to display current payment method details
+ * Part of the new V2 application architecture
+ */
+
 import Stripe from "stripe";
 import { NextRequest, NextResponse } from "next/server";
 

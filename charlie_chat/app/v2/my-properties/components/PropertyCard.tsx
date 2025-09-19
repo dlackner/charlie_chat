@@ -327,10 +327,12 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
                                     <span>Assessed:&nbsp;</span>
                                     <span className="font-medium text-green-600">{formatCurrency(property.assessed_value)}</span>
                                 </div>
-                                <div className="flex">
-                                    <span>Est. Equity:&nbsp;</span>
-                                    <span className="font-medium text-blue-600">{formatCurrency(property.estimated_equity)}</span>
-                                </div>
+                                {property.estimated_equity && property.estimated_equity > 0 && (
+                                    <div className="flex">
+                                        <span>Est. Equity:&nbsp;</span>
+                                        <span className="font-medium text-blue-600">{formatCurrency(property.estimated_equity)}</span>
+                                    </div>
+                                )}
                             </div>
 
                             {/* Investment flags */}

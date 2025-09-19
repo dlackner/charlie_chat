@@ -15,6 +15,10 @@ import { AttachmentProvider, useAttachments } from './context/AttachmentContext'
 import { useAuth } from '@/contexts/AuthContext';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import { useState, useEffect } from 'react';
+import { hasAccess } from '@/lib/v2/accessControl';
+import type { UserClass } from '@/lib/v2/accessControl';
+import { useRouter } from 'next/navigation';
+import { StandardModalWithActions } from '@/components/v2/StandardModal';
 
 interface AICoachContentProps {
   threads: Array<{
@@ -31,7 +35,9 @@ interface AICoachContentProps {
 
 const AICoachContent = ({ threads, loadingThreads, loadThread, createNewThread, deleteThread, runtime }: AICoachContentProps) => {
   const { user } = useAuth();
+  const router = useRouter();
   const [userClass, setUserClass] = useState<string | null>(null);
+  const [showThreadsUpgradeModal, setShowThreadsUpgradeModal] = useState(false);
   
   // Fetch user class
   useEffect(() => {
@@ -49,7 +55,7 @@ const AICoachContent = ({ threads, loadingThreads, loadThread, createNewThread, 
             setUserClass(profile.user_class);
           }
         } catch (error) {
-          console.error('Error fetching user class:', error);
+          // Silently handle user class fetch errors
         }
       };
       
@@ -67,8 +73,19 @@ const AICoachContent = ({ threads, loadingThreads, loadThread, createNewThread, 
         <div className="px-4 py-3">
           <div className="flex items-center justify-end">
             <button
-              onClick={createNewThread}
-              className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              onClick={() => {
+                const currentUserClass = userClass as UserClass;
+                if (!hasAccess(currentUserClass, 'ai_coach_threads')) {
+                  setShowThreadsUpgradeModal(true);
+                  return;
+                }
+                createNewThread();
+              }}
+              className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-colors ${
+                hasAccess(userClass as UserClass, 'ai_coach_threads')
+                  ? 'bg-blue-600 text-white hover:bg-blue-700'
+                  : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+              }`}
             >
               <Plus className="h-4 w-4" />
               <span className="text-sm font-medium">New Thread</span>
@@ -125,6 +142,42 @@ const AICoachContent = ({ threads, loadingThreads, loadThread, createNewThread, 
           </AssistantRuntimeProvider>
         </div>
       </div>
+
+      {/* Threads Upgrade Modal */}
+      <StandardModalWithActions
+        isOpen={showThreadsUpgradeModal}
+        onClose={() => setShowThreadsUpgradeModal(false)}
+        title="Upgrade Required"
+        showCloseButton={true}
+        primaryAction={{
+          label: "View Plans",
+          onClick: () => {
+            setShowThreadsUpgradeModal(false);
+            router.push('/pricing');
+          },
+          variant: "primary"
+        }}
+        secondaryAction={{
+          label: "Maybe Later",
+          onClick: () => setShowThreadsUpgradeModal(false)
+        }}
+      >
+        <div className="p-6">
+          <div className="flex items-center gap-4 mb-4">
+            <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+              <MessageCircle className="w-6 h-6 text-blue-600" />
+            </div>
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900">Multiple Chat Conversations</h3>
+              <p className="text-gray-600">Organize your AI conversations with separate threads</p>
+            </div>
+          </div>
+          <p className="text-gray-700">
+            Upgrade your plan to create multiple chat threads and keep your conversations organized. 
+            Choose from our Plus or Professional plans to unlock this feature and many more!
+          </p>
+        </div>
+      </StandardModalWithActions>
     </div>
   );
 };

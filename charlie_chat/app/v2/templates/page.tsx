@@ -14,7 +14,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSearchParams } from 'next/navigation';
 import { useMyPropertiesAccess } from '@/app/v2/my-properties/components/useMyPropertiesAccess';
-import { CharlieAlert } from '@/app/v2/my-properties/components/CharlieAlert';
+import { useAlert } from '@/components/v2/AlertModal';
 import * as numberToWords from 'number-to-words';
 
 
@@ -146,6 +146,7 @@ function formatCurrencyJS(value: string) {
 }
 
 function Home() {
+  const { showError, showWarning, showSuccess, AlertComponent } = useAlert();
   const [formData, setFormData] = useState<LOIFormData>({
     yourName: '',
     yourAddress: '',
@@ -185,39 +186,7 @@ function Home() {
   const [profileError, setProfileError] = useState<string | null>(null);
   const [showingProfileWarning, setShowingProfileWarning] = useState(false);
 
-  // CharlieAlert state
-  const [charlieAlert, setCharlieAlert] = useState<{
-    isOpen: boolean;
-    title?: string;
-    message: string;
-    type?: 'info' | 'warning' | 'error' | 'success';
-    showConfirm?: boolean;
-    onConfirm?: () => void;
-    confirmText?: string;
-    cancelText?: string;
-  }>({
-    isOpen: false,
-    message: '',
-  });
 
-  // Helper function to show Charlie alerts
-  const showCharlieAlert = (
-    message: string,
-    options?: {
-      title?: string;
-      type?: 'info' | 'warning' | 'error' | 'success';
-      showConfirm?: boolean;
-      onConfirm?: () => void;
-      confirmText?: string;
-      cancelText?: string;
-    }
-  ) => {
-    setCharlieAlert({
-      isOpen: true,
-      message,
-      ...options,
-    });
-  };
 
   useEffect(() => {
     const loadProfile = async () => {
@@ -242,14 +211,7 @@ function Home() {
           // Check if profile is complete
           const validation = validateUserProfile(data as UserProfile, currentUser.email);
           if (!validation.isValid) {
-            showCharlieAlert(validation.message, {
-              type: 'warning',
-              title: 'Update your profile',
-              confirmText: 'OK',
-              onConfirm: () => {
-                router.push('/my-properties');
-              }
-            });
+            showWarning(validation.message, 'Update your profile');
             setTimeout(() => {
               router.push('/my-properties');
             }, 2000);
@@ -384,7 +346,7 @@ function Home() {
       if (typeof window !== 'undefined' && (window as any).toast) {
         (window as any).toast.error(errorMessage);
       } else {
-        alert(errorMessage);
+        showError(errorMessage, 'Validation Error');
       }
       return;
     }
@@ -398,7 +360,7 @@ function Home() {
       if (typeof window !== 'undefined' && (window as any).toast) {
         (window as any).toast.error(loadingMessage);
       } else {
-        alert(loadingMessage);
+        showError(loadingMessage, 'Loading Error');
       }
       return;
     }
@@ -407,15 +369,7 @@ function Home() {
     if (profileError) {
       if (!showingProfileWarning) {
         setShowingProfileWarning(true);
-        showCharlieAlert('Hi there! Please complete your profile in the Account tab so that your outreach is personalized. I want you to make a great first impression!', {
-          type: 'warning',
-          title: 'Update your profile',
-          confirmText: 'OK',
-          onConfirm: () => {
-            setShowingProfileWarning(false);
-            router.push('/my-properties');
-          }
-        });
+        showWarning('Please complete your profile in the Account tab so that your outreach is personalized and makes a great first impression.', 'Update your profile');
       }
       return;
     }
@@ -1487,7 +1441,7 @@ function Home() {
       if (typeof window !== 'undefined' && (window as any).toast) {
         (window as any).toast.error(errorMessage);
       } else {
-        alert(errorMessage);
+        showError(errorMessage, 'Validation Error');
       }
     }
   };
@@ -1677,18 +1631,9 @@ function Home() {
         </form>
       </div>
 
-      {/* Charlie Alert Modal */}
-      <CharlieAlert
-        isOpen={charlieAlert.isOpen}
-        onClose={() => setCharlieAlert(prev => ({ ...prev, isOpen: false }))}
-        title={charlieAlert.title}
-        message={charlieAlert.message}
-        type={charlieAlert.type}
-        showConfirm={charlieAlert.showConfirm}
-        onConfirm={charlieAlert.onConfirm}
-        confirmText={charlieAlert.confirmText}
-        cancelText={charlieAlert.cancelText}
-      />
+
+      {/* V2 Alert Modal */}
+      {AlertComponent}
     </div>
   );
 }

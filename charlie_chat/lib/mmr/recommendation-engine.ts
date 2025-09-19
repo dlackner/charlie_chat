@@ -1,3 +1,10 @@
+/*
+ * CHARLIE2 V2 - MMR Recommendation Engine
+ * Advanced Machine Learning Recommendation system using Maximal Marginal Relevance
+ * Provides intelligent property suggestions with diversity optimization
+ * Part of the new V2 application architecture
+ */
+
 // Main MMR Recommendation Engine - Integrates with existing Charlie Chat schema
 
 import { createClient } from '@supabase/supabase-js';

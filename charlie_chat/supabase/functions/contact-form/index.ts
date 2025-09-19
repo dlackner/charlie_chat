@@ -1,3 +1,10 @@
+/*
+ * CHARLIE2 V2 - Contact Form Edge Function
+ * Handles customer support and help requests from V2 application
+ * Routes messages to administrative email for customer service
+ * Part of the new V2 application architecture
+ */
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 serve(async (req) => {
@@ -31,16 +38,16 @@ serve(async (req) => {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        from: 'MultiFamilyOS Support <onboarding@resend.dev>',
+        from: 'MultifamilyOS Support <onboarding@resend.dev>',
         to: 'dlackner@hotmail.com', // Your email
-        subject: 'New Contact Form Message - MultiFamilyOS',
+        subject: 'New Contact Form Message - MultifamilyOS',
         html: `
-          <h3>New message from MultiFamilyOS chat widget</h3>
+          <h3>New message from MultifamilyOS chat widget</h3>
           <p><strong>From:</strong> ${userEmail || 'Anonymous user'}</p>
           <p><strong>Message:</strong></p>
           <p>${message}</p>
           <hr>
-          <p><em>Sent from MultiFamilyOS chat widget</em></p>
+          <p><em>Sent from MultifamilyOS chat widget</em></p>
         `
       })
     });

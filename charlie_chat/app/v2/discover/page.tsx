@@ -13,131 +13,11 @@ import { hasAccess } from '@/lib/v2/accessControl';
 import type { UserClass } from '@/lib/v2/accessControl';
 import { Search, MapPin, SlidersHorizontal, ChevronDown, ChevronUp, X, Heart, Bookmark, Target, AlertTriangle, Wrench, Activity, CreditCard, DollarSign, Home, Building, Users, Grid3x3, Map, ArrowUpDown, Trash2, Edit } from 'lucide-react';
 import { StandardModalWithActions } from '@/components/v2/StandardModal';
-import PropertyMap from '@/components/v2/PropertyMap';
+import PropertyMapWithRents from '@/components/v2/PropertyMapWithRents';
 import dynamic from 'next/dynamic';
 import 'mapbox-gl/dist/mapbox-gl.css';
+import { useAlert } from '@/components/v2/AlertModal';
 
-// Clean map implementation for discover page using react-map-gl
-const DiscoverMap = dynamic(() => import('react-map-gl/mapbox').then((mod) => {
-  const { Map, Marker, Popup } = mod;
-  
-  return function DiscoverMap({ properties, className, currentViewMode, isShowingFavorites, searchQuery, hasSearched }: { properties: any[], className?: string, currentViewMode?: string, isShowingFavorites?: boolean, searchQuery?: string, hasSearched?: boolean }) {
-    const [viewState, setViewState] = useState({
-      longitude: -71.3128,
-      latitude: 41.4901,
-      zoom: 13
-    });
-    const [popupInfo, setPopupInfo] = useState<any>(null);
-
-    // Calculate centroid when properties change
-    useEffect(() => {
-      if (properties?.length > 0) {
-        const validProperties = properties.filter(p => p.latitude && p.longitude);
-        if (validProperties.length > 0) {
-          const avgLat = validProperties.reduce((sum, p) => sum + p.latitude, 0) / validProperties.length;
-          const avgLng = validProperties.reduce((sum, p) => sum + p.longitude, 0) / validProperties.length;
-          setViewState({
-            latitude: avgLat,
-            longitude: avgLng,
-            zoom: 12
-          });
-        }
-      }
-    }, [properties]);
-
-    if (!process.env.NEXT_PUBLIC_MAPBOX_TOKEN) {
-      return (
-        <div className={`bg-gray-100 rounded-lg flex items-center justify-center ${className}`}>
-          <div className="text-center text-gray-500 p-8">
-            <div className="h-12 w-12 mx-auto mb-4 text-gray-400">🗺️</div>
-            <p className="text-sm">Map requires configuration</p>
-          </div>
-        </div>
-      );
-    }
-
-    return (
-      <div className={`relative ${className}`}>
-        <Map
-          {...viewState}
-          onMove={evt => setViewState(evt.viewState)}
-          mapboxAccessToken={process.env.NEXT_PUBLIC_MAPBOX_TOKEN}
-          mapStyle="mapbox://styles/mapbox/streets-v12"
-          style={{ width: '100%', height: '100%' }}
-        >
-          {properties?.filter(p => p.latitude && p.longitude).map((property, index) => {
-            return (
-              <Marker
-                key={property.id || index}
-                longitude={Number(property.longitude)}
-                latitude={Number(property.latitude)}
-                onClick={(e) => {
-                  e.originalEvent?.stopPropagation();
-                  setPopupInfo(property);
-                }}
-              >
-                <button className="w-8 h-8 bg-red-500 border-2 border-white rounded-full flex items-center justify-center shadow-md cursor-pointer hover:bg-red-600 transition-colors">
-                  <span className="text-white text-xs font-bold">
-                    {property.units_count || '?'}
-                  </span>
-                </button>
-              </Marker>
-            );
-          })}
-
-          {popupInfo && (
-            <Popup
-              longitude={popupInfo.longitude}
-              latitude={popupInfo.latitude}
-              onClose={() => setPopupInfo(null)}
-              closeButton={true}
-              closeOnClick={false}
-              offset={10}
-            >
-              <div 
-                className="p-3 max-w-64 cursor-pointer hover:bg-gray-50 transition-colors"
-                onClick={() => {
-                  // Create a clean back URL for the discover page
-                  const baseUrl = new URL('/v2/discover', window.location.origin);
-                  baseUrl.searchParams.set('viewMode', currentViewMode || 'cards');
-                  
-                  // If we're in favorites mode, preserve that too
-                  if (isShowingFavorites) {
-                    baseUrl.searchParams.set('showingFavorites', 'true');
-                  } else if (hasSearched && searchQuery) {
-                    baseUrl.searchParams.set('q', searchQuery);
-                    baseUrl.searchParams.set('hasResults', 'true');
-                  }
-                  
-                  const backUrl = encodeURIComponent(baseUrl.toString());
-                  window.location.href = `/v2/discover/property/${popupInfo.id || popupInfo.property_id}?back=${backUrl}`;
-                }}
-              >
-                <h3 className="font-semibold text-gray-900 mb-2 text-sm break-words leading-tight">
-                  {popupInfo.address_street || 'Property'}
-                </h3>
-                <div className="text-xs text-gray-600 mb-2">
-                  {popupInfo.units_count || 'N/A'} Units • Built {popupInfo.year_built || 'Unknown'}
-                </div>
-                <div className="border-t border-gray-200 pt-2">
-                  <div className="text-sm font-bold text-gray-900">
-                    ${popupInfo.assessed_value ? parseInt(popupInfo.assessed_value.toString()).toLocaleString() : 'N/A'}
-                  </div>
-                  <div className="text-xs text-gray-600">
-                    Est. Value: ${popupInfo.estimated_value ? parseInt(popupInfo.estimated_value.toString()).toLocaleString() : 'N/A'}
-                  </div>
-                </div>
-              </div>
-            </Popup>
-          )}
-        </Map>
-      </div>
-    );
-  };
-}), {
-  ssr: false,
-  loading: () => <div className="bg-gray-100 animate-pulse rounded-lg" />
-});
 
 // Extend Window interface for address validation timeout
 declare global {
@@ -148,6 +28,7 @@ declare global {
 
 export default function DiscoverPage() {
   const { user, supabase } = useAuth();
+  const { showError, showWarning, AlertComponent } = useAlert();
   const router = useRouter();
   const searchParams = useSearchParams();
   
@@ -194,7 +75,6 @@ export default function DiscoverPage() {
   const [isLoadingMySearches, setIsLoadingMySearches] = useState(false);
   
   // Constants
-  const MAX_FAVORITES_LIMIT = 24;
   
   // Constants
   const FAVORITES_PER_PAGE = 12;
@@ -425,7 +305,7 @@ export default function DiscoverPage() {
             setUserClass(profile.user_class);
           }
         } catch (error) {
-          console.error('Error fetching user class:', error);
+          // Error fetching user class
         }
       };
       
@@ -454,7 +334,7 @@ export default function DiscoverPage() {
         const response = await fetch('/api/favorites');
         
         if (!response.ok) {
-          console.error('Error loading favorites:', response.statusText);
+          // Error loading favorites
           setRecentProperties([]);
           setPropertyCount(0);
           setTotalFavoritesCount(0);
@@ -468,11 +348,8 @@ export default function DiscoverPage() {
         const favoritePropertyIds = favoritesResult.favorites?.map((fav: any) => fav.property_id) || [];
         
         if (favoritePropertyIds.length > 0) {
-          // Apply 24 limit: for paid users show most recent 24, for free users this is their total
-          const isFreeUser = user?.user_metadata?.user_class === 'charlie_chat';
-          const limitedFavoriteIds = isFreeUser 
-            ? favoritePropertyIds // Free users can't exceed 24 anyway
-            : favoritePropertyIds.slice(0, MAX_FAVORITES_LIMIT); // Paid users: show most recent 24
+          // Show all favorite properties for users who have access to favorites
+          const limitedFavoriteIds = favoritePropertyIds;
           
           // Get real property data from saved_properties table using existing supabase client
           if (supabase) {
@@ -483,7 +360,7 @@ export default function DiscoverPage() {
               .in('property_id', firstPageIds);
             
             if (propertiesError) {
-              console.error('Error loading property data:', propertiesError);
+              // Error loading property data
               setAllFavorites([]);
               setTotalFavoritesCount(0);
               setRecentProperties([]);
@@ -525,7 +402,7 @@ export default function DiscoverPage() {
         }
 
       } catch (error) {
-        console.error("Unexpected error loading recent properties:", error);
+        // Unexpected error loading recent properties
         setAllFavorites([]);
         setRecentProperties([]);
         setPropertyCount(0);
@@ -563,7 +440,7 @@ export default function DiscoverPage() {
           .in('property_id', nextPageIds);
         
         if (propertiesError) {
-          console.error('Error loading more property data:', propertiesError);
+          // Error loading more property data
         } else {
           // Map database fields to component expected fields
           const mappedProperties = propertiesData?.map(prop => ({
@@ -580,7 +457,7 @@ export default function DiscoverPage() {
         }
       }
     } catch (error) {
-      console.error('Error loading more favorites:', error);
+      // Error loading more favorites
     } finally {
       setIsLoadingMoreFavorites(false);
     }
@@ -619,7 +496,7 @@ export default function DiscoverPage() {
         setFavoritePropertyIds(propertyIds);
       }
     } catch (error) {
-      console.error('Error loading user favorites:', error);
+      // Error loading user favorites
     }
   };
 
@@ -643,12 +520,7 @@ export default function DiscoverPage() {
     const isFavorited = favoritePropertyIds.includes(propertyId);
     const action = isFavorited ? 'remove' : 'add';
     
-    // Check 24 favorite limit for free users only
-    const isFreeUser = user?.user_metadata?.user_class === 'charlie_chat';
-    if (action === 'add' && isFreeUser && favoritePropertyIds.length >= MAX_FAVORITES_LIMIT) {
-      alert(`You've reached the ${MAX_FAVORITES_LIMIT} favorite limit for free users. Remove some favorites or upgrade for unlimited favorites in the Engage workshop.`);
-      return;
-    }
+    // Note: Core users cannot access favorites at all (handled by access control)
     
 
     // Optimistic update
@@ -691,7 +563,7 @@ export default function DiscoverPage() {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
-        console.error('API Error:', response.status, errorData);
+        // API Error
         throw new Error(`Failed to update favorite: ${errorData.error || response.statusText}`);
       }
 
@@ -700,14 +572,14 @@ export default function DiscoverPage() {
       // Only the heart state (favoritePropertyIds) changes immediately
 
     } catch (error) {
-      console.error('Error updating favorite:', error);
+      // Error updating favorite
       // Revert optimistic update
       if (isFavorited) {
         setFavoritePropertyIds(prev => [...prev, propertyId]);
       } else {
         setFavoritePropertyIds(prev => prev.filter(id => id !== propertyId));
       }
-      alert('Failed to update favorite. Please try again.');
+      showError('Failed to update favorite. Please try again.', 'Update Failed');
     }
   };
 
@@ -907,7 +779,7 @@ export default function DiscoverPage() {
       setLastSearchFilters(searchFilters);
       
     } catch (error) {
-      console.error('Search error:', error);
+      // Search error
       // Show error state or fallback
       setSearchResults([]);
       setPropertyCount(0);
@@ -966,7 +838,7 @@ export default function DiscoverPage() {
       setCurrentPage(prev => prev + 1);
       
     } catch (error) {
-      console.error('Load more error:', error);
+      // Load more error
     } finally {
       setIsLoadingMore(false);
     }
@@ -1108,7 +980,7 @@ export default function DiscoverPage() {
           setPropertyCount(data.resultCount || data.data?.length || 0);
           setHasSearched(true);
         } else {
-          console.error('Smart query search failed:', await response.text());
+          // Smart query search failed
           setSearchResults([]);
           setPropertyCount(0);
           setHasSearched(true);
@@ -1119,7 +991,7 @@ export default function DiscoverPage() {
       setCollapsedSections(prev => ({ ...prev, savedSearches: true }));
       
     } catch (error) {
-      console.error('Error executing saved search:', error);
+      // Error executing saved search
       setSearchResults([]);
       setPropertyCount(0);
       setHasSearched(true);
@@ -1180,7 +1052,7 @@ export default function DiscoverPage() {
         setShowAddressSuggestions(true);
       }
     } catch (error) {
-      console.error('Address validation error:', error);
+      // Address validation error
     } finally {
       setIsValidatingAddress(false);
     }
@@ -1222,10 +1094,10 @@ export default function DiscoverPage() {
         const data = await response.json();
         setMySearches(data.data || []);
       } else {
-        console.error('Failed to load saved searches');
+        // Failed to load saved searches
       }
     } catch (error) {
-      console.error('Error loading saved searches:', error);
+      // Error loading saved searches
     } finally {
       setIsLoadingMySearches(false);
     }
@@ -1253,12 +1125,12 @@ export default function DiscoverPage() {
         setShowDeleteModal(false);
         setSearchToDelete(null);
       } else {
-        console.error('Failed to delete saved search');
-        alert('Failed to delete search. Please try again.');
+        // Failed to delete saved search
+        showError('Failed to delete search. Please try again.', 'Delete Failed');
       }
     } catch (error) {
-      console.error('Error deleting saved search:', error);
-      alert('Failed to delete search. Please try again.');
+      // Error deleting saved search
+      showError('Failed to delete search. Please try again.', 'Delete Failed');
     }
   };
 
@@ -1272,11 +1144,7 @@ export default function DiscoverPage() {
         searchQuery: searchQuery
       };
       
-      console.log('Saving search with data:', {
-        name: saveSearchName.trim(),
-        description: saveSearchDescription.trim() || null,
-        filters: searchFilters
-      });
+      // Saving search with data
 
       const response = await fetch('/api/v2/saved-searches', {
         method: 'POST',
@@ -1292,7 +1160,7 @@ export default function DiscoverPage() {
 
       if (!response.ok) {
         const errorData = await response.text();
-        console.error('Save search failed:', response.status, errorData);
+        // Save search failed
         throw new Error(`Failed to save search: ${response.status} ${errorData}`);
       }
 
@@ -1313,8 +1181,8 @@ export default function DiscoverPage() {
       loadMySearches();
       
     } catch (error) {
-      console.error('Error saving search:', error);
-      alert('Failed to save search. Please try again.');
+      // Error saving search
+      showError('Failed to save search. Please try again.', 'Save Failed');
     }
   };
 
@@ -1708,7 +1576,14 @@ export default function DiscoverPage() {
                 {/* Save Search Button - Only show when filters are set */}
                 {hasFiltersSet() && (
                   <button 
-                    onClick={() => setShowSaveModal(true)}
+                    onClick={() => {
+                      const currentUserClass = userClass as UserClass;
+                      if (!hasAccess(currentUserClass, 'discover_saved_searches')) {
+                        router.push('/pricing');
+                        return;
+                      }
+                      setShowSaveModal(true);
+                    }}
                     className="w-full bg-white hover:bg-gray-50 text-gray-700 border border-gray-300 py-2 px-3 rounded-md font-medium transition-colors flex items-center justify-center text-sm mt-2"
                   >
                     <Bookmark className="h-4 w-4 mr-2" />
@@ -2133,14 +2008,15 @@ export default function DiscoverPage() {
               </CollapsibleFilterSection>
               </div>
 
-              {/* My Searches */}
-              <div className="bg-green-100 border border-green-300 rounded-lg p-4 mt-4">
-                <CollapsibleFilterSection 
-                  title="MY SEARCHES" 
-                  isCollapsed={collapsedSections.mySearches}
-                  onToggle={() => toggleSection('mySearches')}
-                >
-                <div className="space-y-3">
+              {/* My Searches - Access Control */}
+              {hasAccess(userClass as UserClass, 'discover_saved_searches') ? (
+                <div className="bg-green-100 border border-green-300 rounded-lg p-4 mt-4">
+                  <CollapsibleFilterSection 
+                    title="MY SEARCHES" 
+                    isCollapsed={collapsedSections.mySearches}
+                    onToggle={() => toggleSection('mySearches')}
+                  >
+                  <div className="space-y-3">
                   {isLoadingMySearches ? (
                     <div className="text-center py-4">
                       <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mx-auto"></div>
@@ -2196,6 +2072,28 @@ export default function DiscoverPage() {
                 </div>
               </CollapsibleFilterSection>
               </div>
+              ) : (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mt-4">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                      <Bookmark className="w-5 h-5 text-blue-600" />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-semibold text-gray-900">Save Your Searches</h3>
+                      <p className="text-xs text-gray-600">Keep track of your favorite search criteria</p>
+                    </div>
+                  </div>
+                  <p className="text-xs text-gray-700 mb-3">
+                    Save and organize your property searches for quick access later. Plus and Pro plans include this powerful feature.
+                  </p>
+                  <button
+                    onClick={() => router.push('/pricing')}
+                    className="w-full bg-blue-600 text-white text-xs font-medium py-2 px-3 rounded-md hover:bg-blue-700 transition-colors"
+                  >
+                    Upgrade to Plus or Professional
+                  </button>
+                </div>
+              )}
 
               {/* Search button moved to top */}
 
@@ -2212,7 +2110,7 @@ export default function DiscoverPage() {
                 </h2>
                 <p className="text-sm text-gray-600 mt-1">
                   {recentProperties.length > 0 && !hasSearched 
-                    ? 'Your most recently favorited properties'
+                    ? 'Your most recently viewed properties'
                     : 'Search to see available multifamily investments'
                   }
                 </p>
@@ -2221,8 +2119,8 @@ export default function DiscoverPage() {
                 <span className="text-sm text-gray-600 whitespace-nowrap">
                   {isLoadingRecent ? 'Loading...' : recentProperties.length > 0 && !hasSearched 
                     ? locationFilter 
-                      ? `${recentProperties.length} of ${getFilteredFavorites().length} filtered favorites`
-                      : `${recentProperties.length} of ${totalFavoritesCount} favorites`
+                      ? `${recentProperties.length} of ${getFilteredFavorites().length} filtered properties`
+                      : `${recentProperties.length} of ${totalFavoritesCount} properties`
                     : `${propertyCount} properties`}
                 </span>
                 
@@ -2249,7 +2147,7 @@ export default function DiscoverPage() {
                       }`}
                     >
                       <Map className="h-4 w-4 mr-2" />
-                      Map + Cards
+                      Map
                     </button>
                   </div>
                 )}
@@ -2293,7 +2191,7 @@ export default function DiscoverPage() {
                   <div className="flex gap-6 h-[600px]">
                     {/* Left: Map */}
                     <div className="w-2/5">
-                      <PropertyMap
+                      <PropertyMapWithRents
                         properties={recentProperties}
                         className="h-full rounded-lg border border-gray-200"
                         context="discover"
@@ -2395,7 +2293,7 @@ export default function DiscoverPage() {
                   <div className="flex gap-6 h-[600px]">
                     {/* Left: Map */}
                     <div className="w-2/5">
-                      <PropertyMap
+                      <PropertyMapWithRents
                         properties={searchResults}
                         className="h-full rounded-lg border border-gray-200"
                         context="discover"
@@ -2523,6 +2421,12 @@ export default function DiscoverPage() {
                   {hasFiltersSet() && (
                     <button 
                       onClick={() => {
+                        const currentUserClass = userClass as UserClass;
+                        if (!hasAccess(currentUserClass, 'discover_saved_searches')) {
+                          router.push('/pricing');
+                          setShowMobileFilters(false);
+                          return;
+                        }
                         setShowSaveModal(true);
                         setShowMobileFilters(false);
                       }}
@@ -3000,7 +2904,6 @@ export default function DiscoverPage() {
         onClose={() => setShowUpgradeModal(false)}
         title="Upgrade Required"
         showCloseButton={true}
-        modalId="upgrade-modal"
         primaryAction={{
           label: "View Plans",
           onClick: () => {
@@ -3011,8 +2914,7 @@ export default function DiscoverPage() {
         }}
         secondaryAction={{
           label: "Maybe Later",
-          onClick: () => setShowUpgradeModal(false),
-          variant: "secondary"
+          onClick: () => setShowUpgradeModal(false)
         }}
       >
         <div className="p-6">
@@ -3031,6 +2933,10 @@ export default function DiscoverPage() {
           </p>
         </div>
       </StandardModalWithActions>
+
+      {/* Alert Modal */}
+      {AlertComponent}
+
     </div>
     </div>
   );

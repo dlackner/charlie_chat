@@ -1,10 +1,17 @@
+/*
+ * CHARLIE2 V2 - Daily Pro Welcome Email Function
+ * Automated email system for new MultifamilyOS Pro subscribers
+ * Sends Master Class Training access and monitors conversion success
+ * Part of the new V2 application architecture
+ */
+
 // supabase/functions/daily-pro-welcome/index.ts
 // 
-// DAILY CHARLIE CHAT PRO WELCOME EMAIL FUNCTION
+// DAILY MULTIFAMILYOS PRO WELCOME EMAIL FUNCTION
 // ============================================
 // 
 // This function runs once daily at 8:00 AM ET via cron job and:
-// 1. Finds users who became Charlie Chat Pro in the last 24 hours
+// 1. Finds users who became MultifamilyOS Pro in the last 24 hours
 // 2. Sends welcome emails with Master Class Training access
 // 3. Sends copy to dlackner@hotmail.com for monitoring
 // 
@@ -38,7 +45,7 @@ serve(async (req) => {
     const { data: newProUsers, error: proUsersError } = await supabaseClient
       .from('profiles')
       .select('user_id, email, charlie_chat_pro_start_date')
-      .eq('user_class', 'charlie_chat_pro')
+      .in('user_class', ['charlie_chat_pro', 'pro'])
       .not('charlie_chat_pro_start_date', 'is', null)
       .gte('charlie_chat_pro_start_date', twentyFourHoursAgo.toISOString());
 
@@ -47,7 +54,7 @@ serve(async (req) => {
       throw proUsersError;
     }
 
-    console.log(`Found ${newProUsers?.length || 0} new Charlie Chat Pro users in the last 24 hours`);
+    console.log(`Found ${newProUsers?.length || 0} new MultifamilyOS Pro users in the last 24 hours`);
 
     // ===========================================
     // SEND WELCOME EMAILS
@@ -134,7 +141,7 @@ async function sendProWelcomeEmail(email: string) {
   }
 
   const htmlBody = createWelcomeEmailHtml();
-  const subject = 'Access Your Master Class Training Program';
+  const subject = 'Welcome to MultifamilyOS Professional - Access Your Master Class Training';
 
   try {
     const response = await fetch('https://api.resend.com/emails', {
@@ -144,7 +151,7 @@ async function sendProWelcomeEmail(email: string) {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        from: 'Charlie Chat <onboarding@resend.dev>',
+        from: 'MultifamilyOS <onboarding@resend.dev>',
         to: 'dlackner@hotmail.com',
         subject: `FORWARD TO ${email}: ${subject}`,
         html: `<p><strong>Please forward this welcome email to: ${email}</strong></p><hr>${htmlBody}`,
@@ -218,7 +225,7 @@ function createWelcomeEmailHtml(): string {
     <head>
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <title>Welcome to Charlie Chat Pro</title>
+      <title>Welcome to MultifamilyOS Professional</title>
       <style>
         body { 
           font-family: Arial, sans-serif; 
@@ -262,13 +269,13 @@ function createWelcomeEmailHtml(): string {
     </head>
     <body>
       <div class="header">
-        <h1>Welcome to Charlie Chat Pro!</h1>
+        <h1>Welcome to MultifamilyOS Professional!</h1>
       </div>
       
       <div class="content">
         <p><strong>Hi there,</strong></p>
         
-        <p>Welcome to the Charlie Chat Pro family! I'm thrilled to have you on board and excited for your multifamily investing journey ahead.</p>
+        <p>Welcome to the MultifamilyOS Professional family! I'm thrilled to have you on board and excited for your multifamily investing journey ahead.</p>
         
         <p><strong>Here's what you now have access to:</strong></p>
         
@@ -297,7 +304,7 @@ function createWelcomeEmailHtml(): string {
       </div>
       
       <div style="text-align: center; margin-top: 20px; padding: 20px; color: #666; font-size: 12px;">
-        <p>© ${new Date().getFullYear()} Charlie Chat Pro | MultifamilyOS™</p>
+        <p>© ${new Date().getFullYear()} MultifamilyOS Professional | MultifamilyOS™</p>
       </div>
     </body>
     </html>
@@ -313,7 +320,7 @@ function createSummaryEmailHtml(processedUsers: any[], emailsSent: number, dateS
   `;
 
   if (processedUsers.length === 0) {
-    html += '<p>No new Charlie Chat Pro subscribers found in the last 24 hours.</p>';
+    html += '<p>No new MultifamilyOS Professional subscribers found in the last 24 hours.</p>';
   } else {
     html += '<h3>📧 Pro Welcome Emails Processed</h3><ul>';
     
@@ -336,7 +343,7 @@ function createSummaryEmailHtml(processedUsers: any[], emailsSent: number, dateS
     html += '</ul>';
   }
 
-  html += `<hr><p><em>Generated automatically by Charlie Chat Pro welcome system</em></p>`;
+  html += `<hr><p><em>Generated automatically by MultifamilyOS Professional welcome system</em></p>`;
   html += `<p><em>Runs daily at 8:00 AM ET</em></p>`;
   
   return html;

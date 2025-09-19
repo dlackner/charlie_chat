@@ -1,3 +1,9 @@
+/*
+ * CHARLIE2 V2 - Profile Modal Component
+ * Modal interface for editing user profile information
+ * Features live database integration and form validation
+ * Part of the new V2 application architecture
+ */
 "use client";
 
 import { useState, useEffect } from "react";
@@ -60,7 +66,6 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose }) =
                     .single();
 
                 if (error && error.code !== "PGRST116") {
-                    console.error("Error loading profile:", error);
                     setErrorMessage("Error loading profile data");
                 } else if (data) {
                     setProfileData({
@@ -81,7 +86,6 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose }) =
                     }
                 }
             } catch (error) {
-                console.error("Unexpected error loading profile:", error);
                 setErrorMessage("Failed to load profile data");
             } finally {
                 setIsLoading(false);
@@ -211,14 +215,12 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose }) =
                 });
 
             if (error) {
-                console.error("Error saving profile:", error);
                 setErrorMessage("Failed to save profile. Please try again.");
             } else {
                 // Close modal immediately after successful save
                 onClose();
             }
         } catch (error) {
-            console.error("Unexpected error saving profile:", error);
             setErrorMessage("An unexpected error occurred. Please try again.");
         } finally {
             setIsSaving(false);
@@ -445,7 +447,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose }) =
                                             const file = e.target.files?.[0];
                                             if (file) {
                                                 if (file.size > 1024 * 1024) {
-                                                    alert("File too large. Please upload a file smaller than 1MB.");
+                                                    setErrorMessage("File too large. Please upload a file smaller than 1MB.");
                                                 } else {
                                                     handleLogoUpload(file);
                                                 }

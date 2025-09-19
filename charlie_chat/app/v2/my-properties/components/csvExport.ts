@@ -10,7 +10,7 @@ export const exportPropertiesToCSV = (
     if (onError) {
       onError("Please select at least one property to download.");
     } else {
-      alert("Please select at least one property to download.");
+      console.warn("CSV Export: Please select at least one property to download.");
     }
     return;
   }
