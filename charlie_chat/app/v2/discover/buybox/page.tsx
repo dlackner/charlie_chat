@@ -29,7 +29,8 @@ if (typeof document !== 'undefined' && !document.getElementById('card-animations
 }
 
 import { useState, useEffect } from 'react';
-import { Settings, Heart, X, Star, Grid3x3, Map, Trash2 } from 'lucide-react';
+import { Settings, Heart, X, Star, Grid3x3, Map, Trash2, Home, Target, Calendar, TrendingUp } from 'lucide-react';
+import { Dialog } from '@headlessui/react';
 import { BuyBoxModal } from '@/components/v2/BuyBoxModal';
 import { StandardModalWithActions } from '@/components/v2/StandardModal';
 import { useAuth } from '@/contexts/AuthContext';
@@ -91,6 +92,103 @@ interface UserMarket {
   total_decisions_made?: number;
 }
 
+// Buy Box Onboarding Modal Component
+function BuyBoxOnboardingModal({ 
+  isOpen, 
+  onClose, 
+  onGetStarted 
+}: { 
+  isOpen: boolean; 
+  onClose: () => void; 
+  onGetStarted: () => void; 
+}) {
+  return (
+    <Dialog open={isOpen} onClose={onClose} className="relative z-50">
+      <div className="fixed inset-0 bg-gray-900/75 backdrop-blur-sm" aria-hidden="true" />
+      <div className="fixed inset-0 flex items-center justify-center p-4">
+        <Dialog.Panel className="bg-white rounded-2xl shadow-2xl ring-1 ring-gray-900/5 w-full max-w-2xl overflow-hidden">
+          {/* Header */}
+          <div className="flex items-center justify-between px-8 py-6 border-b border-gray-100">
+            <div className="flex items-center gap-4">
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-50">
+                <Target size={24} className="text-blue-600" />
+              </div>
+              <div>
+                <Dialog.Title className="text-2xl font-semibold text-gray-900">
+                  Welcome to Buy Box!
+                </Dialog.Title>
+                <p className="text-sm text-gray-600 mt-1">Your personal property recommendation engine</p>
+              </div>
+            </div>
+            <button
+              onClick={onClose}
+              className="flex h-10 w-10 items-center justify-center rounded-lg text-gray-400 hover:bg-gray-50 hover:text-gray-600 transition-colors"
+            >
+              <X size={20} />
+            </button>
+          </div>
+
+          {/* Content */}
+          <div className="px-8 py-6">
+            <div className="mb-8">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                Get personalized property recommendations every week
+              </h3>
+              <p className="text-gray-600 mb-6">
+                Buy Box learns your investment preferences and automatically finds properties that match your criteria. 
+                Set up your first market to start receiving curated recommendations every Friday.
+              </p>
+            </div>
+
+            {/* Features */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+              <div className="text-center">
+                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-50 mx-auto mb-3">
+                  <Home size={20} className="text-blue-600" />
+                </div>
+                <h4 className="font-medium text-gray-900 mb-2">Define Your Market</h4>
+                <p className="text-sm text-gray-600">Set location, property type, size, and value ranges</p>
+              </div>
+              
+              <div className="text-center">
+                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-green-50 mx-auto mb-3">
+                  <Calendar size={20} className="text-green-600" />
+                </div>
+                <h4 className="font-medium text-gray-900 mb-2">Weekly Delivery</h4>
+                <p className="text-sm text-gray-600">Get fresh recommendations every Friday automatically</p>
+              </div>
+              
+              <div className="text-center">
+                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-purple-50 mx-auto mb-3">
+                  <TrendingUp size={20} className="text-purple-600" />
+                </div>
+                <h4 className="font-medium text-gray-900 mb-2">Smart Learning</h4>
+                <p className="text-sm text-gray-600">The more you use it, the better the recommendations get</p>
+              </div>
+            </div>
+
+            {/* CTA Buttons */}
+            <div className="flex gap-3">
+              <button
+                onClick={onGetStarted}
+                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-6 rounded-lg transition-colors"
+              >
+                Set Up My First Market
+              </button>
+              <button
+                onClick={onClose}
+                className="px-6 py-3 text-gray-600 hover:text-gray-800 font-medium transition-colors"
+              >
+                Maybe Later
+              </button>
+            </div>
+          </div>
+        </Dialog.Panel>
+      </div>
+    </Dialog>
+  );
+}
+
 export default function BuyBoxPage() {
   const { user, supabase } = useAuth();
   const { showError, showWarning, AlertComponent } = useAlert();
@@ -109,6 +207,7 @@ export default function BuyBoxPage() {
   const [marketConvergence, setMarketConvergence] = useState<{ [marketKey: string]: { phase: 'discovery' | 'learning' | 'mastery' | 'production'; progress: number } }>({});
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [marketToDelete, setMarketToDelete] = useState<{ key: string; name: string; favoriteCount?: number } | null>(null);
+  const [showOnboardingModal, setShowOnboardingModal] = useState(false);
 
   // Handle delete confirmation
   const handleDeleteMarket = async () => {
@@ -191,7 +290,11 @@ export default function BuyBoxPage() {
       }
       
       if (!markets || markets.length === 0) {
-        setError('No markets found. Please set up your Buy Box first.');
+        // No markets found - show normal page layout with Add Market option
+        setUserMarkets([]);
+        setLoading(false);
+        // Show onboarding modal for new users
+        setTimeout(() => setShowOnboardingModal(true), 1000);
         return;
       }
       
@@ -528,22 +631,6 @@ export default function BuyBoxPage() {
     );
   }
   
-  if (!loading && userMarkets.length === 0) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center max-w-md">
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">No Buy Box Markets Found</h2>
-          <p className="text-gray-600 mb-6">Set up your first market to start receiving personalized property recommendations.</p>
-          <button 
-            onClick={() => setShowBuyBoxModal(true)}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium"
-          >
-            Set Up Buy Box
-          </button>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
@@ -587,38 +674,10 @@ export default function BuyBoxPage() {
               
               {/* Add Market Tab */}
               <button
-                onClick={async () => {
-                  // Check if user can add more markets
-                  if (!user || !supabase) return;
-                  
-                  try {
-                    // Get user's class to determine market limit
-                    const { data: profile } = await supabase
-                      .from('profiles')
-                      .select('user_class')
-                      .eq('user_id', user.id)
-                      .single();
-                    
-                    // Determine market limit based on user class
-                    const maxMarkets = (profile?.user_class === 'trial' || profile?.user_class === 'charlie_chat') ? 1 : 5;
-                    
-                    // Check current market count (exclude template markets)
-                    const realMarketCount = userMarkets.filter(market => !market.market_key?.startsWith('template-') && market.id !== 'template-new-market').length;
-                    
-                    if (realMarketCount >= maxMarkets) {
-                      // User is at limit - show upgrade message or modal
-                      showWarning(`You've reached your limit of ${maxMarkets} market${maxMarkets > 1 ? 's' : ''}. Please upgrade your plan to add more markets.`, 'Market Limit Reached');
-                      return;
-                    }
-                    
-                    // User can add more markets
-                    setFocusedMarket(null); // null means add new market mode
-                    setShowBuyBoxModal(true);
-                  } catch (error) {
-                    // Allow modal to open on error (fail open)
-                    setFocusedMarket(null);
-                    setShowBuyBoxModal(true);
-                  }
+                onClick={() => {
+                  // Allow unlimited markets for all users
+                  setFocusedMarket(null); // null means add new market mode
+                  setShowBuyBoxModal(true);
                 }}
                 className="whitespace-nowrap py-2 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 font-medium text-sm transition-colors flex items-center"
               >
@@ -818,12 +877,22 @@ export default function BuyBoxPage() {
               <p className="text-sm text-gray-500">
                 {decidedProperties.size > 0
                   ? "New recommendations will be generated next Thursday night."
-                  : "Weekly recommendations are generated automatically each Thursday night based on your buy box criteria."
+                  : "`Weekly recommendations are generated automatically each Thursday night based on your buy box criteria.`"
                 }
               </p>
             </div>
           );
         })()}
+
+        {/* Onboarding Modal */}
+        <BuyBoxOnboardingModal
+          isOpen={showOnboardingModal}
+          onClose={() => setShowOnboardingModal(false)}
+          onGetStarted={() => {
+            setShowOnboardingModal(false);
+            setShowBuyBoxModal(true);
+          }}
+        />
 
         {/* Buy Box Modal */}
         <BuyBoxModal

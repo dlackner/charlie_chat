@@ -13,6 +13,8 @@ import type { UserClass } from '@/lib/v2/accessControl';
 import { StandardModalWithActions } from '@/components/v2/StandardModal';
 
 interface PropertyData {
+  id?: string;
+  property_id?: string;
   address_street?: string;
   address_full?: string;
   address_city: string;
@@ -451,7 +453,7 @@ export function AIInvestmentAnalysis({ property, isEngageContext, userClass }: A
                     </div>
                   </div>
                   <button
-                    onClick={() => window.open(`/offer-analyzer?address=${encodeURIComponent(property.address_street || property.address_full || '')}&city=${encodeURIComponent(property.address_city)}&state=${encodeURIComponent(property.address_state)}`, '_blank')}
+                    onClick={() => window.open(`/offer-analyzer?address=${encodeURIComponent(property.address_street || property.address_full || '')}&city=${encodeURIComponent(property.address_city)}&state=${encodeURIComponent(property.address_state)}&id=${encodeURIComponent(property.property_id || '')}`, '_blank')}
                     className="text-sm text-blue-600 hover:text-blue-700 font-medium flex items-center"
                   >
                     <Calculator className="w-3 h-3 mr-1" />

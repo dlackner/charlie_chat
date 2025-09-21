@@ -44,16 +44,16 @@ const PropertyMap = dynamic(() => import('react-map-gl/mapbox').then((mod) => {
     });
     const [popupInfo, setPopupInfo] = useState<any>(null);
 
-    // Calculate centroid when properties change
+    // Center on most recent property when properties change
     useEffect(() => {
       if (properties?.length > 0) {
         const validProperties = properties.filter(p => p.latitude && p.longitude);
         if (validProperties.length > 0) {
-          const avgLat = validProperties.reduce((sum, p) => sum + p.latitude, 0) / validProperties.length;
-          const avgLng = validProperties.reduce((sum, p) => sum + p.longitude, 0) / validProperties.length;
+          // Use the first property (most recent) instead of centroid for better UX
+          const mostRecentProperty = validProperties[0];
           setViewState({
-            latitude: avgLat,
-            longitude: avgLng,
+            latitude: mostRecentProperty.latitude,
+            longitude: mostRecentProperty.longitude,
             zoom: 12
           });
         }

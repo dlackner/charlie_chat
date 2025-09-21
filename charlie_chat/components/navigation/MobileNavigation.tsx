@@ -129,7 +129,7 @@ export default function MobileNavigation() {
             disabled: !hasAccess(currentUserClass, 'dashboard_community')
           },
           { 
-            name: 'Metrics', 
+            name: 'Activity Metrics', 
             href: hasAccess(currentUserClass, 'dashboard_metrics') ? '/v2/dashboard/metrics' : undefined,
             disabled: !hasAccess(currentUserClass, 'dashboard_metrics')
           },
@@ -199,6 +199,7 @@ export default function MobileNavigation() {
         submenu: [
           { name: 'Profile', href: '/account/profile' },
           { name: 'Subscription', action: () => setShowSubscriptionModal(true) },
+          { name: 'About MultifamilyOS', href: '/about' },
           { name: 'Sign Out', action: handleSignOut }
         ]
       }

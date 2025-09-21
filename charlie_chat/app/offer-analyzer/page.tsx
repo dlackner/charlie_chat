@@ -9,6 +9,7 @@ import { useOfferAnalyzerAccess } from './usePropertyAnalyzerAccess';
 import { UnsavedChangesModal } from './UnsavedChangesModal';
 import { CharlieTooltip } from './CharlieTooltip';
 import { SaveOfferModal } from '@/components/v2/SaveOfferModal';
+import AlertModal from '@/components/v2/AlertModal';
 import {
   LineChart,
   Line,
@@ -77,7 +78,7 @@ function SearchParamsHandler({ onParamsLoaded }: { onParamsLoaded: (params: { st
   
   useEffect(() => {
     onParamsLoaded({
-      street: searchParams.get('street') || '',
+      street: searchParams.get('street') || searchParams.get('address') || '',
       city: searchParams.get('city') || '',
       state: searchParams.get('state') || '',
       id: searchParams.get('id') || undefined,
@@ -108,6 +109,8 @@ export default function OfferAnalyzerPage() {
   
   // --- Offer Management Modals ---
   const [showSaveOfferModal, setShowSaveOfferModal] = useState(false);
+  const [showDuplicateAlert, setShowDuplicateAlert] = useState(false);
+  const [pendingOfferData, setPendingOfferData] = useState<{ name: string; description: string } | null>(null);
   const [showOffersModal, setShowOffersModal] = useState(false);
   const [selectedPropertyOffers, setSelectedPropertyOffers] = useState<any[]>([]);
   const [loadedOfferName, setLoadedOfferName] = useState<string>('');
@@ -360,6 +363,7 @@ export default function OfferAnalyzerPage() {
   const [year1LoanBalance, setYear1LoanBalance] = useState<number>(0);
   const [actualGradingScore, setActualGradingScore] = useState<number>(0);
   const [showMoreMenu, setShowMoreMenu] = useState(false);
+  const [toggleState, setToggleState] = useState<'clear' | 'defaults'>('clear'); // Initial state is 'clear' since form opens with defaults
   const moreMenuRef = useRef<HTMLDivElement>(null);
 
   // Function to save settings as blob
@@ -576,16 +580,130 @@ export default function OfferAnalyzerPage() {
   };
 
   // Handle saving offer to database
+  // Check if offer name already exists
+  const checkDuplicateOfferName = async (offerName: string, propertyId: string): Promise<boolean> => {
+    try {
+      console.log('Checking for duplicate offer name:', offerName, 'for property:', propertyId);
+      const response = await fetch(`/api/v2/offer-scenarios?propertyId=${propertyId}`, {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      
+      if (!response.ok) {
+        console.log('API response not ok:', response.status);
+        return false; // If we can't check, proceed with save
+      }
+      
+      const data = await response.json();
+      console.log('Existing scenarios:', data.scenarios);
+      
+      const isDuplicate = data.scenarios?.some((scenario: any) => 
+        scenario.offer_name?.toLowerCase() === offerName.toLowerCase()
+      ) || false;
+      
+      console.log('Is duplicate?', isDuplicate);
+      return isDuplicate;
+    } catch (error) {
+      console.error('Error checking for duplicate offer name:', error);
+      return false; // If error, proceed with save
+    }
+  };
+
   const handleSaveOffer = async (offerName: string, offerDescription: string) => {
     if (!propertyId) {
       throw new Error('Property ID is required to save offers');
     }
 
+    // Get the correct property_id from saved_properties table for duplicate check
+    const favoritesResponse = await fetch('/api/favorites', {
+      method: 'GET',
+      headers: { 'Content-Type': 'application/json' }
+    });
+    
+    if (!favoritesResponse.ok) {
+      throw new Error('Failed to fetch saved properties');
+    }
+    
+    const favoritesData = await favoritesResponse.json();
+    const savedProperty = favoritesData.favorites?.find((f: any) => 
+      f.property_data?.id === propertyId
+    );
+    
+    if (!savedProperty || !savedProperty.property_id) {
+      throw new Error(`Property UUID ${propertyId} not found in favorites. This property must be saved to your favorites before creating offer scenarios.`);
+    }
+
+    const actualPropertyId = savedProperty.property_id;
+
+    // Check for duplicate offer name using the actual property_id
+    const isDuplicate = await checkDuplicateOfferName(offerName, actualPropertyId);
+    if (isDuplicate) {
+      // Store the pending offer data and show warning dialog
+      setPendingOfferData({ name: offerName, description: offerDescription });
+      setShowDuplicateAlert(true);
+      return; // Exit here, user will decide in the modal
+    }
+
+    // If no duplicate, proceed with save
+    await performSaveOffer(offerName, offerDescription);
+  };
+
+  // Handle user choice to overwrite existing offer
+  const handleConfirmOverwrite = async () => {
+    if (pendingOfferData) {
+      await performSaveOffer(pendingOfferData.name, pendingOfferData.description);
+      setPendingOfferData(null);
+      setShowDuplicateAlert(false);
+    }
+  };
+
+  // Handle user choice to cancel overwrite
+  const handleCancelOverwrite = () => {
+    setPendingOfferData(null);
+    setShowDuplicateAlert(false);
+    // Keep the SaveOfferModal open so user can choose a different name
+  };
+
+  // Separate function to actually perform the save
+  const performSaveOffer = async (offerName: string, offerDescription: string) => {
+    if (!propertyId) {
+      throw new Error('Property ID is required to save offers');
+    }
+
+    // Get the correct property_id from saved_properties table
+    const favoritesResponse = await fetch('/api/favorites', {
+      method: 'GET',
+      headers: { 'Content-Type': 'application/json' }
+    });
+    
+    if (!favoritesResponse.ok) {
+      throw new Error('Failed to fetch saved properties');
+    }
+    
+    const favoritesData = await favoritesResponse.json();
+    
+    console.log('Looking for UUID:', propertyId);
+    
+    // Find the saved property record where the internal UUID matches
+    const savedProperty = favoritesData.favorites?.find((f: any) => 
+      f.property_data?.id === propertyId
+    );
+    
+    console.log('Found saved property:', savedProperty);
+    
+    if (!savedProperty || !savedProperty.property_id) {
+      console.error('Available property_data IDs:', favoritesData.favorites?.map((f: any) => f.property_data?.id));
+      throw new Error(`Property UUID ${propertyId} not found in favorites. This property must be saved to your favorites before creating offer scenarios.`);
+    }
+
+    const actualPropertyId = savedProperty.property_id;
+    console.log('Using actual property_id:', actualPropertyId);
+
     const response = await fetch('/api/v2/offer-scenarios', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        propertyId,
+        propertyId: actualPropertyId, // Use the property_id field from saved_properties
         offerName,
         offerDescription,
         offerData: getCurrentOfferData()
@@ -1126,6 +1244,9 @@ export default function OfferAnalyzerPage() {
     setCapitalReservePerUnitAnnual(0);
     setDeferredCapitalReservePerUnit(0);
     setHoldingPeriodYears(1);
+    
+    // Update toggle state
+    setToggleState('defaults');
   };
 
   //Reset to defaults
@@ -1166,6 +1287,9 @@ export default function OfferAnalyzerPage() {
     setDeferredCapitalReservePerUnit(0);
     setHoldingPeriodYears(10);
     
+    // Update toggle state
+    setToggleState('clear');
+    
     // Reset the unsaved changes tracking since we just loaded defaults
     if ((window as any).propertyAnalyzerSetResettingToDefaults) {
       (window as any).propertyAnalyzerSetResettingToDefaults(true);
@@ -1174,6 +1298,230 @@ export default function OfferAnalyzerPage() {
           (window as any).propertyAnalyzerSetResettingToDefaults(false);
         }
       }, 100);
+    }
+  };
+
+  // Toggle function that handles both actions
+  const handleToggle = () => {
+    if (toggleState === 'clear') {
+      resetAllValues();
+    } else {
+      resetToDefaults();
+    }
+  };
+
+  // Print function to generate comprehensive PDF with chart/metrics first, then inputs
+  const handlePrintAnalysis = async () => {
+    try {
+      // Import jsPDF dynamically
+      const { jsPDF } = await import('jspdf');
+      const doc = new jsPDF();
+      
+      // Document styling constants
+      const primaryColor = [44, 82, 130]; // Blue
+      const secondaryColor = [100, 100, 100]; // Gray
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const pageHeight = doc.internal.pageSize.getHeight();
+      const margin = 20;
+      const rightMargin = pageWidth - margin;
+      
+      // PAGE 1: ANALYSIS RESULTS & METRICS
+      let yPos = 30;
+      
+      // Header with property name and date
+      doc.setFontSize(24);
+      doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+      doc.text('Investment Analysis Report', margin, yPos);
+      
+      yPos += 15;
+      doc.setFontSize(12);
+      doc.setTextColor(0, 0, 0);
+      
+      // Property name from address params
+      if (propertyStreet && propertyCity && propertyState) {
+        doc.text(`Property: ${propertyStreet}, ${propertyCity}, ${propertyState}`, margin, yPos);
+        yPos += 8;
+      }
+      doc.text(`Analysis Date: ${new Date().toLocaleDateString()}`, margin, yPos);
+      
+      // Investment Grade
+      yPos += 20;
+      doc.setFontSize(16);
+      doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+      doc.text('INVESTMENT GRADE', margin, yPos);
+      doc.line(margin, yPos + 2, rightMargin, yPos + 2);
+      
+      yPos += 15;
+      doc.setFontSize(20);
+      doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+      doc.text(`${overallGrade}`, margin, yPos);
+      
+      // Key Metrics
+      yPos += 25;
+      doc.setFontSize(16);
+      doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+      doc.text('KEY FINANCIAL METRICS', margin, yPos);
+      doc.line(margin, yPos + 2, rightMargin, yPos + 2);
+      
+      yPos += 15;
+      doc.setFontSize(11);
+      doc.setTextColor(0, 0, 0);
+      
+      const leftCol = margin;
+      const rightCol = pageWidth / 2 + 10;
+      
+      doc.text(`Gross Operating Income: $${Math.round(effectiveGrossIncome).toLocaleString()}`, leftCol, yPos);
+      doc.text(`Net Operating Income: $${Math.round(netOperatingIncome).toLocaleString()}`, rightCol, yPos);
+      yPos += 8;
+      
+      doc.text(`Cash Flow (Before Tax): $${Math.round(cashFlowBeforeTax).toLocaleString()}`, leftCol, yPos);
+      doc.text(`Cash Flow (After Capital Reserve): $${Math.round(cashFlowAfterCapitalReserve).toLocaleString()}`, rightCol, yPos);
+      yPos += 8;
+      
+      doc.text(`Cash-on-Cash Return (Year 1): ${cashOnCashReturn.toFixed(1)}%`, leftCol, yPos);
+      doc.text(`Cap Rate (Year 1): ${capRate.toFixed(1)}%`, rightCol, yPos);
+      yPos += 8;
+      
+      doc.text(`Total ROI (10 Year): ${roiAtHorizon.toFixed(1)}%`, leftCol, yPos);
+      doc.text(`Internal Rate of Return (10 Year): ${irr.toFixed(1)}%`, rightCol, yPos);
+      yPos += 8;
+      
+      doc.text(`Debt Service Coverage Ratio: ${debtServiceCoverageRatio.toFixed(1)}`, leftCol, yPos);
+      doc.text(`Expense Ratio (Year 1): ${expenseRatio.toFixed(1)}%`, rightCol, yPos);
+      yPos += 8;
+      
+      doc.text(`Break-Even Point: ${breakEvenYear !== null ? `${breakEvenYear} years` : 'N/A'}`, leftCol, yPos);
+      doc.text(`Projected Equity (at Year 10): $${Math.round(projectedEquityAtHorizon).toLocaleString()}`, rightCol, yPos);
+      
+      
+      // PAGE 2: INVESTMENT INPUTS
+      doc.addPage();
+      yPos = 30;
+      
+      // Header
+      doc.setFontSize(24);
+      doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+      doc.text('Investment Assumptions & Inputs', margin, yPos);
+      
+      yPos += 20;
+      
+      // Financing Section
+      doc.setFontSize(16);
+      doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+      doc.text('FINANCING', margin, yPos);
+      doc.line(margin, yPos + 2, rightMargin, yPos + 2);
+      
+      yPos += 15;
+      doc.setFontSize(11);
+      doc.setTextColor(0, 0, 0);
+      
+      doc.text(`Purchase Price: $${Math.round(purchasePrice || 0).toLocaleString()}`, leftCol, yPos);
+      doc.text(`Down Payment: ${downPaymentPercentage || 0}%`, rightCol, yPos);
+      yPos += 8;
+      
+      doc.text(`Interest Rate: ${interestRate || 0}%`, leftCol, yPos);
+      doc.text(`Loan Structure: ${loanStructure || 'amortizing'}`, rightCol, yPos);
+      yPos += 8;
+      
+      doc.text(`Amortization Period: ${amortizationPeriodYears || 0} years`, leftCol, yPos);
+      doc.text(`Closing Costs: ${closingCostsPercentage || 0}%`, rightCol, yPos);
+      yPos += 8;
+      
+      doc.text(`Disposition Cap Rate: ${dispositionCapRate || 0}%`, leftCol, yPos);
+      
+      // Rental Income Section
+      yPos += 20;
+      doc.setFontSize(16);
+      doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+      doc.text('RENTAL INCOME', margin, yPos);
+      doc.line(margin, yPos + 2, rightMargin, yPos + 2);
+      
+      yPos += 15;
+      doc.setFontSize(11);
+      doc.setTextColor(0, 0, 0);
+      
+      doc.text(`Number of Units: ${numUnits || 0}`, leftCol, yPos);
+      doc.text(`Avg Monthly Rent/Unit: $${Math.round(avgMonthlyRentPerUnit || 0).toLocaleString()}`, rightCol, yPos);
+      yPos += 8;
+      
+      doc.text(`Vacancy Rate: ${vacancyRate || 0}%`, leftCol, yPos);
+      doc.text(`Annual Rental Growth: ${annualRentalGrowthRate || 0}%`, rightCol, yPos);
+      yPos += 8;
+      
+      doc.text(`Other Income (Annual): $${Math.round(otherIncomeAnnual || 0).toLocaleString()}`, leftCol, yPos);
+      doc.text(`Income Reductions (Annual): $${Math.round(incomeReductionsAnnual || 0).toLocaleString()}`, rightCol, yPos);
+      
+      // Operating Expenses Section
+      yPos += 20;
+      doc.setFontSize(16);
+      doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+      doc.text('OPERATING EXPENSES', margin, yPos);
+      doc.line(margin, yPos + 2, rightMargin, yPos + 2);
+      
+      yPos += 15;
+      doc.setFontSize(11);
+      doc.setTextColor(0, 0, 0);
+      
+      if (usePercentageMode) {
+        // Only show overall percentage when in percentage mode
+        doc.text(`Operating Expense Percentage: ${operatingExpensePercentage || 0}%`, leftCol, yPos);
+        yPos += 8;
+      } else {
+        // Show detailed breakdown when not in percentage mode
+        doc.text(`Property Taxes: $${Math.round(propertyTaxes || 0).toLocaleString()}`, leftCol, yPos);
+        doc.text(`Insurance: $${Math.round(insurance || 0).toLocaleString()}`, rightCol, yPos);
+        yPos += 8;
+        
+        doc.text(`Property Management: ${propertyManagementFeePercentage || 0}%`, leftCol, yPos);
+        doc.text(`Maintenance & Repairs: $${Math.round(maintenanceRepairsAnnual || 0).toLocaleString()}`, rightCol, yPos);
+        yPos += 8;
+        
+        doc.text(`Utilities: $${Math.round(utilitiesAnnual || 0).toLocaleString()}`, leftCol, yPos);
+        doc.text(`Contract Services: $${Math.round(contractServicesAnnual || 0).toLocaleString()}`, rightCol, yPos);
+        yPos += 8;
+        
+        doc.text(`Payroll: $${Math.round(payrollAnnual || 0).toLocaleString()}`, leftCol, yPos);
+        doc.text(`Marketing: $${Math.round(marketingAnnual || 0).toLocaleString()}`, rightCol, yPos);
+        yPos += 8;
+        
+        doc.text(`G&A: $${Math.round(gAndAAnnual || 0).toLocaleString()}`, leftCol, yPos);
+        doc.text(`Other Expenses: $${Math.round(otherExpensesAnnual || 0).toLocaleString()}`, rightCol, yPos);
+        yPos += 8;
+      }
+      
+      doc.text(`Expense Growth Rate: ${expenseGrowthRate || 0}%`, leftCol, yPos);
+      
+      // Capital Expenditures Section
+      yPos += 20;
+      doc.setFontSize(16);
+      doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+      doc.text('CAPITAL EXPENDITURES', margin, yPos);
+      doc.line(margin, yPos + 2, rightMargin, yPos + 2);
+      
+      yPos += 15;
+      doc.setFontSize(11);
+      doc.setTextColor(0, 0, 0);
+      
+      doc.text(`Capital Reserve/Unit (Annual): $${Math.round(capitalReservePerUnitAnnual || 0).toLocaleString()}`, leftCol, yPos);
+      doc.text(`Deferred Capital Reserve/Unit: $${Math.round(deferredCapitalReservePerUnit || 0).toLocaleString()}`, rightCol, yPos);
+      yPos += 8;
+      
+      doc.text(`Holding Period: ${holdingPeriodYears || 0} years`, leftCol, yPos);
+      
+      // Footer
+      yPos = pageHeight - 20;
+      doc.setFontSize(8);
+      doc.setTextColor(secondaryColor[0], secondaryColor[1], secondaryColor[2]);
+      doc.text('Generated by MultifamilyOS.ai - The AI Operating System for Multifamily Investing', margin, yPos);
+      
+      // Save the PDF
+      const propertyName = propertyStreet ? propertyStreet.replace(/[^a-z0-9]/gi, '_').toLowerCase() : 'investment_analysis';
+      const fileName = `${propertyName}_analysis_${new Date().toISOString().split('T')[0]}.pdf`;
+      doc.save(fileName);
+      
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      alert('Failed to generate PDF. Please try again.');
     }
   };
 
@@ -1440,29 +1788,20 @@ export default function OfferAnalyzerPage() {
         <div className="flex justify-between items-center mb-6">
           <div>
             <h2 className="text-xl font-semibold text-gray-900">Investment Assumptions</h2>
-            {loadedOfferName && (
-              <p className="text-sm text-blue-600 font-medium mt-1">{loadedOfferName}</p>
-            )}
           </div>
-          <div className="flex space-x-2 relative" style={{ minHeight: '40px', minWidth: '280px' }}>
+          <div className="flex space-x-2 relative" style={{ minHeight: '40px', minWidth: '200px' }}>
             <button
-              onClick={resetToDefaults}
-              className="px-4 py-2 text-white rounded-lg transform transition-all duration-150 text-sm hover:scale-105 active:scale-95 active:bg-blue-700"
-              style={{ backgroundColor: '#1C599F' }}
+              onClick={handleToggle}
+              className="flex-1 px-4 py-2 text-white rounded-lg transform transition-all duration-150 text-sm hover:scale-105 active:scale-95 active:bg-gray-700"
+              style={{ backgroundColor: toggleState === 'clear' ? '#6B7280' : '#1C599F' }}
             >
-              Defaults
-            </button>
-            <button
-              onClick={resetAllValues}
-              className="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transform transition-all duration-150 text-sm hover:scale-105 active:scale-95 active:bg-gray-700"
-            >
-              Clear
+              {toggleState === 'clear' ? 'Clear' : 'Defaults'}
             </button>
             <button
               onClick={() => setShowMoreMenu(!showMoreMenu)}
-              className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transform transition-all duration-150 text-sm hover:scale-105 active:scale-95 active:bg-blue-700"
+              className="flex-1 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transform transition-all duration-150 text-sm hover:scale-105 active:scale-95 active:bg-blue-700"
             >
-              More...
+              Actions
             </button>
             {showMoreMenu && (
               <div
@@ -1483,7 +1822,7 @@ export default function OfferAnalyzerPage() {
                     }}
                     className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 hover:text-gray-900 transition-colors cursor-pointer"
                   >
-                    &gt; Save Offer
+                    Save Offer
                   </button>
                   <div className="border-t border-gray-100 mx-2"></div>
                   <button
@@ -1493,7 +1832,17 @@ export default function OfferAnalyzerPage() {
                     }}
                     className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 hover:text-gray-900 transition-colors cursor-pointer"
                   >
-                    &gt; Load Offer
+                    Load Offer
+                  </button>
+                  <div className="border-t border-gray-100 mx-2"></div>
+                  <button
+                    onClick={() => {
+                      handlePrintAnalysis();
+                      setShowMoreMenu(false);
+                    }}
+                    className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 hover:text-gray-900 transition-colors cursor-pointer"
+                  >
+                    Print to PDF
                   </button>
                 </div>
               </div>
@@ -1770,7 +2119,7 @@ export default function OfferAnalyzerPage() {
           <div>
             <div className="mb-5">
               <label htmlFor="operatingExpensePercentage" className="block text-sm font-medium text-gray-700 mb-1">Operating Expense Ratio (%)</label>
-              <CharlieTooltip message={`Here's my rule of thumb based on 25+ years of experience. These are guidelines - adjust based on your specific property and market conditions.
+              <CharlieTooltip message={`Industry rule of thumb based on 25+ years of experience. These are guidelines - adjust based on specific property and market conditions.
 
 • All Bills Paid, 1985 or older: 60%+ of gross income
 • Tenant Paid, 1986-2010: 45-55% of gross income
@@ -2043,6 +2392,18 @@ export default function OfferAnalyzerPage() {
       isOpen={showSaveOfferModal}
       onClose={() => setShowSaveOfferModal(false)}
       onSave={handleSaveOffer}
+    />
+
+    {/* Duplicate Offer Name Warning */}
+    <AlertModal
+      isOpen={showDuplicateAlert}
+      onClose={handleCancelOverwrite}
+      type="warning"
+      title="Offer Name Already Exists"
+      message={`An offer named "${pendingOfferData?.name}" already exists for this property. Do you want to replace the existing offer?`}
+      confirmText="Replace Existing"
+      cancelText="Choose Different Name"
+      onConfirm={handleConfirmOverwrite}
     />
     
     {/* Offers Modal */}

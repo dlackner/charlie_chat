@@ -10,7 +10,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Search, Heart, Grid3x3, Map, Filter, ChevronDown, FileText, MapPin, Trash2 } from 'lucide-react';
 import PropertyMapWithRents from '@/components/v2/PropertyMapWithRents';
-import { generate10YearCashFlowReport } from '../property-analyzer/cash-flow-report';
+import { generate10YearCashFlowReport } from '../../offer-analyzer/cash-flow-report';
 import { generateMarketingLetter, createMailtoLink } from '../templates/generateMarketingLetter';
 import { CashFlowReportsModal } from '@/components/v2/CashFlowReportsModal';
 import { useAuth } from "@/contexts/AuthContext";
@@ -51,6 +51,8 @@ export default function EngagePage() {
   const dropdownRef = useRef<HTMLDivElement>(null);
   const statusDropdownRef = useRef<HTMLDivElement>(null);
   const marketDropdownRef = useRef<HTMLDivElement>(null);
+  const statusDropdownTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const marketDropdownTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Fetch favorited properties and user markets from database
   useEffect(() => {
@@ -152,6 +154,18 @@ export default function EngagePage() {
     }
   }, [user, authLoading]);
 
+  // Cleanup timeouts on unmount
+  useEffect(() => {
+    return () => {
+      if (statusDropdownTimeoutRef.current) {
+        clearTimeout(statusDropdownTimeoutRef.current);
+      }
+      if (marketDropdownTimeoutRef.current) {
+        clearTimeout(marketDropdownTimeoutRef.current);
+      }
+    };
+  }, []);
+
   // Get unique values for filters - sort statuses in logical pipeline order
   const statusOrder = ['Reviewing', 'Communicating', 'Engaged', 'Analyzing', 'LOI Sent', 'Acquired', 'Rejected'];
   const uniqueStatuses = statusOrder.filter(status => 
@@ -166,9 +180,38 @@ export default function EngagePage() {
   // Filter properties based on selections
   const filteredProperties = savedProperties.filter(property => {
     const matchesStatus = selectedStatuses.length === 0 || selectedStatuses.includes(property.pipelineStatus);
-    const matchesMarket = selectedMarkets.length === 0 || 
-      selectedMarkets.includes(property.market) ||
-      (selectedMarkets.includes('No market') && !property.market_key);
+    
+    // Enhanced market matching: include both market name AND geographic location
+    let matchesMarket = selectedMarkets.length === 0;
+    if (!matchesMarket && selectedMarkets.length > 0) {
+      for (const selectedMarket of selectedMarkets) {
+        if (selectedMarket === 'No market' && !property.market_key) {
+          matchesMarket = true;
+          break;
+        } else if (selectedMarket !== 'No market') {
+          // Check if property matches by market name
+          if (property.market === selectedMarket) {
+            matchesMarket = true;
+            break;
+          }
+          
+          // Also check if property is geographically located in the selected market
+          const userMarket = userMarkets.find(m => m.name === selectedMarket);
+          if (userMarket) {
+            // Match by city and state
+            const cityMatch = userMarket.city && property.city?.toLowerCase().includes(userMarket.city.toLowerCase());
+            const stateMatch = userMarket.state && (property.state?.toLowerCase().includes(userMarket.state.toLowerCase()) || 
+                                                  property.address?.toLowerCase().includes(userMarket.state.toLowerCase()));
+            
+            if (cityMatch && stateMatch) {
+              matchesMarket = true;
+              break;
+            }
+          }
+        }
+      }
+    }
+    
     const matchesSource = selectedSource === 'All' || 
       (selectedSource === 'Algorithm' && property.source === 'A') ||
       (selectedSource === 'Manual' && property.source === 'M');
@@ -386,7 +429,8 @@ export default function EngagePage() {
       propertyAddress: `${property.address}, ${property.city}, ${property.state} ${property.zip}`,
       ownerFirst: property.owner_first_name || '',
       ownerLast: property.owner_last_name || '',
-      propertyId: property.id.toString()
+      propertyId: property.id.toString(),
+      returnUrl: '/v2/engage'
     });
     router.push(`/v2/templates?${params.toString()}`);
 
@@ -480,6 +524,7 @@ export default function EngagePage() {
       showError('Failed to delete offer. Please try again.', 'Delete Failed');
     }
   };
+
 
   const handleCSVExport = () => {
     try {
@@ -1371,7 +1416,25 @@ export default function EngagePage() {
               <Filter className="h-4 w-4 text-gray-500" />
               
               {/* Status Filter */}
-              <div className="relative" ref={statusDropdownRef}>
+              <div 
+                className="relative" 
+                ref={statusDropdownRef}
+                onMouseEnter={() => {
+                  // Clear any existing timeout when mouse enters
+                  if (statusDropdownTimeoutRef.current) {
+                    clearTimeout(statusDropdownTimeoutRef.current);
+                    statusDropdownTimeoutRef.current = null;
+                  }
+                }}
+                onMouseLeave={() => {
+                  // Set timeout to close dropdown when mouse leaves
+                  if (showStatusDropdown) {
+                    statusDropdownTimeoutRef.current = setTimeout(() => {
+                      setShowStatusDropdown(false);
+                    }, 300); // 300ms delay
+                  }
+                }}
+              >
                 <button
                   onClick={() => setShowStatusDropdown(!showStatusDropdown)}
                   className="appearance-none bg-white border border-gray-300 rounded-lg px-3 py-2 pr-8 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 min-w-[140px] text-left"
@@ -1426,7 +1489,25 @@ export default function EngagePage() {
               </div>
 
               {/* Market Filter */}
-              <div className="relative" ref={marketDropdownRef}>
+              <div 
+                className="relative" 
+                ref={marketDropdownRef}
+                onMouseEnter={() => {
+                  // Clear any existing timeout when mouse enters
+                  if (marketDropdownTimeoutRef.current) {
+                    clearTimeout(marketDropdownTimeoutRef.current);
+                    marketDropdownTimeoutRef.current = null;
+                  }
+                }}
+                onMouseLeave={() => {
+                  // Set timeout to close dropdown when mouse leaves
+                  if (showMarketDropdown) {
+                    marketDropdownTimeoutRef.current = setTimeout(() => {
+                      setShowMarketDropdown(false);
+                    }, 300); // 300ms delay
+                  }
+                }}
+              >
                 <button
                   onClick={() => setShowMarketDropdown(!showMarketDropdown)}
                   className="appearance-none bg-white border border-gray-300 rounded-lg px-3 py-2 pr-8 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 min-w-[140px] text-left"
@@ -1777,12 +1858,13 @@ export default function EngagePage() {
                             e.stopPropagation();
                             handleDeleteOffer(offer.id);
                           }}
-                          className="p-1.5 text-red-600 hover:bg-red-50 rounded-md transition-colors"
+                          className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-red-700 bg-red-50 border border-red-200 rounded-md hover:bg-red-100 hover:border-red-300 transition-all duration-200 shadow-sm"
                           title="Delete offer"
                         >
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                           </svg>
+                          Delete
                         </button>
                       </div>
                     </div>

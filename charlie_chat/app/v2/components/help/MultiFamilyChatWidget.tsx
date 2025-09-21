@@ -169,44 +169,13 @@ const MultiFamilyChatWidget = () => {
           {/* Header */}
           <div className="p-6 text-white bg-gradient-to-r from-blue-600 to-blue-700">
             <div className="flex items-center gap-3 mb-3">
-              {/* MultifamilyOS Building icon */}
+              {/* MFOS AI Logo */}
               <div className="w-8 h-6 flex items-center justify-center">
-                <svg viewBox="0 0 100 60" className="w-full h-full">
-                  {/* Left building (blue accent) */}
-                  <polygon points="0,60 0,15 15,0 25,10 25,60" fill="#3B82F6" />
-                  <rect x="5" y="20" width="3" height="3" fill="white" opacity="0.8" />
-                  <rect x="5" y="28" width="3" height="3" fill="white" opacity="0.8" />
-                  <rect x="5" y="36" width="3" height="3" fill="white" opacity="0.8" />
-                  <rect x="12" y="25" width="3" height="3" fill="white" opacity="0.8" />
-                  <rect x="12" y="33" width="3" height="3" fill="white" opacity="0.8" />
-                  <rect x="18" y="30" width="3" height="3" fill="white" opacity="0.8" />
-                  
-                  {/* Right building (darker blue) */}
-                  <rect x="25" y="10" width="50" height="50" fill="#1E40AF" />
-                  <rect x="30" y="18" width="4" height="4" fill="white" opacity="0.8" />
-                  <rect x="38" y="18" width="4" height="4" fill="white" opacity="0.8" />
-                  <rect x="46" y="18" width="4" height="4" fill="white" opacity="0.8" />
-                  <rect x="54" y="18" width="4" height="4" fill="white" opacity="0.8" />
-                  <rect x="62" y="18" width="4" height="4" fill="white" opacity="0.8" />
-                  
-                  <rect x="30" y="28" width="4" height="4" fill="white" opacity="0.8" />
-                  <rect x="38" y="28" width="4" height="4" fill="white" opacity="0.8" />
-                  <rect x="46" y="28" width="4" height="4" fill="white" opacity="0.8" />
-                  <rect x="54" y="28" width="4" height="4" fill="white" opacity="0.8" />
-                  <rect x="62" y="28" width="4" height="4" fill="white" opacity="0.8" />
-                  
-                  <rect x="30" y="38" width="4" height="4" fill="white" opacity="0.8" />
-                  <rect x="38" y="38" width="4" height="4" fill="white" opacity="0.8" />
-                  <rect x="46" y="38" width="4" height="4" fill="white" opacity="0.8" />
-                  <rect x="54" y="38" width="4" height="4" fill="white" opacity="0.8" />
-                  <rect x="62" y="38" width="4" height="4" fill="white" opacity="0.8" />
-                  
-                  <rect x="30" y="48" width="4" height="4" fill="white" opacity="0.8" />
-                  <rect x="38" y="48" width="4" height="4" fill="white" opacity="0.8" />
-                  <rect x="46" y="48" width="4" height="4" fill="white" opacity="0.8" />
-                  <rect x="54" y="48" width="4" height="4" fill="white" opacity="0.8" />
-                  <rect x="62" y="48" width="4" height="4" fill="white" opacity="0.8" />
-                </svg>
+                <img 
+                  src="/MFOS AI Logo.png" 
+                  alt="MFOS AI" 
+                  className="w-full h-full object-contain"
+                />
               </div>
             </div>
             <h3 className="text-xl font-semibold mb-1">What's on your mind?</h3>

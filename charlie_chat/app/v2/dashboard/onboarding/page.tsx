@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { 
   CheckCircle, 
   Circle, 
@@ -37,13 +38,14 @@ interface Task {
 export default function OnboardingPage() {
   const [currentDay, setCurrentDay] = useState(1);
   const [completedTasks, setCompletedTasks] = useState<Set<string>>(new Set());
+  const router = useRouter();
 
   const tasks: Task[] = [
     // Day 1: Foundation
     {
       id: 'profile-setup',
-      title: 'Complete Your Profile',
-      description: 'Add your contact info, business details, and upload a logo',
+      title: 'Fill Out Your Online Profile',
+      description: 'Complete your contact information. This information will be used in your emails, marketing letters and LOIs.',
       day: 1,
       icon: <User className="h-5 w-5" />,
       completed: false,
@@ -52,167 +54,202 @@ export default function OnboardingPage() {
       helpUrl: '/account/profile'
     },
     {
-      id: 'first-buybox',
-      title: 'Create Your First Buy Box Market',
-      description: 'Define your investment criteria for your target market',
+      id: 'search-properties',
+      title: 'Search for Properties',
+      description: 'Familiarize yourself with the Discover page. Enter a city or a ZIP code in the search bar, then try out some filters to refine your search.',
+      day: 1,
+      icon: <Target className="h-5 w-5" />,
+      completed: false,
+      category: 'foundation',
+      estimatedTime: '10 min',
+      helpUrl: '/v2/discover'
+    },
+    {
+      id: 'view-on-map',
+      title: 'Smart Searches',
+      description: 'Below the filters are 7 Smart Searches. They will use the same city or ZIP code that you entered earlier. If you\'re curious about the criteria, click on the small edit button on each Smart Search.',
       day: 1,
       icon: <MapPin className="h-5 w-5" />,
       completed: false,
       category: 'foundation',
+      estimatedTime: '8 min',
+      helpUrl: '/v2/discover'
+    },
+    {
+      id: 'view-property',
+      title: 'View the Property',
+      description: 'Click on the property image and open up Google Maps to see where the property is located. Click on the blue & white icon. This opens up a Zillow page, which often has more information about the same property, including rental information.',
+      day: 1,
+      icon: <MapPin className="h-5 w-5" />,
+      completed: false,
+      category: 'foundation',
+      estimatedTime: '8 min',
+      helpUrl: '/v2/discover'
+    },
+    {
+      id: 'view-property-details',
+      title: 'View Property Details',
+      description: 'Click on the View Details link on the property card. Then click on Analyze Investment. The system uses AI to help you determine whether this property is a good fit.',
+      day: 1,
+      icon: <FileText className="h-5 w-5" />,
+      completed: false,
+      category: 'foundation',
       estimatedTime: '10 min',
-      helpUrl: '/discover/buybox'
+      helpUrl: '/v2/discover'
+    },
+    {
+      id: 'complete-lesson-1',
+      title: 'Complete this Lesson',
+      description: 'Don\'t forget to click on each task and record your progress.',
+      day: 1,
+      icon: <CheckCircle className="h-5 w-5" />,
+      completed: false,
+      category: 'foundation',
+      estimatedTime: '2 min'
     },
 
     // Day 2: Discovery
     {
-      id: 'review-recommendations',
-      title: 'Review Your First Recommendations',
-      description: 'Check out AI-curated properties matched to your criteria',
+      id: 'setup-buybox',
+      title: 'Set up Your Buy Box',
+      description: 'Select a market and define your criteria. Each week you will receive machine learning generated property listings that get better and better based on your feedback.',
       day: 2,
       icon: <Target className="h-5 w-5" />,
       completed: false,
       category: 'discovery',
-      estimatedTime: '15 min'
+      estimatedTime: '15 min',
+      helpUrl: '/v2/discover/buybox'
+    },
+    {
+      id: 'build-pipeline',
+      title: 'Build Your Pipeline',
+      description: 'Go back to the Discover page and find more properties that meet your criteria. Explore all of the filters to refine your search. Review property details and then save your favorites by clicking the heart on the property card.',
+      day: 2,
+      icon: <PlayCircle className="h-5 w-5" />,
+      completed: false,
+      category: 'discovery',
+      estimatedTime: '10 min',
+      helpUrl: '/v2/discover'
+    },
+    {
+      id: 'analyze-pipeline',
+      title: 'Analyze Your Pipeline',
+      description: 'Go to the Dashboard and select Pipeline. Drag and drop properties from stage to stage. Check out how your properties align with the investment matrix.',
+      day: 2,
+      icon: <BarChart3 className="h-5 w-5" />,
+      completed: false,
+      category: 'discovery',
+      estimatedTime: '12 min',
+      helpUrl: '/v2/dashboard/pipeline'
+    },
+
+    // Day 3: AI & Organization
+    {
+      id: 'ai-coach',
+      title: 'Click on AI Coach',
+      description: 'Try out the sample prompts. Then create new prompts based on your areas of interest. Threads allow you to save and organize your MultifamilyOS journey. Be curious!',
+      day: 3,
+      icon: <MessageCircle className="h-5 w-5" />,
+      completed: false,
+      category: 'organization',
+      estimatedTime: '10 min',
+      helpUrl: '/v2/ai-coach'
     },
     {
       id: 'favorite-properties',
-      title: 'Mark 3 Properties as Favorites',
-      description: 'Save interesting properties to your favorites list',
-      day: 2,
+      title: 'Find More Favorites',
+      description: 'Run more searches, view property details, and check out the neighborhood using Google Street View. Add more properties to your pipeline by clicking on the heart. Don\'t forget about the AI Investment Analyzer! It\'s like having a trusted broker working for you 24x7.',
+      day: 3,
       icon: <Heart className="h-5 w-5" />,
       completed: false,
-      category: 'discovery',
-      estimatedTime: '10 min'
+      category: 'organization',
+      estimatedTime: '12 min',
+      helpUrl: '/v2/discover'
     },
 
-    // Day 3: Organization
+    // Day 4: Engagement & Analysis
     {
-      id: 'save-search',
-      title: 'Save a Custom Property Search',
-      description: 'Create a reusable search with your specific filters',
-      day: 3,
-      icon: <FileText className="h-5 w-5" />,
-      completed: false,
-      category: 'organization',
-      estimatedTime: '8 min'
-    },
-    {
-      id: 'add-notes',
-      title: 'Add Notes to 2 Properties',
-      description: 'Practice organizing your thoughts on potential deals',
-      day: 3,
-      icon: <FileText className="h-5 w-5" />,
-      completed: false,
-      category: 'organization',
-      estimatedTime: '5 min'
-    },
-    {
-      id: 'set-reminder',
-      title: 'Set Up a Property Reminder',
-      description: 'Use @MM/DD/YY format to create a follow-up reminder',
-      day: 3,
-      icon: <Calendar className="h-5 w-5" />,
-      completed: false,
-      category: 'organization',
-      estimatedTime: '3 min'
-    },
-
-    // Day 4: Analysis
-    {
-      id: 'ai-analysis',
-      title: 'Use AI Chat for Property Analysis',
-      description: 'Ask Charlie about a property\'s investment potential',
-      day: 4,
-      icon: <MessageCircle className="h-5 w-5" />,
-      completed: false,
-      category: 'analysis',
-      estimatedTime: '10 min'
-    },
-    {
-      id: 'generate-loi',
-      title: 'Generate Your First LOI',
-      description: 'Create a Letter of Intent for a property you like',
+      id: 'engage-properties',
+      title: 'Let\'s Get Serious',
+      description: 'Dig into the details of each property. Run a skiptrace and find out if the owner\'s contact information is available. Add a reminder to the notes section by adding @MM/DD/YY followed by your message.',
       day: 4,
       icon: <FileText className="h-5 w-5" />,
       completed: false,
       category: 'analysis',
-      estimatedTime: '15 min'
+      estimatedTime: '15 min',
+      helpUrl: '/v2/engage'
+    },
+    {
+      id: 'generate-documents',
+      title: 'Engage with Owners',
+      description: 'Select a property and then click on Engagement Center. Create a marketing letter and then an offer. Next, generate an LOI based on the same property. All of these options are available in the Engagement Center.',
+      day: 4,
+      icon: <FileText className="h-5 w-5" />,
+      completed: false,
+      category: 'analysis',
+      estimatedTime: '12 min',
+      helpUrl: '/v2/engage'
     },
 
-    // Day 5: Pipeline
+    // Day 5: Pipeline Management
     {
       id: 'pipeline-management',
-      title: 'Move Properties Through Pipeline Stages',
-      description: 'Practice organizing deals by their current status',
+      title: 'Manage Pipeline Status',
+      description: 'By now you should have quite a pipeline of properties. Check their status and drag and drop more mature deals to later stages in the pipeline. Be sure to look at the Deal Matrix below the pipeline. Are you focused on one type of property? Or are you taking a more diversified approach to your portfolio.',
       day: 5,
       icon: <BarChart3 className="h-5 w-5" />,
       completed: false,
       category: 'pipeline',
-      estimatedTime: '12 min'
+      estimatedTime: '10 min',
+      helpUrl: '/v2/dashboard/pipeline'
     },
     {
-      id: 'market-report',
-      title: 'Generate a Market Report',
-      description: 'Create insights about your target market',
+      id: 'track-activity',
+      title: 'Track Your Activity',
+      description: 'Building a multifamily business is a process that requires discipline. This page tracks your key activities, including marketing letters and emails sent, offers generated and LOIs drafted. Even though you\'re in your first week, you should expect to see activity.',
       day: 5,
       icon: <TrendingUp className="h-5 w-5" />,
       completed: false,
       category: 'pipeline',
-      estimatedTime: '8 min'
+      estimatedTime: '15 min',
+      helpUrl: '/v2/dashboard/metrics'
     },
 
-    // Day 6: Community
+    // Day 6: Advanced Features
     {
-      id: 'explore-community',
-      title: 'Explore Community Insights',
-      description: 'Check out market trends and community data',
+      id: 'save-searches',
+      title: 'Save Property Searches',
+      description: 'You have a clear sense of the kind of properties you\'re after, including the markets and their attributes. Click on My Searches and save your search criteria so you can easily replicate it across all of your markets.',
       day: 6,
-      icon: <Users className="h-5 w-5" />,
+      icon: <Star className="h-5 w-5" />,
       completed: false,
       category: 'community',
-      estimatedTime: '10 min'
+      estimatedTime: '8 min',
+      helpUrl: '/v2/discover'
     },
     {
-      id: 'find-lenders',
-      title: 'Find Mortgage Lenders in Your Area',
-      description: 'Browse our database of multifamily lenders',
+      id: 'ai-coach-upload',
+      title: 'Upload Report to AI Coach',
+      description: 'Click on AI Coach. Take a recent broker property listing and attach it to the chat window. Then start a dialogue with your coach. "Tell me about this property. What are the risks? Does the asking price seem reasonable?" Pretend you\'re speaking with a trusted broker. In reality, you are!',
       day: 6,
-      icon: <CreditCard className="h-5 w-5" />,
+      icon: <MessageCircle className="h-5 w-5" />,
       completed: false,
       category: 'community',
-      estimatedTime: '15 min'
+      estimatedTime: '10 min',
+      helpUrl: '/v2/ai-coach'
     },
 
     // Day 7: Strategy
     {
-      id: 'review-progress',
-      title: 'Review Your Week\'s Progress',
-      description: 'See how much you\'ve learned and accomplished',
-      day: 7,
-      icon: <Trophy className="h-5 w-5" />,
-      completed: false,
-      category: 'strategy',
-      estimatedTime: '10 min'
-    },
-    {
-      id: 'setup-weekly',
-      title: 'Set Up Weekly Recommendations',
-      description: 'Enable automated property recommendations',
-      day: 7,
-      icon: <Target className="h-5 w-5" />,
-      completed: false,
-      category: 'strategy',
-      estimatedTime: '5 min'
-    },
-    {
       id: 'choose-plan',
-      title: 'Choose Your Subscription Plan',
-      description: 'Continue your investment journey with the right plan',
+      title: 'Take the Next Step in Building Your Multifamily Business',
+      description: 'Look how much you\'ve accomplished in just a few hours. Instead of juggling fragmented tools, emails, and spreadsheets, you get one intelligent platform that scouts properties, analyzes deals, generates documents, engages owners, and helps you secure financing. Check out the pricing page and pick the plan that best fits your needs.',
       day: 7,
-      icon: <Star className="h-5 w-5" />,
+      icon: <CreditCard className="h-5 w-5" />,
       completed: false,
       category: 'strategy',
-      estimatedTime: '5 min'
+      estimatedTime: '5 min',
+      helpUrl: '/pricing'
     }
   ];
 
@@ -260,14 +297,9 @@ export default function OnboardingPage() {
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-8">
-          <div className="flex items-center space-x-3 mb-4">
-            <div className="p-2 bg-blue-50 rounded-lg">
-              <Trophy className="h-6 w-6 text-blue-600" />
-            </div>
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">7-Day Quick Start</h1>
-              <p className="text-gray-600">Master multifamily investing with our guided onboarding</p>
-            </div>
+          <div className="mb-4">
+            <h1 className="text-3xl font-bold text-gray-900">7-Lesson Quick Start</h1>
+            <p className="text-gray-600">Master multifamily investing with our guided onboarding</p>
           </div>
 
           {/* Progress Overview */}
@@ -292,7 +324,7 @@ export default function OnboardingPage() {
               ></div>
             </div>
 
-            {/* Day Navigation */}
+            {/* Lesson Navigation */}
             <div className="flex items-center space-x-2 overflow-x-auto pb-2">
               {[1, 2, 3, 4, 5, 6, 7].map((day) => {
                 const status = getDayStatus(day);
@@ -317,7 +349,7 @@ export default function OnboardingPage() {
                     ) : (
                       <Circle className="h-4 w-4" />
                     )}
-                    <span>Day {day}</span>
+                    <span>Lesson {day}</span>
                   </button>
                 );
               })}
@@ -325,79 +357,9 @@ export default function OnboardingPage() {
           </div>
         </div>
 
-        {/* Kanban Board */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* To Do Column */}
-          <div className="bg-white rounded-lg border border-gray-200 p-4">
-            <div className="flex items-center space-x-2 mb-4">
-              <Clock className="h-5 w-5 text-gray-500" />
-              <h3 className="font-semibold text-gray-900">To Do</h3>
-              <span className="bg-gray-100 text-gray-600 text-xs px-2 py-1 rounded-full">
-                {getTasksByColumn('todo').length}
-              </span>
-            </div>
-            <div className="space-y-3">
-              {getTasksByColumn('todo').map((task) => (
-                <TaskCard key={task.id} task={task} onToggle={toggleTask} />
-              ))}
-              {getTasksByColumn('todo').length === 0 && (
-                <div className="text-center py-8 text-gray-500">
-                  <Clock className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                  <p className="text-sm">All upcoming tasks will appear here</p>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Today Column */}
-          <div className="bg-white rounded-lg border border-blue-200 p-4 ring-1 ring-blue-100">
-            <div className="flex items-center space-x-2 mb-4">
-              <Target className="h-5 w-5 text-blue-600" />
-              <h3 className="font-semibold text-gray-900">Today (Day {currentDay})</h3>
-              <span className="bg-blue-100 text-blue-600 text-xs px-2 py-1 rounded-full">
-                {getTasksByColumn('today').length}
-              </span>
-            </div>
-            <div className="space-y-3">
-              {getTasksByColumn('today').map((task) => (
-                <TaskCard key={task.id} task={task} onToggle={toggleTask} />
-              ))}
-              {getTasksByColumn('today').length === 0 && (
-                <div className="text-center py-8 text-gray-500">
-                  <Trophy className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                  <p className="text-sm">All today's tasks completed!</p>
-                  <p className="text-xs">Come back tomorrow for more</p>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Completed Column */}
-          <div className="bg-white rounded-lg border border-gray-200 p-4">
-            <div className="flex items-center space-x-2 mb-4">
-              <CheckCircle className="h-5 w-5 text-green-600" />
-              <h3 className="font-semibold text-gray-900">Completed</h3>
-              <span className="bg-green-100 text-green-600 text-xs px-2 py-1 rounded-full">
-                {getTasksByColumn('completed').length}
-              </span>
-            </div>
-            <div className="space-y-3">
-              {getTasksByColumn('completed').map((task) => (
-                <TaskCard key={task.id} task={task} onToggle={toggleTask} completed />
-              ))}
-              {getTasksByColumn('completed').length === 0 && (
-                <div className="text-center py-8 text-gray-500">
-                  <Trophy className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                  <p className="text-sm">Completed tasks will appear here</p>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Day Summary */}
-        <div className="mt-8 bg-white rounded-lg border border-gray-200 p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Day {currentDay} Goal</h3>
+        {/* Lesson Summary */}
+        <div className="bg-white rounded-lg border border-gray-200 p-6 mb-6">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Lesson {currentDay} Goal</h3>
           {currentDay === 1 && (
             <div className="flex items-start space-x-3">
               <div className="p-2 bg-blue-50 rounded-lg">
@@ -405,7 +367,7 @@ export default function OnboardingPage() {
               </div>
               <div>
                 <h4 className="font-medium text-gray-900">Foundation</h4>
-                <p className="text-gray-600 text-sm">Get your investment criteria defined and your profile set up for success.</p>
+                <p className="text-gray-600 text-sm">Set up your profile and familiarize yourself with basic system functionality.</p>
               </div>
             </div>
           )}
@@ -416,7 +378,7 @@ export default function OnboardingPage() {
               </div>
               <div>
                 <h4 className="font-medium text-gray-900">Discovery</h4>
-                <p className="text-gray-600 text-sm">See the AI in action with your first personalized property recommendations.</p>
+                <p className="text-gray-600 text-sm">Build out your buy box and your pipeline.</p>
               </div>
             </div>
           )}
@@ -449,32 +411,80 @@ export default function OnboardingPage() {
               </div>
               <div>
                 <h4 className="font-medium text-gray-900">Pipeline</h4>
-                <p className="text-gray-600 text-sm">Organize your deal flow and generate insights about your target markets.</p>
+                <p className="text-gray-600 text-sm">Learn to manage and track your deals through the complete investment pipeline.</p>
               </div>
             </div>
           )}
           {currentDay === 6 && (
             <div className="flex items-start space-x-3">
-              <div className="p-2 bg-cyan-50 rounded-lg">
-                <Users className="h-5 w-5 text-cyan-600" />
+              <div className="p-2 bg-pink-50 rounded-lg">
+                <Users className="h-5 w-5 text-pink-600" />
               </div>
               <div>
                 <h4 className="font-medium text-gray-900">Community</h4>
-                <p className="text-gray-600 text-sm">Connect with resources and explore community insights to accelerate your success.</p>
+                <p className="text-gray-600 text-sm">Connect with market insights and leverage our network of real estate professionals.</p>
               </div>
             </div>
           )}
           {currentDay === 7 && (
             <div className="flex items-start space-x-3">
               <div className="p-2 bg-yellow-50 rounded-lg">
-                <Star className="h-5 w-5 text-yellow-600" />
+                <Trophy className="h-5 w-5 text-yellow-600" />
               </div>
               <div>
                 <h4 className="font-medium text-gray-900">Strategy</h4>
-                <p className="text-gray-600 text-sm">Commit to your investment journey by choosing the right plan for your goals.</p>
+                <p className="text-gray-600 text-sm">Complete your onboarding journey and set yourself up for long-term success.</p>
               </div>
             </div>
           )}
+        </div>
+
+        {/* Lesson Board */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Current Lesson Column */}
+          <div className="bg-white rounded-lg border border-blue-200 p-4 ring-1 ring-blue-100">
+            <div className="flex items-center space-x-2 mb-4">
+              <Target className="h-5 w-5 text-blue-600" />
+              <h3 className="font-semibold text-gray-900">Current Lesson ({currentDay})</h3>
+              <span className="bg-blue-100 text-blue-600 text-xs px-2 py-1 rounded-full">
+                {getTasksByColumn('today').length}
+              </span>
+            </div>
+            <div className="space-y-3">
+              {getTasksByColumn('today').map((task) => (
+                <TaskCard key={task.id} task={task} onToggle={toggleTask} router={router} />
+              ))}
+              {getTasksByColumn('today').length === 0 && (
+                <div className="text-center py-8 text-gray-500">
+                  <Trophy className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                  <p className="text-sm">All lesson tasks completed!</p>
+                  <p className="text-xs">Move on to the next lesson!</p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Completed Column */}
+          <div className="bg-white rounded-lg border border-gray-200 p-4">
+            <div className="flex items-center space-x-2 mb-4">
+              <CheckCircle className="h-5 w-5 text-green-600" />
+              <h3 className="font-semibold text-gray-900">Completed</h3>
+              <span className="bg-green-100 text-green-600 text-xs px-2 py-1 rounded-full">
+                {getTasksByColumn('completed').length}
+              </span>
+            </div>
+            <div className="space-y-3">
+              {getTasksByColumn('completed').map((task) => (
+                <TaskCard key={task.id} task={task} onToggle={toggleTask} router={router} completed />
+              ))}
+              {getTasksByColumn('completed').length === 0 && (
+                <div className="text-center py-8 text-gray-500">
+                  <Trophy className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                  <p className="text-sm">Completed tasks will appear here</p>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -484,10 +494,12 @@ export default function OnboardingPage() {
 function TaskCard({ 
   task, 
   onToggle, 
+  router,
   completed = false 
 }: { 
   task: Task; 
   onToggle: (id: string) => void;
+  router: any;
   completed?: boolean;
 }) {
   return (
@@ -538,7 +550,10 @@ function TaskCard({
             </span>
             
             {task.helpUrl && !completed && (
-              <button className="text-blue-600 hover:text-blue-700 text-xs font-medium flex items-center space-x-1">
+              <button 
+                onClick={() => router.push(task.helpUrl)}
+                className="text-blue-600 hover:text-blue-700 text-xs font-medium flex items-center space-x-1"
+              >
                 <span>Start</span>
                 <ChevronRight className="h-3 w-3" />
               </button>

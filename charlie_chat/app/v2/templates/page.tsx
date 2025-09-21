@@ -213,7 +213,8 @@ function Home() {
           if (!validation.isValid) {
             showWarning(validation.message, 'Update your profile');
             setTimeout(() => {
-              router.push('/my-properties');
+              const returnUrl = searchParams.get('returnUrl') || '/my-properties';
+              router.push(returnUrl);
             }, 2000);
             return;
           }

@@ -167,9 +167,9 @@ export default function PricingPage() {
       return;
     }
 
-    // If user is trial or disabled, convert them to core (charlie_chat legacy support)
+    // If user is trial, convert them to core (charlie_chat legacy support)
     const normalized = normalizeUserClass(userClass);
-    if (normalized === 'trial' || userClass === 'disabled') {
+    if (normalized === 'trial') {
       try {
         // Get fresh session with access token
         const { data: { session: freshSession }, error } = await supabase.auth.getSession();
@@ -376,7 +376,7 @@ export default function PricingPage() {
             Everything in Plus and more. Access to Charles Dobens Master Class Training and participation in weekly group coaching sessions.
           </p>
           <ul className="text-sm space-y-1 text-gray-800 mb-4 flex flex-col">
-            <li className="flex items-start"><span className="w-2 h-2 bg-indigo-600 rounded-full mt-2 mr-3 flex-shrink-0"></span>MultifamilyOS Capital Club Membership</li>
+            <li className="flex items-start"><span className="w-2 h-2 bg-indigo-600 rounded-full mt-2 mr-3 flex-shrink-0"></span>Membership in the MultifamilyOS Capital & Equity Clubs</li>
             <li className="flex items-start"><span className="w-2 h-2 bg-indigo-600 rounded-full mt-2 mr-3 flex-shrink-0"></span>Weekly Coaching Calls with Charles Dobens</li>
             <li className="flex items-start"><span className="w-2 h-2 bg-indigo-600 rounded-full mt-2 mr-3 flex-shrink-0"></span>Master Class Training Program</li>
             <li className="flex items-start"><span className="w-2 h-2 bg-indigo-600 rounded-full mt-2 mr-3 flex-shrink-0"></span>Community Access</li>
@@ -1051,7 +1051,7 @@ export default function PricingPage() {
           
           <div className="divide-y divide-gray-100">
             <div className="grid grid-cols-5 gap-0 hover:bg-gray-50/50 transition-colors">
-              <div className="px-6 py-4 text-sm font-medium text-gray-900">MultifamilyOS Capital Club Membership</div>
+              <div className="px-6 py-4 text-sm font-medium text-gray-900">Membership in the MultifamilyOS Capital & Equity Clubs</div>
               <div className="px-6 py-4 text-center border-l border-gray-100">
                 <div className="w-5 h-5 rounded-full bg-gray-200 mx-auto flex items-center justify-center">
                   <div className="w-2 h-0.5 bg-gray-400"></div>

@@ -16,13 +16,9 @@ import {
   Users, 
   Mail,
   FileText,
-  AlertCircle,
-  Calendar,
   BarChart3,
   Activity,
   ChevronDown,
-  Clock,
-  CheckCircle,
   Filter
 } from 'lucide-react';
 
@@ -36,7 +32,7 @@ export default function MetricsPage() {
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-6">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Metrics Dashboard</h1>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Activity Metrics</h1>
           <p className="text-gray-600">Track your real estate investment activity and performance</p>
         </div>
 
@@ -54,8 +50,6 @@ export default function MetricsPage() {
           </select>
         </div>
 
-        {/* Action Center - Full Width */}
-        <ActionCenter user={user} authLoading={authLoading} />
 
         {/* Daily Activity Coaching */}
         <div className="mt-8">
@@ -100,138 +94,6 @@ export default function MetricsPage() {
   );
 }
 
-// Action Center Component
-function ActionCenter({ user, authLoading }: { user: any; authLoading: boolean }) {
-  const [reminders, setReminders] = useState<any[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  // Fetch reminders from API
-  useEffect(() => {
-    const fetchReminders = async () => {
-      if (!user || authLoading) {
-        return;
-      }
-
-      setIsLoading(true);
-      setError(null);
-
-      try {
-        const response = await fetch('/api/v2/reminders');
-        if (!response.ok) {
-          throw new Error('Failed to fetch reminders');
-        }
-
-        const data = await response.json();
-        setReminders(data.reminders || []);
-      } catch (err: any) {
-        // Error fetching reminders
-        setError(err.message || 'Failed to load reminders');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchReminders();
-  }, [user, authLoading]);
-
-
-  return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-8">
-      <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center">
-        <AlertCircle className="h-5 w-5 mr-2 text-blue-600" />
-        Reminders - {new Date().toLocaleDateString('en-US', { 
-          weekday: 'long', 
-          year: 'numeric', 
-          month: 'long', 
-          day: 'numeric' 
-        })}
-      </h2>
-      
-      {isLoading ? (
-        <div className="flex items-center justify-center py-8">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-          <span className="ml-3 text-gray-600">Loading reminders...</span>
-        </div>
-      ) : error ? (
-        <div className="text-center py-8">
-          <AlertCircle className="h-8 w-8 mx-auto mb-2 text-red-500" />
-          <p className="text-red-600">{error}</p>
-        </div>
-      ) : reminders.length === 0 ? (
-        <div className="text-center py-8">
-          <Calendar className="h-8 w-8 mx-auto mb-2 text-gray-400" />
-          <p className="text-gray-600">No reminders found</p>
-          <p className="text-sm text-gray-500 mt-1">Add reminders to your property notes using @MM/DD/YYYY format</p>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Today's Reminders */}
-          <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-            <h3 className="font-semibold text-red-800 mb-2 flex items-center">
-              <Clock className="h-4 w-4 mr-1" />
-              Today ({reminders.filter(r => r.type === 'today').length})
-            </h3>
-            <div className="max-h-48 overflow-y-auto">
-              {reminders.filter(r => r.type === 'today').map(reminder => (
-                <ReminderCard key={reminder.id} reminder={reminder} />
-              ))}
-              {reminders.filter(r => r.type === 'today').length === 0 && (
-                <p className="text-sm text-gray-600 italic">No reminders for today</p>
-              )}
-            </div>
-          </div>
-
-          {/* This Week Reminders (upcoming only) */}
-          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-            <h3 className="font-semibold text-yellow-800 mb-2 flex items-center">
-              <Calendar className="h-4 w-4 mr-1" />
-              This Week ({reminders.filter(r => r.type === 'upcoming').length})
-            </h3>
-            <div className="max-h-48 overflow-y-auto">
-              {reminders.filter(r => r.type === 'upcoming').map(reminder => (
-                <ReminderCard key={reminder.id} reminder={reminder} />
-              ))}
-              {reminders.filter(r => r.type === 'upcoming').length === 0 && (
-                <p className="text-sm text-gray-600 italic">No upcoming reminders</p>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-
-
-
-// Reminder Card Component
-function ReminderCard({ reminder }: { reminder: any }) {
-  const formatDate = (dateStr: string) => {
-    // Parse date components manually to avoid timezone issues
-    const [year, month, day] = dateStr.split('-').map(Number);
-    const date = new Date(year, month - 1, day); // month is 0-based
-    
-    return date.toLocaleDateString('en-US', { 
-      month: 'short', 
-      day: 'numeric',
-      year: date.getFullYear() !== new Date().getFullYear() ? 'numeric' : undefined
-    });
-  };
-
-  return (
-    <div className="bg-white rounded p-3 mb-2 border border-gray-200">
-      <div className="flex items-center justify-between">
-        <div className="flex-1">
-          <div className="font-medium text-sm text-gray-900">{reminder.property_address}</div>
-          <div className="text-xs text-gray-600">{reminder.reminder_text}</div>
-          <div className="text-xs text-gray-500 mt-1">{formatDate(reminder.reminder_date)}</div>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 // Properties Favorited Over Time Chart
 function PropertiesFavoritedChart({ user, timeRange }: { user: any; timeRange: string }) {

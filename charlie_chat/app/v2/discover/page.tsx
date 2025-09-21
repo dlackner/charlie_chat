@@ -6,7 +6,7 @@
  */
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, Suspense } from 'react';
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter, useSearchParams } from 'next/navigation';
 import { hasAccess } from '@/lib/v2/accessControl';
@@ -26,7 +26,7 @@ declare global {
   }
 }
 
-export default function DiscoverPage() {
+function DiscoverPageContent() {
   const { user, supabase } = useAuth();
   const { showError, showWarning, AlertComponent } = useAlert();
   const router = useRouter();
@@ -2361,7 +2361,7 @@ export default function DiscoverPage() {
                      window.history.replaceState(null, '', window.location.pathname);
                    }}
                 >
-                  Show me my recent favorites
+                  Show me my recent properties
                 </p>
               </div>
             )}
@@ -3121,15 +3121,6 @@ function RecentPropertyCard({
           </div>
         </div>
 
-        {/* Tags */}
-        <div className="flex flex-wrap gap-2 mb-3">
-          <span className="px-2 py-1 bg-green-100 text-green-700 text-xs font-medium rounded">
-            Favorited
-          </span>
-          <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs font-medium rounded">
-            {property.units} Units
-          </span>
-        </div>
 
         {/* Bottom Actions */}
         <div className="flex items-center justify-between pt-2 border-t border-gray-100">
@@ -3316,16 +3307,13 @@ function PropertyCard({
         </div>
 
         {/* Tags */}
-        <div className="flex flex-wrap gap-2 mb-3">
-          {displayProperty.out_of_state_absentee_owner && (
+        {displayProperty.out_of_state_absentee_owner && (
+          <div className="flex flex-wrap gap-2 mb-3">
             <span className="px-2 py-1 bg-orange-100 text-orange-700 text-xs font-medium rounded">
               Absentee Owner
             </span>
-          )}
-          <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs font-medium rounded">
-            {displayProperty.units_count || 'N/A'} Units
-          </span>
-        </div>
+          </div>
+        )}
 
         {/* Bottom Actions */}
         <div className="flex items-center justify-between pt-2 border-t border-gray-100">
@@ -3363,3 +3351,11 @@ function PropertyCard({
   );
 }
 
+
+export default function DiscoverPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Loading...</div>}>
+      <DiscoverPageContent />
+    </Suspense>
+  );
+}

@@ -54,7 +54,6 @@ function AuthCallbackContent() {
                   .update({
                     stripe_customer_id: affiliateCustomerId,
                     affiliate_sale: true,
-                    credits: 250, // Give them trial credits
                     user_class: 'trial',
                     trial_end_date: trialEndDate.toISOString()
                   })

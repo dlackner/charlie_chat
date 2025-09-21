@@ -37,10 +37,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Failed to fetch user profile' }, { status: 500 });
     }
 
-    // Check if user is trial or disabled (expired trial)
-    if (profile?.user_class !== 'trial' && profile?.user_class !== 'disabled') {
+    // Check if user is trial
+    if (profile?.user_class !== 'trial') {
       return NextResponse.json({ 
-        error: 'Only trial or expired trial users can convert to MultifamilyOS Core',
+        error: 'Only trial users can convert to MultifamilyOS Core',
         current_class: profile?.user_class 
       }, { status: 400 });
     }

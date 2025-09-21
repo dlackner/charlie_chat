@@ -407,15 +407,15 @@ export const BuyBoxModal: React.FC<BuyBoxModalProps> = ({ isOpen, onClose, focus
 
     // Add template market when in add mode
     useEffect(() => {
-        if (isOpen && focusedMarket === null && buyBoxData.markets.length < maxMarkets) {
+        if (isOpen && focusedMarket === null) {
             // Check if we already have a template market for new market creation
             const hasTemplateMarket = buyBoxData.markets.some(market => market.id === 'template-new-market');
             if (!hasTemplateMarket) {
-                // Create and add a template market for adding
+                // Create and add a template market for adding with proper Market1 naming
                 const templateMarket: Market = {
                     id: 'template-new-market',
                     user_id: user?.id || '',
-                    market_key: 'New',
+                    market_key: 'Market1',
                     market_name: '',
                     market_type: 'city',
                     city: '',
@@ -433,7 +433,7 @@ export const BuyBoxModal: React.FC<BuyBoxModalProps> = ({ isOpen, onClose, focus
                     learning_phase: 'discovery',
                     type: 'city',
                     customName: '',
-                    marketKey: 'New',
+                    marketKey: 'Market1',
                     isExpanded: true,
                     propertyCountChecked: false,
                     weekly_recommendations_enabled: true
@@ -449,7 +449,7 @@ export const BuyBoxModal: React.FC<BuyBoxModalProps> = ({ isOpen, onClose, focus
                 // Added template market to state for add mode
             }
         }
-    }, [isOpen, focusedMarket, buyBoxData.markets.length, maxMarkets, user]);
+    }, [isOpen, focusedMarket, buyBoxData.markets.length, user]);
 
     // Reset form when modal closes
     useEffect(() => {
@@ -472,31 +472,13 @@ export const BuyBoxModal: React.FC<BuyBoxModalProps> = ({ isOpen, onClose, focus
         return isNaN(parsed) ? 0 : parsed;
     };
 
-    // Check user's market limit based on user class
+    // Allow unlimited markets for all users
     const checkUserMarketLimit = async () => {
-        if (!user || !supabase) return;
-        
-        try {
-            const { data: profile } = await supabase
-                .from('profiles')
-                .select('user_class')
-                .eq('user_id', user.id)
-                .single();
-            
-            // Limit trial and charlie_chat users to 1 market
-            if (profile?.user_class === 'trial' || profile?.user_class === 'charlie_chat') {
-                setMaxMarkets(1);
-            } else {
-                setMaxMarkets(5); // Default for Pro users
-            }
-        } catch (error) {
-            // Handle user class check errors silently
-            setMaxMarkets(5); // Default on error
-        }
+        setMaxMarkets(999); // Unlimited markets for all users
     };
 
     const addMarket = async () => {
-        if (buyBoxData.markets.length < maxMarkets && user) {
+        if (user) {
             // Query database to get all existing market keys for this user
             const { data: existingMarkets } = await supabase
                 .from("user_markets")
@@ -591,11 +573,11 @@ export const BuyBoxModal: React.FC<BuyBoxModalProps> = ({ isOpen, onClose, focus
                 let templateMarket: Market;
                 
                 if (marketId === 'template-new-market') {
-                    // Create the new market template
+                    // Create the new market template - use temporary key, will be fixed during save
                     templateMarket = {
                         id: marketId, // Keep the template ID for now
                         user_id: user?.id || '',
-                        market_key: `Market${prev.markets.length + 1}`,
+                        market_key: 'temp-new-market', // Temporary key, will be replaced during save
                         market_name: '',
                         market_type: 'city',
                         city: '',
@@ -626,7 +608,7 @@ export const BuyBoxModal: React.FC<BuyBoxModalProps> = ({ isOpen, onClose, focus
                     templateMarket = {
                         id: marketId, // Keep the template ID for now
                         user_id: user?.id || '',
-                        market_key: `Market${prev.markets.length + 1}`,
+                        market_key: 'temp-focused-market', // Temporary key, will be replaced during save
                         market_name: focusedMarketName,
                         market_type: 'city',
                         city: city || '',
@@ -939,6 +921,27 @@ export const BuyBoxModal: React.FC<BuyBoxModalProps> = ({ isOpen, onClose, focus
                 return;
             }
 
+            // Check for duplicate market names for this user
+            const { data: existingMarkets, error: duplicateCheckError } = await supabase
+                .from("user_markets")
+                .select("id, market_name")
+                .eq("user_id", user.id)
+                .eq("market_name", marketName);
+
+            if (duplicateCheckError) {
+                setErrorMessage("Error checking for duplicate market names");
+                return;
+            }
+
+            // If we found existing markets with this name, check if it's not the current market
+            if (existingMarkets && existingMarkets.length > 0) {
+                const isDuplicate = existingMarkets.some(existingMarket => existingMarket.id !== actualMarketId);
+                if (isDuplicate) {
+                    setErrorMessage(`A market named "${marketName}" already exists. Please choose a different name.`);
+                    return;
+                }
+            }
+
             // Validate that at least one filter criteria is set
             const hasUnitsFilter = (market.units_min > 0 || market.units_max > 0);
             const hasAssessedValueFilter = (market.assessed_value_min > 0 || market.assessed_value_max > 0);
@@ -996,11 +999,30 @@ export const BuyBoxModal: React.FC<BuyBoxModalProps> = ({ isOpen, onClose, focus
             // Save/update the individual market in user_markets table
             const marketToSave = updatedMarkets.find(m => m.id === marketId);
             if (marketToSave) {
+                // Generate proper market key for template markets or Market1 (new users)
+                let finalMarketKey = marketToSave.market_key;
+                if (finalMarketKey.startsWith('temp-') || finalMarketKey === 'Market1') {
+                    // This is a template market - generate proper market key
+                    const { data: existingMarkets } = await supabase
+                        .from("user_markets")
+                        .select("market_key")
+                        .eq("user_id", user.id);
+                    
+                    const existingKeys = (existingMarkets || []).map(m => m.market_key);
+                    const marketNumbers = existingKeys
+                        .filter(key => key.startsWith('Market'))
+                        .map(key => parseInt(key.replace('Market', '')))
+                        .filter(num => !isNaN(num));
+                    
+                    const maxNumber = marketNumbers.length > 0 ? Math.max(...marketNumbers) : 0;
+                    finalMarketKey = `Market${maxNumber + 1}`;
+                }
+                
                 // Validate and prepare data for upsert
                 const marketData = {
                     id: actualMarketId,
                     user_id: user.id,
-                    market_key: marketToSave.market_key,
+                    market_key: finalMarketKey,
                     market_name: marketToSave.market_name || null,
                     market_type: marketToSave.market_type,
                     city: marketToSave.city || null,
@@ -1172,23 +1194,7 @@ export const BuyBoxModal: React.FC<BuyBoxModalProps> = ({ isOpen, onClose, focus
                             <div className="space-y-8">
                                 {/* Target Markets */}
                                 <div>
-                                    <div className="flex items-center justify-between mb-4">
-                                        {focusedMarket === undefined && (
-                                            <label className="block text-base font-semibold text-gray-900">
-                                                {`Target Markets (up to ${maxMarkets})`}
-                                            </label>
-                                        )}
-                                        {focusedMarket === undefined && (
-                                            <button
-                                                onClick={addMarket}
-                                                disabled={buyBoxData.markets.length >= maxMarkets}
-                                                className="flex items-center px-3 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                                            >
-                                                <Plus size={16} className="mr-1" />
-                                                Add Market
-                                            </button>
-                                        )}
-                                    </div>
+                                    {/* Header and Add Market button removed - not needed in focused/add modes */}
 
                                     {/* Market List */}
                                     <div className="space-y-4">
@@ -1216,38 +1222,8 @@ export const BuyBoxModal: React.FC<BuyBoxModalProps> = ({ isOpen, onClose, focus
                                             }
                                             // If focusedMarket is undefined, show all markets (original behavior) - marketsToShow is already set to buyBoxData.markets
 
-                                            // If no markets found but we're in add mode (focusedMarket === null), 
-                                            // create a template market as fallback (useEffect should handle this normally)
-                                            if (marketsToShow.length === 0 && focusedMarket === null) {
-                                                // Creating fallback template market for add mode
-                                                const templateMarket = {
-                                                    id: 'template-new-market',
-                                                    user_id: user?.id || '',
-                                                    market_key: 'New',
-                                                    market_name: '',
-                                                    market_type: 'city' as 'city',
-                                                    city: '',
-                                                    state: '',
-                                                    zip: '',
-                                                    units_min: 15,
-                                                    units_max: 35,
-                                                    assessed_value_min: 1000000,
-                                                    assessed_value_max: 2500000,
-                                                    estimated_value_min: 1200000,
-                                                    estimated_value_max: 2800000,
-                                                    year_built_min: 1990,
-                                                    year_built_max: 2010,
-                                                    total_decisions_made: 0,
-                                                    learning_phase: 'discovery' as 'discovery',
-                                                    type: 'city' as 'city',
-                                                    customName: '',
-                                                    marketKey: 'New',
-                                                    isExpanded: true,
-                                                    propertyCountChecked: false,
-                                                    weekly_recommendations_enabled: true
-                                                };
-                                                marketsToShow = [templateMarket];
-                                            }
+                                            // If no markets found in add mode, the useEffect should have created a template market
+                                            // No need for fallback creation here as it causes duplicate keys
 
                                             // If no market found but we're in focused mode, create a template market to edit
                                             if (marketsToShow.length === 0 && focusedMarket) {
@@ -1288,6 +1264,37 @@ export const BuyBoxModal: React.FC<BuyBoxModalProps> = ({ isOpen, onClose, focus
                                                         No markets added yet. Click "Add Market" to get started.
                                                     </div>
                                                 );
+                                            }
+
+                                            // If in add mode but no template market was created, create one inline
+                                            if (marketsToShow.length === 0 && focusedMarket === null) {
+                                                const templateMarket = {
+                                                    id: 'template-new-market-inline',
+                                                    user_id: user?.id || '',
+                                                    market_key: 'Market1',
+                                                    market_name: '',
+                                                    market_type: 'city' as 'city',
+                                                    city: '',
+                                                    state: '',
+                                                    zip: '',
+                                                    units_min: 15,
+                                                    units_max: 35,
+                                                    assessed_value_min: 1000000,
+                                                    assessed_value_max: 2500000,
+                                                    estimated_value_min: 1200000,
+                                                    estimated_value_max: 2800000,
+                                                    year_built_min: 1990,
+                                                    year_built_max: 2010,
+                                                    total_decisions_made: 0,
+                                                    learning_phase: 'discovery' as 'discovery',
+                                                    type: 'city' as 'city',
+                                                    customName: '',
+                                                    marketKey: 'Market1',
+                                                    isExpanded: true,
+                                                    propertyCountChecked: false,
+                                                    weekly_recommendations_enabled: true
+                                                };
+                                                marketsToShow = [templateMarket];
                                             }
 
                                             return marketsToShow.map((market, index) => {
@@ -1478,7 +1485,7 @@ export const BuyBoxModal: React.FC<BuyBoxModalProps> = ({ isOpen, onClose, focus
                                                                             }}
                                                                             onClick={(e) => e.stopPropagation()}
                                                                             onFocus={(e) => e.stopPropagation()}
-                                                                            className="w-16 px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors"
+                                                                            className="w-20 px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors"
                                                                         />
                                                                         <span className="text-gray-600 text-sm font-medium">to</span>
                                                                         <input
@@ -1493,7 +1500,7 @@ export const BuyBoxModal: React.FC<BuyBoxModalProps> = ({ isOpen, onClose, focus
                                                                             }}
                                                                             onClick={(e) => e.stopPropagation()}
                                                                             onFocus={(e) => e.stopPropagation()}
-                                                                            className="w-16 px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors"
+                                                                            className="w-20 px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors"
                                                                         />
                                                                     </div>
                                                                 </div>
@@ -1515,7 +1522,7 @@ export const BuyBoxModal: React.FC<BuyBoxModalProps> = ({ isOpen, onClose, focus
                                                                             }}
                                                                             onClick={(e) => e.stopPropagation()}
                                                                             onFocus={(e) => e.stopPropagation()}
-                                                                            className="w-16 px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors"
+                                                                            className="w-20 px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors"
                                                                         />
                                                                         <span className="text-gray-600 text-sm font-medium">to</span>
                                                                         <input
@@ -1530,7 +1537,7 @@ export const BuyBoxModal: React.FC<BuyBoxModalProps> = ({ isOpen, onClose, focus
                                                                             }}
                                                                             onClick={(e) => e.stopPropagation()}
                                                                             onFocus={(e) => e.stopPropagation()}
-                                                                            className="w-16 px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors"
+                                                                            className="w-20 px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors"
                                                                         />
                                                                     </div>
                                                                 </div>
@@ -1669,8 +1676,8 @@ export const BuyBoxModal: React.FC<BuyBoxModalProps> = ({ isOpen, onClose, focus
                                     </div>
                                 </div>
 
-                                {/* Global Weekly Recommendations Toggle - only show when not in focused mode */}
-                                {!focusedMarket && (
+                                {/* Global Weekly Recommendations Toggle - only show when not in focused mode and not in add mode */}
+                                {focusedMarket === undefined && (
                                     <div className="border-t border-gray-200 pt-6">
                                     <label className="flex items-center">
                                         <input
@@ -1714,7 +1721,7 @@ export const BuyBoxModal: React.FC<BuyBoxModalProps> = ({ isOpen, onClose, focus
                                                 </button>
                                             </span>
                                             <p className="text-xs text-gray-500 mt-1">
-                                                Get curated properties per market every Monday, delivered right to your home page!
+                                                Get curated properties per market every Friday, delivered right to your home page!
                                             </p>
                                         </div>
                                     </label>
@@ -1722,6 +1729,18 @@ export const BuyBoxModal: React.FC<BuyBoxModalProps> = ({ isOpen, onClose, focus
                                 )}
                             </div>
                         )}
+                    </div>
+
+                    {/* Footer with Done button */}
+                    <div className="px-8 py-4 border-t border-gray-100 bg-gray-50">
+                        <div className="flex justify-end">
+                            <button
+                                onClick={onClose}
+                                className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-6 rounded-lg transition-colors"
+                            >
+                                Done
+                            </button>
+                        </div>
                     </div>
 
                 </Dialog.Panel>

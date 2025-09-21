@@ -17,8 +17,19 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Charlie Chat AI",
-  description: "Mobile-first multifamily investment platform",
+  title: "MultifamilyOS.ai",
+  description: "Mobile-first multifamily operating system",
+  icons: [
+    {
+      rel: 'icon',
+      url: '/new-favicon-2024.png',
+      type: 'image/png',
+    },
+    {
+      rel: 'shortcut icon',
+      url: '/new-favicon-2024.png',
+    },
+  ],
 };
 
 export default function RootLayout({
