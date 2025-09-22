@@ -124,11 +124,6 @@ export default function MobileNavigation() {
         disabled: isLoadingUserClass ? false : !canAccessDashboard(currentUserClass),
         submenu: [
           { 
-            name: 'Community', 
-            href: hasAccess(currentUserClass, 'dashboard_community') ? '/v2/dashboard/community' : undefined,
-            disabled: !hasAccess(currentUserClass, 'dashboard_community')
-          },
-          { 
             name: 'Activity Metrics', 
             href: hasAccess(currentUserClass, 'dashboard_metrics') ? '/v2/dashboard/metrics' : undefined,
             disabled: !hasAccess(currentUserClass, 'dashboard_metrics')
@@ -137,6 +132,11 @@ export default function MobileNavigation() {
             name: 'Pipeline', 
             href: hasAccess(currentUserClass, 'dashboard_pipeline') ? '/v2/dashboard/pipeline' : undefined,
             disabled: !hasAccess(currentUserClass, 'dashboard_pipeline')
+          },
+          { 
+            name: 'Community', 
+            href: hasAccess(currentUserClass, 'dashboard_community') ? '/v2/dashboard/community' : undefined,
+            disabled: !hasAccess(currentUserClass, 'dashboard_community')
           },
           { 
             name: 'Onboarding', 
