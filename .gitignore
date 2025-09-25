@@ -1,0 +1,28 @@
+# Dependencies
+  node_modules/
+  .pnpm-store/
+
+  # Next.js build output
+  .next/
+  out/
+
+  # Environment variables
+  .env
+  .env.local
+  .env.production.local
+
+  # Logs
+  npm-debug.log*
+  yarn-debug.log*
+  yarn-error.log*
+
+  # Cache
+  .cache/
+
+  # IDE
+  .vscode/
+  .idea/
+
+  # OS
+  .DS_Store
+  Thumbs.db
