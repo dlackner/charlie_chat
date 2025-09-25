@@ -441,6 +441,24 @@ function EngagePageContent() {
     }
   };
 
+  const handlePurchaseSaleGeneration = (propertyId: number) => {
+    const property = savedProperties.find(p => p.id === propertyId);
+    if (!property) return;
+    // Navigate to templates page with property data for Purchase & Sale generation
+    const params = new URLSearchParams({
+      propertyAddress: `${property.address}, ${property.city}, ${property.state} ${property.zip}`,
+      ownerFirst: property.owner_first_name || '',
+      ownerLast: property.owner_last_name || '',
+      propertyId: property.id.toString(),
+      returnUrl: '/engage'
+    });
+    router.push(`/templates?${params.toString()}`);
+    // TODO: Increment activity count for Purchase & Sale creation initiated
+    // if (user?.id) {
+    //   incrementActivityCount(user.id, 'purchase_sale_agreements_created');
+    // }
+  };
+
   const handleViewOffers = async () => {
     if (!user) {
       showWarning('Please log in to view offers.', 'Login Required');
@@ -1250,6 +1268,8 @@ function EngagePageContent() {
           handleEmailGeneration(selectedProperties[0]);
         } else if (action === 'loi') {
           handleLOIGeneration(selectedProperties[0]);
+        } else if (action === 'purchase-sale') {
+          handlePurchaseSaleGeneration(selectedProperties[0]);
         } else if (action === 'create-offer') {
           // Navigate to offer analyzer
           const property = savedProperties.find(p => p.id === selectedProperties[0]);
@@ -1419,14 +1439,14 @@ function EngagePageContent() {
 
                       {/* Hide Purchase & Sale on mobile */}
                       <button
-                        onClick={() => {/* Not implemented yet */}}
-                        disabled={true}
-                        className="w-full text-left px-4 py-2 text-sm text-gray-400 cursor-not-allowed flex items-center hidden lg:flex"
+                        onClick={() => handleDocumentAction('purchase-sale')}
+                        disabled={selectedProperties.length !== 1}
+                        className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 disabled:text-gray-400 disabled:cursor-not-allowed flex items-center hidden lg:flex"
                       >
-                        <FileText className="h-4 w-4 mr-3 text-gray-400" />
+                        <FileText className="h-4 w-4 mr-3" />
                         <div>
                           <div>Purchase & Sale</div>
-                          <div className="text-xs text-gray-400">Select 1 property</div>
+                          <div className="text-xs text-gray-500">Select 1 property</div>
                         </div>
                       </button>
 
@@ -1444,7 +1464,7 @@ function EngagePageContent() {
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
                         </svg>
                         <div>
-                          <div>Create Offer</div>
+                          <div>Create Analysis</div>
                           <div className="text-xs text-gray-500">Select 1 property</div>
                         </div>
                       </button>
@@ -1458,8 +1478,8 @@ function EngagePageContent() {
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
                         </svg>
                         <div>
-                          <div>View Offers</div>
-                          <div className="text-xs text-gray-500">View all your offers</div>
+                          <div>View Analyses</div>
+                          <div className="text-xs text-gray-500">View all your analyses</div>
                         </div>
                       </button>
                       

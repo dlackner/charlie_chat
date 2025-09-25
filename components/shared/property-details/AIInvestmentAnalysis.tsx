@@ -452,13 +452,6 @@ export function AIInvestmentAnalysis({ property, isEngageContext, userClass }: A
                       <span>Powered by MultifamilyOS.ai</span>
                     </div>
                   </div>
-                  <button
-                    onClick={() => window.open(`/offer-analyzer?address=${encodeURIComponent(property.address_street || property.address_full || '')}&city=${encodeURIComponent(property.address_city)}&state=${encodeURIComponent(property.address_state)}&id=${encodeURIComponent(property.property_id || '')}`, '_blank')}
-                    className="text-sm text-blue-600 hover:text-blue-700 font-medium flex items-center"
-                  >
-                    <Calculator className="w-3 h-3 mr-1" />
-                    Open Offer Analyzer
-                  </button>
                 </div>
               )}
             </div>
