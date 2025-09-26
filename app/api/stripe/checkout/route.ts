@@ -1,6 +1,6 @@
 /*
  * CHARLIE2 V2 - Stripe Checkout Session Creation API
- * Handles payment processing for subscriptions and credit packs
+ * Handles payment processing for subscription plans only
  * Creates Stripe checkout sessions with proper metadata for webhook processing
  * Part of the new V2 application architecture
  */
@@ -91,7 +91,7 @@ const productPricing: Record<
   },
 };
 
-// V2: Credit pack system removed - V2 uses subscription-only model
+// V2: Subscription-only model
 
 export async function POST(req: NextRequest) {
   try {
@@ -115,7 +115,7 @@ export async function POST(req: NextRequest) {
 
     const userId = user.id;
 
-    // Handle subscription purchases only (V2: credit packs removed)
+    // Handle subscription purchases only
     const body = await req.json();
     const { productId, plan }: { productId: string; plan: "monthly" | "annual" } = body;
 

@@ -239,7 +239,7 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, on
         return {
           planName: 'Trial',
           status: 'Trial Active',
-          description: 'Limited access with trial credits'
+          description: '7-day full access trial'
         };
       case 'core':
         return {
@@ -574,22 +574,6 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, on
                   </div>
                 )}
 
-                {/* Payment Method for Credit Pack Users */}
-                {paymentMethod && !subscription && (
-                  <div className="mt-6 pt-6 border-t border-gray-200">
-                    <div className="flex items-center space-x-3">
-                      <div className="p-2 bg-blue-100 rounded-lg">
-                        <Shield className="w-4 h-4 text-blue-600" />
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium text-gray-900">Payment Method on File</p>
-                        <p className="text-sm text-gray-600">
-                          {paymentMethod.brand.charAt(0).toUpperCase() + paymentMethod.brand.slice(1)} •••• {paymentMethod.last4} • Expires {paymentMethod.expMonth.toString().padStart(2, '0')}/{paymentMethod.expYear}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                )}
               </div>
             )}
           </div>

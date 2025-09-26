@@ -47,7 +47,7 @@ export async function POST(req: NextRequest) {
 
   const { data: profile, error: profileError } = await supabase
     .from("profiles")
-    .select("user_id, credits, user_class")
+    .select("user_id, user_class")
     .eq("stripe_customer_id", customerId)
     .maybeSingle();
 
@@ -120,46 +120,6 @@ export async function POST(req: NextRequest) {
     //console.log("✅ Subscription + user_class updated for", profile.user_id);
   }
 
-  // ─── Handle One-Time Credit Pack ─────────────────────────────────────
-  if (sessionMode === "payment") {
-    //console.log("💳 Handling one-time credit purchase");
-
-    const amount = parseInt(session.metadata?.amount || "0", 10);
-    if (amount <= 0) {
-      console.warn("⚠️ Skipping zero-credit transaction for", profile.user_id);
-      return new NextResponse("No credits to add", { status: 200 });
-    }
-
-    const { error: purchaseInsertError } = await supabase
-      .from("credit_purchases")
-      .insert([{
-        user_id: profile.user_id,
-        credit_amount: amount,
-        stripe_price_id: priceId,
-        stripe_session_id: session.id,
-        status: session.payment_status,
-        metadata: session.metadata ?? {},
-      }]);
-
-    if (purchaseInsertError) {
-      console.error("🔥 Credit purchase insert failed:", purchaseInsertError);
-      return new NextResponse("Purchase failed", { status: 500 });
-    }
-
-    const newBalance = (profile.credits || 0) + amount;
-
-    const { error: creditUpdateErr } = await supabase
-      .from("profiles")
-      .update({ credits: newBalance })
-      .eq("user_id", profile.user_id);
-
-    if (creditUpdateErr) {
-      console.error("🔥 Credit balance update failed:", creditUpdateErr);
-      return new NextResponse("Credits update failed", { status: 500 });
-    }
-
-    //console.log(`✅ Added ${amount} credits to user ${profile.user_id}`);
-  }
 
   return new NextResponse("Webhook handled", { status: 200 });
 }
