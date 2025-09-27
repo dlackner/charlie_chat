@@ -132,7 +132,7 @@ export const CashFlowReportsModal: React.FC<CashFlowReportsModalProps> = ({
               <FileText className="h-5 w-5 text-blue-600" />
             </div>
             <div>
-              <h2 className="text-xl font-semibold text-gray-900">Select an Offer</h2>
+              <h2 className="text-xl font-semibold text-gray-900">Select an Analysis</h2>
               <p className="text-sm text-gray-600">Choose an offer to generate a 10-year cash flow report</p>
             </div>
           </div>

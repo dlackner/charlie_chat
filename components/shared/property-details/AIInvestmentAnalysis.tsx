@@ -88,6 +88,7 @@ export function AIInvestmentAnalysis({ property, isEngageContext, userClass }: A
         yearBuilt: property.year_built || 1950,
         assessedValue: property.assessed_value || 'Unknown',
         estimatedValue: (property as any).estimated_value,
+        estimatedEquity: (property as any).estimated_equity,
         latitude: property.latitude,
         longitude: property.longitude
       };

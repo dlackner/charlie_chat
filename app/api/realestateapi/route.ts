@@ -64,7 +64,6 @@ function transformListingToSnakeCase(listing: any) {
     reo: listing.reo,
     foreclosure: listing.foreclosure,
     pre_foreclosure: listing.preForeclosure,
-    tax_lien: listing.taxLien,
     private_lender: listing.privateLender,
     free_clear: listing.freeClear,
     
@@ -159,7 +158,6 @@ export async function POST(req: NextRequest) {
       assumable,
       auction,
       reo,
-      tax_lien,
       pre_foreclosure,
       private_lender,
       street,
@@ -229,7 +227,6 @@ export async function POST(req: NextRequest) {
       assumable,
       auction,
       reo,
-      tax_lien,
       pre_foreclosure,
       private_lender,
       street,

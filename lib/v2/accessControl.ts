@@ -21,6 +21,7 @@ export type UserClass =
 // Available features/pages in V2
 export type Feature = 
   | 'dashboard'
+  | 'dashboard_headlines'
   | 'dashboard_community'
   | 'dashboard_metrics' 
   | 'dashboard_pipeline'
@@ -46,6 +47,7 @@ const PERMISSIONS: Record<Exclude<UserClass, null>, Feature[]> = {
   // Active trial users - full access including engage
   trial: [
     'dashboard',
+    'dashboard_headlines',
     'dashboard_community',
     'dashboard_metrics',
     'dashboard_pipeline', 
@@ -83,6 +85,7 @@ const PERMISSIONS: Record<Exclude<UserClass, null>, Feature[]> = {
   // Plus plan - adds more dashboard and engage features
   plus: [
     'dashboard',
+    'dashboard_headlines',
     'dashboard_community', 
     'dashboard_metrics',
     'dashboard_pipeline',
@@ -107,6 +110,7 @@ const PERMISSIONS: Record<Exclude<UserClass, null>, Feature[]> = {
   // Pro plan - full access
   pro: [
     'dashboard',
+    'dashboard_headlines',
     'dashboard_community',
     'dashboard_metrics', 
     'dashboard_pipeline',
@@ -131,6 +135,7 @@ const PERMISSIONS: Record<Exclude<UserClass, null>, Feature[]> = {
   // Cohort users - full access like pro
   cohort: [
     'dashboard',
+    'dashboard_headlines',
     'dashboard_community',
     'dashboard_metrics',
     'dashboard_pipeline', 
@@ -155,6 +160,7 @@ const PERMISSIONS: Record<Exclude<UserClass, null>, Feature[]> = {
   // Legacy user classes - mapped to their new equivalents
   charlie_chat: [
     'dashboard',
+    'dashboard_headlines',
     'dashboard_community',
     'dashboard_metrics',
     'dashboard_pipeline',
@@ -170,6 +176,7 @@ const PERMISSIONS: Record<Exclude<UserClass, null>, Feature[]> = {
 
   charlie_chat_plus: [
     'dashboard',
+    'dashboard_headlines',
     'dashboard_community', 
     'dashboard_metrics',
     'dashboard_pipeline',
@@ -193,6 +200,7 @@ const PERMISSIONS: Record<Exclude<UserClass, null>, Feature[]> = {
 
   charlie_chat_pro: [
     'dashboard',
+    'dashboard_headlines',
     'dashboard_community',
     'dashboard_metrics', 
     'dashboard_pipeline',
@@ -267,6 +275,7 @@ export function getAllowedFeatures(userClass: UserClass): Feature[] {
  */
 export function canAccessDashboard(userClass: UserClass): boolean {
   return hasAccess(userClass, 'dashboard') || 
+         hasAccess(userClass, 'dashboard_headlines') ||
          hasAccess(userClass, 'dashboard_community') ||
          hasAccess(userClass, 'dashboard_metrics') ||
          hasAccess(userClass, 'dashboard_pipeline') ||

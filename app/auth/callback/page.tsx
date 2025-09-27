@@ -21,7 +21,6 @@ function AuthCallbackContent() {
         // 1. Handle PKCE/magic link callback via ?code=
         const code = search.get('code');
         if (code) {
-          console.log('Exchanging code for session...');
           await supabase.auth.exchangeCodeForSession(code);
         }
 
@@ -29,7 +28,6 @@ function AuthCallbackContent() {
         const access_token = search.get('access_token');
         const refresh_token = search.get('refresh_token');
         if (access_token && refresh_token) {
-          console.log('Setting session manually...');
           await supabase.auth.setSession({ access_token, refresh_token });
         }
 
@@ -37,18 +35,31 @@ function AuthCallbackContent() {
         for (let i = 0; i < 10; i++) {
           const { data: { session } } = await supabase.auth.getSession();
           if (session) {
-            console.log('Session active, checking user profile...');
             
-            // Get user profile 
-            let { data: profile, error: profileError } = await supabase
-              .from('profiles')
-              .select('user_id, user_class, created_at, stripe_customer_id')
-              .eq('user_id', session.user.id)
-              .single();
+            // Get user profile (with retry for race condition with handle_new_user function)
+            let profile = null;
+            let profileError = null;
+            let retryCount = 0;
+            
+            // Retry up to 3 times with delays to handle race condition
+            while (!profile && retryCount < 3) {
+              const result = await supabase
+                .from('profiles')
+                .select('user_id, user_class, created_at, stripe_customer_id')
+                .eq('user_id', session.user.id)
+                .single();
+                
+              profile = result.data;
+              profileError = result.error;
+              
+              if (!profile && retryCount < 2) {
+                await new Promise(res => setTimeout(res, 500));
+              }
+              retryCount++;
+            }
             
             // If profile doesn't exist, create it (new user)
             if (!profile) {
-              console.log('Creating new user profile...');
               
               // Calculate trial end date using MAX_TRIAL_DAYS
               const maxTrialDays = parseInt(process.env.NEXT_PUBLIC_MAX_TRIAL_DAYS || '7');
@@ -74,7 +85,6 @@ function AuthCallbackContent() {
               if (affiliateCustomerId) {
                 newProfile.stripe_customer_id = affiliateCustomerId;
                 newProfile.affiliate_sale = true;
-                console.log('Setting up affiliate user...');
               }
               
               const { error: insertError } = await supabase
@@ -82,13 +92,10 @@ function AuthCallbackContent() {
                 .insert([newProfile]);
               
               if (insertError) {
-                console.error('❌ Error creating user profile:', insertError);
-              } else {
-                console.log('✅ New user profile created');
+                console.error('Error creating user profile:', insertError);
               }
               
               // New users always go to onboarding
-              console.log('New user - redirecting to onboarding...');
               router.replace('/dashboard/onboarding');
               return;
             }
@@ -105,34 +112,24 @@ function AuthCallbackContent() {
                   })
                   .eq('user_id', session.user.id);
                 
-                console.log('✅ Updated existing user with affiliate info');
               } catch (error) {
-                console.error('❌ Error updating user with affiliate info:', error);
+                console.error('Error updating user with affiliate info:', error);
               }
             }
             
-            // Check if trial user created recently (within last 5 minutes)
-            if (profile.user_class === 'trial' && profile.created_at) {
-              const createdAt = new Date(profile.created_at);
-              const now = new Date();
-              const minutesAgo = (now.getTime() - createdAt.getTime()) / (1000 * 60);
-              
-              if (minutesAgo <= 5) {
-                console.log('Recent trial user - redirecting to onboarding...');
-                router.replace('/dashboard/onboarding');
-                return;
-              }
+            // ALL trial users go to onboarding (no time restriction)
+            if (profile.user_class === 'trial') {
+              router.replace('/dashboard/onboarding');
+              return;
             }
             
             // All other existing users go to headlines
-            console.log('Existing user - redirecting to headlines...');
             router.replace('/dashboard/headlines');
             return;
           }
           await new Promise(res => setTimeout(res, 200));
         }
 
-        console.warn('Session still not available. Redirecting to home.');
         router.replace('/');
       } catch (err) {
         console.error('Error completing auth callback:', err);

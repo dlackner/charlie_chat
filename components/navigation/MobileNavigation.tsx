@@ -12,6 +12,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { useModal } from '@/contexts/ModalContext';
 import { SubscriptionModal } from '@/app/components/SubscriptionModal';
+import SubscriptionSupportModal from '@/components/ui/SubscriptionSupportModal';
 import { hasAccess, canAccessDashboard, canAccessDiscover, canAccessEngage } from '@/lib/v2/accessControl';
 import type { UserClass } from '@/lib/v2/accessControl';
 import { useTrialStatus } from '@/lib/v2/useTrialStatus';
@@ -55,26 +56,66 @@ export default function MobileNavigation() {
   // Local state for user class
   const [localUserClass, setLocalUserClass] = useState<string | null>(null);
   
-  // Fetch user class directly from profiles table
+  // Fetch user class directly from profiles table and check trial status
   useEffect(() => {
     if (user?.id && !localUserClass) {
-      const fetchUserClass = async () => {
+      const fetchUserClassAndCheckTrial = async () => {
         try {
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('user_class')
-            .eq('user_id', user.id)
-            .single();
+          // Call trial status API endpoint
+          const trialResponse = await fetch('/api/trial-status', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+          });
+          
+          if (trialResponse.ok) {
+            const { wasExpired, userClass } = await trialResponse.json();
             
-          if (profile?.user_class) {
-            setLocalUserClass(profile.user_class);
+            console.log('Trial check response:', { wasExpired, userClass });
+            
+            // If trial was expired, show modal
+            if (wasExpired) {
+              console.log('Trial expired, showing modal');
+              setShowTrialEndModal(true);
+            }
+            
+            // Set the user class
+            if (userClass) {
+              console.log('Setting user class to:', userClass);
+              setLocalUserClass(userClass);
+            }
+          } else {
+            // Fallback: fetch user class directly from database
+            const { data: profile } = await supabase
+              .from('profiles')
+              .select('user_class')
+              .eq('user_id', user.id)
+              .single();
+              
+            if (profile?.user_class) {
+              setLocalUserClass(profile.user_class);
+            }
           }
         } catch (error) {
-          console.error('Error fetching user class:', error);
+          console.error('Error fetching user class and checking trial:', error);
+          
+          // Fallback: fetch user class directly from database
+          try {
+            const { data: profile } = await supabase
+              .from('profiles')
+              .select('user_class')
+              .eq('user_id', user.id)
+              .single();
+              
+            if (profile?.user_class) {
+              setLocalUserClass(profile.user_class);
+            }
+          } catch (fallbackError) {
+            console.error('Error in fallback user class fetch:', fallbackError);
+          }
         }
       };
       
-      fetchUserClass();
+      fetchUserClassAndCheckTrial();
     }
   }, [user?.id, supabase, localUserClass]);
 
@@ -131,8 +172,8 @@ export default function MobileNavigation() {
         submenu: [
           { 
             name: 'Headlines', 
-            href: '/dashboard/headlines',
-            disabled: false
+            href: hasAccess(currentUserClass, 'dashboard_headlines') ? '/dashboard/headlines' : undefined,
+            disabled: !hasAccess(currentUserClass, 'dashboard_headlines')
           },
           { 
             name: 'Activity Metrics', 
@@ -151,7 +192,7 @@ export default function MobileNavigation() {
             disabled: !hasAccess(currentUserClass, 'dashboard_community')
           },
           { 
-            name: 'Onboarding', 
+            name: 'Onboarding & Resources', 
             href: hasAccess(currentUserClass, 'dashboard_onboarding') ? '/dashboard/onboarding' : undefined,
             disabled: !hasAccess(currentUserClass, 'dashboard_onboarding')
           }
@@ -728,6 +769,9 @@ export default function MobileNavigation() {
         isOpen={showSubscriptionModal} 
         onClose={() => setShowSubscriptionModal(false)} 
       />
+
+      {/* Subscription Support Modal */}
+      <SubscriptionSupportModal />
 
       {/* Trial End Modal */}
       <TrialEndModal 

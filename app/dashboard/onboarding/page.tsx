@@ -3,13 +3,12 @@
 import { useState } from 'react';
 import { AuthGuard } from '@/components/auth/AuthGuard';
 import { useRouter } from 'next/navigation';
+import { DownloadableResourcesSidebar } from '@/components/ui/DownloadableResourcesSidebar';
 import { 
   CheckCircle, 
   Circle, 
-  Clock, 
   Target, 
   Trophy, 
-  Calendar,
   ChevronRight,
   User,
   MapPin,
@@ -297,6 +296,9 @@ export default function OnboardingPage() {
     <AuthGuard>
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="max-w-7xl mx-auto">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+          {/* Main Content */}
+          <div className="lg:col-span-3">
         {/* Header */}
         <div className="mb-8">
           <div className="mb-4">
@@ -486,6 +488,13 @@ export default function OnboardingPage() {
                 </div>
               )}
             </div>
+          </div>
+        </div>
+          </div>
+          
+          {/* Right Sidebar */}
+          <div className="lg:col-span-1">
+            <DownloadableResourcesSidebar />
           </div>
         </div>
       </div>

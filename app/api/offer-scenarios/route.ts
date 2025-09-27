@@ -122,7 +122,7 @@ export async function POST(request: NextRequest) {
 
     if (error) {
       console.error('Error upserting offer scenario:', error);
-      return NextResponse.json({ error: 'Failed to save offer scenario' }, { status: 500 });
+      return NextResponse.json({ error: 'Failed to save analysis scenario' }, { status: 500 });
     }
 
     return NextResponse.json({ scenario: data }, { status: 201 });

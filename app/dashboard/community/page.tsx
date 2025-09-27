@@ -17,7 +17,6 @@ import {
   MapPin,
   Building,
   DollarSign,
-  BookOpen,
   AlertCircle,
   Phone,
   Mail,
@@ -195,8 +194,6 @@ export default function CommunityPage() {
           {/* Mortgage Lenders */}
           <MortgageLenders onShowModal={() => setShowLendersModal(true)} />
 
-          {/* Educational Resources */}
-          <EducationalResources />
         </div>
 
         {/* Mortgage Lenders Modal */}
@@ -768,24 +765,6 @@ function MortgageLenders({ onShowModal }: { onShowModal: () => void }) {
 }
 
 
-// Educational Resources Component
-function EducationalResources() {
-  return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-      <h3 className="text-lg font-semibold text-gray-900 mb-4">Learning Center</h3>
-      
-      <div className="flex items-center justify-center py-12">
-        <div className="text-center">
-          <BookOpen className="h-12 w-12 mx-auto mb-4 text-gray-400" />
-          <h4 className="text-lg font-medium text-gray-900 mb-2">Coming Soon</h4>
-          <p className="text-gray-500 text-sm">
-            Educational resources and guides will be available here.
-          </p>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 
 // Mortgage Lenders Modal

@@ -66,7 +66,6 @@ interface MMRProperty {
     out_of_state_absentee_owner?: boolean;
     mls_active?: boolean;
     reo?: boolean;
-    tax_lien?: boolean;
     auction?: boolean;
     pre_foreclosure?: boolean;
     flood_zone?: boolean;
@@ -577,7 +576,6 @@ export default function BuyBoxPage() {
             years_owned: property.years_owned,
             out_of_state_absentee_owner: property.out_of_state_absentee_owner,
             reo: property.reo,
-            tax_lien: property.tax_lien,
             auction: property.auction,
             pre_foreclosure: property.pre_foreclosure
           },

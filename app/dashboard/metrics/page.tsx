@@ -71,7 +71,7 @@ export default function MetricsPage() {
           {/* First Row */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
             
-            {/* Offers Created */}
+            {/* Analyses Created */}
             <OffersCreatedCard user={user} timeRange={timeRange} />
 
             {/* LOIs Created */}
@@ -183,7 +183,7 @@ function PropertiesFavoritedChart({ user, timeRange }: { user: any; timeRange: s
   );
 }
 
-// Offers Created Activity Card Component
+// Analyses Created Activity Card Component
 function OffersCreatedCard({ user, timeRange }: { user: any; timeRange: string }) {
   const [todayCount, setTodayCount] = useState(0);
   const [weeklyData, setWeeklyData] = useState<any[]>([]);
@@ -221,7 +221,7 @@ function OffersCreatedCard({ user, timeRange }: { user: any; timeRange: string }
 
   return (
     <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-      <h3 className="text-lg font-semibold text-gray-900 mb-4">Offers Created</h3>
+      <h3 className="text-lg font-semibold text-gray-900 mb-4">Analyses Created</h3>
       <div className="flex items-center justify-between mb-4">
         <div className="text-3xl font-bold text-blue-600">{todayCount}</div>
         <div className="text-sm text-gray-600">Today</div>
@@ -272,7 +272,7 @@ function OffersCreatedCard({ user, timeRange }: { user: any; timeRange: string }
           <div className="h-full flex items-center justify-center text-gray-500">
             <div className="text-center">
               <BarChart3 className="h-6 w-6 mx-auto mb-2" />
-              <p className="text-xs">No offers yet</p>
+              <p className="text-xs">No analyses yet</p>
             </div>
           </div>
         )}
@@ -319,7 +319,7 @@ function LOIsCreatedCard({ user, timeRange }: { user: any; timeRange: string }) 
 
   return (
     <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-      <h3 className="text-lg font-semibold text-gray-900 mb-4">LOIs Created</h3>
+      <h3 className="text-lg font-semibold text-gray-900 mb-4">LOIs/P&S Created</h3>
       <div className="flex items-center justify-between mb-4">
         <div className="text-3xl font-bold text-purple-600">{todayCount}</div>
         <div className="text-sm text-gray-600">Today</div>

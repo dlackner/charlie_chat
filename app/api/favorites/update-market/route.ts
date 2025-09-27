@@ -31,17 +31,17 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { property_id, market } = await req.json();
+    const { property_id, market_key } = await req.json();
     
-    if (!property_id || !market) {
-      return NextResponse.json({ error: 'Property ID and market are required' }, { status: 400 });
+    if (!property_id) {
+      return NextResponse.json({ error: 'Property ID is required' }, { status: 400 });
     }
 
     // Update the market_key field in user_favorites table
     // This represents which user market this property is assigned to
     const { error } = await supabase
       .from('user_favorites')
-      .update({ market_key: market })
+      .update({ market_key: market_key })
       .eq('user_id', user.id)
       .eq('property_id', property_id);
 

@@ -33,7 +33,7 @@ export const UnsavedChangesModal: React.FC<UnsavedChangesModalProps> = ({
         <div className="p-6">
           <p className="text-gray-700 mb-6 leading-relaxed">
             You've been working on an offer analysis and have unsaved changes. 
-            Click <span className="font-semibold text-blue-600">'Save Offer'</span> to save your work 
+            Click <span className="font-semibold text-blue-600">'Save Analysis'</span> to save your work 
             before leaving, or you can leave without saving.
           </p>
           

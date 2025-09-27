@@ -2,25 +2,20 @@
 
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
+import { hasAccess, type UserClass } from "@/lib/v2/accessControl";
 
 interface UseMyPropertiesAccessReturn {
     hasAccess: boolean;
     isLoading: boolean;
     userClass: string | null;
-    userCredits: number | null;
-    checkTrialUserCredits: () => Promise<boolean>;
-    isInGracePeriod: boolean;
-    daysLeftInGracePeriod: number | null;
 }
 
 export const useMyPropertiesAccess = (): UseMyPropertiesAccessReturn => {
     const { user: currentUser, supabase } = useAuth();
     const [userClass, setUserClass] = useState<string | null>(null);
-    const [userCredits, setUserCredits] = useState<number | null>(null);
-    const [creditsDepletedAt, setCreditsDepletedAt] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(true);
 
-    // Load user class, credits, and grace period data from Supabase
+    // Load user class from Supabase
     useEffect(() => {
         const loadUserData = async () => {
             if (!currentUser || !supabase) {
@@ -31,7 +26,7 @@ export const useMyPropertiesAccess = (): UseMyPropertiesAccessReturn => {
             try {
                 const { data, error } = await supabase
                     .from("profiles")
-                    .select("user_class, credits, credits_depleted_at")
+                    .select("user_class")
                     .eq("user_id", currentUser.id)
                     .single();
 
@@ -41,11 +36,8 @@ export const useMyPropertiesAccess = (): UseMyPropertiesAccessReturn => {
                         console.error("Error loading user data:", error);
                     }
                     setUserClass(null);
-                    setUserCredits(null);
                 } else {
                     setUserClass(data?.user_class || null);
-                    setUserCredits(data?.credits || 0);
-                    setCreditsDepletedAt(data?.credits_depleted_at || null);
                 }
             } catch (error) {
                 // Only log if it's not a network/auth issue during signup flow
@@ -53,7 +45,6 @@ export const useMyPropertiesAccess = (): UseMyPropertiesAccessReturn => {
                     console.error("Unexpected error loading user data:", error);
                 }
                 setUserClass(null);
-                setUserCredits(null);
             } finally {
                 setIsLoading(false);
             }
@@ -66,69 +57,13 @@ export const useMyPropertiesAccess = (): UseMyPropertiesAccessReturn => {
         }
     }, [currentUser, supabase]);
 
-    // Calculate grace period status
-    const calculateGracePeriod = () => {
-        if (userClass !== "trial" || !creditsDepletedAt) {
-            return { isInGracePeriod: false, daysLeftInGracePeriod: null };
-        }
-
-        const depletedDate = new Date(creditsDepletedAt);
-        const now = new Date();
-        const gracePeriodEnd = new Date(depletedDate.getTime() + (3 * 24 * 60 * 60 * 1000)); // 3 days
-        const timeLeft = gracePeriodEnd.getTime() - now.getTime();
-        const daysLeft = Math.ceil(timeLeft / (24 * 60 * 60 * 1000));
-
-        return {
-            isInGracePeriod: timeLeft > 0,
-            daysLeftInGracePeriod: timeLeft > 0 ? Math.max(0, daysLeft) : null
-        };
-    };
-
-    const { isInGracePeriod, daysLeftInGracePeriod } = calculateGracePeriod();
-
-
-    // Check if user has access to My Properties
-    const hasAccess =
-        userClass === "charlie_chat_pro" ||
-        userClass === "charlie_chat_plus" ||
-        userClass === "cohort" ||
-        (userClass === "trial" && userCredits !== null && (userCredits > 0 || isInGracePeriod));
-        // Note: disabled users get NO access, trials past grace period get NO access
-
-    // Fresh credit check for trial users (used by Header component)
-    const checkTrialUserCredits = async (): Promise<boolean> => {
-        if (!currentUser || !supabase || userClass !== "trial") {
-            return false;
-        }
-
-        try {
-            const { data, error } = await supabase
-                .from("profiles")
-                .select("credits")
-                .eq("user_id", currentUser.id)
-                .single();
-
-            if (error) {
-                console.error("Error checking trial user credits:", error);
-                return false;
-            }
-
-            const currentCredits = data?.credits || 0;
-            return currentCredits > 0;
-        } catch (error) {
-            console.error("Unexpected error checking credits:", error);
-            return false;
-        }
-    };
-
+    // Use centralized access control to check if user has access to engage templates
+    // Trial users get access for 7 days, then automatically convert to core and lose template access
+    const userHasAccess = userClass ? hasAccess(userClass as UserClass, 'engage_templates') : false;
 
     return {
-        hasAccess,
+        hasAccess: userHasAccess,
         isLoading,
-        userClass,
-        userCredits,
-        checkTrialUserCredits,
-        isInGracePeriod,
-        daysLeftInGracePeriod
+        userClass
     };
 };

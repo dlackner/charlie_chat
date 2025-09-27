@@ -1,6 +1,7 @@
 'use client';
 import React, { useState, useEffect, useRef } from 'react';
 import { X, Send } from 'lucide-react';
+import Image from 'next/image';
 import { useAuth } from '@/contexts/AuthContext';
 import { useModal } from '@/contexts/ModalContext';
 
@@ -145,48 +146,17 @@ const SubscriptionSupportModal = () => {
         </button>
 
         {/* Header */}
-        <div className="p-6 text-white" style={{ 
-          backgroundColor: '#1C599F'
-        }}>
+        <div className="p-6 text-white bg-gradient-to-r from-blue-600 to-blue-700">
           <div className="flex items-center gap-3 mb-3">
-            {/* Building icon SVG */}
-            <div className="w-8 h-6 flex items-center justify-center">
-              <svg viewBox="0 0 100 60" className="w-full h-full">
-                {/* Left building (orange/red) */}
-                <polygon points="0,60 0,15 15,0 25,10 25,60" fill="#F97316" />
-                <rect x="5" y="20" width="3" height="3" fill="white" opacity="0.8" />
-                <rect x="5" y="28" width="3" height="3" fill="white" opacity="0.8" />
-                <rect x="5" y="36" width="3" height="3" fill="white" opacity="0.8" />
-                <rect x="12" y="25" width="3" height="3" fill="white" opacity="0.8" />
-                <rect x="12" y="33" width="3" height="3" fill="white" opacity="0.8" />
-                <rect x="18" y="30" width="3" height="3" fill="white" opacity="0.8" />
-                
-                {/* Right building (blue) */}
-                <rect x="25" y="10" width="50" height="50" fill="#3B82F6" />
-                <rect x="30" y="18" width="4" height="4" fill="white" opacity="0.8" />
-                <rect x="38" y="18" width="4" height="4" fill="white" opacity="0.8" />
-                <rect x="46" y="18" width="4" height="4" fill="white" opacity="0.8" />
-                <rect x="54" y="18" width="4" height="4" fill="white" opacity="0.8" />
-                <rect x="62" y="18" width="4" height="4" fill="white" opacity="0.8" />
-                
-                <rect x="30" y="28" width="4" height="4" fill="white" opacity="0.8" />
-                <rect x="38" y="28" width="4" height="4" fill="white" opacity="0.8" />
-                <rect x="46" y="28" width="4" height="4" fill="white" opacity="0.8" />
-                <rect x="54" y="28" width="4" height="4" fill="white" opacity="0.8" />
-                <rect x="62" y="28" width="4" height="4" fill="white" opacity="0.8" />
-                
-                <rect x="30" y="38" width="4" height="4" fill="white" opacity="0.8" />
-                <rect x="38" y="38" width="4" height="4" fill="white" opacity="0.8" />
-                <rect x="46" y="38" width="4" height="4" fill="white" opacity="0.8" />
-                <rect x="54" y="38" width="4" height="4" fill="white" opacity="0.8" />
-                <rect x="62" y="38" width="4" height="4" fill="white" opacity="0.8" />
-                
-                <rect x="30" y="48" width="4" height="4" fill="white" opacity="0.8" />
-                <rect x="38" y="48" width="4" height="4" fill="white" opacity="0.8" />
-                <rect x="46" y="48" width="4" height="4" fill="white" opacity="0.8" />
-                <rect x="54" y="48" width="4" height="4" fill="white" opacity="0.8" />
-                <rect x="62" y="48" width="4" height="4" fill="white" opacity="0.8" />
-              </svg>
+            {/* MFOS AI Logo */}
+            <div className="w-10 h-8 flex items-center justify-center">
+              <Image
+                src="/MFOS AI Logo.png"
+                alt="MFOS AI Logo"
+                width={40}
+                height={32}
+                className="object-contain"
+              />
             </div>
           </div>
           <h3 className="text-xl font-semibold mb-1">Subscription Support</h3>
@@ -207,9 +177,9 @@ const SubscriptionSupportModal = () => {
                     placeholder="Please describe what you'd like to do with your subscription..."
                     className="w-full px-3 py-3 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 resize-none"
                     style={{
-                      ['--tw-ring-color' as any]: '#1C599F'
+                      ['--tw-ring-color' as any]: '#2563eb'
                     }}
-                    onFocus={(e) => e.target.style.borderColor = '#1C599F'}
+                    onFocus={(e) => e.target.style.borderColor = '#2563eb'}
                     onBlur={(e) => e.target.style.borderColor = '#E5E7EB'}
                     rows={3}
                     disabled={isLoading}
@@ -217,12 +187,7 @@ const SubscriptionSupportModal = () => {
                   <button
                     onClick={handleSendMessage}
                     disabled={!message.trim() || isLoading}
-                    className="w-full px-4 py-2 text-white rounded-lg font-medium transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                    style={{ 
-                      background: message.trim() && !isLoading
-                        ? 'linear-gradient(135deg, #F97316 0%, #EA580C 100%)'
-                        : '#D1D5DB'
-                    }}
+                    className="w-full px-4 py-2 text-white rounded-lg font-medium transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 disabled:from-gray-300 disabled:to-gray-400"
                   >
                     <Send size={16} />
                     {isLoading ? 'Sending...' : 'Send Request'}
@@ -245,8 +210,8 @@ const SubscriptionSupportModal = () => {
         <div className="border-t border-gray-100 p-4">
           <div className="flex justify-center">
             <div className="flex items-center gap-2 text-xs text-gray-500">
-              <div className="w-4 h-4 rounded" style={{ background: 'linear-gradient(135deg, #F97316 0%, #3B82F6 100%)' }}></div>
-              <span>Charlie Chat Support</span>
+              <div className="w-4 h-4 bg-gradient-to-r from-blue-600 to-blue-700 rounded"></div>
+              <span>MultifamilyOS Support</span>
             </div>
           </div>
         </div>

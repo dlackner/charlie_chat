@@ -10,7 +10,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 
 interface TrialEndModalProps {
   open: boolean;
@@ -36,21 +36,20 @@ export default function TrialEndModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md max-w-[90vw] p-0">
+      <DialogContent className="sm:max-w-md max-w-[90vw] p-0" aria-describedby="trial-end-description">
+        <DialogTitle className="sr-only">Trial Complete</DialogTitle>
         <div className="bg-white rounded-lg p-6 space-y-4">
-          {/* Header with Charlie's image */}
+          {/* Header with MultifamilyOS logo */}
           <div className="flex items-start gap-4">
-            <img 
-              src="/charlie.png" 
-              alt="Charlie Dobens" 
-              className="w-12 h-12 rounded-full flex-shrink-0"
-            />
+            <div className="w-12 h-12 bg-blue-600 rounded-lg flex items-center justify-center flex-shrink-0">
+              <span className="text-white font-bold text-lg">M</span>
+            </div>
             <div>
               <h2 className="text-xl font-semibold text-gray-900 mb-2">
-                Hi There!
+                Trial Complete!
               </h2>
-              <p className="text-gray-700 leading-relaxed">
-                Your 7-day trial with MultifamilyOS.ai has ended. Ready to continue building your multifamily portfolio with unlimited access?
+              <p id="trial-end-description" className="text-gray-700 leading-relaxed">
+                Your 7-day trial with MultifamilyOS has ended. Ready to continue building your multifamily portfolio with unlimited access?
               </p>
             </div>
           </div>
@@ -60,9 +59,9 @@ export default function TrialEndModal({
             <button
               onClick={handleCheckItOut}
               disabled={isProcessing}
-              className="w-full bg-orange-600 text-white py-3 px-6 rounded-lg font-semibold hover:bg-orange-700 transition-colors disabled:opacity-50"
+              className="w-full bg-blue-600 text-white py-3 px-6 rounded-lg font-semibold hover:bg-blue-700 transition-colors disabled:opacity-50"
             >
-              {isProcessing ? "Loading..." : "Check It Out"}
+              {isProcessing ? "Loading..." : "View Pricing"}
             </button>
           </div>
         </div>

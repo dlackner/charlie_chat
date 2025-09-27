@@ -59,6 +59,7 @@ export default function PricingPage() {
   const [showPremiumUserModal, setShowPremiumUserModal] = useState(false);
   const [showDowngradeModal, setShowDowngradeModal] = useState(false);
   const [showDowngradeInstructions, setShowDowngradeInstructions] = useState(false);
+  const [showExpiredTrialModal, setShowExpiredTrialModal] = useState(false);
   
   // ✅ Add auth context, modal context, and router
   const { user: currentUser, supabase, session } = useAuth();
@@ -209,6 +210,9 @@ export default function PricingPage() {
       // For premium users (Plus, Pro, Cohort), show Charlie's modal
       if (hasPremiumAccess(userClass) || userClass === 'cohort') {
         setShowPremiumUserModal(true);
+      } else if (normalized === 'core') {
+        // Core users are expired trial users - show upgrade modal
+        setShowExpiredTrialModal(true);
       } else {
         // For non-logged-in users, redirect to signup
         router.push('/#signup-form');
@@ -328,7 +332,7 @@ export default function PricingPage() {
         </div>
 
         {/* Plus */}
-        <div className="border border-gray-300 rounded-lg p-6 bg-white shadow hover:shadow-lg hover:-translate-y-1 transform transition duration-200 ease-in-out flex flex-col relative">
+        <div data-plan="plus" className="border border-gray-300 rounded-lg p-6 bg-white shadow hover:shadow-lg hover:-translate-y-1 transform transition duration-200 ease-in-out flex flex-col relative">
           {/* Most Popular Badge */}
           <div className="absolute -top-6 left-6 z-10">
             <span className="bg-gradient-to-r from-blue-500 to-blue-600 text-white text-xs font-extrabold px-4 py-2 rounded-full shadow-lg border-2 border-white whitespace-nowrap">MOST POPULAR</span>
@@ -349,7 +353,7 @@ export default function PricingPage() {
             Everything in Core plus a complete AI-powered real estate team — all in one integrated platform.
           </p>
           <ul className="text-sm space-y-1 text-gray-800 mb-4 flex flex-col">
-            <li className="flex items-start"><span className="w-2 h-2 bg-blue-600 rounded-full mt-2 mr-3 flex-shrink-0"></span>Broker — Scout off-market opportunities</li>
+            <li className="flex items-start"><span className="w-2 h-2 bg-blue-600 rounded-full mt-2 mr-3 flex-shrink-0"></span>Acquisitions Director — Scout off-market opportunities</li>
             <li className="flex items-start"><span className="w-2 h-2 bg-blue-600 rounded-full mt-2 mr-3 flex-shrink-0"></span>Marketing Assistant — Create letters and emails</li>
             <li className="flex items-start"><span className="w-2 h-2 bg-blue-600 rounded-full mt-2 mr-3 flex-shrink-0"></span>MBA Analyst — Model offers and generate financial statements</li>
             <li className="flex items-start"><span className="w-2 h-2 bg-blue-600 rounded-full mt-2 mr-3 flex-shrink-0"></span>Attorney — Generate LOIs and Purchase & Sale Agreements</li>
@@ -566,7 +570,7 @@ export default function PricingPage() {
           
           <div className="divide-y divide-gray-100">
             <div className="grid grid-cols-5 gap-0 hover:bg-gray-50/50 transition-colors">
-              <div className="px-6 py-4 text-sm font-medium text-gray-900">Broker — Scout off-market opportunities</div>
+              <div className="px-6 py-4 text-sm font-medium text-gray-900">Acquisitions Director — Scout off-market opportunities</div>
               <div className="px-6 py-4 text-center border-l border-gray-100">
                 <div className="w-5 h-5 rounded-full bg-gray-200 mx-auto flex items-center justify-center">
                   <div className="w-2 h-0.5 bg-gray-400"></div>
@@ -1172,7 +1176,7 @@ export default function PricingPage() {
             </div>
 
             <div className="grid grid-cols-5 gap-0 hover:bg-gray-50/50 transition-colors">
-              <div className="px-6 py-4 text-sm font-medium text-gray-900">Direct access to Charles Dobens (including cell phone)</div>
+              <div className="px-6 py-4 text-sm font-medium text-gray-900">Direct Access to Charles Dobens (including cell phone)</div>
               <div className="px-6 py-4 text-center border-l border-gray-100">
                 <div className="w-5 h-5 rounded-full bg-gray-200 mx-auto flex items-center justify-center">
                   <div className="w-2 h-0.5 bg-gray-400"></div>
@@ -1198,7 +1202,7 @@ export default function PricingPage() {
             </div>
 
             <div className="grid grid-cols-5 gap-0 hover:bg-gray-50/50 transition-colors">
-              <div className="px-6 py-4 text-sm font-medium text-gray-900">Legal document reviews</div>
+              <div className="px-6 py-4 text-sm font-medium text-gray-900">Legal Document Reviews</div>
               <div className="px-6 py-4 text-center border-l border-gray-100">
                 <div className="w-5 h-5 rounded-full bg-gray-200 mx-auto flex items-center justify-center">
                   <div className="w-2 h-0.5 bg-gray-400"></div>
@@ -1224,7 +1228,7 @@ export default function PricingPage() {
             </div>
 
             <div className="grid grid-cols-5 gap-0 hover:bg-gray-50/50 transition-colors">
-              <div className="px-6 py-4 text-sm font-medium text-gray-900">Debt lender assistance</div>
+              <div className="px-6 py-4 text-sm font-medium text-gray-900">Debt Lender Assistance</div>
               <div className="px-6 py-4 text-center border-l border-gray-100">
                 <div className="w-5 h-5 rounded-full bg-gray-200 mx-auto flex items-center justify-center">
                   <div className="w-2 h-0.5 bg-gray-400"></div>
@@ -1250,7 +1254,7 @@ export default function PricingPage() {
             </div>
 
             <div className="grid grid-cols-5 gap-0 hover:bg-gray-50/50 transition-colors">
-              <div className="px-6 py-4 text-sm font-medium text-gray-900">Access to key principals</div>
+              <div className="px-6 py-4 text-sm font-medium text-gray-900">Access to Key Principals</div>
               <div className="px-6 py-4 text-center border-l border-gray-100">
                 <div className="w-5 h-5 rounded-full bg-gray-200 mx-auto flex items-center justify-center">
                   <div className="w-2 h-0.5 bg-gray-400"></div>
@@ -1288,7 +1292,7 @@ export default function PricingPage() {
             <div className="text-sm text-gray-700">
               <p className="mb-3">MultifamilyOS is the AI-powered operating system for multifamily investing. It gives solo investors and small firms the capabilities of a full-scale team:</p>
               <ul className="list-disc pl-6 space-y-1">
-                <li>Scout properties with broker-level insights — including off-market opportunities.</li>
+                <li>Scout properties with property agent-level insights — including off-market opportunities.</li>
                 <li>Analyze deals with MBA-level precision — IRR, Cap Rate, DSCR, NOI, and more.</li>
                 <li>Generate documents instantly — personalized letters, LOIs, and contracts.</li>
                 <li>Engage owners and investors with professional outreach at scale.</li>
@@ -1330,9 +1334,9 @@ export default function PricingPage() {
           <div className="bg-white border border-gray-200 rounded-lg p-6 shadow hover:shadow-lg transition duration-200">
             <h3 className="text-xl font-bold text-blue-600 mb-3">How does MultifamilyOS compare to hiring a team?</h3>
             <div className="text-sm text-gray-700">
-              <p className="mb-3">Most investors rely on brokers, analysts, attorneys, marketers, and lenders to move deals forward. MultifamilyOS brings those same roles into one intelligent system:</p>
+              <p className="mb-3">Most investors rely on property agents, analysts, attorneys, marketers, and lenders to move deals forward. MultifamilyOS brings those same roles into one intelligent system:</p>
               <ul className="list-disc pl-6 space-y-1">
-                <li>Broker → Off-market property scouting</li>
+                <li>Acquisitions Director → Off-market property scouting</li>
                 <li>Analyst → Financial modeling and scenario testing</li>
                 <li>Attorney → Drafting LOIs and contracts</li>
                 <li>Marketing assistant → Outreach campaigns and letters</li>
@@ -1547,6 +1551,52 @@ export default function PricingPage() {
             >
               Got It
             </button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Expired Trial Modal */}
+      <Dialog open={showExpiredTrialModal} onOpenChange={setShowExpiredTrialModal}>
+        <DialogContent className="sm:max-w-md max-w-[90vw] p-0" aria-describedby="expired-trial-description">
+          <DialogTitle className="sr-only">Trial Already Complete</DialogTitle>
+          <div className="bg-white rounded-lg p-6 space-y-4">
+            {/* Header with MultifamilyOS logo */}
+            <div className="flex items-start gap-4">
+              <div className="w-12 h-12 bg-blue-600 rounded-lg flex items-center justify-center flex-shrink-0">
+                <span className="text-white font-bold text-lg">M</span>
+              </div>
+              <div>
+                <h2 className="text-xl font-semibold text-gray-900 mb-2">
+                  Trial Already Complete
+                </h2>
+                <p id="expired-trial-description" className="text-gray-700 leading-relaxed">
+                  You've already completed your 7-day free trial with MultifamilyOS. Ready to unlock the full platform with unlimited access?
+                </p>
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex gap-3 pt-2">
+              <button
+                onClick={() => setShowExpiredTrialModal(false)}
+                className="flex-1 bg-gray-100 text-gray-700 py-3 px-6 rounded-lg font-semibold hover:bg-gray-200 transition-colors"
+              >
+                Maybe Later
+              </button>
+              <button
+                onClick={() => {
+                  setShowExpiredTrialModal(false);
+                  // Scroll to the Plus plan section
+                  const plusPlanElement = document.querySelector('[data-plan="plus"]');
+                  if (plusPlanElement) {
+                    plusPlanElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                  }
+                }}
+                className="flex-1 bg-blue-600 text-white py-3 px-6 rounded-lg font-semibold hover:bg-blue-700 transition-colors"
+              >
+                Select a Plan
+              </button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>

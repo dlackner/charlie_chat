@@ -551,9 +551,9 @@ export default function HomePage() {
               color="green"
             />
             <ActivityCard
-              title="LOIs Created"
+              title="LOI/P&S Created"
               value={recentActivity.filter(activity => activity.type === 'engagement' && activity.title.includes('LOI')).length.toString()}
-              description="Letters of intent"
+              description="LOIs and Purchase & Sale Agreements"
               icon={<Building className="h-6 w-6" />}
               color="purple"
             />

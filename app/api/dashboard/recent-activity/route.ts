@@ -89,7 +89,7 @@ export async function GET(request: NextRequest) {
       const date = new Date(activitySummary.lois_created.latestDate);
       activityItems.push({
         type: 'analysis',
-        title: 'LOIs created',
+        title: 'LOIs/P&S created',
         description: `${count} Letter${count === 1 ? '' : 's'} of Intent generated`,
         time: getRelativeTime(date),
         icon: 'file-text'

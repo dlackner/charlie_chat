@@ -8,13 +8,11 @@ import { useAuth } from "@/contexts/AuthContext";
 interface TrialDecisionModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  daysLeftInGracePeriod: number | null;
 }
 
 export default function TrialDecisionModal({ 
   open, 
-  onOpenChange, 
-  daysLeftInGracePeriod 
+  onOpenChange
 }: TrialDecisionModalProps) {
   const [isProcessing, setIsProcessing] = useState(false);
   const [showCancelConfirmation, setShowCancelConfirmation] = useState(false);
@@ -116,8 +114,8 @@ export default function TrialDecisionModal({
             
             <div className="space-y-6">
               <p className="text-base text-gray-700 leading-relaxed">
-                Congratulations! You used up all of your trial credits. I hope you found some great properties in the process. 
-                You now have 3 days to decide your next step. Let's not lose this momentum—keep building your multifamily business.
+                Your 7-day trial has expired! I hope you found some great properties in the process. 
+                It's time to decide your next step. Let's not lose this momentum—keep building your multifamily business.
               </p>
 
               {/* Modern Comparison Table */}
@@ -428,7 +426,7 @@ export default function TrialDecisionModal({
               </div>
 
               <p className="text-sm text-gray-500 text-center">
-                If no choice is made, you'll automatically get free Charlie Chat access in 3 days.
+                If no choice is made, you'll automatically get free Charlie Chat access.
               </p>
             </div>
           </>

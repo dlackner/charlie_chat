@@ -4,6 +4,8 @@
  * Part of the new V2 API architecture
  */
 import OpenAI from "openai";
+import { createServerClient } from '@supabase/ssr';
+import { cookies } from 'next/headers';
 
 export const maxDuration = 30;
 
@@ -18,6 +20,7 @@ interface PropertyData {
   yearBuilt: number;
   assessedValue: string;
   estimatedValue?: string;
+  estimatedEquity?: string;
   latitude?: number;
   longitude?: number;
 }
@@ -53,6 +56,110 @@ interface AnalysisResult {
   };
   confidence: 'low' | 'medium' | 'high';
   analysisDate: string;
+}
+
+/**
+ * Lookup market-specific rental rates using hybrid approach:
+ * 1. Try city name matching first (fast)
+ * 2. If no match, find nearest market by geographic distance
+ * 3. Fallback to $1500 for rural areas >50 miles from any market
+ */
+async function getMarketRent(property: PropertyData): Promise<number> {
+  try {
+    const cookieStore = await cookies();
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll() {
+            return cookieStore.getAll();
+          },
+          setAll(cookiesToSet) {
+            cookiesToSet.forEach(({ name, value, options }) => {
+              cookieStore.set(name, value, options);
+            });
+          },
+        },
+      }
+    );
+
+    // Step 1: Try exact city/state matching first (fast lookup)
+    const cityStatePattern = `%${property.city}, ${property.state}%`;
+    const { data: cityMatch } = await supabase
+      .from('market_rental_data')
+      .select('monthly_rental_average')
+      .ilike('city_state', cityStatePattern)
+      .limit(1)
+      .single();
+
+    if (cityMatch?.monthly_rental_average) {
+      console.log(`📍 Found exact city match for ${property.city}, ${property.state}: $${cityMatch.monthly_rental_average}`);
+      return cityMatch.monthly_rental_average;
+    }
+
+    // Step 2: If no city match and we have coordinates, find nearest market by distance
+    if (property.latitude && property.longitude) {
+      const { data: nearestMarkets } = await supabase
+        .from('market_rental_data')
+        .select('monthly_rental_average, city_state, latitude, longitude')
+        .not('latitude', 'is', null)
+        .not('longitude', 'is', null);
+
+      if (nearestMarkets && nearestMarkets.length > 0) {
+        // Calculate distances and find nearest market
+        let nearestMarket = null;
+        let minDistance = Infinity;
+
+        for (const market of nearestMarkets) {
+          const distance = calculateDistance(
+            property.latitude,
+            property.longitude,
+            Number(market.latitude),
+            Number(market.longitude)
+          );
+          
+          if (distance < minDistance) {
+            minDistance = distance;
+            nearestMarket = market;
+          }
+        }
+
+        // Only use nearest market if within 50 miles (reasonable metro area)
+        if (nearestMarket && minDistance <= 50) {
+          console.log(`📍 Found nearest market for ${property.city}, ${property.state}: ${nearestMarket.city_state} (${minDistance.toFixed(1)} miles) - $${nearestMarket.monthly_rental_average}`);
+          return nearestMarket.monthly_rental_average;
+        } else {
+          console.log(`📍 No nearby markets found for ${property.city}, ${property.state} (nearest: ${minDistance?.toFixed(1)} miles)`);
+        }
+      }
+    }
+
+    // Step 3: Fallback to $1500 for rural areas
+    console.log(`📍 Using $1500 fallback for ${property.city}, ${property.state} (rural area)`);
+    return 1500;
+
+  } catch (error) {
+    console.error('Error looking up market rent:', error);
+    // Fallback to $1500 on any error
+    return 1500;
+  }
+}
+
+/**
+ * Calculate distance between two coordinates using Haversine formula
+ * Returns distance in miles
+ */
+function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 3959; // Earth's radius in miles
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = 
+    Math.sin(dLat/2) * Math.sin(dLat/2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+    Math.sin(dLon/2) * Math.sin(dLon/2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  return R * c;
 }
 
 async function performOpenAIAnalysis(prompt: string, maxTokens: number = 300): Promise<string> {
@@ -159,7 +266,7 @@ Keep response structured and actionable.`;
     console.log('🔍 Risk response:', riskResponse);
 
     // Parse responses and build analysis result
-    return buildAnalysisResult({
+    return await buildAnalysisResult({
       marketResponse,
       financialResponse,
       featuresResponse,
@@ -171,7 +278,7 @@ Keep response structured and actionable.`;
   } catch (error) {
     console.error('❌ Multi-prompt analysis failed:', error);
     // Return fallback analysis
-    return buildFallbackAnalysis(property);
+    return await buildFallbackAnalysis(property);
   }
 }
 
@@ -217,7 +324,7 @@ function calculateCashOnCash(noi: number, estimatedValue: string | undefined): n
   return Math.max(0, Math.min(50, Math.round(cashOnCash * 10) / 10));
 }
 
-function buildAnalysisResult({
+async function buildAnalysisResult({
   marketResponse,
   financialResponse, 
   featuresResponse,
@@ -231,25 +338,41 @@ function buildAnalysisResult({
   riskResponse: string;
   strategyResponse: string;
   property: PropertyData;
-}): AnalysisResult {
+}): Promise<AnalysisResult> {
   // Parse financial metrics from financial response
   const rentMatch = financialResponse.match(/\$([\d,]+)/);
   const capRateMatch = financialResponse.match(/(\d+\.?\d*)%/);
   
-  const estimatedRent = rentMatch ? parseInt(rentMatch[1].replace(/,/g, '')) : property.units * 1500;
+  // Use market-specific rent data instead of hardcoded $1500
+  const marketRentPerUnit = await getMarketRent(property);
+  const estimatedRent = rentMatch ? parseInt(rentMatch[1].replace(/,/g, '')) : property.units * marketRentPerUnit;
   const projectedNOI = Math.round((estimatedRent * property.units * 12) * 0.65);
   const capRate = capRateMatch ? parseFloat(capRateMatch[1]) : 7.4;
   const cashOnCash = calculateCashOnCash(projectedNOI, property.estimatedValue);
   
-  // Format equity position
-  let formattedEquity = property.assessedValue || 'Unknown';
-  if (property.assessedValue) {
-    const assessedStr = String(property.assessedValue);
-    if (!assessedStr.startsWith('$')) {
-      const numValue = parseInt(assessedStr.replace(/[^\d]/g, ''));
+  // Use the actual equity field from property data
+  let formattedEquity = 'Unknown';
+  if (property.estimatedEquity) {
+    const equityStr = String(property.estimatedEquity);
+    if (!equityStr.startsWith('$')) {
+      const numValue = parseInt(equityStr.replace(/[^\d]/g, ''));
       if (!isNaN(numValue)) {
         formattedEquity = `$${numValue.toLocaleString()}`;
       }
+    } else {
+      formattedEquity = property.estimatedEquity;
+    }
+  } else if (property.estimatedValue && property.assessedValue) {
+    // Fallback: Calculate equity as estimated - assessed if equity field not available
+    const estimatedStr = String(property.estimatedValue);
+    const assessedStr = String(property.assessedValue);
+    
+    const estimatedNum = parseInt(estimatedStr.replace(/[^\d]/g, '')) || 0;
+    const assessedNum = parseInt(assessedStr.replace(/[^\d]/g, '')) || 0;
+    
+    if (estimatedNum > 0 && assessedNum > 0) {
+      const equity = estimatedNum - assessedNum;
+      formattedEquity = `$${equity.toLocaleString()}`;
     }
   }
 
@@ -378,21 +501,38 @@ function buildAnalysisResult({
   };
 }
 
-function buildFallbackAnalysis(property: PropertyData): AnalysisResult {
+async function buildFallbackAnalysis(property: PropertyData): Promise<AnalysisResult> {
   const ageCategory = property.yearBuilt < 1950 ? 'historic' : property.yearBuilt > 1990 ? 'modern' : 'established';
   
-  let formattedEquity = property.assessedValue || 'Unknown';
-  if (property.assessedValue) {
-    const assessedStr = String(property.assessedValue);
-    if (!assessedStr.startsWith('$')) {
-      const numValue = parseInt(assessedStr.replace(/[^\d]/g, ''));
+  // Use the actual equity field from property data
+  let formattedEquity = 'Unknown';
+  if (property.estimatedEquity) {
+    const equityStr = String(property.estimatedEquity);
+    if (!equityStr.startsWith('$')) {
+      const numValue = parseInt(equityStr.replace(/[^\d]/g, ''));
       if (!isNaN(numValue)) {
         formattedEquity = `$${numValue.toLocaleString()}`;
       }
+    } else {
+      formattedEquity = property.estimatedEquity;
+    }
+  } else if (property.estimatedValue && property.assessedValue) {
+    // Fallback: Calculate equity as estimated - assessed if equity field not available
+    const estimatedStr = String(property.estimatedValue);
+    const assessedStr = String(property.assessedValue);
+    
+    const estimatedNum = parseInt(estimatedStr.replace(/[^\d]/g, '')) || 0;
+    const assessedNum = parseInt(assessedStr.replace(/[^\d]/g, '')) || 0;
+    
+    if (estimatedNum > 0 && assessedNum > 0) {
+      const equity = estimatedNum - assessedNum;
+      formattedEquity = `$${equity.toLocaleString()}`;
     }
   }
 
-  const estimatedRent = property.units * 1500;
+  // Use market-specific rent data instead of hardcoded $1500
+  const marketRentPerUnit = await getMarketRent(property);
+  const estimatedRent = property.units * marketRentPerUnit;
   const projectedNOI = Math.round((estimatedRent * 12) * 0.65);
   const cashOnCash = calculateCashOnCash(projectedNOI, property.estimatedValue);
 

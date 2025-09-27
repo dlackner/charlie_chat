@@ -139,8 +139,8 @@ export default function OfferAnalyzerPage() {
           const data = await response.json();
           const offerData = data.scenario.offer_data;
           
-          // Set the loaded offer name for display
-          setLoadedOfferName(data.scenario.offer_name || `Offer ${params.offerId}`);
+          // Set the loaded analysis name for display
+          setLoadedOfferName(data.scenario.offer_name || `Analysis ${params.offerId}`);
           
           // Load all the saved values into the form fields
           if (offerData) {
@@ -580,11 +580,11 @@ export default function OfferAnalyzerPage() {
     }
   };
 
-  // Handle saving offer to database
-  // Check if offer name already exists
+  // Handle saving analysis to database
+  // Check if analysis name already exists
   const checkDuplicateOfferName = async (offerName: string, propertyId: string): Promise<boolean> => {
     try {
-      console.log('Checking for duplicate offer name:', offerName, 'for property:', propertyId);
+      console.log('Checking for duplicate analysis name:', offerName, 'for property:', propertyId);
       const response = await fetch(`/api/offer-scenarios?propertyId=${propertyId}`, {
         method: 'GET',
         headers: { 'Content-Type': 'application/json' }
@@ -1823,7 +1823,7 @@ export default function OfferAnalyzerPage() {
                     }}
                     className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 hover:text-gray-900 transition-colors cursor-pointer"
                   >
-                    Save Offer
+                    Save Analysis
                   </button>
                   <div className="border-t border-gray-100 mx-2"></div>
                   <button
@@ -1833,7 +1833,7 @@ export default function OfferAnalyzerPage() {
                     }}
                     className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 hover:text-gray-900 transition-colors cursor-pointer"
                   >
-                    Load Offer
+                    Load Analysis
                   </button>
                   <div className="border-t border-gray-100 mx-2"></div>
                   <button
@@ -2395,13 +2395,13 @@ export default function OfferAnalyzerPage() {
       onSave={handleSaveOffer}
     />
 
-    {/* Duplicate Offer Name Warning */}
+    {/* Duplicate Analysis Name Warning */}
     <AlertModal
       isOpen={showDuplicateAlert}
       onClose={handleCancelOverwrite}
       type="warning"
-      title="Offer Name Already Exists"
-      message={`An offer named "${pendingOfferData?.name}" already exists for this property. Do you want to replace the existing offer?`}
+      title="Analysis Name Already Exists"
+      message={`An analysis named "${pendingOfferData?.name}" already exists for this property. Do you want to replace the existing analysis?`}
       confirmText="Replace Existing"
       cancelText="Choose Different Name"
       onConfirm={handleConfirmOverwrite}
@@ -2412,7 +2412,7 @@ export default function OfferAnalyzerPage() {
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
         <div className="bg-white rounded-lg p-6 max-w-2xl mx-4 w-full">
           <div className="flex items-center justify-between mb-6">
-            <h3 className="text-lg font-medium text-gray-900">Select an Offer</h3>
+            <h3 className="text-lg font-medium text-gray-900">Select an Analysis</h3>
             <button
               onClick={() => setShowOffersModal(false)}
               className="text-gray-400 hover:text-gray-600"

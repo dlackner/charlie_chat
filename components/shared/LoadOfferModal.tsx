@@ -131,7 +131,7 @@ export const LoadOfferModal: React.FC<LoadOfferModalProps> = ({
       <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl mx-4 max-h-[80vh] flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
-          <h2 className="text-xl font-semibold text-gray-900">Load Offer</h2>
+          <h2 className="text-xl font-semibold text-gray-900">Load Analysis</h2>
           <div className="flex items-center space-x-2">
             <button
               onClick={fetchScenarios}

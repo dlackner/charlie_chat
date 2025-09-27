@@ -1,7 +1,7 @@
 /*
  * CHARLIE2 V2 - Save Offer Modal
  * Modal for saving offer analyzer scenarios to database
- * Features: Offer name, description, validation, error handling
+ * Features: Analysis name, description, validation, error handling
  */
 'use client';
 
@@ -30,12 +30,12 @@ export const SaveOfferModal: React.FC<SaveOfferModalProps> = ({
     e.preventDefault();
     
     if (!offerName.trim()) {
-      setError('Offer name is required');
+      setError('Analysis name is required');
       return;
     }
 
     if (offerName.trim().length > 100) {
-      setError('Offer name must be 100 characters or less');
+      setError('Analysis name must be 100 characters or less');
       return;
     }
 
@@ -54,7 +54,7 @@ export const SaveOfferModal: React.FC<SaveOfferModalProps> = ({
       setOfferDescription('');
       onClose();
     } catch (err: any) {
-      setError(err.message || 'Failed to save offer');
+      setError(err.message || 'Failed to save analysis');
     } finally {
       setIsSaving(false);
     }
@@ -76,7 +76,7 @@ export const SaveOfferModal: React.FC<SaveOfferModalProps> = ({
       <div className="bg-white rounded-lg shadow-xl w-full max-w-md mx-4">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
-          <h2 className="text-xl font-semibold text-gray-900">Save Offer</h2>
+          <h2 className="text-xl font-semibold text-gray-900">Save Analysis</h2>
           <button
             onClick={handleClose}
             disabled={isSaving}
@@ -96,10 +96,10 @@ export const SaveOfferModal: React.FC<SaveOfferModalProps> = ({
             </div>
           )}
 
-          {/* Offer Name */}
+          {/* Analysis Name */}
           <div className="mb-4">
             <label htmlFor="offerName" className="block text-sm font-medium text-gray-700 mb-2">
-              Offer Name <span className="text-red-500">*</span>
+              Analysis Name <span className="text-red-500">*</span>
             </label>
             <input
               type="text"
@@ -160,7 +160,7 @@ export const SaveOfferModal: React.FC<SaveOfferModalProps> = ({
               ) : (
                 <>
                   <Save className="h-4 w-4 mr-2" />
-                  Save Offer
+                  Save Analysis
                 </>
               )}
             </button>

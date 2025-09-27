@@ -94,14 +94,16 @@ export const CharlieRecommendationWidgetMMR: React.FC<CharlieRecommendationWidge
 
             const weekStart = getWeekStart(new Date());
             
-            // Check for new algorithm recommendations this week
+            // Check for algorithm recommendations needing feedback for ML training
+            // Note: Removed date filter to include ALL pending recommendations, not just current week
+            // Weekly recs are for ML model training - users should be able to rate any pending recommendation
             const { data: recommendations, error } = await supabase
                 .from('user_favorites')
                 .select('id, generated_at, recommendation_batch_id')
                 .eq('user_id', user.id)
                 .eq('recommendation_type', 'algorithm')
                 .eq('is_active', true)
-                .gte('generated_at', weekStart)
+                // .gte('generated_at', weekStart) // Commented out - ML training benefits from feedback on all pending recs
                 .order('generated_at', { ascending: false });
 
             if (error) {

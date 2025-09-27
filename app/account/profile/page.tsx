@@ -68,6 +68,7 @@ export default function ProfilePage() {
             jobTitle: data.job_title || ''
           });
           
+          // Load logo from logo_base64 field
           if (data.logo_base64) {
             setLogoPreview(data.logo_base64);
           }
@@ -121,8 +122,24 @@ export default function ProfilePage() {
         return;
       }
 
+      let logoBase64 = null;
+
+      // Handle logo file conversion to base64 if logoFile exists
+      if (logoFile) {
+        // Convert file to base64
+        logoBase64 = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result as string);
+          reader.onerror = reject;
+          reader.readAsDataURL(logoFile);
+        });
+      } else if (logoPreview && logoPreview.startsWith('data:')) {
+        // Keep existing base64 data if no new file uploaded
+        logoBase64 = logoPreview;
+      }
+
       // Prepare profile data for database
-      const profileData = {
+      const profileData: any = {
         user_id: currentUser.id,
         first_name: formData.firstName.trim(),
         last_name: formData.lastName.trim(),
@@ -133,28 +150,25 @@ export default function ProfilePage() {
         phone_number: formData.phoneNumber.trim() || null,
         business_name: formData.businessName.trim() || null,
         job_title: formData.jobTitle.trim() || null,
+        logo_base64: logoBase64, // Save the base64 data
         updated_at: new Date().toISOString()
       };
 
-      // Preparing to save profile data
-
-      // TODO: Handle logo file upload to storage if logoFile exists
-      // For now, we'll save the profile data without the logo
-
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('profiles')
         .upsert(profileData, {
           onConflict: 'user_id'
         })
         .select();
 
-      // Process save response
-
       if (error) {
         throw error;
       }
 
       setSuccessMessage('Profile saved successfully!');
+      
+      // Clear the logo file state since it's now saved
+      setLogoFile(null);
       
       // Clear success message after 3 seconds
       setTimeout(() => {

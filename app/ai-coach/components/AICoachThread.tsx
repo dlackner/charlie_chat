@@ -189,18 +189,21 @@ const Composer: FC<ComposerProps> = ({ userClass, setShowUpgradeModal }) => {
       
       {/* Input and Controls */}
       <div className="flex items-end px-2.5">
-        <ComposerPrimitive.AddAttachment
-          className="my-2.5 flex h-8 w-8 items-center justify-center rounded-md text-gray-500 hover:bg-gray-100 transition-colors disabled:opacity-50"
-          onClick={() => {
-            if (!hasAccess(userClass as UserClass, 'ai_coach_attachments')) {
-              setShowUpgradeModal(true);
-              return false; // Prevent default attachment behavior
-            }
-            return true; // Allow default attachment behavior
-          }}
-        >
-          <Paperclip className="size-4" />
-        </ComposerPrimitive.AddAttachment>
+        {hasAccess(userClass as UserClass, 'ai_coach_attachments') ? (
+          <ComposerPrimitive.AddAttachment
+            className="my-2.5 flex h-8 w-8 items-center justify-center rounded-md text-gray-500 hover:bg-gray-100 transition-colors"
+          >
+            <Paperclip className="size-4" />
+          </ComposerPrimitive.AddAttachment>
+        ) : (
+          <button
+            className="my-2.5 flex h-8 w-8 items-center justify-center rounded-md text-gray-400 hover:bg-gray-100 transition-colors cursor-pointer"
+            onClick={() => setShowUpgradeModal(true)}
+            title="Upgrade to attach files"
+          >
+            <Paperclip className="size-4" />
+          </button>
+        )}
         <ComposerPrimitive.Input
           placeholder="Send a message..."
           rows={1}

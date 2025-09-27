@@ -16,8 +16,10 @@ import { useSearchParams } from 'next/navigation';
 import { AuthGuard } from '@/components/auth/AuthGuard';
 import { useMyPropertiesAccess } from '@/app/my-properties/components/useMyPropertiesAccess';
 import { useAlert } from '@/components/shared/AlertModal';
+import { isTrial, type UserClass } from '@/lib/v2/accessControl';
 import * as numberToWords from 'number-to-words';
 import { generatePurchaseAndSaleAgreement } from '@/lib/documents/purchaseAndSale';
+import { incrementActivityCount } from '@/lib/v2/activityCounter';
 
 
 const notify = (msg: string) => {
@@ -172,7 +174,7 @@ function Home() {
   const [loiType, setLoiType] = useState<'short' | 'long' | 'master' | 'assumption' | 'financing' | 'purchase_sale'>('short'); // Modified to handle six types
 
   const { user: currentUser, isLoading: isLoadingAuth, supabase } = useAuth();
-  const { hasAccess, isLoading: isLoadingAccess } = useMyPropertiesAccess();
+  const { hasAccess, isLoading: isLoadingAccess, userClass } = useMyPropertiesAccess();
   const router = useRouter();
 
   const isLoggedIn = !!currentUser;
@@ -331,6 +333,14 @@ function Home() {
     loadSaved();
   }, [propertyId, supabase]);
 
+  // Handle form type selection from URL parameter
+  useEffect(() => {
+    const formType = searchParams.get('type');
+    if (formType && ['short', 'long', 'master', 'assumption', 'financing', 'purchase_sale'].includes(formType)) {
+      setLoiType(formType as 'short' | 'long' | 'master' | 'assumption' | 'financing' | 'purchase_sale');
+    }
+  }, [searchParams]);
+
   const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
@@ -338,8 +348,18 @@ function Home() {
 
   const generateAndDownloadLOI = async () => {
     if (!hasAccess) {
-      notify(
-        'For access to my proven templates and other features, upgrade to Charlie Chat Pro!'
+      showWarning(
+        'Your trial has expired. For access to templates and other features, upgrade to a paid plan!',
+        'Upgrade Required'
+      );
+      return;
+    }
+
+    // Additional check: block trial users from generating documents
+    if (userClass && isTrial(userClass as UserClass)) {
+      showWarning(
+        'Document generation is not available during your trial. Upgrade to a paid plan to generate documents and unlock all features!',
+        'Trial Limitation'
       );
       return;
     }
@@ -1466,6 +1486,11 @@ function Home() {
       const filename = `LOI_${loiTypeString}_${safeAddress || 'document'}.docx`;
       saveAs(blob, filename);
 
+      // Track LOI creation activity
+      if (currentUser?.id) {
+        incrementActivityCount(currentUser.id, 'lois_created');
+      }
+
       // Show success toast
       if (typeof window !== 'undefined' && (window as any).toast) {
         (window as any).toast.success('LOI document generated successfully!');
@@ -1504,8 +1529,8 @@ function Home() {
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col items-center py-10 px-4 sm:px-6 lg:px-8">
       <div className="bg-white p-8 rounded-lg shadow-xl w-full max-w-4xl border border-gray-200">
-        <h1 className="text-3xl md:text-4xl font-extrabold mb-6 text-blue-600 text-center font-sans">Generate a Letter of Intent</h1>
-        <p className="text-center text-gray-600 mb-8">Choose your LOI type and fill in the details to generate your customized document.</p>
+        <h1 className="text-3xl md:text-4xl font-extrabold mb-6 text-blue-600 text-center font-sans">Generate a Legal Document</h1>
+        <p className="text-center text-gray-600 mb-8">Choose your document type and fill in the details to generate your customized draft.</p>
 
         {/* LOI Type Selection - Moved to Top with Card Design */}
         <section className="mb-8">
@@ -1688,11 +1713,19 @@ function Home() {
             </div>
           </section>
 
+          {/* Trial user message */}
+          {userClass && isTrial(userClass as UserClass) && (
+            <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+              <p className="text-sm text-yellow-800">
+                <strong>Trial User:</strong> Legal document generation is available only with paid plans. Upgrade to start generating professional documents!
+              </p>
+            </div>
+          )}
 
           <button
             type="submit"
-            disabled={isLoadingAuth || !isLoggedIn || isLoadingAccess}
-            className={`w-full md:w-auto mt-6 text-white py-3 px-6 rounded-lg font-semibold text-lg transition duration-200 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-gray-50 ${(isLoadingAuth || !isLoggedIn) ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-600'
+            disabled={isLoadingAuth || !isLoggedIn || isLoadingAccess || (userClass ? isTrial(userClass as UserClass) : false)}
+            className={`w-full md:w-auto mt-6 text-white py-3 px-6 rounded-lg font-semibold text-lg transition duration-200 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-gray-50 ${(isLoadingAuth || !isLoggedIn || (userClass ? isTrial(userClass as UserClass) : false)) ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-600'
               }`}
           >
             Generate Document
