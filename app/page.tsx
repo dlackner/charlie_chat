@@ -15,7 +15,7 @@ import TypewriterChatDemo from '@/components/ui/TypewriterChatDemo';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 
 export default function Home() {
-  const { supabase } = useAuth();
+  const { } = useAuth();
   const [email, setEmail] = useState('');
   const [currentSlide, setCurrentSlide] = useState(0);
   
@@ -119,8 +119,26 @@ export default function Home() {
       if (verifyError) {
         setSigninError(verifyError.message);
       } else {
-        // Success - redirect to dashboard headlines
+        // Success - check if trial user should go to onboarding
         closeSignInModal();
+        
+        // Get user profile to check if they're a recent trial user
+        const { data: { session } } = await supabaseClient.auth.getSession();
+        if (session?.user) {
+          const { data: profile } = await supabaseClient
+            .from('profiles')
+            .select('user_class, created_at')
+            .eq('user_id', session.user.id)
+            .single();
+            
+          // ALL trial users go to onboarding (no time restriction)
+          if (profile?.user_class === 'trial') {
+            window.location.href = '/dashboard/onboarding';
+            return;
+          }
+        }
+        
+        // Default redirect to headlines for all other users
         window.location.href = '/dashboard/headlines';
       }
       setIsSigningIn(false);
@@ -138,44 +156,34 @@ export default function Home() {
 
   const carouselSlides = [
     {
-      title: "Broker",
+      title: "Acquisitions Director",
       subtitle: "Scout off-market opportunities that match your buy box",
       icon: <Target className="w-16 h-16 text-blue-600" />,
-      image: "/feature-images/broker.png", // Add broker image here
-      bgColor: "bg-blue-50",
-      borderColor: "border-blue-200"
+      image: "/feature-images/broker.png"
     },
     {
       title: "Marketing Assistant", 
       subtitle: "Generate personalized letters and emails to property owners",
-      icon: <Mail className="w-16 h-16 text-green-600" />,
-      image: "/feature-images/marketing_assistant.png",
-      bgColor: "bg-green-50",
-      borderColor: "border-green-200"
+      icon: <Mail className="w-16 h-16 text-blue-600" />,
+      image: "/feature-images/marketing_assistant.png"
     },
     {
       title: "MBA Analyst",
       subtitle: "Model offers, run scenarios, and produce financial statements", 
-      icon: <BarChart3 className="w-16 h-16 text-purple-600" />,
-      image: "/feature-images/MBA_analyst.png",
-      bgColor: "bg-purple-50",
-      borderColor: "border-purple-200"
+      icon: <BarChart3 className="w-16 h-16 text-blue-600" />,
+      image: "/feature-images/MBA_analyst.png"
     },
     {
       title: "Attorney",
       subtitle: "Draft LOIs and P&S agreements to accelerate negotiations",
-      icon: <FileText className="w-16 h-16 text-orange-600" />,
-      image: "/feature-images/Attorney.png",
-      bgColor: "bg-orange-50", 
-      borderColor: "border-orange-200"
+      icon: <FileText className="w-16 h-16 text-blue-600" />,
+      image: "/feature-images/Attorney.png"
     },
     {
       title: "Financing Advisor",
       subtitle: "Identify capital sources to fund your investment pipeline",
-      icon: <DollarSign className="w-16 h-16 text-emerald-600" />,
-      image: "/feature-images/Financing_advisor.png",
-      bgColor: "bg-emerald-50",
-      borderColor: "border-emerald-200"
+      icon: <DollarSign className="w-16 h-16 text-blue-600" />,
+      image: "/feature-images/Financing_advisor.png"
     }
   ];
 
@@ -224,7 +232,7 @@ export default function Home() {
     {
       icon: <Users className="w-6 h-6" />,
       title: "Expert Team Built-In",
-      description: "Access a full team of real estate professionals—broker, analyst, attorney, marketer—all in one platform"
+      description: "Access a full team of real estate professionals—acquisitions director, analyst, attorney, marketer—all in one platform"
     },
     {
       icon: <Zap className="w-6 h-6" />,
@@ -330,43 +338,37 @@ export default function Home() {
           </div>
 
           {/* Carousel Section */}
-          <div className="max-w-4xl mx-auto mb-20">
+          <div className="max-w-6xl mx-auto mb-20 px-4">
             <div className="relative">
-              <div className={`${carouselSlides[currentSlide].bgColor} ${carouselSlides[currentSlide].borderColor} border-2 rounded-2xl p-12 text-center transition-all duration-500`}>
-                <div className="flex justify-center mb-6">
+              <div className="bg-white rounded-2xl shadow-xl overflow-hidden transition-all duration-500">
+                <div className="flex justify-center">
                   {carouselSlides[currentSlide].image ? (
-                    <div className="relative w-96 h-72 lg:w-[500px] lg:h-[375px]">
+                    <div className="relative w-full h-[400px] md:h-[500px] lg:h-[600px]">
                       <Image
                         src={carouselSlides[currentSlide].image}
                         alt={carouselSlides[currentSlide].title}
                         fill
-                        className="object-contain rounded-lg shadow-lg"
+                        className="object-contain"
                       />
                     </div>
                   ) : (
                     carouselSlides[currentSlide].icon
                   )}
                 </div>
-                <h3 className="text-2xl font-bold text-gray-900 mb-4">
-                  {carouselSlides[currentSlide].title}
-                </h3>
-                <p className="text-lg text-gray-700">
-                  {carouselSlides[currentSlide].subtitle}
-                </p>
               </div>
               
-              {/* Carousel Controls */}
+              {/* Carousel Controls - Positioned outside image area */}
               <button
                 onClick={prevSlide}
-                className="absolute left-4 top-1/2 transform -translate-y-1/2 bg-white hover:bg-gray-50 p-3 rounded-full shadow-lg transition-all duration-200"
+                className="absolute left-2 lg:-left-16 top-1/2 transform -translate-y-1/2 bg-white hover:bg-gray-50 p-2 lg:p-3 rounded-full shadow-lg transition-all duration-200 z-10"
               >
-                <ChevronLeft className="w-6 h-6 text-gray-600" />
+                <ChevronLeft className="w-5 h-5 lg:w-6 lg:h-6 text-gray-600" />
               </button>
               <button
                 onClick={nextSlide}
-                className="absolute right-4 top-1/2 transform -translate-y-1/2 bg-white hover:bg-gray-50 p-3 rounded-full shadow-lg transition-all duration-200"
+                className="absolute right-2 lg:-right-16 top-1/2 transform -translate-y-1/2 bg-white hover:bg-gray-50 p-2 lg:p-3 rounded-full shadow-lg transition-all duration-200 z-10"
               >
-                <ChevronRight className="w-6 h-6 text-gray-600" />
+                <ChevronRight className="w-5 h-5 lg:w-6 lg:h-6 text-gray-600" />
               </button>
               
               {/* Carousel Indicators */}
@@ -397,7 +399,7 @@ export default function Home() {
                 Instead of juggling fragmented tools, emails, and spreadsheets, you get one intelligent platform that scouts properties, analyzes deals, generates documents, engages owners, and helps you secure financing.
               </p>
               <p>
-                It's like having a full staff—broker, analyst, attorney, marketer, and financing advisor—working 24/7 to scale your pipeline and close deals faster.
+                It's like having a full staff—property agent, analyst, attorney, marketer, and financing advisor—working 24/7 to scale your pipeline and close deals faster.
               </p>
             </div>
           </div>

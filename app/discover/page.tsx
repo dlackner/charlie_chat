@@ -150,6 +150,10 @@ function DiscoverPageContent() {
     // Physical Characteristics
     year_built_min: '',
     year_built_max: '',
+    stories_min: '',
+    stories_max: '',
+    lot_size_min: '',
+    lot_size_max: '',
     flood_zone: null as boolean | null,
     
     // Financial Information
@@ -157,11 +161,17 @@ function DiscoverPageContent() {
     assessed_value_max: '',
     value_min: '',
     value_max: '',
+    estimated_equity_min: '',
+    estimated_equity_max: '',
+    mortgage_min: '',
+    mortgage_max: '',
     
     // Distress & Special Conditions
     assumable: null as boolean | null,
     reo: null as boolean | null,
-    pre_foreclosure: null as boolean | null
+    pre_foreclosure: null as boolean | null,
+    auction: null as boolean | null,
+    private_lender: null as boolean | null
   });
   
   // Collapsible section states - all closed by default
@@ -234,7 +244,6 @@ function DiscoverPageContent() {
           year_built_max: 1990,
           or: [
             { pre_foreclosure: true },
-            { tax_lien: true },
             { reo: true },
             { auction: true }
           ]
@@ -892,6 +901,10 @@ function DiscoverPageContent() {
       // Physical Characteristics
       year_built_min: '',
       year_built_max: '',
+      stories_min: '',
+      stories_max: '',
+      lot_size_min: '',
+      lot_size_max: '',
       flood_zone: null,
       
       // Financial Information
@@ -899,11 +912,29 @@ function DiscoverPageContent() {
       assessed_value_max: '',
       value_min: '',
       value_max: '',
+      estimated_equity_min: '',
+      estimated_equity_max: '',
+      mortgage_min: '',
+      mortgage_max: '',
       
       // Distress & Special Conditions
       assumable: null,
       reo: null,
-      pre_foreclosure: null
+      pre_foreclosure: null,
+      auction: null,
+      private_lender: null
+    });
+    
+    // Also close all filter sections
+    setCollapsedSections({
+      units: true,
+      owner: true,
+      sale: true,
+      physical: true,
+      financial: true,
+      distress: true,
+      savedSearches: true,
+      mySearches: true
     });
   };
 
@@ -1217,15 +1248,25 @@ function DiscoverPageContent() {
         last_sale_arms_length: 'sale',
         year_built_min: 'physical',
         year_built_max: 'physical',
+        stories_min: 'physical',
+        stories_max: 'physical',
+        lot_size_min: 'physical',
+        lot_size_max: 'physical',
         flood_zone: 'physical',
         assessed_value_min: 'financial',
         assessed_value_max: 'financial',
         value_min: 'financial',
         value_max: 'financial',
         estimated_value_min: 'financial',
-        assumable: 'distress',
+        estimated_equity_min: 'financial',
+        estimated_equity_max: 'financial',
+        mortgage_min: 'financial',
+        mortgage_max: 'financial',
+        assumable: 'financial',
         reo: 'distress',
-        pre_foreclosure: 'distress'
+        pre_foreclosure: 'distress',
+        auction: 'distress',
+        private_lender: 'distress'
       };
 
       // Find which sections contain the search criteria
@@ -1259,14 +1300,24 @@ function DiscoverPageContent() {
         last_sale_arms_length: null,
         year_built_min: '',
         year_built_max: '',
+        stories_min: '',
+        stories_max: '',
+        lot_size_min: '',
+        lot_size_max: '',
         flood_zone: null,
         assessed_value_min: '',
         assessed_value_max: '',
         value_min: '',
         value_max: '',
+        estimated_equity_min: '',
+        estimated_equity_max: '',
+        mortgage_min: '',
+        mortgage_max: '',
         assumable: null,
         reo: null,
-        pre_foreclosure: null
+        pre_foreclosure: null,
+        auction: null,
+        private_lender: null
       };
       
       // Apply smart search criteria to the form (don't execute search)
@@ -1322,23 +1373,39 @@ function DiscoverPageContent() {
         last_sale_arms_length: null,
         year_built_min: '',
         year_built_max: '',
+        stories_min: '',
+        stories_max: '',
+        lot_size_min: '',
+        lot_size_max: '',
         flood_zone: null,
         assessed_value_min: '',
         assessed_value_max: '',
         value_min: '',
         value_max: '',
+        estimated_equity_min: '',
+        estimated_equity_max: '',
+        mortgage_min: '',
+        mortgage_max: '',
         assumable: null,
         reo: null,
-        pre_foreclosure: null
+        pre_foreclosure: null,
+        auction: null,
+        private_lender: null
       };
       
       // Apply smart search criteria to the form
       setFilters({ ...defaultFilters, ...search.criteria.apiFields });
       
-      // Execute the search automatically
+      // Execute the search automatically using the same method as smart searches
       setTimeout(() => {
-        handleSearch();
-      }, 100); // Small delay to ensure filters are updated
+        const tempSmartSearch = {
+          criteria: {
+            specialQuery: 'saved-search',
+            apiFields: search.criteria.apiFields
+          }
+        };
+        applySavedSearch(tempSmartSearch);
+      }, 100);
     }
   };
 
@@ -1360,15 +1427,25 @@ function DiscoverPageContent() {
         last_sale_arms_length: 'sale',
         year_built_min: 'physical',
         year_built_max: 'physical',
+        stories_min: 'physical',
+        stories_max: 'physical',
+        lot_size_min: 'physical',
+        lot_size_max: 'physical',
         flood_zone: 'physical',
         assessed_value_min: 'financial',
         assessed_value_max: 'financial',
         value_min: 'financial',
         value_max: 'financial',
         estimated_value_min: 'financial',
-        assumable: 'distress',
+        estimated_equity_min: 'financial',
+        estimated_equity_max: 'financial',
+        mortgage_min: 'financial',
+        mortgage_max: 'financial',
+        assumable: 'financial',
         reo: 'distress',
-        pre_foreclosure: 'distress'
+        pre_foreclosure: 'distress',
+        auction: 'distress',
+        private_lender: 'distress'
       };
 
       const sectionsToExpand = new Set<string>();
@@ -1401,14 +1478,24 @@ function DiscoverPageContent() {
         last_sale_arms_length: null,
         year_built_min: '',
         year_built_max: '',
+        stories_min: '',
+        stories_max: '',
+        lot_size_min: '',
+        lot_size_max: '',
         flood_zone: null,
         assessed_value_min: '',
         assessed_value_max: '',
         value_min: '',
         value_max: '',
+        estimated_equity_min: '',
+        estimated_equity_max: '',
+        mortgage_min: '',
+        mortgage_max: '',
         assumable: null,
         reo: null,
-        pre_foreclosure: null
+        pre_foreclosure: null,
+        auction: null,
+        private_lender: null
       };
       
       // Apply saved search criteria to the form (don't execute search)
@@ -1469,28 +1556,123 @@ function DiscoverPageContent() {
         last_sale_arms_length: null,
         year_built_min: '',
         year_built_max: '',
+        stories_min: '',
+        stories_max: '',
+        lot_size_min: '',
+        lot_size_max: '',
         flood_zone: null,
         assessed_value_min: '',
         assessed_value_max: '',
         value_min: '',
         value_max: '',
+        estimated_equity_min: '',
+        estimated_equity_max: '',
+        mortgage_min: '',
+        mortgage_max: '',
         assumable: null,
         reo: null,
-        pre_foreclosure: null
+        pre_foreclosure: null,
+        auction: null,
+        private_lender: null
       };
       
       // Apply saved search criteria to the form
       setFilters({ ...defaultFilters, ...search.filters });
       
-      // Set search query if saved
+      // Set search query if saved - this needs to be set BEFORE calling applySavedSearch
       if (search.filters.searchQuery) {
         setSearchQuery(search.filters.searchQuery);
       }
       
-      // Execute the search automatically
-      setTimeout(() => {
-        handleSearch();
-      }, 100); // Small delay to ensure filters are updated
+      // Execute the search automatically with the saved location
+      setTimeout(async () => {
+        setIsSearching(true);
+        
+        try {
+          setSearchResults([]);
+          setPropertyCount(0);
+          
+          // Build API params with saved location and filters
+          let apiParams: any = {
+            property_type: "MFR",
+            count: false,
+            size: 12,
+            resultIndex: 0,
+            obfuscate: false,
+            summary: false,
+            ...search.filters // Include all saved filters
+          };
+          
+          // Add saved location if available
+          if (search.filters.searchQuery && search.filters.searchQuery.trim()) {
+            const savedQuery = search.filters.searchQuery;
+            const locationParts = savedQuery.split(',').map((s: string) => s.trim());
+            const zipPattern = /^\d{5}(-\d{4})?$/;
+            const zipMatch = savedQuery.match(/\b\d{5}(-\d{4})?\b/);
+            
+            if (zipMatch && locationParts.length === 1) {
+              apiParams.zip = zipMatch[0];
+            } else if (locationParts.length >= 2) {
+              const firstPart = locationParts[0];
+              if (firstPart.toLowerCase().includes('county')) {
+                apiParams.county = firstPart;
+              } else {
+                apiParams.city = firstPart;
+              }
+              const lastPart = locationParts[1].trim();
+              const stateZipMatch = lastPart.match(/^([a-zA-Z]{2})\s*(\d{5}(?:-\d{4})?)?$/);
+              if (stateZipMatch) {
+                apiParams.state = stateZipMatch[1].toUpperCase();
+                if (stateZipMatch[2]) {
+                  apiParams.zip = stateZipMatch[2];
+                }
+              } else {
+                apiParams.state = lastPart.toUpperCase();
+              }
+            } else {
+              // Single input - could be city, state, or zip
+              if (zipMatch) {
+                apiParams.zip = zipMatch[0];
+              } else {
+                apiParams.city = savedQuery;
+              }
+            }
+          }
+          
+          // Remove the searchQuery from API params as it's not an API field
+          delete apiParams.searchQuery;
+          
+          // Remove empty string and null values to avoid API validation errors
+          Object.keys(apiParams).forEach(key => {
+            const value = apiParams[key];
+            if (value === '' || value === null || value === undefined) {
+              delete apiParams[key];
+            }
+          });
+          
+          const response = await fetch('/api/realestateapi', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(apiParams)
+          });
+          
+          if (response.ok) {
+            const data = await response.json();
+            const results = data.data || [];
+            setSearchResults(results);
+            setPropertyCount(data.resultCount || results.length);
+            setHasSearched(true);
+            setLastSearchFilters(apiParams);
+          }
+        } catch (error) {
+          console.error('Saved search execution error:', error);
+          setSearchResults([]);
+          setPropertyCount(0);
+          setHasSearched(true);
+        } finally {
+          setIsSearching(false);
+        }
+      }, 100);
     }
   };
 
@@ -1818,6 +2000,52 @@ function DiscoverPageContent() {
                   </div>
                 </div>
                 
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-2 uppercase tracking-wide">
+                    Stories
+                  </label>
+                  <div className="flex space-x-2">
+                    <input 
+                      type="number" 
+                      placeholder="Min"
+                      value={filters.stories_min || ''}
+                      onChange={(e) => updateFilter('stories_min', e.target.value)}
+                      className="w-16 px-2 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                    <span className="flex items-center text-gray-500">—</span>
+                    <input 
+                      type="number" 
+                      placeholder="Max"
+                      value={filters.stories_max || ''}
+                      onChange={(e) => updateFilter('stories_max', e.target.value)}
+                      className="w-16 px-2 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+                </div>
+                
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-2 uppercase tracking-wide">
+                    Lot Size (sq ft)
+                  </label>
+                  <div className="flex space-x-2">
+                    <input 
+                      type="number" 
+                      placeholder="Min"
+                      value={filters.lot_size_min || ''}
+                      onChange={(e) => updateFilter('lot_size_min', e.target.value)}
+                      className="w-24 px-2 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                    <span className="flex items-center text-gray-500">—</span>
+                    <input 
+                      type="number" 
+                      placeholder="Max"
+                      value={filters.lot_size_max || ''}
+                      onChange={(e) => updateFilter('lot_size_max', e.target.value)}
+                      className="w-24 px-2 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+                </div>
+                
                 <FilterGroup label="Flood Zone">
                   <ToggleButton 
                     active={filters.flood_zone === null} 
@@ -1890,15 +2118,53 @@ function DiscoverPageContent() {
                     />
                   </div>
                 </div>
-              </CollapsibleFilterSection>
-
-              {/* Distress & Special Conditions */}
-              <CollapsibleFilterSection 
-                title="DISTRESS & SPECIAL CONDITIONS" 
-                isCollapsed={collapsedSections.distress}
-                onToggle={() => toggleSection('distress')}
-                sectionKey="distress"
-              >
+                
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-2 uppercase tracking-wide">
+                    Estimated Equity
+                  </label>
+                  <div className="flex space-x-2">
+                    <input 
+                      type="number" 
+                      placeholder="Min"
+                      value={filters.estimated_equity_min || ''}
+                      onChange={(e) => updateFilter('estimated_equity_min', e.target.value)}
+                      className="w-24 px-2 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                    <span className="flex items-center text-gray-500">—</span>
+                    <input 
+                      type="number" 
+                      placeholder="Max"
+                      value={filters.estimated_equity_max || ''}
+                      onChange={(e) => updateFilter('estimated_equity_max', e.target.value)}
+                      className="w-24 px-2 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+                </div>
+                
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-2 uppercase tracking-wide">
+                    Mortgage Balance
+                  </label>
+                  <div className="flex space-x-2">
+                    <input 
+                      type="number" 
+                      placeholder="Min"
+                      value={filters.mortgage_min || ''}
+                      onChange={(e) => updateFilter('mortgage_min', e.target.value)}
+                      className="w-24 px-2 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                    <span className="flex items-center text-gray-500">—</span>
+                    <input 
+                      type="number" 
+                      placeholder="Max"
+                      value={filters.mortgage_max || ''}
+                      onChange={(e) => updateFilter('mortgage_max', e.target.value)}
+                      className="w-24 px-2 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+                </div>
+                
                 <FilterGroup label="Assumable">
                   <ToggleButton 
                     active={filters.assumable === null} 
@@ -1917,7 +2183,15 @@ function DiscoverPageContent() {
                     onClick={() => updateFilter('assumable', false)}
                   />
                 </FilterGroup>
-                
+              </CollapsibleFilterSection>
+
+              {/* Distress & Special Conditions */}
+              <CollapsibleFilterSection 
+                title="DISTRESS & SPECIAL CONDITIONS" 
+                isCollapsed={collapsedSections.distress}
+                onToggle={() => toggleSection('distress')}
+                sectionKey="distress"
+              >
                 <FilterGroup label="REO">
                   <ToggleButton 
                     active={filters.reo === null} 
@@ -1953,6 +2227,44 @@ function DiscoverPageContent() {
                     active={filters.pre_foreclosure === false} 
                     label="No"
                     onClick={() => updateFilter('pre_foreclosure', false)}
+                  />
+                </FilterGroup>
+                
+                <FilterGroup label="Auction">
+                  <ToggleButton 
+                    active={filters.auction === null} 
+                    label="Any" 
+                    color="blue"
+                    onClick={() => updateFilter('auction', null)}
+                  />
+                  <ToggleButton 
+                    active={filters.auction === true} 
+                    label="Yes"
+                    onClick={() => updateFilter('auction', true)}
+                  />
+                  <ToggleButton 
+                    active={filters.auction === false} 
+                    label="No"
+                    onClick={() => updateFilter('auction', false)}
+                  />
+                </FilterGroup>
+                
+                <FilterGroup label="Private Lender">
+                  <ToggleButton 
+                    active={filters.private_lender === null} 
+                    label="Any" 
+                    color="blue"
+                    onClick={() => updateFilter('private_lender', null)}
+                  />
+                  <ToggleButton 
+                    active={filters.private_lender === true} 
+                    label="Yes"
+                    onClick={() => updateFilter('private_lender', true)}
+                  />
+                  <ToggleButton 
+                    active={filters.private_lender === false} 
+                    label="No"
+                    onClick={() => updateFilter('private_lender', false)}
                   />
                 </FilterGroup>
               </CollapsibleFilterSection>
@@ -2664,6 +2976,52 @@ function DiscoverPageContent() {
                     </div>
                   </div>
                   
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-2 uppercase tracking-wide">
+                      Stories
+                    </label>
+                    <div className="flex space-x-2">
+                      <input 
+                        type="number" 
+                        placeholder="Min"
+                        value={filters.stories_min || ''}
+                        onChange={(e) => updateFilter('stories_min', e.target.value)}
+                        className="w-16 px-2 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      />
+                      <span className="flex items-center text-gray-500">—</span>
+                      <input 
+                        type="number" 
+                        placeholder="Max"
+                        value={filters.stories_max || ''}
+                        onChange={(e) => updateFilter('stories_max', e.target.value)}
+                        className="w-16 px-2 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      />
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-2 uppercase tracking-wide">
+                      Lot Size (sq ft)
+                    </label>
+                    <div className="flex space-x-2">
+                      <input 
+                        type="number" 
+                        placeholder="Min"
+                        value={filters.lot_size_min || ''}
+                        onChange={(e) => updateFilter('lot_size_min', e.target.value)}
+                        className="w-24 px-2 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      />
+                      <span className="flex items-center text-gray-500">—</span>
+                      <input 
+                        type="number" 
+                        placeholder="Max"
+                        value={filters.lot_size_max || ''}
+                        onChange={(e) => updateFilter('lot_size_max', e.target.value)}
+                        className="w-24 px-2 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      />
+                    </div>
+                  </div>
+                  
                   <FilterGroup label="Flood Zone">
                     <ToggleButton 
                       active={filters.flood_zone === null} 
@@ -2736,15 +3094,53 @@ function DiscoverPageContent() {
                       />
                     </div>
                   </div>
-                </CollapsibleFilterSection>
-
-                {/* Distress & Special Conditions */}
-                <CollapsibleFilterSection 
-                  title="DISTRESS & SPECIAL CONDITIONS" 
-                  isCollapsed={collapsedSections.distress}
-                  onToggle={() => toggleSection('distress')}
-                  sectionKey="distress"
-                >
+                  
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-2 uppercase tracking-wide">
+                      Estimated Equity
+                    </label>
+                    <div className="flex space-x-2">
+                      <input 
+                        type="number" 
+                        placeholder="Min"
+                        value={filters.estimated_equity_min || ''}
+                        onChange={(e) => updateFilter('estimated_equity_min', e.target.value)}
+                        className="w-24 px-2 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      />
+                      <span className="flex items-center text-gray-500">—</span>
+                      <input 
+                        type="number" 
+                        placeholder="Max"
+                        value={filters.estimated_equity_max || ''}
+                        onChange={(e) => updateFilter('estimated_equity_max', e.target.value)}
+                        className="w-24 px-2 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      />
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-2 uppercase tracking-wide">
+                      Mortgage Balance
+                    </label>
+                    <div className="flex space-x-2">
+                      <input 
+                        type="number" 
+                        placeholder="Min"
+                        value={filters.mortgage_min || ''}
+                        onChange={(e) => updateFilter('mortgage_min', e.target.value)}
+                        className="w-24 px-2 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      />
+                      <span className="flex items-center text-gray-500">—</span>
+                      <input 
+                        type="number" 
+                        placeholder="Max"
+                        value={filters.mortgage_max || ''}
+                        onChange={(e) => updateFilter('mortgage_max', e.target.value)}
+                        className="w-24 px-2 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      />
+                    </div>
+                  </div>
+                  
                   <FilterGroup label="Assumable">
                     <ToggleButton 
                       active={filters.assumable === null} 
@@ -2763,7 +3159,15 @@ function DiscoverPageContent() {
                       onClick={() => updateFilter('assumable', false)}
                     />
                   </FilterGroup>
-                  
+                </CollapsibleFilterSection>
+
+                {/* Distress & Special Conditions */}
+                <CollapsibleFilterSection 
+                  title="DISTRESS & SPECIAL CONDITIONS" 
+                  isCollapsed={collapsedSections.distress}
+                  onToggle={() => toggleSection('distress')}
+                  sectionKey="distress"
+                >
                   <FilterGroup label="REO">
                     <ToggleButton 
                       active={filters.reo === null} 
@@ -2799,6 +3203,44 @@ function DiscoverPageContent() {
                       active={filters.pre_foreclosure === false} 
                       label="No"
                       onClick={() => updateFilter('pre_foreclosure', false)}
+                    />
+                  </FilterGroup>
+                  
+                  <FilterGroup label="Auction">
+                    <ToggleButton 
+                      active={filters.auction === null} 
+                      label="Any" 
+                      color="blue"
+                      onClick={() => updateFilter('auction', null)}
+                    />
+                    <ToggleButton 
+                      active={filters.auction === true} 
+                      label="Yes"
+                      onClick={() => updateFilter('auction', true)}
+                    />
+                    <ToggleButton 
+                      active={filters.auction === false} 
+                      label="No"
+                      onClick={() => updateFilter('auction', false)}
+                    />
+                  </FilterGroup>
+                  
+                  <FilterGroup label="Private Lender">
+                    <ToggleButton 
+                      active={filters.private_lender === null} 
+                      label="Any" 
+                      color="blue"
+                      onClick={() => updateFilter('private_lender', null)}
+                    />
+                    <ToggleButton 
+                      active={filters.private_lender === true} 
+                      label="Yes"
+                      onClick={() => updateFilter('private_lender', true)}
+                    />
+                    <ToggleButton 
+                      active={filters.private_lender === false} 
+                      label="No"
+                      onClick={() => updateFilter('private_lender', false)}
                     />
                   </FilterGroup>
                 </CollapsibleFilterSection>

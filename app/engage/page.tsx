@@ -19,7 +19,7 @@ import { incrementActivityCount } from '@/lib/v2/activityCounter';
 import { useAlert } from '@/components/shared/AlertModal';
 
 function EngagePageContent() {
-  const { user, isLoading: authLoading } = useAuth();
+  const { user, supabase, isLoading: authLoading } = useAuth();
   const { showError, showWarning, showSuccess, AlertComponent } = useAlert();
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -79,6 +79,27 @@ function EngagePageContent() {
 
         const favoritesData = await favoritesResponse.json();
         
+        // Auto-assign markets to manual properties that don't have a market assigned
+        try {
+          const { data: assignmentResults, error: assignmentError } = await supabase.rpc('assign_manual_properties_to_markets', {
+            target_user_id: user.id
+          });
+          
+          if (assignmentError) {
+            console.error('Error auto-assigning markets:', assignmentError);
+          } else if (assignmentResults && assignmentResults.length > 0) {
+            console.log(`Auto-assigned ${assignmentResults.length} properties to markets:`, assignmentResults);
+            
+            // Refetch favorites data if assignments were made
+            const updatedFavoritesResponse = await fetch('/api/favorites');
+            if (updatedFavoritesResponse.ok) {
+              const updatedFavoritesData = await updatedFavoritesResponse.json();
+              favoritesData.favorites = updatedFavoritesData.favorites;
+            }
+          }
+        } catch (assignmentError) {
+          console.error('Error calling auto-assignment function:', assignmentError);
+        }
         
         // Transform the data to match the expected format
         const transformedProperties = favoritesData.favorites.map((favorite: any) => {
@@ -172,10 +193,15 @@ function EngagePageContent() {
   const uniqueStatuses = statusOrder.filter(status => 
     savedProperties.some(p => p.pipelineStatus === status)
   );
-  // Use user markets from database, limited to 5 markets, plus "No market" option
-  const uniqueMarkets = ['No market', ...userMarkets.slice(0, 5).map(market => market.name)];
-  // Also create validMarkets list for property card dropdowns from user markets
-  const validMarkets = userMarkets.slice(0, 5).map(market => market.name);
+  // Use user markets from database, limited to 5 markets, plus "No Market" option
+  const uniqueMarkets = ['No Market', ...userMarkets.slice(0, 5).map(market => market.name)];
+  // Create market options for dropdown - maps market keys to display names
+  const marketOptions = [
+    { key: null, name: 'No Market' },
+    ...userMarkets.slice(0, 5)
+      .filter(market => market.name !== 'No Market')
+      .map(market => ({ key: market.key, name: market.name }))
+  ];
   const uniqueSources = ['All', 'Algorithm', 'Manual'];
 
   // Filter properties based on selections
@@ -196,19 +222,8 @@ function EngagePageContent() {
             break;
           }
           
-          // Also check if property is geographically located in the selected market
-          const userMarket = userMarkets.find(m => m.name === selectedMarket);
-          if (userMarket) {
-            // Match by city and state
-            const cityMatch = userMarket.city && property.city?.toLowerCase().includes(userMarket.city.toLowerCase());
-            const stateMatch = userMarket.state && (property.state?.toLowerCase().includes(userMarket.state.toLowerCase()) || 
-                                                  property.address?.toLowerCase().includes(userMarket.state.toLowerCase()));
-            
-            if (cityMatch && stateMatch) {
-              matchesMarket = true;
-              break;
-            }
-          }
+          // Geographic matching is now handled by auto-assignment feature
+          // Manual properties are automatically assigned to markets based on 25-mile radius
         }
       }
     }
@@ -249,7 +264,7 @@ function EngagePageContent() {
     );
   };
 
-  const handleMarketUpdate = async (propertyId: string, newMarket: string) => {
+  const handleMarketUpdate = async (propertyId: string, newMarket: string | null) => {
     try {
       const response = await fetch('/api/favorites/update-market', {
         method: 'POST',
@@ -435,10 +450,6 @@ function EngagePageContent() {
     });
     router.push(`/templates?${params.toString()}`);
 
-    // Increment activity count for LOI creation initiated
-    if (user?.id) {
-      incrementActivityCount(user.id, 'lois_created');
-    }
   };
 
   const handlePurchaseSaleGeneration = (propertyId: number) => {
@@ -450,7 +461,8 @@ function EngagePageContent() {
       ownerFirst: property.owner_first_name || '',
       ownerLast: property.owner_last_name || '',
       propertyId: property.id.toString(),
-      returnUrl: '/engage'
+      returnUrl: '/engage',
+      type: 'purchase_sale'
     });
     router.push(`/templates?${params.toString()}`);
     // TODO: Increment activity count for Purchase & Sale creation initiated
@@ -489,7 +501,7 @@ function EngagePageContent() {
       setShowOffersModal(true);
     } catch (error) {
       // Error fetching offers
-      showError('Failed to load offers. Please try again.', 'Load Failed');
+      showError('Failed to load analyses. Please try again.', 'Load Failed');
     }
   };
 
@@ -1793,7 +1805,7 @@ function EngagePageContent() {
                 property={property}
                 isSelected={selectedProperties.includes(property.id)}
                 onToggleSelect={() => togglePropertySelection(property.id)}
-                validMarkets={validMarkets}
+                marketOptions={marketOptions}
                 onStatusUpdate={handleStatusUpdate}
                 onMarketUpdate={handleMarketUpdate}
                 currentViewMode={viewMode}
@@ -1824,7 +1836,7 @@ function EngagePageContent() {
                     property={property}
                     isSelected={selectedProperties.includes(property.id)}
                     onToggleSelect={() => togglePropertySelection(property.id)}
-                    validMarkets={validMarkets}
+                    marketOptions={marketOptions}
                     onStatusUpdate={handleStatusUpdate}
                     onMarketUpdate={handleMarketUpdate}
                     currentViewMode={viewMode}
@@ -1925,7 +1937,7 @@ function EngagePageContent() {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 max-w-2xl mx-4 w-full">
             <div className="flex items-center justify-between mb-6">
-              <h3 className="text-lg font-medium text-gray-900">Select an Offer</h3>
+              <h3 className="text-lg font-medium text-gray-900">Select an Analysis</h3>
               <button
                 onClick={() => setShowOffersModal(false)}
                 className="text-gray-400 hover:text-gray-600"
@@ -2036,7 +2048,7 @@ function PropertyCard({
   property, 
   isSelected, 
   onToggleSelect,
-  validMarkets,
+  marketOptions,
   onStatusUpdate,
   onMarketUpdate,
   currentViewMode,
@@ -2045,15 +2057,15 @@ function PropertyCard({
   property: any; 
   isSelected: boolean; 
   onToggleSelect: () => void;
-  validMarkets: string[];
+  marketOptions: { key: string | null; name: string }[];
   onStatusUpdate?: (propertyId: string, newStatus: string) => void;
-  onMarketUpdate?: (propertyId: string, newMarket: string) => void;
+  onMarketUpdate?: (propertyId: string, newMarket: string | null) => void;
   currentViewMode?: string;
   onRemoveFromFavorites?: (propertyId: string) => void;
 }) {
   const router = useRouter();
   const [pipelineStatus, setPipelineStatus] = useState(property.pipelineStatus);
-  const [market, setMarket] = useState(property.market);
+  const [market, setMarket] = useState(property.market_key);
   const [isFavorited, setIsFavorited] = useState(true); // Start as favorited since this is engage page
   const [notes, setNotes] = useState(property.notes || '');
   
@@ -2082,14 +2094,14 @@ function PropertyCard({
     }
   };
 
-  const updateFavoriteMarket = async (newMarket: string) => {
-    try {
+  const updateFavoriteMarket = async (newMarket: string | null) => {
+      try {
       const response = await fetch('/api/favorites/update-market', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           property_id: property.id,
-          market: newMarket
+          market_key: newMarket
         })
       });
       
@@ -2263,9 +2275,10 @@ function PropertyCard({
           <div className="flex items-center text-sm text-gray-600">
             <MapPin className="h-3 w-3 mr-1" />
             <select
-              value={market}
+              value={market || ''}
               onChange={(e) => {
-                const newMarket = e.target.value;
+                const selectedValue = e.target.value;
+                const newMarket = selectedValue === '' ? null : selectedValue;
                 setMarket(newMarket);
                 updateFavoriteMarket(newMarket);
                 // Update parent component state immediately
@@ -2275,9 +2288,9 @@ function PropertyCard({
               }}
               className="text-xs px-2 py-1 rounded-full font-medium border-0 focus:ring-2 focus:ring-blue-500 bg-gray-100 text-gray-700"
             >
-              {validMarkets.map(marketOption => (
-                <option key={marketOption} value={marketOption}>
-                  {marketOption}
+              {marketOptions.map((marketOption, index) => (
+                <option key={marketOption.key || `no-market-${index}`} value={marketOption.key || ''}>
+                  {marketOption.name}
                 </option>
               ))}
             </select>
