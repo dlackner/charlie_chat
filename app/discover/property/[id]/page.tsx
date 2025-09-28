@@ -427,6 +427,24 @@ export default function PropertyDetailsPage() {
               width={1200}
               height={384}
             />
+            
+            {/* Zillow Button */}
+            <button 
+              onClick={(e) => {
+                e.stopPropagation();
+                const address = property.address_full || property.address_street || '';
+                const zillowUrl = `https://www.zillow.com/homes/${address.replace(/\s+/g, '-')}-${property.address_city}-${property.address_state}-${property.address_zip}_rb/`;
+                window.open(zillowUrl, '_blank');
+              }}
+              className="absolute bottom-4 right-4 bg-white/90 hover:bg-white rounded-lg p-2 shadow-lg transition-all hover:scale-105 cursor-pointer"
+              title="View on Zillow"
+            >
+              <img 
+                src="/Zillow Logo_Primary_RGB.png" 
+                alt="Zillow" 
+                className="w-12 h-12 object-contain"
+              />
+            </button>
           </div>
         </div>
 

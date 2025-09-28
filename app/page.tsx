@@ -38,28 +38,54 @@ export default function Home() {
 
 
 
-  // New signup logic extracted from header component
+  // Check if user already exists
+  const checkUserExists = async (email: string): Promise<boolean> => {
+    try {
+      const { data: profile } = await supabaseClient
+        .from('profiles')
+        .select('user_id')
+        .eq('email', email)
+        .single();
+      
+      return !!profile;
+    } catch {
+      return false;
+    }
+  };
+
+  // New signup logic that handles both new and existing users
   const handleSignUp = async (emailToUse: string) => {
     setSignupError(null);
     setIsSigningUp(true);
 
-    // Send magic link (OTP via email) for passwordless signup
-    const { error: signUpError } = await supabaseClient.auth.signInWithOtp({
-      email: emailToUse,
-      options: {
-        shouldCreateUser: true, // Creates user if they don't exist
-        emailRedirectTo: `${window.location.origin}/v2/auth/callback`
-      }
-    });
+    // First check if user already exists
+    const userExists = await checkUserExists(emailToUse);
 
-    if (signUpError) {
-      setSignupError(signUpError.message);
+    if (userExists) {
+      // Existing user - redirect to sign in modal with email pre-filled
+      setIsSigningUp(false);
+      setSigninEmail(emailToUse);
+      setShowSignInModal(true);
+      return;
     } else {
-      setSignupLinkSent(true); // Show success message
-      
-      // Add affiliate tracking
-      if (typeof window !== 'undefined' && (window as any).gr) {
-        (window as any).gr('track', 'conversion', { email: emailToUse });
+      // New user - send magic link
+      const { error: signUpError } = await supabaseClient.auth.signInWithOtp({
+        email: emailToUse,
+        options: {
+          shouldCreateUser: true, // Creates user if they don't exist
+          emailRedirectTo: `${window.location.origin}/auth/callback`
+        }
+      });
+
+      if (signUpError) {
+        setSignupError(signUpError.message);
+      } else {
+        setSignupLinkSent(true); // Show magic link message
+        
+        // Add affiliate tracking
+        if (typeof window !== 'undefined' && (window as any).gr) {
+          (window as any).gr('track', 'conversion', { email: emailToUse });
+        }
       }
     }
     setIsSigningUp(false);

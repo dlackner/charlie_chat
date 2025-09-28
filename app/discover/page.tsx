@@ -3474,12 +3474,12 @@ function RecentPropertyCard({
       {/* Property Image */}
       <div className="relative">
         <div 
-          className="relative aspect-[4/3] bg-gray-200 cursor-pointer group"
-          onClick={() => {
-            const address = `${property.address_full || property.address_street}, ${property.address_city}, ${property.address_state} ${property.address_zip}`;
-            const mapsUrl = `https://www.google.com/maps/search/${encodeURIComponent(address)}`;
-            window.open(mapsUrl, '_blank');
-          }}
+          className="relative aspect-[4/3] bg-gray-200 group"
+          // onClick={() => {
+          //   const address = `${property.address_full || property.address_street}, ${property.address_city}, ${property.address_state} ${property.address_zip}`;
+          //   const mapsUrl = `https://www.google.com/maps/search/${encodeURIComponent(address)}`;
+          //   window.open(mapsUrl, '_blank');
+          // }}
         >
           <img 
             src={(() => {
@@ -3533,22 +3533,6 @@ function RecentPropertyCard({
                 : 'text-gray-400'
             }`} />
           )}
-        </button>
-        
-        {/* Zillow Button */}
-        <button 
-          onClick={(e) => {
-            e.stopPropagation();
-            const address = property.address_full || property.address_street || '';
-            const zillowUrl = `https://www.zillow.com/homes/${address.replace(/\s+/g, '-')}-${property.address_city}-${property.address_state}-${property.address_zip}_rb/`;
-            window.open(zillowUrl, '_blank');
-          }}
-          className="absolute bottom-3 right-3 bg-white/95 hover:bg-white rounded-lg p-2 shadow-sm transition-colors group cursor-pointer"
-          title="View on Zillow"
-        >
-          <svg className="w-6 h-6 text-blue-600" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M12 2L2 12h3v8h4v-6h6v6h4v-8h3L12 2z"/>
-          </svg>
         </button>
       </div>
 
@@ -3718,22 +3702,6 @@ function PropertyCard({
           ) : (
             <Heart className="h-4 w-4 text-gray-600 hover:text-red-500" />
           )}
-        </button>
-        
-        {/* Zillow Button */}
-        <button 
-          onClick={(e) => {
-            e.stopPropagation();
-            const address = displayProperty.address_full || displayProperty.address_street || '';
-            const zillowUrl = `https://www.zillow.com/homes/${address.replace(/\s+/g, '-')}-${displayProperty.address_city}-${displayProperty.address_state}-${displayProperty.address_zip}_rb/`;
-            window.open(zillowUrl, '_blank');
-          }}
-          className="absolute bottom-3 right-3 bg-white/95 hover:bg-white rounded-lg p-2 shadow-sm transition-colors group cursor-pointer"
-          title="View on Zillow"
-        >
-          <svg className="w-6 h-6 text-blue-600" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M12 2L2 12h3v8h4v-6h6v6h4v-8h3L12 2z"/>
-          </svg>
         </button>
       </div>
 

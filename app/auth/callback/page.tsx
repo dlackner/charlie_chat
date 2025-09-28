@@ -123,7 +123,13 @@ function AuthCallbackContent() {
               return;
             }
             
-            // All other existing users go to headlines
+            // Core users go to community page
+            if (profile.user_class === 'core') {
+              router.replace('/dashboard/community');
+              return;
+            }
+            
+            // All other existing users (plus, pro) go to headlines
             router.replace('/dashboard/headlines');
             return;
           }

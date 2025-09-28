@@ -2199,7 +2199,7 @@ function PropertyCard({
   return (
     <div className="bg-white rounded-lg border border-gray-200 overflow-hidden hover:shadow-lg transition-all duration-200">
       {/* Property Image */}
-      <div className="relative aspect-[4/3] bg-gray-200 cursor-pointer" onClick={handleImageClick}>
+      <div className="relative aspect-[4/3] bg-gray-200">
         <img 
           src={getStreetViewImage()}
           alt={`Street view of ${property.address}`}
@@ -2235,16 +2235,6 @@ function PropertyCard({
           </button>
         </div>
 
-        {/* Zillow Icon */}
-        <button 
-          onClick={handleZillowClick}
-          className="absolute bottom-3 right-3 bg-white/95 hover:bg-white rounded-lg p-2 shadow-sm transition-colors group"
-          title="View on Zillow"
-        >
-          <svg className="w-6 h-6 text-blue-600" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M12 2L2 12h3v8h4v-6h6v6h4v-8h3L12 2z"/>
-          </svg>
-        </button>
       </div>
 
       {/* Property Details */}

@@ -10,10 +10,11 @@ interface DownloadableResource {
   title: string;
   description: string;
   category: 'Getting Started' | 'Resources' | 'Upcoming Events';
-  file_content: ArrayBuffer;
+  file_content?: ArrayBuffer | string;
   file_name: string;
   file_size: number;
   content_type: string;
+  public_url?: string;
   user_class: string | null;
   sort_order: number;
 }
@@ -58,24 +59,21 @@ export function DownloadableResourcesSidebar() {
 
   const downloadResource = async (resource: DownloadableResource) => {
     try {
-      // Convert ArrayBuffer to Blob
-      const blob = new Blob([resource.file_content], { 
-        type: resource.content_type 
-      });
-      
-      // Create download link
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = resource.file_name;
-      document.body.appendChild(link);
-      link.click();
-      
-      // Cleanup
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(link);
+      if (resource.public_url) {
+        // Simple download from public URL
+        const link = document.createElement('a');
+        link.href = resource.public_url;
+        link.download = resource.file_name;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      } else {
+        // Fallback: alert user that file is not available
+        alert(`File ${resource.file_name} is not available for download.`);
+      }
     } catch (error) {
       console.error('Download error:', error);
+      alert(`Failed to download ${resource.file_name}. Please try again.`);
     }
   };
 
