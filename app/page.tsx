@@ -364,17 +364,18 @@ export default function Home() {
           </div>
 
           {/* Carousel Section */}
-          <div className="max-w-6xl mx-auto mb-20 px-4">
+          <div className="w-full max-w-6xl mx-auto mb-20 px-0 sm:px-4 lg:px-4">
             <div className="relative">
-              <div className="bg-white rounded-2xl shadow-xl overflow-hidden transition-all duration-500">
+              <div className="rounded-2xl overflow-hidden transition-all duration-500">
                 <div className="flex justify-center">
                   {carouselSlides[currentSlide].image ? (
-                    <div className="relative w-full h-[400px] md:h-[500px] lg:h-[600px]">
+                    <div className="relative w-full h-[300px] sm:h-[400px] md:h-[500px] lg:h-[600px]">
                       <Image
                         src={carouselSlides[currentSlide].image}
                         alt={carouselSlides[currentSlide].title}
                         fill
                         className="object-contain"
+                        sizes="(max-width: 640px) 100vw, (max-width: 1024px) 90vw, 1200px"
                       />
                     </div>
                   ) : (
@@ -383,22 +384,52 @@ export default function Home() {
                 </div>
               </div>
               
-              {/* Carousel Controls - Positioned outside image area */}
+              {/* Carousel Controls - Hidden on mobile, positioned outside on desktop */}
               <button
                 onClick={prevSlide}
-                className="absolute left-2 lg:-left-16 top-1/2 transform -translate-y-1/2 bg-white hover:bg-gray-50 p-2 lg:p-3 rounded-full shadow-lg transition-all duration-200 z-10"
+                className="hidden lg:block absolute lg:-left-16 top-1/2 transform -translate-y-1/2 bg-white hover:bg-gray-50 p-3 rounded-full shadow-lg transition-all duration-200 z-10"
               >
-                <ChevronLeft className="w-5 h-5 lg:w-6 lg:h-6 text-gray-600" />
+                <ChevronLeft className="w-6 h-6 text-gray-600" />
               </button>
               <button
                 onClick={nextSlide}
-                className="absolute right-2 lg:-right-16 top-1/2 transform -translate-y-1/2 bg-white hover:bg-gray-50 p-2 lg:p-3 rounded-full shadow-lg transition-all duration-200 z-10"
+                className="hidden lg:block absolute lg:-right-16 top-1/2 transform -translate-y-1/2 bg-white hover:bg-gray-50 p-3 rounded-full shadow-lg transition-all duration-200 z-10"
               >
-                <ChevronRight className="w-5 h-5 lg:w-6 lg:h-6 text-gray-600" />
+                <ChevronRight className="w-6 h-6 text-gray-600" />
               </button>
               
-              {/* Carousel Indicators */}
-              <div className="flex justify-center mt-6 space-x-2">
+              {/* Mobile Controls and Indicators */}
+              <div className="lg:hidden flex items-center justify-center mt-6 space-x-4">
+                <button
+                  onClick={prevSlide}
+                  className="bg-white hover:bg-gray-50 p-2 rounded-full shadow-lg transition-all duration-200"
+                >
+                  <ChevronLeft className="w-5 h-5 text-gray-600" />
+                </button>
+                
+                {/* Carousel Indicators */}
+                <div className="flex justify-center space-x-2">
+                  {carouselSlides.map((_, index) => (
+                    <button
+                      key={index}
+                      onClick={() => setCurrentSlide(index)}
+                      className={`w-2 h-2 rounded-full transition-all duration-200 ${
+                        index === currentSlide ? 'bg-blue-600' : 'bg-gray-300'
+                      }`}
+                    />
+                  ))}
+                </div>
+                
+                <button
+                  onClick={nextSlide}
+                  className="bg-white hover:bg-gray-50 p-2 rounded-full shadow-lg transition-all duration-200"
+                >
+                  <ChevronRight className="w-5 h-5 text-gray-600" />
+                </button>
+              </div>
+              
+              {/* Desktop Indicators */}
+              <div className="hidden lg:flex justify-center mt-6 space-x-2">
                 {carouselSlides.map((_, index) => (
                   <button
                     key={index}
