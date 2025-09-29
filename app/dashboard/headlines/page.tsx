@@ -659,7 +659,9 @@ function ActivityCard({
 // Reminders Section Component
 function RemindersSection({ user }: { user: any }) {
   const [reminders, setReminders] = useState<any[]>([]);
+  const [pendingRecommendations, setPendingRecommendations] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingRecommendations, setIsLoadingRecommendations] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Fetch reminders from API
@@ -691,6 +693,47 @@ function RemindersSection({ user }: { user: any }) {
     fetchReminders();
   }, [user]);
 
+  // Fetch pending recommendations count
+  useEffect(() => {
+    const fetchPendingRecommendations = async () => {
+      if (!user) {
+        return;
+      }
+
+      setIsLoadingRecommendations(true);
+
+      try {
+        const response = await fetch(`/api/favorites`);
+        if (!response.ok) {
+          throw new Error('Failed to fetch recommendations');
+        }
+
+        const data = await response.json();
+        console.log('API Response:', data); // Debug log
+        console.log('Filtering favorites:', data.favorites); // Debug log
+        
+        // Count favorites with recommendation_type = 'algorithm' and raw_status = 'pending'
+        const pendingCount = data.favorites?.filter((fav: any) => {
+          console.log('Checking favorite:', fav.recommendation_type, 'raw_status:', fav.raw_status, 'status:', fav.status, fav.property_data ? 'has property_data' : 'no property_data');
+          return fav.recommendation_type === 'algorithm' && 
+                 fav.property_data && 
+                 fav.raw_status === 'pending';
+        }).length || 0;
+        
+        console.log('Pending count:', pendingCount); // Debug log
+        
+        setPendingRecommendations(pendingCount);
+      } catch (err: any) {
+        console.error('Error fetching pending recommendations:', err);
+        setPendingRecommendations(0);
+      } finally {
+        setIsLoadingRecommendations(false);
+      }
+    };
+
+    fetchPendingRecommendations();
+  }, [user]);
+
   return (
     <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-8">
       <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center">
@@ -720,7 +763,7 @@ function RemindersSection({ user }: { user: any }) {
           <p className="text-sm text-gray-500 mt-1">Add reminders to your property notes using @MM/DD/YYYY format</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {/* Today's Reminders */}
           <div className="bg-red-50 border border-red-200 rounded-lg p-4">
             <h3 className="font-semibold text-red-800 mb-2 flex items-center">
@@ -749,6 +792,41 @@ function RemindersSection({ user }: { user: any }) {
               ))}
               {reminders.filter(r => r.type === 'upcoming').length === 0 && (
                 <p className="text-sm text-gray-600 italic">No upcoming reminders</p>
+              )}
+            </div>
+          </div>
+
+          {/* Pending Weekly Recommendations */}
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <h3 className="font-semibold text-blue-800 mb-2 flex items-center">
+              <BarChart3 className="h-4 w-4 mr-1" />
+              Pending Recommendations ({isLoadingRecommendations ? '...' : pendingRecommendations})
+            </h3>
+            <div className="max-h-48 overflow-y-auto">
+              {isLoadingRecommendations ? (
+                <div className="flex items-center justify-center py-4">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                  <span className="ml-2 text-sm text-blue-600">Loading...</span>
+                </div>
+              ) : pendingRecommendations === 0 ? (
+                <p className="text-sm text-gray-600 italic">No pending recommendations</p>
+              ) : (
+                <div className="space-y-2">
+                  <div className="bg-white rounded p-3 border border-gray-200">
+                    <div className="text-sm font-medium text-gray-900 mb-1">
+                      Weekly Algorithm Recommendations
+                    </div>
+                    <div className="text-xs text-gray-600 mb-2">
+                      You have {pendingRecommendations} property recommendation{pendingRecommendations !== 1 ? 's' : ''} to review from our weekly analysis.
+                    </div>
+                    <Link 
+                      href="/discover/buybox"
+                      className="text-xs text-blue-600 hover:text-blue-700 font-medium"
+                    >
+                      Review Recommendations →
+                    </Link>
+                  </div>
+                </div>
               )}
             </div>
           </div>

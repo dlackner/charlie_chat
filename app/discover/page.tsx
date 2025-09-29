@@ -39,8 +39,23 @@ function DiscoverPageContent() {
   // Modal states
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   
-  // Initialize state from URL parameters if available
-  const [searchQuery, setSearchQuery] = useState(searchParams.get('q') || '');
+  // Initialize state from sessionStorage first, then URL parameters if available
+  const [searchQuery, setSearchQuery] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const savedFilters = sessionStorage.getItem('discoverPageFilters');
+      if (savedFilters) {
+        try {
+          const parsed = JSON.parse(savedFilters);
+          if (parsed.searchQuery) {
+            return parsed.searchQuery;
+          }
+        } catch (e) {
+          console.error('Error parsing saved discover filters:', e);
+        }
+      }
+    }
+    return searchParams.get('q') || '';
+  });
   const [showMobileFilters, setShowMobileFilters] = useState(false);
   const [propertyCount, setPropertyCount] = useState(0);
   const [hasSearched, setHasSearched] = useState(false);
@@ -91,6 +106,42 @@ function DiscoverPageContent() {
   
   // Constants
   const FAVORITES_PER_PAGE = 12;
+
+  // Clean up sessionStorage after filters are restored
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (typeof window !== 'undefined') {
+        sessionStorage.removeItem('discoverPageFilters');
+      }
+    }, 100);
+    return () => clearTimeout(timer);
+  }, []);
+
+  // Handler for View Details to save filter state
+  const handleViewDetails = (property: any) => {
+    const filterState = {
+      filters,
+      searchQuery,
+      collapsedSections
+    };
+    sessionStorage.setItem('discoverPageFilters', JSON.stringify(filterState));
+    
+    const baseUrl = new URL('/discover', window.location.origin);
+    baseUrl.searchParams.set('viewMode', viewMode);
+    
+    if (hasSearched && (searchResults.length > 0 || searchQuery)) {
+      if (searchQuery) {
+        baseUrl.searchParams.set('q', searchQuery);
+      }
+      baseUrl.searchParams.set('hasResults', 'true');
+    } else if (!hasSearched && recentProperties.length > 0) {
+      baseUrl.searchParams.set('showingFavorites', 'true');
+    }
+    
+    const backUrl = encodeURIComponent(baseUrl.toString());
+    const propertyId = property.property_id || property.id;
+    window.location.href = `/discover/property/${propertyId}?back=${backUrl}`;
+  };
   
   // Filter favorites by location
   const filterFavoritesByLocation = (favorites: any[], filter: string) => {
@@ -120,11 +171,26 @@ function DiscoverPageContent() {
     return filtered;
   };
   
-  // Filter states
-  const [filters, setFilters] = useState({
-    // Location
-    city: '',
-    state: '',
+  // Filter states - initialize from sessionStorage if available
+  const [filters, setFilters] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const savedFilters = sessionStorage.getItem('discoverPageFilters');
+      if (savedFilters) {
+        try {
+          const parsed = JSON.parse(savedFilters);
+          if (parsed.filters) {
+            return parsed.filters;
+          }
+        } catch (e) {
+          console.error('Error parsing saved discover filters:', e);
+        }
+      }
+    }
+    
+    return {
+      // Location
+      city: '',
+      state: '',
     zip: '',
     county: '',
     house: '',
@@ -172,18 +238,35 @@ function DiscoverPageContent() {
     pre_foreclosure: null as boolean | null,
     auction: null as boolean | null,
     private_lender: null as boolean | null
+    };
   });
   
-  // Collapsible section states - all closed by default
-  const [collapsedSections, setCollapsedSections] = useState({
-    units: true,
-    owner: true,
-    sale: true,
-    physical: true,
-    financial: true,
-    distress: true,
-    savedSearches: true,
-    mySearches: true
+  // Collapsible section states - restore from sessionStorage or default to all closed
+  const [collapsedSections, setCollapsedSections] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const savedFilters = sessionStorage.getItem('discoverPageFilters');
+      if (savedFilters) {
+        try {
+          const parsed = JSON.parse(savedFilters);
+          if (parsed.collapsedSections) {
+            return parsed.collapsedSections;
+          }
+        } catch (e) {
+          console.error('Error parsing saved discover filters:', e);
+        }
+      }
+    }
+    
+    return {
+      units: true,
+      owner: true,
+      sale: true,
+      physical: true,
+      financial: true,
+      distress: true,
+      savedSearches: true,
+      mySearches: true
+    };
   });
 
   // Saved searches data
@@ -605,6 +688,14 @@ function DiscoverPageContent() {
     }
   };
 
+  const handleFavoriteAllSuccess = (favoritedPropertyIds: string[]) => {
+    // Update the local state to reflect newly favorited properties
+    setFavoritePropertyIds(prev => {
+      const newIds = favoritedPropertyIds.filter(id => !prev.includes(id));
+      return [...prev, ...newIds];
+    });
+  };
+
   const performSearch = async (query: string) => {
     if (!query.trim()) return;
     
@@ -867,7 +958,7 @@ function DiscoverPageContent() {
   };
   
   const updateFilter = (key: string, value: any) => {
-    setFilters(prev => ({ ...prev, [key]: value }));
+    setFilters((prev: any) => ({ ...prev, [key]: value }));
   };
 
   // Reset all filters to defaults
@@ -962,7 +1053,7 @@ function DiscoverPageContent() {
         
         // Add location if available
         if (searchQuery.trim()) {
-          const locationParts = searchQuery.split(',').map(s => s.trim());
+          const locationParts = searchQuery.split(',').map((s: string) => s.trim());
           const zipPattern = /^\d{5}(-\d{4})?$/;
           const zipMatch = searchQuery.match(/\b\d{5}(-\d{4})?\b/);
           
@@ -1032,7 +1123,7 @@ function DiscoverPageContent() {
       }
       
       // Collapse the saved searches section after applying
-      setCollapsedSections(prev => ({ ...prev, savedSearches: true }));
+      setCollapsedSections((prev: any) => ({ ...prev, savedSearches: true }));
       
     } catch (error) {
       // Error executing saved search
@@ -1114,7 +1205,7 @@ function DiscoverPageContent() {
   };
 
   const toggleSection = (section: string) => {
-    setCollapsedSections(prev => ({
+    setCollapsedSections((prev: any) => ({
       ...prev,
       [section]: !prev[section as keyof typeof prev]
     }));
@@ -1324,7 +1415,7 @@ function DiscoverPageContent() {
       setFilters({ ...defaultFilters, ...search.criteria.apiFields });
       
       // Expand relevant filter sections
-      setCollapsedSections(prev => {
+      setCollapsedSections((prev: any) => {
         const newCollapsed = { ...prev };
         sectionsToExpand.forEach(section => {
           if (section in newCollapsed) {
@@ -1507,7 +1598,7 @@ function DiscoverPageContent() {
       }
       
       // Expand relevant filter sections
-      setCollapsedSections(prev => {
+      setCollapsedSections((prev: any) => {
         const newCollapsed = { ...prev };
         sectionsToExpand.forEach(section => {
           if (section in newCollapsed) {
@@ -2449,6 +2540,16 @@ function DiscoverPageContent() {
                     : `${propertyCount} properties`}
                 </span>
                 
+                {/* Favorite All Button - Only show for search results */}
+                {hasSearched && searchResults.length > 0 && (
+                  <FavoriteAllButton 
+                    properties={searchResults}
+                    userClass={userClass}
+                    onShowUpgradeModal={() => setShowUpgradeModal(true)}
+                    onFavoriteSuccess={handleFavoriteAllSuccess}
+                  />
+                )}
+                
                 {/* View Toggle - Hidden on mobile */}
                 {(hasSearched || recentProperties.length > 0) && (
                   <div className="hidden md:flex items-center space-x-2">
@@ -2508,6 +2609,7 @@ function DiscoverPageContent() {
                         favoritePropertyIds={favoritePropertyIds}
                         userClass={userClass}
                         setShowUpgradeModal={setShowUpgradeModal}
+                        onViewDetails={handleViewDetails}
                       />
                     ))}
                   </div>
@@ -2539,6 +2641,7 @@ function DiscoverPageContent() {
                             viewMode={viewMode}
                             recentProperties={recentProperties}
                             favoritePropertyIds={favoritePropertyIds}
+                            onViewDetails={handleViewDetails}
                           />
                         ))}
                       </div>
@@ -2585,6 +2688,7 @@ function DiscoverPageContent() {
                             viewMode={viewMode}
                             recentProperties={recentProperties}
                             searchResults={searchResults}
+                            onViewDetails={handleViewDetails}
                           />
                         ))
                       ) : (
@@ -2643,6 +2747,8 @@ function DiscoverPageContent() {
                               onToggleFavorite={toggleFavorite}
                               viewMode={viewMode}
                               recentProperties={recentProperties}
+                              searchResults={searchResults}
+                              onViewDetails={handleViewDetails}
                             />
                           ))
                         ) : (
@@ -3456,7 +3562,8 @@ function RecentPropertyCard({
   searchResults = [],
   favoritePropertyIds = [],
   userClass = null,
-  setShowUpgradeModal
+  setShowUpgradeModal,
+  onViewDetails
 }: { 
   property: any;
   searchQuery?: string;
@@ -3468,6 +3575,7 @@ function RecentPropertyCard({
   favoritePropertyIds?: string[];
   userClass?: string | null;
   setShowUpgradeModal?: (show: boolean) => void;
+  onViewDetails?: (property: any) => void;
 }) {
   return (
     <div className="bg-white rounded-lg border border-gray-200 overflow-hidden hover:shadow-lg transition-all duration-200">
@@ -3567,25 +3675,7 @@ function RecentPropertyCard({
             Saved {new Date(property.saved_at).toLocaleDateString()}
           </div>
           <button 
-            onClick={() => {
-              // Create a clean back URL for the discover page
-              const baseUrl = new URL('/discover', window.location.origin);
-              baseUrl.searchParams.set('viewMode', viewMode);
-              
-              if (hasSearched && (searchResults.length > 0 || searchQuery)) {
-                // We have search results or an active search, preserve search state
-                if (searchQuery) {
-                  baseUrl.searchParams.set('q', searchQuery);
-                }
-                baseUrl.searchParams.set('hasResults', 'true');
-              } else if (!hasSearched && recentProperties.length > 0) {
-                // We're in favorites mode, preserve that
-                baseUrl.searchParams.set('showingFavorites', 'true');
-              }
-              
-              const backUrl = encodeURIComponent(baseUrl.toString());
-              window.location.href = `/discover/property/${property.property_id}?back=${backUrl}`;
-            }}
+            onClick={() => onViewDetails?.(property)}
             className="text-blue-600 hover:text-blue-700 text-sm font-medium cursor-pointer"
           >
             View Details
@@ -3631,7 +3721,8 @@ function PropertyCard({
   onToggleFavorite,
   viewMode = 'cards',
   recentProperties = [],
-  searchResults = []
+  searchResults = [],
+  onViewDetails
 }: { 
   property?: any;
   searchQuery?: string;
@@ -3641,6 +3732,7 @@ function PropertyCard({
   viewMode?: string;
   recentProperties?: any[];
   searchResults?: any[];
+  onViewDetails?: (property: any) => void;
 }) {
   // Use real property data if available, otherwise fallback to sample data
   const displayProperty = property || {
@@ -3745,25 +3837,7 @@ function PropertyCard({
             <span className="text-xs text-gray-500">Select</span>
           </div>
           <button 
-            onClick={() => {
-              // Create a clean back URL for the discover page
-              const baseUrl = new URL('/discover', window.location.origin);
-              baseUrl.searchParams.set('viewMode', viewMode);
-              
-              if (hasSearched && (searchResults.length > 0 || searchQuery)) {
-                // We have search results or an active search, preserve search state
-                if (searchQuery) {
-                  baseUrl.searchParams.set('q', searchQuery);
-                }
-                baseUrl.searchParams.set('hasResults', 'true');
-              } else if (!hasSearched && recentProperties.length > 0) {
-                // We're in favorites mode, preserve that
-                baseUrl.searchParams.set('showingFavorites', 'true');
-              }
-              
-              const backUrl = encodeURIComponent(baseUrl.toString());
-              window.location.href = `/discover/property/${displayProperty.id || displayProperty.property_id}?back=${backUrl}`;
-            }}
+            onClick={() => onViewDetails?.(displayProperty)}
             className="text-blue-600 hover:text-blue-700 text-sm font-medium cursor-pointer"
           >
             View Details
@@ -3774,6 +3848,157 @@ function PropertyCard({
   );
 }
 
+
+// FavoriteAllButton Component
+function FavoriteAllButton({ 
+  properties, 
+  userClass, 
+  onShowUpgradeModal, 
+  onFavoriteSuccess 
+}: {
+  properties: any[];
+  userClass: string | null;
+  onShowUpgradeModal: () => void;
+  onFavoriteSuccess: (favoritedPropertyIds: string[]) => void;
+}) {
+  const [isLoading, setIsLoading] = useState(false);
+  
+  // Count how many properties are not yet favorited
+  const [favoritePropertyIds, setFavoritePropertyIds] = useState<string[]>([]);
+  
+  // Get favorite status on mount
+  useEffect(() => {
+    const fetchFavoriteStatus = async () => {
+      try {
+        const response = await fetch('/api/favorites');
+        if (response.ok) {
+          const data = await response.json();
+          const currentFavoriteIds = data.favorites?.map((fav: any) => fav.property_id) || [];
+          setFavoritePropertyIds(currentFavoriteIds);
+        }
+      } catch (error) {
+        console.error('Error fetching favorite status:', error);
+      }
+    };
+    
+    fetchFavoriteStatus();
+  }, []);
+  
+  const unfavoritedProperties = properties.filter(property => {
+    const propertyId = property.property_id || property.id;
+    return !favoritePropertyIds.includes(propertyId);
+  });
+  
+  const handleFavoriteAll = async () => {
+    // Check access permissions
+    const currentUserClass = userClass as UserClass;
+    if (!hasAccess(currentUserClass, 'discover_favorite_properties')) {
+      onShowUpgradeModal();
+      return;
+    }
+    
+    if (unfavoritedProperties.length === 0) {
+      return; // Nothing to favorite
+    }
+    
+    setIsLoading(true);
+    const successfullyFavorited: string[] = [];
+    
+    try {
+      // Process properties in batches of 5 to avoid overwhelming the server
+      const batchSize = 5;
+      const batches = [];
+      
+      for (let i = 0; i < unfavoritedProperties.length; i += batchSize) {
+        batches.push(unfavoritedProperties.slice(i, i + batchSize));
+      }
+      
+      for (const batch of batches) {
+        const batchPromises = batch.map(async (property) => {
+          const propertyId = property.property_id || property.id;
+          
+          try {
+            const response = await fetch('/api/favorites', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                property_id: propertyId,
+                property_data: property,
+                action: 'add'
+              }),
+            });
+            
+            if (response.ok) {
+              successfullyFavorited.push(propertyId);
+              return { success: true, propertyId };
+            } else {
+              console.error(`Failed to favorite property ${propertyId}`);
+              return { success: false, propertyId };
+            }
+          } catch (error) {
+            console.error(`Error favoriting property ${propertyId}:`, error);
+            return { success: false, propertyId };
+          }
+        });
+        
+        await Promise.all(batchPromises);
+        
+        // Small delay between batches to be respectful to the server
+        if (batches.length > 1) {
+          await new Promise(resolve => setTimeout(resolve, 200));
+        }
+      }
+      
+      // Update local state and notify parent
+      setFavoritePropertyIds(prev => [...prev, ...successfullyFavorited]);
+      onFavoriteSuccess(successfullyFavorited);
+      
+      // Show success message
+      if (typeof window !== 'undefined' && (window as any).toast) {
+        (window as any).toast.success(`Successfully added ${successfullyFavorited.length} properties to favorites!`);
+      }
+      
+    } catch (error) {
+      console.error('Error in batch favorite operation:', error);
+      if (typeof window !== 'undefined' && (window as any).toast) {
+        (window as any).toast.error('Failed to add some properties to favorites. Please try again.');
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+  // Don't show button if no properties to favorite
+  if (unfavoritedProperties.length === 0) {
+    return null;
+  }
+  
+  return (
+    <button
+      onClick={handleFavoriteAll}
+      disabled={isLoading}
+      className={`flex items-center px-3 py-2 rounded-lg transition-colors text-sm ${
+        isLoading
+          ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+          : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+      }`}
+    >
+      {isLoading ? (
+        <>
+          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-400 mr-2"></div>
+          Adding...
+        </>
+      ) : (
+        <>
+          <Heart className="h-4 w-4 mr-2" />
+          ♥ Add All {unfavoritedProperties.length}
+        </>
+      )}
+    </button>
+  );
+}
 
 export default function DiscoverPage() {
   return (

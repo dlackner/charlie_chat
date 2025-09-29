@@ -39,6 +39,12 @@ function EngagePageContent() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedProperties, setSelectedProperties] = useState<number[]>([]);
   const [showDocumentDropdown, setShowDocumentDropdown] = useState(false);
+  
+  // Engagement Center dropdown states
+  const [showMarketingMaterials, setShowMarketingMaterials] = useState(false);
+  const [showLegalDocuments, setShowLegalDocuments] = useState(false);
+  const [showFinancialAnalysis, setShowFinancialAnalysis] = useState(false);
+  const [showDownload, setShowDownload] = useState(false);
   const [savedProperties, setSavedProperties] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -1053,7 +1059,7 @@ function EngagePageContent() {
       const recipientEmail = emailAddress;
       
       const mailtoLink = `mailto:${recipientEmail}?subject=${encodedSubject}&body=${encodedBody}`;
-      window.location.href = mailtoLink;
+      window.open(mailtoLink, '_blank');
 
       // Increment activity count for emails sent
       if (user?.id) {
@@ -1504,7 +1510,7 @@ function EngagePageContent() {
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a4 4 0 01-4-4V5a4 4 0 014-4h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a4 4 0 01-4 4z" />
                         </svg>
                         <div>
-                          <div>10-Year Cash Flow Report</div>
+                          <div>Cash Flow Report</div>
                           <div className="text-xs text-gray-500">Select 1 property</div>
                         </div>
                       </button>
@@ -1744,8 +1750,210 @@ function EngagePageContent() {
           </div>
         </div>
 
-        {/* Content based on view mode */}
-        {isLoading ? (
+        {/* Main Layout - Left Sidebar + Content */}
+        <div className="flex gap-6">
+          {/* Left Sidebar - Engagement Center */}
+          <div className="w-80 flex-shrink-0 hidden lg:block">
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 sticky top-6 overflow-hidden">
+              {/* Header */}
+              <div className="p-4 border-b border-gray-200">
+                <h3 className="text-lg font-semibold text-gray-900">Engagement Center</h3>
+                <div className="text-sm text-gray-600 mt-1">
+                  {selectedProperties.length} properties selected
+                </div>
+              </div>
+
+              {/* Marketing Materials Section */}
+              <div className="border-b border-gray-200">
+                <button
+                  onClick={() => setShowMarketingMaterials(!showMarketingMaterials)}
+                  className="w-full px-4 py-3 text-left hover:bg-gray-50 flex items-center justify-between"
+                >
+                  <span className="text-sm font-normal text-gray-900">MARKETING MATERIALS</span>
+                  <ChevronDown className={`h-4 w-4 text-gray-500 transition-transform ${showMarketingMaterials ? 'rotate-180' : ''}`} />
+                </button>
+                {showMarketingMaterials && (
+                  <div className="px-4 pb-3 space-y-2">
+                    <button
+                      onClick={() => handleDocumentAction('marketing-letter')}
+                      className="block w-full text-left py-2 px-3 text-sm text-gray-700 hover:bg-blue-100 disabled:text-gray-400 disabled:cursor-not-allowed rounded transition-colors"
+                      disabled={selectedProperties.length === 0}
+                      title="Generate marketing letters for selected properties"
+                    >
+                      <div className="flex items-center">
+                        <FileText className="h-4 w-4 mr-2" />
+                        <div>
+                          <div>Marketing Letter</div>
+                          <div className="text-xs text-gray-500">Batch multiple properties</div>
+                        </div>
+                      </div>
+                    </button>
+                    <button
+                      onClick={() => handleDocumentAction('email')}
+                      className="block w-full text-left py-2 px-3 text-sm text-gray-700 hover:bg-blue-100 disabled:text-gray-400 disabled:cursor-not-allowed rounded transition-colors"
+                      disabled={selectedProperties.length !== 1}
+                      title="Generate email template for selected property"
+                    >
+                      <div className="flex items-center">
+                        <div className="h-4 w-4 mr-2 flex items-center justify-center">
+                          <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                          </svg>
+                        </div>
+                        <div>
+                          <div>Marketing Email</div>
+                          <div className="text-xs text-gray-500">Select 1 property</div>
+                        </div>
+                      </div>
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Legal Documents Section */}
+              <div className="border-b border-gray-200">
+                <button
+                  onClick={() => setShowLegalDocuments(!showLegalDocuments)}
+                  className="w-full px-4 py-3 text-left hover:bg-gray-50 flex items-center justify-between"
+                >
+                  <span className="text-sm font-normal text-gray-900">LEGAL DOCUMENTS</span>
+                  <ChevronDown className={`h-4 w-4 text-gray-500 transition-transform ${showLegalDocuments ? 'rotate-180' : ''}`} />
+                </button>
+                {showLegalDocuments && (
+                  <div className="px-4 pb-3 space-y-2">
+                    <button
+                      onClick={() => handleDocumentAction('loi')}
+                      className="block w-full text-left py-2 px-3 text-sm text-gray-700 hover:bg-blue-100 disabled:text-gray-400 disabled:cursor-not-allowed rounded transition-colors"
+                      disabled={selectedProperties.length !== 1}
+                      title="Generate Letter of Intent - select exactly 1 property"
+                    >
+                      <div className="flex items-center">
+                        <FileText className="h-4 w-4 mr-2" />
+                        <div>
+                          <div>Letters of Intent</div>
+                          <div className="text-xs text-gray-500">Select 1 property</div>
+                        </div>
+                      </div>
+                    </button>
+                    <button
+                      onClick={() => handleDocumentAction('purchase-sale')}
+                      className="block w-full text-left py-2 px-3 text-sm text-gray-700 hover:bg-blue-100 disabled:text-gray-400 disabled:cursor-not-allowed rounded transition-colors"
+                      disabled={selectedProperties.length !== 1}
+                      title="Generate Purchase & Sale Agreement - select exactly 1 property"
+                    >
+                      <div className="flex items-center">
+                        <FileText className="h-4 w-4 mr-2" />
+                        <div>
+                          <div>Purchase & Sale</div>
+                          <div className="text-xs text-gray-500">Select 1 property</div>
+                        </div>
+                      </div>
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Financial Analysis Section */}
+              <div className="border-b border-gray-200">
+                <button
+                  onClick={() => setShowFinancialAnalysis(!showFinancialAnalysis)}
+                  className="w-full px-4 py-3 text-left hover:bg-gray-50 flex items-center justify-between"
+                >
+                  <span className="text-sm font-normal text-gray-900">FINANCIAL ANALYSIS</span>
+                  <ChevronDown className={`h-4 w-4 text-gray-500 transition-transform ${showFinancialAnalysis ? 'rotate-180' : ''}`} />
+                </button>
+                {showFinancialAnalysis && (
+                  <div className="px-4 pb-3 space-y-2">
+                    <button
+                      onClick={() => handleDocumentAction('create-offer')}
+                      className="block w-full text-left py-2 px-3 text-sm text-gray-700 hover:bg-blue-100 disabled:text-gray-400 disabled:cursor-not-allowed rounded transition-colors"
+                      disabled={selectedProperties.length !== 1}
+                      title="Create new analysis for selected property"
+                    >
+                      <div className="flex items-center">
+                        <FileText className="h-4 w-4 mr-2" />
+                        <div>
+                          <div>Create Analysis</div>
+                          <div className="text-xs text-gray-500">Select 1 property</div>
+                        </div>
+                      </div>
+                    </button>
+                    <button
+                      onClick={() => handleDocumentAction('view-offers')}
+                      className="block w-full text-left py-2 px-3 text-sm text-gray-700 hover:bg-blue-100 disabled:text-gray-400 disabled:cursor-not-allowed rounded transition-colors"
+                      title="View all your analyses"
+                    >
+                      <div className="flex items-center">
+                        <FileText className="h-4 w-4 mr-2" />
+                        <div>
+                          <div>View Analyses</div>
+                          <div className="text-xs text-gray-500">View all your analyses</div>
+                        </div>
+                      </div>
+                    </button>
+                    <button
+                      onClick={() => handleDocumentAction('cash-flow-report')}
+                      className="block w-full text-left py-2 px-3 text-sm text-gray-700 hover:bg-blue-100 disabled:text-gray-400 disabled:cursor-not-allowed rounded transition-colors"
+                      disabled={selectedProperties.length !== 1}
+                      title="Generate 10-year cash flow reports - select exactly 1 property"
+                    >
+                      <div className="flex items-center">
+                        <div className="h-4 w-4 mr-2 flex items-center justify-center">
+                          <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a4 4 0 01-4-4V5a4 4 0 014-4h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a4 4 0 01-4 4z" />
+                          </svg>
+                        </div>
+                        <div>
+                          <div>Cash Flow Report</div>
+                          <div className="text-xs text-gray-500">Select 1 property</div>
+                        </div>
+                      </div>
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Download Section */}
+              <div>
+                <button
+                  onClick={() => setShowDownload(!showDownload)}
+                  className="w-full px-4 py-3 text-left hover:bg-gray-50 flex items-center justify-between"
+                >
+                  <span className="text-sm font-normal text-gray-900">DOWNLOAD</span>
+                  <ChevronDown className={`h-4 w-4 text-gray-500 transition-transform ${showDownload ? 'rotate-180' : ''}`} />
+                </button>
+                {showDownload && (
+                  <div className="px-4 pb-3 space-y-2">
+                    <button
+                      onClick={() => handleDocumentAction('csv')}
+                      className="block w-full text-left py-2 px-3 text-sm text-gray-700 hover:bg-blue-100 disabled:text-gray-400 disabled:cursor-not-allowed rounded transition-colors"
+                      title="Export filtered results to CSV"
+                    >
+                      <div className="flex items-center">
+                        <FileText className="h-4 w-4 mr-2" />
+                        <div>
+                          <div>CSV Download</div>
+                          <div className="text-xs text-gray-500">Export filtered results</div>
+                        </div>
+                      </div>
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Helper text when no properties selected */}
+              {selectedProperties.length === 0 && (
+                <div className="p-4 text-sm text-gray-500 text-center">
+                  Select properties to enable actions
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Main Content Area */}
+          <div className="flex-1 min-w-0">
+            {/* Content based on view mode */}
+            {isLoading ? (
           <div className="flex items-center justify-center py-12">
             <div className="text-center">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
@@ -1798,7 +2006,7 @@ function EngagePageContent() {
             </div>
           </div>
         ) : viewMode === 'cards' ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredProperties.map((property) => (
               <PropertyCard
                 key={property.id}
@@ -2018,6 +2226,8 @@ function EngagePageContent() {
 
       {/* Alert Modal */}
       {AlertComponent}
+          </div>
+        </div>
     </div>
   );
 }

@@ -113,26 +113,6 @@ export const generatePurchaseAndSaleAgreement = async (
 
     const sections: Paragraph[] = [];
 
-    // Header with logo (if available)
-    if (userProfile.logoBase64) {
-      const logoBuffer = Buffer.from(userProfile.logoBase64.split(',')[1], 'base64');
-      sections.push(
-        new Paragraph({
-          children: [
-            new ImageRun({
-              data: logoBuffer,
-              transformation: {
-                width: 120,
-                height: 60
-              },
-              type: 'jpg'
-            })
-          ],
-          spacing: { after: 480 }
-        })
-      );
-    }
-
     // Document title and opening paragraph
     sections.push(
       new Paragraph({

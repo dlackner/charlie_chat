@@ -286,10 +286,10 @@ export async function GET(req: NextRequest) {
     const property_id = searchParams.get('property_id');
     
     if (property_id) {
-      // Check if specific property is favorited
+      // Check if specific property is favorited and get notes
       const { data, error } = await supabase
         .from('user_favorites')
-        .select('id, is_active')
+        .select('id, is_active, notes')
         .eq('user_id', user.id)
         .eq('property_id', property_id)
         .eq('is_active', true)
@@ -300,7 +300,10 @@ export async function GET(req: NextRequest) {
         return NextResponse.json({ error: 'Failed to check favorite status' }, { status: 500 });
       }
 
-      return NextResponse.json({ is_favorite: !!data });
+      return NextResponse.json({ 
+        is_favorite: !!data,
+        notes: data?.notes || ''
+      });
     } else {
       // Get all user favorites with full property data
       const { data, error } = await supabase
@@ -308,6 +311,7 @@ export async function GET(req: NextRequest) {
         .select(`
           property_id,
           favorite_status,
+          status,
           market_key,
           notes,
           recommendation_type,
@@ -345,6 +349,7 @@ export async function GET(req: NextRequest) {
       const transformedFavorites = data.map(fav => ({
         property_id: fav.property_id,
         status: normalizeStatus(fav.favorite_status) || 'Reviewing',
+        raw_status: fav.status, // Include the raw status field from database
         market_name: marketMap.get(fav.market_key) || null,
         market_key: fav.market_key,
         notes: fav.notes,

@@ -34,8 +34,18 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 
+// Pipeline stages definition
+const pipelineStages = [
+  { id: 'reviewing', name: 'Reviewing', color: 'bg-gray-100 border-gray-300' },
+  { id: 'analyzing', name: 'Analyzing', color: 'bg-yellow-100 border-yellow-300' },
+  { id: 'engaged', name: 'Engaged', color: 'bg-blue-100 border-blue-300' },
+  { id: 'loi-sent', name: 'LOI Sent', color: 'bg-purple-100 border-purple-300' },
+  { id: 'acquired', name: 'Acquired', color: 'bg-green-100 border-green-300' },
+  { id: 'rejected', name: 'Rejected', color: 'bg-red-100 border-red-300' }
+];
+
 // Draggable Property Card Component
-function DraggablePropertyCard({ property }: { property: any }) {
+function DraggablePropertyCard({ property, onClick }: { property: any; onClick?: (property: any) => void }) {
   const {
     attributes,
     listeners,
@@ -52,16 +62,25 @@ function DraggablePropertyCard({ property }: { property: any }) {
     zIndex: isDragging ? 1000 : 1,
   };
 
+  const handleClick = (e: React.MouseEvent) => {
+    // Only handle click if not dragging and onClick is provided
+    if (!isDragging && onClick) {
+      e.stopPropagation();
+      onClick(property);
+    }
+  };
+
   return (
     <div
       ref={setNodeRef}
       style={style}
       {...attributes}
       {...listeners}
+      onClick={handleClick}
       className={`bg-white rounded-lg p-4 shadow-sm border border-gray-200 transition-all duration-200 cursor-grab active:cursor-grabbing select-none touch-none ${
         isDragging 
           ? 'shadow-xl border-blue-300 bg-blue-50' 
-          : 'hover:shadow-md hover:border-gray-300'
+          : 'hover:shadow-md hover:border-gray-300 hover:bg-gray-50'
       }`}
     >
       {/* Property Address */}
@@ -99,7 +118,7 @@ function DraggablePropertyCard({ property }: { property: any }) {
 }
 
 // Droppable Column Component  
-function DroppableColumn({ stage, properties }: { stage: any, properties: any[] }) {
+function DroppableColumn({ stage, properties, onPropertyClick }: { stage: any, properties: any[], onPropertyClick?: (property: any) => void }) {
   const { setNodeRef, isOver } = useDroppable({
     id: `droppable-${stage.id}`,
   });
@@ -126,7 +145,7 @@ function DroppableColumn({ stage, properties }: { stage: any, properties: any[] 
       >
         <SortableContext items={properties.map(p => p.id)} strategy={verticalListSortingStrategy}>
           {properties.map((property) => (
-            <DraggablePropertyCard key={property.id} property={property} />
+            <DraggablePropertyCard key={property.id} property={property} onClick={onPropertyClick} />
           ))}
         </SortableContext>
         
@@ -136,6 +155,123 @@ function DroppableColumn({ stage, properties }: { stage: any, properties: any[] 
             <p className="text-sm">No properties in this stage</p>
           </div>
         )}
+      </div>
+    </div>
+  );
+}
+
+// Property Details Sidebar Component
+function PropertyDetailsSidebar({ property, isOpen, onClose }: { 
+  property: any; 
+  isOpen: boolean; 
+  onClose: () => void; 
+}) {
+  if (!property) return null;
+
+  return (
+    <div 
+      className={`fixed top-1/2 right-0 transform -translate-y-1/2 w-96 bg-white border border-gray-200 rounded-l-lg shadow-xl transition-transform duration-300 ease-in-out z-30 ${
+        isOpen ? 'translate-x-0' : 'translate-x-full'
+      }`}
+    >
+      {/* Left Chevron Close Button */}
+      <button
+        onClick={onClose}
+        className="absolute -left-14 top-1/2 transform -translate-y-1/2 bg-white border border-gray-200 rounded-full shadow-lg hover:bg-gray-50 p-3 z-10 transition-all hover:shadow-xl"
+      >
+        <svg className="w-8 h-8 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+        </svg>
+      </button>
+
+      {/* Header */}
+      <div className="flex items-center justify-between p-3 border-b border-gray-200">
+        <h2 className="text-lg font-semibold text-gray-900">Property Details</h2>
+        <button
+          onClick={onClose}
+          className="text-gray-400 hover:text-gray-600 p-1 rounded-full hover:bg-gray-100"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+
+      {/* Content */}
+      <div className="p-3 space-y-1.5">
+        {/* Property Image */}
+        <div className="w-full h-24 bg-gray-200 rounded-lg overflow-hidden mt-6">
+              <img 
+                src={`https://maps.googleapis.com/maps/api/streetview?size=400x300&location=${encodeURIComponent(property.address + ', ' + property.city + ', ' + property.state)}&key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}`}
+                alt="Property street view"
+                className="w-full h-full object-cover"
+                onError={(e) => {
+                  const target = e.target as HTMLImageElement;
+                  target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjNmNGY2Ii8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxNCIgZmlsbD0iIzk3YTNiNCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPk5vIEltYWdlIEF2YWlsYWJsZTwvdGV4dD48L3N2Zz4=';
+                }}
+              />
+            </div>
+
+            {/* Address */}
+            <div>
+              <h3 className="text-base font-semibold text-gray-900 mb-0">
+                {property.address}
+              </h3>
+              <p className="text-xs text-gray-600">
+                {property.city}, {property.state}
+              </p>
+            </div>
+
+            {/* Key Metrics */}
+            <div className="bg-gray-50 rounded-md p-2">
+              <h4 className="font-medium text-gray-900 mb-1 text-xs">Key Metrics</h4>
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                <div>
+                  <span className="text-gray-600">Estimated Value:</span>
+                  <div className="font-semibold text-green-600">{property.assessed}</div>
+                </div>
+                <div>
+                  <span className="text-gray-600">Units:</span>
+                  <div className="font-semibold">{property.units}</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Market & Stage Row */}
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <h4 className="font-medium text-gray-900 mb-0.5 text-xs">Market</h4>
+                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                  {property.market}
+                </span>
+              </div>
+              <div>
+                <h4 className="font-medium text-gray-900 mb-0.5 text-xs">Pipeline Stage</h4>
+                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                  {pipelineStages.find((s: any) => s.id === property.stage)?.name || 'Unknown'}
+                </span>
+              </div>
+            </div>
+
+            {/* Notes */}
+            {property.notes && (
+              <div>
+                <h4 className="font-medium text-gray-900 mb-0.5 text-xs">Notes</h4>
+                <div className="bg-gray-50 rounded-md p-1.5">
+                  <p className="text-xs text-gray-700">{property.notes}</p>
+                </div>
+              </div>
+            )}
+
+            {/* Footer Actions - moved inside content to eliminate white space */}
+            <div className="pt-1">
+              <a
+                href={`/discover/property/${property.id}?back=${encodeURIComponent('/dashboard/pipeline')}`}
+                className="w-full inline-flex items-center justify-center px-3 py-1.5 border border-transparent rounded-md shadow-sm text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+              >
+                View Full Details
+              </a>
+            </div>
       </div>
     </div>
   );
@@ -151,6 +287,10 @@ export default function PipelinePage() {
   const [showMarketDropdown, setShowMarketDropdown] = useState(false);
   const [activeId, setActiveId] = useState<string | null>(null);
   const marketDropdownRef = useRef<HTMLDivElement>(null);
+  
+  // Side panel state
+  const [selectedProperty, setSelectedProperty] = useState<any>(null);
+  const [showPropertySidebar, setShowPropertySidebar] = useState(false);
   
   // Property Intelligence Chart state
   const [intelligenceData, setIntelligenceData] = useState<any[]>([]);
@@ -288,15 +428,6 @@ export default function PipelinePage() {
     })
   );
 
-  // Pipeline stages in order
-  const pipelineStages = [
-    { id: 'reviewing', name: 'Reviewing', color: 'bg-gray-100 border-gray-300' },
-    { id: 'analyzing', name: 'Analyzing', color: 'bg-yellow-100 border-yellow-300' },
-    { id: 'engaged', name: 'Engaged', color: 'bg-blue-100 border-blue-300' },
-    { id: 'loi-sent', name: 'LOI Sent', color: 'bg-purple-100 border-purple-300' },
-    { id: 'acquired', name: 'Acquired', color: 'bg-green-100 border-green-300' },
-    { id: 'rejected', name: 'Rejected', color: 'bg-red-100 border-red-300' }
-  ];
 
   // Get unique markets from properties (excluding null/undefined)
   const availableMarkets = Array.from(new Set(propertiesData.map(p => p.market).filter(Boolean)));
@@ -443,7 +574,9 @@ export default function PipelinePage() {
       onDragOver={handleDragOver}
       onDragEnd={handleDragEnd}
     >
-      <div className="min-h-screen bg-gray-50 py-6">
+      <div className={`min-h-screen bg-gray-50 py-6 transition-all duration-300 ${
+        showPropertySidebar ? 'mr-96' : ''
+      }`}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         
         {/* Header */}
@@ -623,7 +756,11 @@ export default function PipelinePage() {
               <DroppableColumn 
                 key={stage.id} 
                 stage={stage} 
-                properties={stageProperties} 
+                properties={stageProperties}
+                onPropertyClick={(property) => {
+                  setSelectedProperty(property);
+                  setShowPropertySidebar(true);
+                }}
               />
             );
           })}
@@ -683,6 +820,16 @@ export default function PipelinePage() {
       ) : null}
     </DragOverlay>
       </DndContext>
+      
+      {/* Property Details Sidebar */}
+      <PropertyDetailsSidebar
+        property={selectedProperty}
+        isOpen={showPropertySidebar}
+        onClose={() => {
+          setShowPropertySidebar(false);
+          setSelectedProperty(null);
+        }}
+      />
     </AuthGuard>
   );
 }

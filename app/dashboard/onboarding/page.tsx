@@ -1,8 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { AuthGuard } from '@/components/auth/AuthGuard';
 import { useRouter } from 'next/navigation';
+import { createSupabaseBrowserClient } from '@/lib/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 import { DownloadableResourcesSidebar } from '@/components/ui/DownloadableResourcesSidebar';
 import { 
   CheckCircle, 
@@ -38,7 +40,11 @@ interface Task {
 export default function OnboardingPage() {
   const [currentDay, setCurrentDay] = useState(1);
   const [completedTasks, setCompletedTasks] = useState<Set<string>>(new Set());
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
   const router = useRouter();
+  const { user } = useAuth();
+  const supabase = createSupabaseBrowserClient();
 
   const tasks: Task[] = [
     // Day 1: Foundation
@@ -253,14 +259,64 @@ export default function OnboardingPage() {
     }
   ];
 
-  const toggleTask = (taskId: string) => {
+  // Load completed tasks from database on mount
+  useEffect(() => {
+    const loadCompletedTasks = async () => {
+      if (!user?.id) return;
+
+      try {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('onboarding_completed_tasks')
+          .eq('user_id', user.id)
+          .single();
+
+        if (profile?.onboarding_completed_tasks) {
+          setCompletedTasks(new Set(profile.onboarding_completed_tasks));
+        }
+      } catch (error) {
+        console.error('Error loading completed tasks:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadCompletedTasks();
+  }, [user?.id, supabase]);
+
+  const toggleTask = async (taskId: string) => {
+    if (!user?.id || isSaving) return;
+
     const newCompleted = new Set(completedTasks);
     if (newCompleted.has(taskId)) {
       newCompleted.delete(taskId);
     } else {
       newCompleted.add(taskId);
     }
+    
     setCompletedTasks(newCompleted);
+    setIsSaving(true);
+
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ 
+          onboarding_completed_tasks: Array.from(newCompleted) 
+        })
+        .eq('user_id', user.id);
+
+      if (error) {
+        console.error('Error saving completed tasks:', error);
+        // Revert the change on error
+        setCompletedTasks(completedTasks);
+      }
+    } catch (error) {
+      console.error('Error saving completed tasks:', error);
+      // Revert the change on error
+      setCompletedTasks(completedTasks);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const getTasksByColumn = (column: 'todo' | 'today' | 'completed') => {
@@ -291,6 +347,19 @@ export default function OnboardingPage() {
     if (day < currentDay) return 'past';
     return 'future';
   };
+
+  if (isLoading) {
+    return (
+      <AuthGuard>
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <p className="text-sm text-gray-700">Loading your progress...</p>
+          </div>
+        </div>
+      </AuthGuard>
+    );
+  }
 
   return (
     <AuthGuard>
@@ -456,7 +525,7 @@ export default function OnboardingPage() {
             </div>
             <div className="space-y-3">
               {getTasksByColumn('today').map((task) => (
-                <TaskCard key={task.id} task={task} onToggle={toggleTask} router={router} />
+                <TaskCard key={task.id} task={task} onToggle={toggleTask} router={router} isSaving={isSaving} />
               ))}
               {getTasksByColumn('today').length === 0 && (
                 <div className="text-center py-8 text-gray-500">
@@ -479,7 +548,7 @@ export default function OnboardingPage() {
             </div>
             <div className="space-y-3">
               {getTasksByColumn('completed').map((task) => (
-                <TaskCard key={task.id} task={task} onToggle={toggleTask} router={router} completed />
+                <TaskCard key={task.id} task={task} onToggle={toggleTask} router={router} completed isSaving={isSaving} />
               ))}
               {getTasksByColumn('completed').length === 0 && (
                 <div className="text-center py-8 text-gray-500">
@@ -507,12 +576,14 @@ function TaskCard({
   task, 
   onToggle, 
   router,
-  completed = false 
+  completed = false,
+  isSaving = false
 }: { 
   task: Task; 
   onToggle: (id: string) => void;
   router: any;
   completed?: boolean;
+  isSaving?: boolean;
 }) {
   return (
     <div className={`p-3 rounded-lg border transition-all duration-200 hover:shadow-sm ${
@@ -523,11 +594,18 @@ function TaskCard({
       <div className="flex items-start space-x-3">
         <button
           onClick={() => onToggle(task.id)}
-          className={`mt-0.5 flex-shrink-0 ${
-            completed ? 'text-green-600' : 'text-gray-400 hover:text-gray-600'
+          disabled={isSaving}
+          className={`mt-0.5 flex-shrink-0 transition-opacity ${
+            isSaving 
+              ? 'opacity-50 cursor-not-allowed' 
+              : completed 
+                ? 'text-green-600' 
+                : 'text-gray-400 hover:text-gray-600'
           }`}
         >
-          {completed ? (
+          {isSaving ? (
+            <div className="h-5 w-5 border-2 border-gray-300 border-t-blue-600 rounded-full animate-spin" />
+          ) : completed ? (
             <CheckCircle className="h-5 w-5" />
           ) : (
             <Circle className="h-5 w-5" />

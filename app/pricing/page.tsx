@@ -335,7 +335,7 @@ export default function PricingPage() {
         <div data-plan="plus" className="border border-gray-300 rounded-lg p-6 bg-white shadow hover:shadow-lg hover:-translate-y-1 transform transition duration-200 ease-in-out flex flex-col relative">
           {/* Most Popular Badge */}
           <div className="absolute -top-6 left-6 z-10">
-            <span className="bg-gradient-to-r from-blue-500 to-blue-600 text-white text-xs font-extrabold px-4 py-2 rounded-full shadow-lg border-2 border-white whitespace-nowrap">MOST POPULAR</span>
+            <span className="bg-gradient-to-r from-blue-500 to-blue-600 text-white text-xs font-extrabold px-4 py-2 rounded-full shadow-lg border-2 border-white whitespace-nowrap">STRONG FOUNDATION</span>
           </div>
           <h2 className="text-2xl font-semibold mb-2">Plus</h2>
           {isAnnual ? (
@@ -371,7 +371,7 @@ export default function PricingPage() {
         <div className="border border-gray-300 rounded-lg p-6 bg-white shadow hover:shadow-lg hover:-translate-y-1 transform transition duration-200 ease-in-out flex flex-col relative">
           {/* Best Value Badge */}
           <div className="absolute -top-6 left-6 z-10">
-            <span className="bg-gradient-to-r from-indigo-600 to-indigo-700 text-white text-xs font-extrabold px-4 py-2 rounded-full shadow-lg border-2 border-white whitespace-nowrap">BEST VALUE</span>
+            <span className="bg-gradient-to-r from-indigo-600 to-indigo-700 text-white text-xs font-extrabold px-4 py-2 rounded-full shadow-lg border-2 border-white whitespace-nowrap">MOST POPULAR</span>
           </div>
           <h2 className="text-2xl font-semibold mb-2">Professional</h2>
           {isAnnual ? (

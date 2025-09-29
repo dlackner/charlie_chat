@@ -350,7 +350,7 @@ export default function BuyBoxPage() {
         .eq('user_id', user.id)
         .eq('recommendation_type', 'algorithm')
         .eq('status', 'pending')
-        .gte('generated_at', weekStart)
+        // .gte('generated_at', weekStart)  // Commented out to show all pending recommendations
         .order('saved_at', { ascending: true });
         
       if (error) {

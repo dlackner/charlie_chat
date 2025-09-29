@@ -402,6 +402,29 @@ function Home() {
       const financingDays = Math.min(Number(formData.financingPeriod) || 45, 999);
       const closeDays = Math.min(Number(formData.daysToClose) || 30, 999);
 
+      // Validate required fields before generating document
+      const missingFields: string[] = [];
+      
+      if (!formData.propertyAddress.trim()) missingFields.push("Property Address");
+      if (!formData.purchasePrice.trim()) missingFields.push("Purchase Price");
+      if (!formData.earnestMoney.trim()) missingFields.push("Earnest Money");
+      if (!formData.ownerFirst.trim()) missingFields.push("Owner First Name");
+      if (!formData.ownerLast.trim()) missingFields.push("Owner Last Name");
+      if (!formData.ownerStreet.trim()) missingFields.push("Owner Street Address");
+      if (!formData.ownerCity.trim()) missingFields.push("Owner City");
+      if (!formData.ownerState.trim()) missingFields.push("Owner State");
+      if (!formData.ownerZip.trim()) missingFields.push("Owner ZIP Code");
+
+      if (missingFields.length > 0) {
+        const errorMessage = `Please add your Offer Terms to the template`;
+        if (typeof window !== 'undefined' && (window as any).toast) {
+          (window as any).toast.error(errorMessage);
+        } else {
+          showError(errorMessage, 'Required Fields Missing');
+        }
+        return;
+      }
+
       const data = {
         ...formData,
         yourName: userProfile ? `${userProfile.first_name} ${userProfile.last_name}` : '',
@@ -1504,13 +1527,27 @@ function Home() {
     } catch (error) {
       console.error('Error generating LOI document:', error);
 
-      const errorMessage = 'An error occurred while generating the LOI document. Please try again.';
+      // Check if this is a specific validation error or a generic error
+      let errorMessage = 'An error occurred while generating the LOI document. Please try again.';
+      let errorTitle = 'Document Generation Error';
+      
+      if (error instanceof Error) {
+        if (error.message.includes('required') || error.message.includes('missing')) {
+          errorMessage = error.message;
+          errorTitle = 'Required Information Missing';
+        } else if (error.message.includes('format') || error.message.includes('invalid')) {
+          errorMessage = `Invalid data format: ${error.message}`;
+          errorTitle = 'Data Format Error';
+        } else {
+          errorMessage = `Document generation failed: ${error.message}`;
+        }
+      }
 
       // Show error toast
       if (typeof window !== 'undefined' && (window as any).toast) {
         (window as any).toast.error(errorMessage);
       } else {
-        showError(errorMessage, 'Validation Error');
+        showError(errorMessage, errorTitle);
       }
     }
   };

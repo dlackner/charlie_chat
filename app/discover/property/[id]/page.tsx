@@ -8,7 +8,7 @@
 
 import { useState, useEffect } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
-import { ArrowLeft, Printer, ExternalLink, ChevronDown, ChevronUp, Zap, Phone, Mail, User } from 'lucide-react';
+import { ArrowLeft, Printer, ExternalLink, ChevronDown, ChevronUp, Zap, Phone, Mail, User, Heart } from 'lucide-react';
 import { StreetViewImage } from '@/components/ui/StreetViewImage';
 import { PropertyInfoSections } from '@/components/shared/property-details/PropertyInfoSections';
 import { AIInvestmentAnalysis } from '@/components/shared/property-details/AIInvestmentAnalysis';
@@ -34,6 +34,8 @@ export default function PropertyDetailsPage() {
   const [isSkipTraceExpanded, setIsSkipTraceExpanded] = useState(false);
   const [isSkipTracing, setIsSkipTracing] = useState(false);
   const [skipTraceData, setSkipTraceData] = useState<any>(null);
+  const [isFavorited, setIsFavorited] = useState(false);
+  const [isToggling, setIsToggling] = useState(false);
 
   // Fetch user class
   useEffect(() => {
@@ -131,8 +133,56 @@ export default function PropertyDetailsPage() {
     fetchPropertyData();
   }, [params.id]);
 
+  // Check if property is favorited
+  useEffect(() => {
+    const checkFavoriteStatus = async () => {
+      if (!property?.id || !user?.id) return;
+      
+      try {
+        const response = await fetch(`/api/favorites?property_id=${property.id}`);
+        if (response.ok) {
+          const data = await response.json();
+          setIsFavorited(data.is_favorite);
+        }
+      } catch (error) {
+        console.error('Error checking favorite status:', error);
+      }
+    };
+
+    checkFavoriteStatus();
+  }, [property?.id, user?.id]);
+
   const handlePrint = () => {
     window.print();
+  };
+
+  const handleToggleFavorite = async () => {
+    if (!property?.id || !user?.id || isToggling) return;
+    
+    setIsToggling(true);
+    try {
+      const response = await fetch('/api/favorites', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          property_id: property.id,
+          property_data: property,
+          action: isFavorited ? 'remove' : 'add'
+        }),
+      });
+
+      if (response.ok) {
+        setIsFavorited(!isFavorited);
+      } else {
+        console.error('Failed to toggle favorite');
+      }
+    } catch (error) {
+      console.error('Error toggling favorite:', error);
+    } finally {
+      setIsToggling(false);
+    }
   };
 
   const handleBackToSearch = () => {
@@ -427,6 +477,25 @@ export default function PropertyDetailsPage() {
               width={1200}
               height={384}
             />
+            
+            {/* Heart Favorite Button */}
+            {user && (
+              <button
+                onClick={handleToggleFavorite}
+                disabled={isToggling}
+                className={`absolute top-4 right-4 p-2 rounded-full shadow-lg transition-all hover:scale-105 ${
+                  isFavorited 
+                    ? 'bg-red-500 text-white hover:bg-red-600' 
+                    : 'bg-white/90 text-gray-600 hover:bg-white hover:text-red-500'
+                } ${isToggling ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                title={isFavorited ? 'Remove from favorites' : 'Add to favorites'}
+              >
+                <Heart 
+                  className="w-6 h-6" 
+                  fill={isFavorited ? 'currentColor' : 'none'} 
+                />
+              </button>
+            )}
             
             {/* Zillow Button */}
             <button 
