@@ -38,7 +38,6 @@ function EngagePageContent() {
   const [showMarketDropdown, setShowMarketDropdown] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedProperties, setSelectedProperties] = useState<number[]>([]);
-  const [showDocumentDropdown, setShowDocumentDropdown] = useState(false);
   
   // Engagement Center dropdown states
   const [showMarketingMaterials, setShowMarketingMaterials] = useState(false);
@@ -55,7 +54,6 @@ function EngagePageContent() {
   const [selectedPropertyOffers, setSelectedPropertyOffers] = useState<any[]>([]);
   const [showCashFlowReportsModal, setShowCashFlowReportsModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
   const statusDropdownRef = useRef<HTMLDivElement>(null);
   const marketDropdownRef = useRef<HTMLDivElement>(null);
   const statusDropdownTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -1246,7 +1244,6 @@ function EngagePageContent() {
 
   const handleDocumentAction = (action: string) => {
     // Process bulk action for selected properties
-    setShowDocumentDropdown(false);
     
     // TODO: Implement document generation logic
     switch (action) {
@@ -1319,9 +1316,7 @@ function EngagePageContent() {
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setShowDocumentDropdown(false);
-      }
+      // Old engagement center dropdown removed
       
       // Close filter dropdowns when clicking outside
       if (statusDropdownRef.current && !statusDropdownRef.current.contains(event.target as Node)) {
@@ -1393,146 +1388,7 @@ function EngagePageContent() {
 
             {/* Right side - Actions */}
             <div className="flex items-center space-x-3">
-              <div className="relative" ref={dropdownRef}>
-                <button 
-                  onClick={() => setShowDocumentDropdown(!showDocumentDropdown)}
-                  className="flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors text-sm"
-                >
-                  <FileText className="h-4 w-4 mr-2" />
-                  Engagement Center ({selectedProperties.length})
-                  <ChevronDown className="h-4 w-4 ml-2" />
-                </button>
-
-                {/* Document Generation Dropdown */}
-                {showDocumentDropdown && (
-                  <div className="absolute right-0 mt-2 w-64 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
-                    <div className="py-2">
-                      {/* Marketing Materials Section - Hide section header on mobile */}
-                      <div className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider border-b border-gray-100 hidden lg:block">
-                        Marketing Materials
-                      </div>
-                      {/* Hide Marketing Letter on mobile */}
-                      <button
-                        onClick={() => handleDocumentAction('marketing-letter')}
-                        disabled={selectedProperties.length === 0}
-                        className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 disabled:text-gray-400 disabled:cursor-not-allowed flex items-center hidden lg:flex"
-                      >
-                        <FileText className="h-4 w-4 mr-3" />
-                        <div>
-                          <div>Marketing Letter</div>
-                          <div className="text-xs text-gray-500">Batch multiple properties</div>
-                        </div>
-                      </button>
-                      {/* Keep Marketing Email available on mobile */}
-                      <button
-                        onClick={() => handleDocumentAction('email')}
-                        disabled={selectedProperties.length !== 1}
-                        className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 disabled:text-gray-400 disabled:cursor-not-allowed flex items-center"
-                      >
-                        <svg className="h-4 w-4 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                        </svg>
-                        <div>
-                          <div>Marketing Email</div>
-                          <div className="text-xs text-gray-500">Select 1 property</div>
-                        </div>
-                      </button>
-
-                      {/* Legal Documents Section - Hide on mobile */}
-                      <div className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider border-b border-gray-100 mt-2 hidden lg:block">
-                        Legal Documents
-                      </div>
-                      {/* Hide Letters of Intent on mobile */}
-                      <button
-                        onClick={() => handleDocumentAction('loi')}
-                        disabled={selectedProperties.length !== 1}
-                        className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 disabled:text-gray-400 disabled:cursor-not-allowed flex items-center hidden lg:flex"
-                      >
-                        <FileText className="h-4 w-4 mr-3" />
-                        <div>
-                          <div>Letters of Intent</div>
-                          <div className="text-xs text-gray-500">Select 1 property</div>
-                        </div>
-                      </button>
-
-                      {/* Hide Purchase & Sale on mobile */}
-                      <button
-                        onClick={() => handleDocumentAction('purchase-sale')}
-                        disabled={selectedProperties.length !== 1}
-                        className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 disabled:text-gray-400 disabled:cursor-not-allowed flex items-center hidden lg:flex"
-                      >
-                        <FileText className="h-4 w-4 mr-3" />
-                        <div>
-                          <div>Purchase & Sale</div>
-                          <div className="text-xs text-gray-500">Select 1 property</div>
-                        </div>
-                      </button>
-
-                      {/* Financials Section - Hide on mobile */}
-                      <div className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider border-b border-gray-100 mt-2 hidden lg:block">
-                        Financials
-                      </div>
-                      {/* Hide Create Offer on mobile */}
-                      <button
-                        onClick={() => handleDocumentAction('create-offer')}
-                        disabled={selectedProperties.length !== 1}
-                        className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 disabled:text-gray-400 disabled:cursor-not-allowed flex items-center hidden lg:flex"
-                      >
-                        <svg className="h-4 w-4 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                        </svg>
-                        <div>
-                          <div>Create Analysis</div>
-                          <div className="text-xs text-gray-500">Select 1 property</div>
-                        </div>
-                      </button>
-                      
-                      {/* Hide View Offers on mobile */}
-                      <button
-                        onClick={() => handleDocumentAction('view-offers')}
-                        className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center hidden lg:flex"
-                      >
-                        <svg className="h-4 w-4 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
-                        </svg>
-                        <div>
-                          <div>View Analyses</div>
-                          <div className="text-xs text-gray-500">View all your analyses</div>
-                        </div>
-                      </button>
-                      
-                      {/* Hide Cash Flow Report on mobile */}
-                      <button
-                        onClick={() => handleDocumentAction('cash-flow-report')}
-                        className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center hidden lg:flex"
-                      >
-                        <svg className="h-4 w-4 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a4 4 0 01-4-4V5a4 4 0 014-4h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a4 4 0 01-4 4z" />
-                        </svg>
-                        <div>
-                          <div>Cash Flow Report</div>
-                          <div className="text-xs text-gray-500">Select 1 property</div>
-                        </div>
-                      </button>
-
-                      {/* Hide divider on mobile */}
-                      <div className="border-t border-gray-200 my-2 hidden lg:block"></div>
-                      
-                      {/* Hide CSV Download on mobile */}
-                      <button
-                        onClick={() => handleDocumentAction('csv')}
-                        className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center hidden lg:flex"
-                      >
-                        <FileText className="h-4 w-4 mr-3" />
-                        <div>
-                          <div>CSV Download</div>
-                          <div className="text-xs text-gray-500">Export filtered results</div>
-                        </div>
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
+              {/* Old engagement center button removed */}
             </div>
           </div>
         </div>

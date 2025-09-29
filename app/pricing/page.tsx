@@ -355,9 +355,9 @@ export default function PricingPage() {
           <ul className="text-sm space-y-1 text-gray-800 mb-4 flex flex-col">
             <li className="flex items-start"><span className="w-2 h-2 bg-blue-600 rounded-full mt-2 mr-3 flex-shrink-0"></span>Acquisitions Director — Scout off-market opportunities</li>
             <li className="flex items-start"><span className="w-2 h-2 bg-blue-600 rounded-full mt-2 mr-3 flex-shrink-0"></span>Marketing Assistant — Create letters and emails</li>
-            <li className="flex items-start"><span className="w-2 h-2 bg-blue-600 rounded-full mt-2 mr-3 flex-shrink-0"></span>MBA Analyst — Model offers and generate financial statements</li>
-            <li className="flex items-start"><span className="w-2 h-2 bg-blue-600 rounded-full mt-2 mr-3 flex-shrink-0"></span>Attorney — Generate LOIs and Purchase & Sale Agreements</li>
-            <li className="flex items-start"><span className="w-2 h-2 bg-blue-600 rounded-full mt-2 mr-3 flex-shrink-0"></span>Financing Advisor — Identify banks and S&L's</li>
+            <li className="flex items-start"><span className="w-2 h-2 bg-blue-600 rounded-full mt-2 mr-3 flex-shrink-0"></span>Underwriting Manager — Model offers and generate financial statements</li>
+            <li className="flex items-start"><span className="w-2 h-2 bg-blue-600 rounded-full mt-2 mr-3 flex-shrink-0"></span>Legal Department — Generate LOIs and Purchase & Sale Agreements</li>
+            <li className="flex items-start"><span className="w-2 h-2 bg-blue-600 rounded-full mt-2 mr-3 flex-shrink-0"></span>Investor Relations Specialist — Identify banks and S&L's</li>
           </ul>
           <button
             onClick={() => handleCheckout(isAnnual ? PLUS_ANNUAL : PLUS_MONTHLY, isAnnual ? "annual" : "monthly")}
@@ -630,7 +630,7 @@ export default function PricingPage() {
             </div>
 
             <div className="grid grid-cols-5 gap-0 hover:bg-gray-50/50 transition-colors">
-              <div className="px-6 py-4 text-sm font-medium text-gray-900">MBA Analyst — Model offers and generate financial statements</div>
+              <div className="px-6 py-4 text-sm font-medium text-gray-900">Underwriting Manager — Model offers and generate financial statements</div>
               <div className="px-6 py-4 text-center border-l border-gray-100">
                 <div className="w-5 h-5 rounded-full bg-gray-200 mx-auto flex items-center justify-center">
                   <div className="w-2 h-0.5 bg-gray-400"></div>
@@ -660,7 +660,7 @@ export default function PricingPage() {
             </div>
 
             <div className="grid grid-cols-5 gap-0 hover:bg-gray-50/50 transition-colors">
-              <div className="px-6 py-4 text-sm font-medium text-gray-900">Attorney — Generate LOIs and Purchase & Sale Agreements</div>
+              <div className="px-6 py-4 text-sm font-medium text-gray-900">Legal Department — Generate LOIs and Purchase & Sale Agreements</div>
               <div className="px-6 py-4 text-center border-l border-gray-100">
                 <div className="w-5 h-5 rounded-full bg-gray-200 mx-auto flex items-center justify-center">
                   <div className="w-2 h-0.5 bg-gray-400"></div>
@@ -690,7 +690,7 @@ export default function PricingPage() {
             </div>
 
             <div className="grid grid-cols-5 gap-0 hover:bg-gray-50/50 transition-colors">
-              <div className="px-6 py-4 text-sm font-medium text-gray-900">Financing Advisor — Identify banks and S&L's</div>
+              <div className="px-6 py-4 text-sm font-medium text-gray-900">Investor Relations Specialist — Identify banks and S&L's</div>
               <div className="px-6 py-4 text-center border-l border-gray-100">
                 <div className="w-5 h-5 rounded-full bg-gray-200 mx-auto flex items-center justify-center">
                   <div className="w-2 h-0.5 bg-gray-400"></div>
@@ -1338,7 +1338,7 @@ export default function PricingPage() {
               <ul className="list-disc pl-6 space-y-1">
                 <li>Acquisitions Director → Off-market property scouting</li>
                 <li>Analyst → Financial modeling and scenario testing</li>
-                <li>Attorney → Drafting LOIs and contracts</li>
+                <li>Legal Department → Drafting LOIs and contracts</li>
                 <li>Marketing assistant → Outreach campaigns and letters</li>
                 <li>Financing advisor → Lender and capital source recommendations</li>
               </ul>
