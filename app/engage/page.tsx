@@ -216,7 +216,9 @@ function EngagePageContent() {
     const matchesStatus = selectedStatuses.length === 0 || selectedStatuses.includes(property.pipelineStatus);
     
     // Pipeline stage filtering
-    const matchesPipelineStage = selectedPipelineStage === 'all' || property.pipelineStatus === selectedPipelineStage;
+    const matchesPipelineStage = selectedPipelineStage === 'all' || 
+      property.pipelineStatus === selectedPipelineStage ||
+      (selectedPipelineStage === 'Acq/Rej' && (property.pipelineStatus === 'Acquired' || property.pipelineStatus === 'Rejected'));
     
     // Enhanced market matching: include both market name AND geographic location
     let matchesMarket = selectedMarkets.length === 0;
@@ -1085,6 +1087,11 @@ function EngagePageContent() {
 
       // Add reminder notes to property card
       try {
+        if (!user?.id) {
+          console.error('User ID not available for updating notes');
+          return;
+        }
+        
         const today = new Date();
         
         // Calculate reminder dates
@@ -1109,8 +1116,8 @@ function EngagePageContent() {
         const { data: currentFavorite } = await supabase
           .from('user_favorites')
           .select('notes')
-          .eq('user_id', user?.id)
-          .eq('property_id', property.original_property_id)
+          .eq('user_id', user.id)
+          .eq('property_id', property.property_id)
           .single();
         
         const existingNotes = currentFavorite?.notes || '';
@@ -1125,7 +1132,7 @@ function EngagePageContent() {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            property_id: property.original_property_id,
+            property_id: property.property_id,
             notes: updatedNotes
           })
         });
@@ -1245,12 +1252,18 @@ function EngagePageContent() {
             
             const reminderNote = `@${formatDate(tenDaysLater)} Marketing letter follow-up reminder`;
             
+            // Add null check for user ID
+            if (!user?.id) {
+              console.error('User ID not available for updating notes');
+              return;
+            }
+            
             // First, get the current notes from the database
             const { data: currentFavorite } = await supabase
               .from('user_favorites')
               .select('notes')
               .eq('user_id', user.id)
-              .eq('property_id', property.original_property_id)
+              .eq('property_id', property.property_id)
               .single();
             
             const existingNotes = currentFavorite?.notes || '';
@@ -1265,7 +1278,7 @@ function EngagePageContent() {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
-                property_id: property.original_property_id,
+                property_id: property.property_id,
                 notes: updatedNotes
               })
             });
@@ -1579,12 +1592,13 @@ function EngagePageContent() {
                 </div>
                 
                 {/* Clear Filters Button */}
-                {(selectedStatuses.length > 0 || selectedMarkets.length > 0 || selectedSource !== 'All') && (
+                {(selectedStatuses.length > 0 || selectedMarkets.length > 0 || selectedSource !== 'All' || selectedPipelineStage !== 'all') && (
                   <button
                     onClick={() => {
                       setSelectedStatuses([]);
                       setSelectedMarkets([]);
                       setSelectedSource('All');
+                      setSelectedPipelineStage('all');
                     }}
                     className="text-sm text-blue-600 hover:text-blue-700 font-medium text-left"
                   >
@@ -1933,7 +1947,40 @@ function EngagePageContent() {
                     return `$${value.toFixed(0)}`;
                   };
 
-                  const allMetrics = [totalMetrics, ...stageMetrics];
+                  // Calculate Acquired/Rejected metrics
+                  const acquiredRejectedProperties = savedProperties.filter(property => {
+                    // Include Acquired and Rejected stages
+                    const isAcquiredOrRejected = ['Acquired', 'Rejected'].includes(property.pipelineStatus);
+                    
+                    // Apply same market and source filters
+                    let matchesMarket = selectedMarkets.length === 0;
+                    if (!matchesMarket && selectedMarkets.length > 0) {
+                      if (selectedMarkets.includes('No Market')) {
+                        matchesMarket = !property.market || property.market === 'Unknown Market' || property.market.trim() === '';
+                      }
+                      if (!matchesMarket) {
+                        matchesMarket = selectedMarkets.some(market => 
+                          market !== 'No Market' && property.market === market
+                        );
+                      }
+                    }
+                    
+                    const matchesSource = selectedSource === 'All' || 
+                      (selectedSource === 'Algorithm' && property.source === 'A') ||
+                      (selectedSource === 'Manual' && property.source === 'M');
+                    
+                    return isAcquiredOrRejected && matchesMarket && matchesSource;
+                  });
+
+                  const acquiredRejectedMetrics = {
+                    name: 'Acq/Rej',
+                    count: acquiredRejectedProperties.length,
+                    units: acquiredRejectedProperties.reduce((sum, p) => sum + (parseInt(p.units) || 0), 0),
+                    assessedValue: acquiredRejectedProperties.reduce((sum, p) => sum + (parseFloat(p.assessed?.replace(/[$,]/g, '')) || 0), 0),
+                    estimatedValue: acquiredRejectedProperties.reduce((sum, p) => sum + (parseFloat(p.estimated?.replace(/[$,]/g, '')) || 0), 0)
+                  };
+
+                  const allMetrics = [totalMetrics, ...stageMetrics, acquiredRejectedMetrics];
 
                   // Color scheme: cool to warm background colors
                   const getCardStyles = (metricName: string, index: number) => {
@@ -1955,7 +2002,9 @@ function EngagePageContent() {
                       // Engaged (blue - matches kanban)
                       { bg: 'bg-blue-400/40', hover: 'hover:bg-blue-500/40', selected: 'bg-blue-500/40', border: 'border-blue-400', text: 'text-gray-900' },
                       // LOI Sent (purple - matches kanban)
-                      { bg: 'bg-purple-400/40', hover: 'hover:bg-purple-500/40', selected: 'bg-purple-500/40', border: 'border-purple-400', text: 'text-gray-900' }
+                      { bg: 'bg-purple-400/40', hover: 'hover:bg-purple-500/40', selected: 'bg-purple-500/40', border: 'border-purple-400', text: 'text-gray-900' },
+                      // Acquired/Rejected (red for completion)
+                      { bg: 'bg-red-400/40', hover: 'hover:bg-red-500/40', selected: 'bg-red-500/40', border: 'border-red-400', text: 'text-gray-900' }
                     ];
                     
                     const colorIndex = index - 1; // Subtract 1 because first card is "All Active"
@@ -1977,16 +2026,16 @@ function EngagePageContent() {
                       <div
                         key={metric.name}
                         onClick={isClickable ? () => setSelectedPipelineStage(index === 0 ? 'all' : metric.name) : undefined}
-                        className={`rounded-lg border-2 p-3 md:p-4 transition-all flex-shrink-0 w-32 md:w-40 lg:w-48 ${
+                        className={`rounded-lg border-2 p-2 md:p-3 transition-all flex-shrink-0 w-28 md:w-32 lg:w-40 ${
                           isDisabled 
                             ? 'opacity-50 cursor-not-allowed bg-gray-300 border-gray-400' 
                             : `hover:shadow-md cursor-pointer ${getCardStyles(metric.name, index)}`
                         }`}
                       >
                         <div className="text-center">
-                          <div className={`text-2xl md:text-3xl lg:text-4xl font-bold mb-0 leading-tight ${isDisabled ? 'text-gray-500' : ''}`}>{metric.count}</div>
-                          <div className={`text-sm md:text-base lg:text-lg font-semibold mb-0 leading-tight ${isDisabled ? 'text-gray-600' : ''}`}>{metric.name}</div>
-                          <div className={`text-sm space-y-0 leading-tight ${isDisabled ? 'text-gray-500' : 'opacity-90'}`}>
+                          <div className={`text-xl md:text-2xl lg:text-3xl font-bold mb-0 leading-tight ${isDisabled ? 'text-gray-500' : ''}`}>{metric.count}</div>
+                          <div className={`text-xs md:text-sm lg:text-base font-semibold mb-0 leading-tight ${isDisabled ? 'text-gray-600' : ''}`}>{metric.name}</div>
+                          <div className={`text-xs space-y-0 leading-tight ${isDisabled ? 'text-gray-500' : 'opacity-90'}`}>
                             <div>{metric.units} units</div>
                             <div>{formatCurrency(metric.assessedValue)} assessed</div>
                             <div>{formatCurrency(metric.estimatedValue)} market</div>

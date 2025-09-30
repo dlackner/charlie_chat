@@ -93,15 +93,14 @@ function DiscoverPageContent() {
   const [currentPage, setCurrentPage] = useState(1);
   const [lastSearchFilters, setLastSearchFilters] = useState<any>(null);
   const [favoritePropertyIds, setFavoritePropertyIds] = useState<string[]>([]);
-  const [currentFavoritesPage, setCurrentFavoritesPage] = useState(1);
-  const [totalFavoritesCount, setTotalFavoritesCount] = useState(0);
-  const [locationFilter, setLocationFilter] = useState('');
-  const [allFavorites, setAllFavorites] = useState<any[]>([]);
+  const [dailyProperties, setDailyProperties] = useState<any[]>([]);
+  const [currentDailyPage, setCurrentDailyPage] = useState(1);
   const [mySearches, setMySearches] = useState<any[]>([]);
   const [isLoadingMySearches, setIsLoadingMySearches] = useState(false);
+  const [isLoadingDaily, setIsLoadingDaily] = useState(false);
   
   // Constants
-  const FAVORITES_PER_PAGE = 12;
+  const PROPERTIES_PER_PAGE = 12;
 
   // Clean up sessionStorage after filters are restored
   useEffect(() => {
@@ -139,59 +138,31 @@ function DiscoverPageContent() {
     window.location.href = `/discover/property/${propertyId}?back=${backUrl}`;
   };
   
-  // Filter favorites by location
-  const filterFavoritesByLocation = (favorites: any[], filter: string) => {
-    if (!filter.trim() || !favorites.length) return favorites;
-    
-    const filterLower = filter.toLowerCase();
-    
-    return favorites.filter(property => {
-      const city = (property.address_city || '').toLowerCase();
-      const state = (property.address_state || '').toLowerCase();
-      const zip = (property.address_zip || '').toLowerCase();
-      const fullAddress = (property.address_full || '').toLowerCase();
-      
-      // Check if filter matches city, state, zip, or full address
-      return city.includes(filterLower) ||
-             state.includes(filterLower) ||
-             zip.includes(filterLower) ||
-             fullAddress.includes(filterLower) ||
-             `${city}, ${state}`.includes(filterLower);
-    });
-  };
-  
-  // Get filtered favorites for display
-  const getFilteredFavorites = () => {
-    const filtered = filterFavoritesByLocation(allFavorites, locationFilter);
-    // Always show by recency (favorites are already sorted by saved_at DESC from API)
-    return filtered;
-  };
-  
-  // Pagination calculations for favorites
-  const filteredFavorites = getFilteredFavorites();
-  const totalFavoritesPages = Math.ceil(filteredFavorites.length / FAVORITES_PER_PAGE);
-  const favoritesStartIndex = (currentFavoritesPage - 1) * FAVORITES_PER_PAGE;
-  const favoritesEndIndex = favoritesStartIndex + FAVORITES_PER_PAGE;
-  const paginatedFavorites = filteredFavorites.slice(favoritesStartIndex, favoritesEndIndex);
+  // Simple pagination for 24 daily properties (2 pages of 12 each)
+  const totalDailyPages = 2;
+  const dailyStartIndex = (currentDailyPage - 1) * 12;
+  const dailyEndIndex = dailyStartIndex + 12;
+  const paginatedDailyProperties = dailyProperties.slice(dailyStartIndex, dailyEndIndex);
   
   // Pagination calculations for search results  
-  const totalSearchPages = Math.ceil(propertyCount / FAVORITES_PER_PAGE);
-  const searchStartIndex = (currentPage - 1) * FAVORITES_PER_PAGE;
-  const searchEndIndex = searchStartIndex + FAVORITES_PER_PAGE;
+  const totalSearchPages = Math.ceil(propertyCount / PROPERTIES_PER_PAGE);
+  const searchStartIndex = (currentPage - 1) * PROPERTIES_PER_PAGE;
+  const searchEndIndex = searchStartIndex + PROPERTIES_PER_PAGE;
   const paginatedSearchResults = searchResults.slice(searchStartIndex, searchEndIndex);
   
-  // Update recentProperties when favorites page changes
+  // Update recentProperties when daily properties page changes
   useEffect(() => {
-    if (!hasSearched && paginatedFavorites.length > 0) {
-      setRecentProperties(paginatedFavorites);
+    if (!hasSearched && paginatedDailyProperties.length > 0) {
+      setRecentProperties(paginatedDailyProperties);
+      setPropertyCount(paginatedDailyProperties.length);
     }
-  }, [currentFavoritesPage, locationFilter, allFavorites, hasSearched]);
+  }, [currentDailyPage, dailyProperties, hasSearched]);
   
   
   // Load more search results when navigating to a page that needs more data
   useEffect(() => {
     if (hasSearched && totalSearchPages > 1 && searchResults.length < propertyCount) {
-      const neededResults = currentPage * FAVORITES_PER_PAGE;
+      const neededResults = currentPage * PROPERTIES_PER_PAGE;
       if (neededResults > searchResults.length) {
         // Need to load more results
         const loadMoreSearchResults = async () => {
@@ -207,7 +178,7 @@ function DiscoverPageContent() {
               body: JSON.stringify({
                 ...lastSearchFilters,
                 property_type: "MFR",
-                size: 12 * (currentPage - Math.floor(searchResults.length / FAVORITES_PER_PAGE)),
+                size: 12 * (currentPage - Math.floor(searchResults.length / PROPERTIES_PER_PAGE)),
                 resultIndex: nextResultIndex
               })
             });
@@ -502,7 +473,6 @@ function DiscoverPageContent() {
           // Error loading favorites
           setRecentProperties([]);
           setPropertyCount(0);
-          setTotalFavoritesCount(0);
           setHasSearched(false);
           setIsLoadingRecent(false);
           return;
@@ -526,9 +496,7 @@ function DiscoverPageContent() {
             
             if (propertiesError) {
               // Error loading property data
-              setAllFavorites([]);
-              setTotalFavoritesCount(0);
-              setRecentProperties([]);
+                  setRecentProperties([]);
               setPropertyCount(0);
             } else {
               // Map database fields to component expected fields
@@ -539,10 +507,7 @@ function DiscoverPageContent() {
                 address_full: prop.address_full || prop.address_street || 'Address Not Available'
               })) || [];
               
-              setAllFavorites(mappedProperties); // Store ALL property data, not just IDs
-              setTotalFavoritesCount(mappedProperties.length);
               // recentProperties will be set by the useEffect when paginatedFavorites changes
-              setCurrentFavoritesPage(1);
               setHasSearched(false);
               setIsLoadingRecent(false);
               return;
@@ -550,27 +515,21 @@ function DiscoverPageContent() {
           }
           
           // Fallback: if no supabase client or error, show empty state
-          setAllFavorites([]);
           setRecentProperties([]);
           setPropertyCount(0);
-          setTotalFavoritesCount(0);
           setHasSearched(false);
           setIsLoadingRecent(false);
         } else {
-          setAllFavorites([]);
           setRecentProperties([]);
           setPropertyCount(0);
-          setTotalFavoritesCount(0);
           setHasSearched(false);
           setIsLoadingRecent(false);
         }
 
       } catch (error) {
         // Unexpected error loading recent properties
-        setAllFavorites([]);
         setRecentProperties([]);
         setPropertyCount(0);
-        setTotalFavoritesCount(0);
         setHasSearched(false);
         setIsLoadingRecent(false);
       }
@@ -584,27 +543,41 @@ function DiscoverPageContent() {
   }, [user]); // Add user dependency for saved searches
 
   
-  // Handle location filter changes
-  const handleLocationFilterChange = (newFilter: string) => {
-    setLocationFilter(newFilter);
-    setCurrentFavoritesPage(1);
-    
-    // Apply filter and show first page
-    const filteredFavorites = filterFavoritesByLocation(allFavorites, newFilter);
-    const firstPage = filteredFavorites.slice(0, FAVORITES_PER_PAGE);
-    setRecentProperties(firstPage);
-    setPropertyCount(firstPage.length);
-  };
 
-  // Load user favorites
+  // Load daily properties and user favorites on page load
   useEffect(() => {
-    // TEMPORARY: Always load for testing
-    loadUserFavorites();
-    // if (user) {
-    //   loadUserFavorites();
-    // }
+    loadDailyProperties();
+  }, []);
+  
+  // Load user favorites for favoriting functionality
+  useEffect(() => {
+    if (user) {
+      loadUserFavorites();
+    }
   }, [user]);
 
+  const loadDailyProperties = async () => {
+    setIsLoadingDaily(true);
+    
+    try {
+      const response = await fetch('/api/daily-properties');
+      if (response.ok) {
+        const data = await response.json();
+        setDailyProperties(data.properties || []);
+        setCurrentDailyPage(1);
+        setHasSearched(false);
+      } else {
+        console.error('Failed to load daily properties');
+        setDailyProperties([]);
+      }
+    } catch (error) {
+      console.error('Error loading daily properties:', error);
+      setDailyProperties([]);
+    } finally {
+      setIsLoadingDaily(false);
+    }
+  };
+  
   const loadUserFavorites = async () => {
     if (!user) return;
     
@@ -2502,21 +2475,19 @@ function DiscoverPageContent() {
             <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center mb-6 space-y-4 lg:space-y-0">
               <div className="flex-1 min-w-0">
                 <h2 className="text-xl font-semibold text-gray-900">
-                  {recentProperties.length > 0 && !hasSearched ? 'Your Recent Properties' : 'Properties'}
+                  {recentProperties.length > 0 && !hasSearched ? 'Daily Properties' : 'Properties'}
                 </h2>
                 <p className="text-sm text-gray-600 mt-1">
                   {recentProperties.length > 0 && !hasSearched 
-                    ? 'Your most recently viewed properties'
+                    ? 'Featured properties from across the United States'
                     : 'Search to see available multifamily investments'
                   }
                 </p>
               </div>
               <div className="flex items-center space-x-4 flex-shrink-0">
                 <span className="text-sm text-gray-600 whitespace-nowrap">
-                  {isLoadingRecent ? 'Loading...' : recentProperties.length > 0 && !hasSearched 
-                    ? locationFilter 
-                      ? `${recentProperties.length} of ${getFilteredFavorites().length} filtered properties`
-                      : `${recentProperties.length} of ${totalFavoritesCount} properties`
+                  {isLoadingDaily ? 'Loading...' : recentProperties.length > 0 && !hasSearched 
+                    ? `${recentProperties.length} of ${dailyProperties.length} properties`
                     : `${propertyCount} properties`}
                 </span>
                 
@@ -2629,36 +2600,36 @@ function DiscoverPageContent() {
                   </div>
                 )}
                 
-                {/* Favorites Pagination Controls */}
-                {totalFavoritesPages > 1 && (
+                {/* Daily Properties Pagination Controls */}
+                {totalDailyPages > 1 && (
                   <div className="mt-8 flex items-center justify-center space-x-2">
                     <button
-                      onClick={() => setCurrentFavoritesPage(prev => Math.max(1, prev - 1))}
-                      disabled={currentFavoritesPage === 1}
+                      onClick={() => setCurrentDailyPage(prev => Math.max(1, prev - 1))}
+                      disabled={currentDailyPage === 1}
                       className="px-3 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       Previous
                     </button>
                     
                     <div className="flex items-center space-x-1">
-                      {Array.from({ length: Math.min(5, totalFavoritesPages) }, (_, i) => {
+                      {Array.from({ length: Math.min(5, totalDailyPages) }, (_, i) => {
                         let pageNumber;
-                        if (totalFavoritesPages <= 5) {
+                        if (totalDailyPages <= 5) {
                           pageNumber = i + 1;
-                        } else if (currentFavoritesPage <= 3) {
+                        } else if (currentDailyPage <= 3) {
                           pageNumber = i + 1;
-                        } else if (currentFavoritesPage >= totalFavoritesPages - 2) {
-                          pageNumber = totalFavoritesPages - 4 + i;
+                        } else if (currentDailyPage >= totalDailyPages - 2) {
+                          pageNumber = totalDailyPages - 4 + i;
                         } else {
-                          pageNumber = currentFavoritesPage - 2 + i;
+                          pageNumber = currentDailyPage - 2 + i;
                         }
                         
                         return (
                           <button
                             key={i}
-                            onClick={() => setCurrentFavoritesPage(pageNumber)}
+                            onClick={() => setCurrentDailyPage(pageNumber)}
                             className={`w-10 h-10 rounded-lg ${
-                              currentFavoritesPage === pageNumber
+                              currentDailyPage === pageNumber
                                 ? 'bg-blue-600 text-white'
                                 : 'border border-gray-300 text-gray-700 hover:bg-gray-50'
                             }`}
@@ -2670,15 +2641,15 @@ function DiscoverPageContent() {
                     </div>
                     
                     <button
-                      onClick={() => setCurrentFavoritesPage(prev => Math.min(totalFavoritesPages, prev + 1))}
-                      disabled={currentFavoritesPage === totalFavoritesPages}
+                      onClick={() => setCurrentDailyPage(prev => Math.min(totalDailyPages, prev + 1))}
+                      disabled={currentDailyPage === totalDailyPages}
                       className="px-3 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       Next
                     </button>
                     
                     <div className="ml-4 text-sm text-gray-600">
-                      Showing {favoritesStartIndex + 1}-{Math.min(favoritesEndIndex, filteredFavorites.length)} of {filteredFavorites.length} properties
+                      Showing {dailyStartIndex + 1}-{Math.min(dailyEndIndex, dailyProperties.length)} of {dailyProperties.length} properties
                     </div>
                   </div>
                 )}

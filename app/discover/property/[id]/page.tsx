@@ -122,7 +122,18 @@ export default function PropertyDetailsPage() {
             if (!savedError && savedProperty) {
               if (savedProperty.skip_trace_data) {
                 console.log('✅ Found existing skip trace data:', savedProperty.skip_trace_data);
-                setSkipTraceData(savedProperty.skip_trace_data);
+                // Parse skip trace data like the email function does
+                let parsedSkipTraceData;
+                try {
+                  if (typeof savedProperty.skip_trace_data === 'string') {
+                    parsedSkipTraceData = JSON.parse(savedProperty.skip_trace_data);
+                  } else {
+                    parsedSkipTraceData = savedProperty.skip_trace_data;
+                  }
+                } catch (error) {
+                  parsedSkipTraceData = savedProperty.skip_trace_data;
+                }
+                setSkipTraceData(parsedSkipTraceData);
               }
               // Store the saved_properties UUID id
               if (savedProperty.id) {
@@ -376,17 +387,16 @@ export default function PropertyDetailsPage() {
 
     // Transform property data to match engage page format
     const transformedProperty = {
-      id: property.property_id || params.id,
-      original_property_id: property.property_id || property.id || params.id,
+      // Keep ALL raw database fields including property_id
+      ...property,
+      // Add display mappings without overwriting property_id
       address: property.address_street || property.address_full || 'Unknown Address',
       city: property.address_city || 'Unknown City',
       state: property.address_state || 'Unknown State',
       zip: property.address_zip || 'Unknown Zip',
       owner_first_name: property.owner_first_name,
       owner_last_name: property.owner_last_name,
-      skip_trace_data: skipTraceData,
-      // Include ALL raw database fields (this may override id if property has an id field)
-      ...property
+      skip_trace_data: skipTraceData
     };
     
     // Use the final id from transformedProperty (after spread)
@@ -452,7 +462,7 @@ export default function PropertyDetailsPage() {
   };
 
   // Generate marketing letters
-  const handleGenerateMarketingLetters = async (properties: any[]) => {
+  const handleGenerateMarketingLetters = async (propertiesToProcess: any[]) => {
     try {
       if (!user) {
         showWarning('Please log in to generate marketing letters.', 'Login Required');
@@ -485,15 +495,15 @@ export default function PropertyDetailsPage() {
         return;
       }
 
-      for (const property of properties) {
-        const cleanAddressFull = `${property.address}, ${property.city}, ${property.state}${property.zip ? ' ' + property.zip : ''}`.trim();
+      for (const loopProperty of propertiesToProcess) {
+        const cleanAddressFull = `${loopProperty.address}, ${loopProperty.city}, ${loopProperty.state}${loopProperty.zip ? ' ' + loopProperty.zip : ''}`.trim();
         
         const propertyData = {
           address_full: cleanAddressFull,
-          address_state: property.state,
-          owner_first_name: property.owner_first_name || null,
-          owner_last_name: property.owner_last_name || null,
-          property_id: property.id.toString()
+          address_state: loopProperty.state,
+          owner_first_name: loopProperty.owner_first_name || null,
+          owner_last_name: loopProperty.owner_last_name || null,
+          property_id: loopProperty.id.toString()
         };
         
         const result = await generateMarketingLetter(propertyData, senderInfo, 'print');
@@ -501,6 +511,69 @@ export default function PropertyDetailsPage() {
         if (!result.success) {
           showError(`Error generating letter: ${result.message}`, 'Letter Generation Error');
           return;
+        }
+
+        // Add reminder note to property card
+        try {
+          if (!user?.id) {
+            console.error('User ID not available for updating notes');
+            return;
+          }
+
+          const supabase = createSupabaseBrowserClient();
+          
+          // Calculate reminder date (10 days from today)
+          const today = new Date();
+          const tenDaysLater = new Date(today);
+          tenDaysLater.setDate(today.getDate() + 10);
+          
+          // Format date as MM/DD/YYYY
+          const formatDate = (date: Date) => {
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            const year = date.getFullYear();
+            return `${month}/${day}/${year}`;
+          };
+          
+          const reminderNote = `@${formatDate(tenDaysLater)} Marketing letter follow-up reminder`;
+          
+          // Just get existing notes like the engage page does
+          const correctPropertyId = property?.property_id || params.id;
+          const { data: currentFavorite } = await supabase
+            .from('user_favorites')
+            .select('notes')
+            .eq('user_id', user.id)
+            .eq('property_id', correctPropertyId)
+            .single();
+          
+          const existingNotes = currentFavorite?.notes || '';
+          
+          // Combine existing notes with new reminder note
+          const updatedNotes = existingNotes 
+            ? `${existingNotes}\n${reminderNote}`
+            : reminderNote;
+          
+          // Update notes with reminder
+          const propertyIdForApi = correctPropertyId;
+          console.log('Marketing letter - correctPropertyId:', correctPropertyId, 'property.property_id:', property?.property_id, 'params.id:', params.id);
+          const response = await fetch('/api/favorites/update-notes', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              property_id: correctPropertyId,
+              notes: updatedNotes
+            })
+          });
+          
+          if (!response.ok) {
+            console.error('Marketing letter API call failed:', response.status, response.statusText);
+            throw new Error('Failed to update notes');
+          }
+          
+          console.log('Marketing letter reminder note added successfully');
+        } catch (error) {
+          console.error('Error adding marketing letter reminder note:', error);
+          // Don't fail the entire operation if notes update fails
         }
       }
 
@@ -605,6 +678,77 @@ export default function PropertyDetailsPage() {
       // Increment activity count
       if (user?.id) {
         await incrementActivityCount(user.id, 'emails_sent');
+      }
+
+      // Add reminder notes to property card
+      try {
+        if (!user?.id) {
+          console.error('User ID not available for updating notes');
+          return;
+        }
+
+        const supabase = createSupabaseBrowserClient();
+        
+        // Use the numeric ID that works in the API logs
+        const correctPropertyId = params.id;
+        
+        // Calculate reminder dates
+        const today = new Date();
+        const oneWeekLater = new Date(today);
+        oneWeekLater.setDate(today.getDate() + 7);
+        const twoWeeksLater = new Date(today);
+        twoWeeksLater.setDate(today.getDate() + 14);
+        
+        // Format date as MM/DD/YYYY
+        const formatDate = (date: Date) => {
+          const month = String(date.getMonth() + 1).padStart(2, '0');
+          const day = String(date.getDate()).padStart(2, '0');
+          const year = date.getFullYear();
+          return `${month}/${day}/${year}`;
+        };
+        
+        const oneWeekReminderNote = `@${formatDate(oneWeekLater)} One week email reminder`;
+        const twoWeekReminderNote = `@${formatDate(twoWeeksLater)} Two week email reminder`;
+
+        // Just get existing notes like the engage page does - ignore errors like marketing letter
+        let existingNotes = '';
+        try {
+          const { data: currentFavorite } = await supabase
+            .from('user_favorites')
+            .select('notes')
+            .eq('user_id', user.id)
+            .eq('property_id', correctPropertyId)
+            .single();
+          existingNotes = currentFavorite?.notes || '';
+        } catch (error) {
+          console.log('Could not get existing notes, starting with empty notes');
+          existingNotes = '';
+        }
+        
+        // Combine existing notes with new reminder notes
+        const updatedNotes = existingNotes 
+          ? `${existingNotes}\n${oneWeekReminderNote}\n${twoWeekReminderNote}`
+          : `${oneWeekReminderNote}\n${twoWeekReminderNote}`;
+        
+        // Update notes with both reminders
+        console.log('Email - correctPropertyId:', correctPropertyId, 'property.property_id:', property?.property_id, 'params.id:', params.id);
+        const response = await fetch('/api/favorites/update-notes', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            property_id: correctPropertyId,
+            notes: updatedNotes
+          })
+        });
+        
+        if (!response.ok) {
+          throw new Error('Failed to update notes');
+        }
+        
+        console.log('Email reminder notes added successfully');
+      } catch (error) {
+        console.error('Error adding email reminder notes:', error);
+        // Don't fail the entire operation if notes update fails
       }
 
       showSuccess('Email template generated and opened in your email client!', 'Success');
@@ -1111,7 +1255,7 @@ export default function PropertyDetailsPage() {
                         </div>
                         
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                          {skipTraceData.contacts.map((contact: any, index: number) => (
+                          {skipTraceData.contacts?.map((contact: any, index: number) => (
                             <div key={index} className="bg-gray-50 rounded-lg p-4 border border-gray-200">
                               <div className="flex items-center justify-between mb-3">
                                 <div className="flex items-center">
@@ -1158,7 +1302,7 @@ export default function PropertyDetailsPage() {
                             <div>
                               <h4 className="font-medium text-blue-900 mb-1">Skip Trace Complete</h4>
                               <p className="text-sm text-blue-700">
-                                Found {skipTraceData.contacts.length} contact records. All information is current as of the trace date.
+                                Found {skipTraceData.contacts?.length || 0} contact records. All information is current as of the trace date.
                                 Use this data to reach out to property owners for potential investment opportunities.
                               </p>
                             </div>
