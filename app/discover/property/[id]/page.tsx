@@ -12,16 +12,26 @@ import { ArrowLeft, Printer, ExternalLink, ChevronDown, ChevronUp, Zap, Phone, M
 import { StreetViewImage } from '@/components/ui/StreetViewImage';
 import { PropertyInfoSections } from '@/components/shared/property-details/PropertyInfoSections';
 import { AIInvestmentAnalysis } from '@/components/shared/property-details/AIInvestmentAnalysis';
+import { EngagementCenter } from '@/components/shared/EngagementCenter';
+import { CashFlowReportsModal } from '@/components/shared/CashFlowReportsModal';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { generate10YearCashFlowReport } from '@/app/offer-analyzer/cash-flow-report';
+import { generateMarketingLetter } from '@/app/templates/generateMarketingLetter';
+import { incrementActivityCount } from '@/lib/v2/activityCounter';
+import { useAlert } from '@/components/shared/AlertModal';
 
 export default function PropertyDetailsPage() {
   const params = useParams();
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user } = useAuth();
+  const { showError, showWarning, showSuccess, AlertComponent } = useAlert();
   const [property, setProperty] = useState<any>(null);
   const [userClass, setUserClass] = useState<string | null>(null);
+  const [showOffersModal, setShowOffersModal] = useState(false);
+  const [selectedPropertyOffers, setSelectedPropertyOffers] = useState<any[]>([]);
+  const [showCashFlowReportsModal, setShowCashFlowReportsModal] = useState(false);
   
   // Determine if we're in DISCOVER, ENGAGE, or BUYBOX context
   const context = searchParams.get('context');
@@ -104,16 +114,23 @@ export default function PropertyDetailsPage() {
             const supabase = createSupabaseBrowserClient();
             const { data: savedProperty, error: savedError } = await supabase
               .from('saved_properties')
-              .select('skip_trace_data, last_skip_trace')
+              .select('id, skip_trace_data, last_skip_trace')
               .eq('property_id', foundProperty.id)
               .single();
 
             console.log('🔍 Database query result:', { savedProperty, savedError });
-            if (!savedError && savedProperty?.skip_trace_data) {
-              console.log('✅ Found existing skip trace data:', savedProperty.skip_trace_data);
-              setSkipTraceData(savedProperty.skip_trace_data);
+            if (!savedError && savedProperty) {
+              if (savedProperty.skip_trace_data) {
+                console.log('✅ Found existing skip trace data:', savedProperty.skip_trace_data);
+                setSkipTraceData(savedProperty.skip_trace_data);
+              }
+              // Store the saved_properties UUID id
+              if (savedProperty.id) {
+                console.log('🔍 Found saved_properties UUID:', savedProperty.id);
+                foundProperty.id = savedProperty.id; // Override with UUID from saved_properties
+              }
             } else {
-              console.log('❌ No skip trace data found or error occurred');
+              console.log('❌ No saved property found or error occurred');
             }
           } else {
             console.log('🔍 Skipping skip trace check - not in engage context');
@@ -212,6 +229,474 @@ export default function PropertyDetailsPage() {
       } else {
         router.push('/discover');
       }
+    }
+  };
+
+  // Handle viewing offers modal
+  const handleViewOffers = async () => {
+    if (!user) {
+      showWarning('Please log in to view offers.', 'Login Required');
+      return;
+    }
+
+    try {
+      // Fetch offers from the offer_scenarios table (all user offers)
+      const response = await fetch('/api/offer-scenarios?all=true');
+      if (!response.ok) {
+        throw new Error('Failed to fetch offers');
+      }
+      const data = await response.json();
+
+      // Transform the offers data
+      const transformedOffers = data.scenarios.map((offer: any) => ({
+        id: offer.id,
+        name: offer.offer_name || `Offer ${offer.id}`,
+        description: offer.offer_description || 'No description',
+        property_address: offer.saved_properties?.address_full || 'Unknown Address',
+        offer_amount: offer.offer_data?.purchasePrice ? `$${parseInt(offer.offer_data.purchasePrice).toLocaleString()}` : 'N/A',
+        created_date: new Date(offer.created_at).toLocaleDateString(),
+        property_id: offer.property_id,
+        offer_data: offer.offer_data
+      }));
+
+      setSelectedPropertyOffers(transformedOffers);
+      setShowOffersModal(true);
+    } catch (error) {
+      // Error fetching offers
+      showError('Failed to load analyses. Please try again.', 'Load Failed');
+    }
+  };
+
+  const handleOfferSelection = (offerId: number, propertyId: string) => {
+    // Navigate to offer analyzer with the selected offer ID
+    // Use the current property's UUID from the property details page
+    const currentPropertyId = property?.id || propertyId; // Use property.id (UUID) if available
+    const params = new URLSearchParams({
+      offerId: offerId.toString(),
+      id: currentPropertyId
+    });
+    router.push(`/offer-analyzer?${params.toString()}`);
+    setShowOffersModal(false);
+  };
+
+  const handleGenerateReportFromModal = async (propertyWithOffer: any) => {
+    try {
+      // Extract the offer data and transform it for the cash flow report
+      const offerData = propertyWithOffer.offer_data;
+      
+      console.log('🔍 Property with offer:', propertyWithOffer);
+      console.log('🔍 Offer data:', offerData);
+      console.log('🔍 All offer data keys:', Object.keys(offerData || {}));
+      console.log('🔍 Sample values:', {
+        purchasePrice: offerData?.purchasePrice,
+        downPaymentPercentage: offerData?.downPaymentPercentage,
+        interestRate: offerData?.interestRate,
+        propertyTaxes: offerData?.propertyTaxes,
+        insurance: offerData?.insurance,
+        numUnits: offerData?.numUnits,
+        vacancyRate: offerData?.vacancyRate
+      });
+      
+      if (!offerData) {
+        showWarning('No pricing data found for this offer.', 'No Pricing Data');
+        return;
+      }
+
+      // Get user profile for report branding
+      const profileResponse = await fetch('/api/profile');
+      if (!profileResponse.ok) {
+        throw new Error('Failed to fetch user profile');
+      }
+      const profileData = await profileResponse.json();
+
+      // Generate the cash flow report (using exact same parameters as engage page)
+      await generate10YearCashFlowReport({
+        // Property address from offer
+        propertyStreet: propertyWithOffer.property_address,
+        
+        // Financial parameters from saved offer data
+        purchasePrice: parseFloat(offerData.purchasePrice) || 0,
+        downPaymentPercentage: parseFloat(offerData.downPaymentPercentage) || 20,
+        interestRate: parseFloat(offerData.interestRate) || 7.0,
+        loanStructure: offerData.loanStructure || 'amortizing',
+        amortizationPeriodYears: parseInt(offerData.amortizationPeriodYears) || 30,
+        interestOnlyPeriodYears: parseInt(offerData.interestOnlyPeriodYears) || 0,
+        closingCostsPercentage: parseFloat(offerData.closingCostsPercentage) || 3,
+        
+        // Income parameters
+        numUnits: parseInt(offerData.numUnits) || 1,
+        avgMonthlyRentPerUnit: parseFloat(offerData.avgMonthlyRentPerUnit) || 0,
+        vacancyRate: parseFloat(offerData.vacancyRate) || 10,
+        annualRentalGrowthRate: parseFloat(offerData.annualRentalGrowthRate) || 2,
+        otherIncomeAnnual: parseFloat(offerData.otherIncomeAnnual) || 0,
+        incomeReductionsAnnual: parseFloat(offerData.incomeReductionsAnnual) || 0,
+        
+        // Expense parameters
+        propertyTaxes: parseFloat(offerData.propertyTaxes) || 0,
+        insurance: parseFloat(offerData.insurance) || 0,
+        propertyManagementFeePercentage: parseFloat(offerData.propertyManagementFeePercentage) || 6,
+        maintenanceRepairsAnnual: parseFloat(offerData.maintenanceRepairsAnnual) || 0,
+        utilitiesAnnual: parseFloat(offerData.utilitiesAnnual) || 0,
+        contractServicesAnnual: parseFloat(offerData.contractServicesAnnual) || 0,
+        payrollAnnual: parseFloat(offerData.payrollAnnual) || 0,
+        marketingAnnual: parseFloat(offerData.marketingAnnual) || 0,
+        gAndAAnnual: parseFloat(offerData.gAndAAnnual) || 0,
+        otherExpensesAnnual: parseFloat(offerData.otherExpensesAnnual) || 0,
+        expenseGrowthRate: parseFloat(offerData.expenseGrowthRate) || 3,
+        
+        // Capital reserves
+        capitalReservePerUnitAnnual: parseFloat(offerData.capitalReservePerUnitAnnual) || 300,
+        
+        // Investment timeline
+        holdingPeriodYears: parseInt(offerData.holdingPeriodYears) || 10,
+        
+        // Mode settings
+        usePercentageMode: offerData.usePercentageMode || false,
+        operatingExpensePercentage: parseFloat(offerData.operatingExpensePercentage) || 50
+      });
+
+      showSuccess('10-Year Cash Flow Report generated and downloaded successfully!', 'Success');
+      
+      // Increment activity count
+      if (user?.id) {
+        await incrementActivityCount(user.id, 'offers_created');
+      }
+    } catch (error) {
+      console.error('Cash flow report generation error:', error);
+      showError('Failed to generate cash flow report. Please try again.', 'Report Generation Failed');
+    }
+  };
+
+  // Handle document actions from Engagement Center
+  const handleDocumentAction = async (action: string) => {
+    if (!property) {
+      showWarning('No property data available', 'Property Error');
+      return;
+    }
+
+    // Transform property data to match engage page format
+    const transformedProperty = {
+      id: property.property_id || params.id,
+      original_property_id: property.property_id || property.id || params.id,
+      address: property.address_street || property.address_full || 'Unknown Address',
+      city: property.address_city || 'Unknown City',
+      state: property.address_state || 'Unknown State',
+      zip: property.address_zip || 'Unknown Zip',
+      owner_first_name: property.owner_first_name,
+      owner_last_name: property.owner_last_name,
+      skip_trace_data: skipTraceData,
+      // Include ALL raw database fields (this may override id if property has an id field)
+      ...property
+    };
+    
+    // Use the final id from transformedProperty (after spread)
+    const propertyId = transformedProperty.id;
+
+    switch (action) {
+      case 'marketing-letter':
+        handleGenerateMarketingLetters([transformedProperty]);
+        break;
+      case 'email':
+        handleGenerateEmail(transformedProperty);
+        break;
+      case 'loi':
+        // Navigate to templates page with property data for LOI generation
+        const loiParams = new URLSearchParams({
+          propertyAddress: `${transformedProperty.address}, ${transformedProperty.city}, ${transformedProperty.state} ${transformedProperty.zip}`,
+          ownerFirst: transformedProperty.owner_first_name || '',
+          ownerLast: transformedProperty.owner_last_name || '',
+          propertyId: propertyId.toString(),
+          returnUrl: `/discover/property/${propertyId}?context=engage`
+        });
+        router.push(`/templates?${loiParams.toString()}`);
+        break;
+      case 'purchase-sale':
+        // Navigate to templates page with property data for Purchase & Sale generation
+        const psParams = new URLSearchParams({
+          propertyAddress: `${transformedProperty.address}, ${transformedProperty.city}, ${transformedProperty.state} ${transformedProperty.zip}`,
+          ownerFirst: transformedProperty.owner_first_name || '',
+          ownerLast: transformedProperty.owner_last_name || '',
+          propertyId: propertyId.toString(),
+          returnUrl: `/discover/property/${propertyId}?context=engage`,
+          type: 'purchase_sale'
+        });
+        router.push(`/templates?${psParams.toString()}`);
+        break;
+      case 'create-offer':
+        // Navigate to offer analyzer with property data
+        const offerParams = new URLSearchParams({
+          address: transformedProperty.address,
+          city: transformedProperty.city,
+          state: transformedProperty.state,
+          units: property.units_count?.toString() || '1',
+          assessed: property.assessed_value ? `$${parseInt(property.assessed_value).toLocaleString()}` : 'Unknown',
+          built: property.year_built?.toString() || '',
+          id: propertyId.toString()
+        });
+        router.push(`/offer-analyzer?${offerParams.toString()}`);
+        break;
+      case 'view-offers':
+        // Show offers modal
+        handleViewOffers();
+        break;
+      case 'cash-flow-report':
+        // Show cash flow reports modal
+        setShowCashFlowReportsModal(true);
+        break;
+      case 'csv':
+        handleCSVExport([transformedProperty]);
+        break;
+      default:
+        showWarning(`Action "${action}" not implemented`, 'Feature Coming Soon');
+    }
+  };
+
+  // Generate marketing letters
+  const handleGenerateMarketingLetters = async (properties: any[]) => {
+    try {
+      if (!user) {
+        showWarning('Please log in to generate marketing letters.', 'Login Required');
+        return;
+      }
+
+      const profileResponse = await fetch('/api/profile');
+      const profileData = await profileResponse.json();
+      
+      if (!profileResponse.ok) {
+        showWarning('Unable to load your profile information. Please complete your profile to generate marketing letters.', 'Profile Error');
+        return;
+      }
+
+      const senderInfo = {
+        name: profileData.full_name || `${profileData.first_name || ''} ${profileData.last_name || ''}`.trim() || user.email || 'Your Name',
+        address: profileData.street_address || '',
+        city: profileData.city || '',
+        state: profileData.state || '',
+        zip: profileData.zipcode || '',
+        phone: profileData.phone_number || '',
+        email: profileData.email || user.email || '',
+        business: profileData.business_name || '',
+        title: profileData.job_title || '',
+        logoBase64: profileData.logo_base64 || null
+      };
+
+      if (!senderInfo.name || !senderInfo.phone || !senderInfo.email) {
+        showWarning('Please complete your profile with name, phone, and email to generate marketing letters.', 'Profile Incomplete');
+        return;
+      }
+
+      for (const property of properties) {
+        const cleanAddressFull = `${property.address}, ${property.city}, ${property.state}${property.zip ? ' ' + property.zip : ''}`.trim();
+        
+        const propertyData = {
+          address_full: cleanAddressFull,
+          address_state: property.state,
+          owner_first_name: property.owner_first_name || null,
+          owner_last_name: property.owner_last_name || null,
+          property_id: property.id.toString()
+        };
+        
+        const result = await generateMarketingLetter(propertyData, senderInfo, 'print');
+        
+        if (!result.success) {
+          showError(`Error generating letter: ${result.message}`, 'Letter Generation Error');
+          return;
+        }
+      }
+
+      showSuccess(`Marketing letter generated successfully!`, 'Success');
+      if (user?.id) {
+        await incrementActivityCount(user.id, 'marketing_letters_created');
+      }
+    } catch (error) {
+      showError('Failed to generate marketing letters. Please try again.', 'Generation Failed');
+    }
+  };
+
+  // Generate email
+  const handleGenerateEmail = async (property: any) => {
+    // Parse skip trace data to extract email address
+    let skipTraceData;
+    try {
+      if (property.skip_trace_data) {
+        if (typeof property.skip_trace_data === 'string') {
+          skipTraceData = JSON.parse(property.skip_trace_data);
+        } else {
+          skipTraceData = property.skip_trace_data;
+        }
+      }
+    } catch (error) {
+      skipTraceData = property.skip_trace_data;
+    }
+
+    // Extract email from contacts array
+    let emailAddress = null;
+    if (skipTraceData?.contacts && Array.isArray(skipTraceData.contacts)) {
+      for (const contact of skipTraceData.contacts) {
+        if (contact.email) {
+          emailAddress = contact.email;
+          break;
+        }
+      }
+    }
+    // Fallback to old format if exists
+    if (!emailAddress && skipTraceData?.email) {
+      emailAddress = skipTraceData.email;
+    }
+
+    // Check if property has skip trace data with email
+    if (!skipTraceData || !emailAddress) {
+      showWarning(`No email address found. Skip trace data must be available to send emails.`, 'Email Not Available');
+      return;
+    }
+
+    try {
+      // Get user profile info
+      if (!user) {
+        showWarning('Please log in to generate emails.', 'Login Required');
+        return;
+      }
+
+      const profileResponse = await fetch('/api/profile');
+      if (!profileResponse.ok) {
+        showWarning('Unable to load your profile information. Please complete your profile.', 'Profile Error');
+        return;
+      }
+
+      const profileData = await profileResponse.json();
+      const senderInfo = {
+        name: profileData.full_name || `${profileData.first_name || ''} ${profileData.last_name || ''}`.trim() || user.email || 'Your Name',
+        address: profileData.street_address || '',
+        city: profileData.city || '',
+        state: profileData.state || '',
+        zip: profileData.zipcode || '',
+        phone: profileData.phone_number || '',
+        email: profileData.email || user.email || '',
+        business: profileData.business_name || '',
+        title: profileData.job_title || '',
+        logoBase64: profileData.logo_base64 || null
+      };
+
+      // Prepare property data
+      const propertyData = {
+        address_full: `${property.address}, ${property.city}, ${property.state}${property.zip ? ' ' + property.zip : ''}`.trim(),
+        address_state: property.state,
+        owner_first_name: property.owner_first_name || null,
+        owner_last_name: property.owner_last_name || null,
+        property_id: property.id.toString()
+      };
+
+      // Generate email content
+      const result = await generateMarketingLetter(propertyData, senderInfo, 'email');
+      
+      if (!result.success || !result.emailBody) {
+        showError(`Failed to generate email content: ${result.message || 'Unknown error'}`, 'Email Generation Failed');
+        return;
+      }
+
+      // Create and open mailto link
+      const subject = `Inquiry About Your Property - ${propertyData.address_full}`;
+      const encodedSubject = encodeURIComponent(subject);
+      const encodedBody = encodeURIComponent(result.emailBody);
+      
+      const mailtoLink = `mailto:${emailAddress}?subject=${encodedSubject}&body=${encodedBody}`;
+      window.open(mailtoLink, '_blank');
+
+      // Increment activity count
+      if (user?.id) {
+        await incrementActivityCount(user.id, 'emails_sent');
+      }
+
+      showSuccess('Email template generated and opened in your email client!', 'Success');
+    } catch (error) {
+      showError('Failed to generate email. Please try again.', 'Email Generation Failed');
+    }
+  };
+
+  // Generate cash flow report
+  const handleCashFlowReport = async (property: any) => {
+    try {
+      if (!property || !property.id) {
+        showError('Property information missing', 'Error');
+        return;
+      }
+
+      // The cash flow report expects a property_id
+      await generate10YearCashFlowReport(property.original_property_id || property.id);
+      
+      showSuccess('10-Year Cash Flow Report generated and downloaded successfully!', 'Success');
+      
+      // Increment activity count
+      if (user?.id) {
+        await incrementActivityCount(user.id, 'offers_created');
+      }
+    } catch (error) {
+      console.error('Cash flow report generation error:', error);
+      showError('Failed to generate cash flow report. Please try again.', 'Report Generation Failed');
+    }
+  };
+
+  // Export to CSV
+  const handleCSVExport = (properties: any[]) => {
+    try {
+      // Define CSV headers
+      const headers = [
+        'Property ID', 'Address', 'City', 'State', 'Zip', 'Market',
+        'Units', 'Year Built', 'Assessed Value', 'Estimated Value',
+        'Owner First Name', 'Owner Last Name', 'Pipeline Status',
+        'Source', 'Skip Traced', 'Notes'
+      ];
+
+      // Convert properties to CSV rows
+      const rows = properties.map(p => [
+        p.id || '',
+        p.address || '',
+        p.city || '',
+        p.state || '',
+        p.zip || '',
+        p.market || '',
+        p.units || '',
+        p.built || p.year_built || '',
+        p.assessed || '',
+        p.estimated || '',
+        p.owner_first_name || '',
+        p.owner_last_name || '',
+        p.pipelineStatus || p.status || '',
+        p.source === 'A' ? 'Algorithm' : 'Manual',
+        p.isSkipTraced ? 'Yes' : 'No',
+        p.notes || ''
+      ]);
+
+      // Combine headers and rows
+      const csvContent = [
+        headers.join(','),
+        ...rows.map(row => 
+          row.map(cell => {
+            // Escape quotes and wrap in quotes if contains comma
+            const cellStr = String(cell);
+            if (cellStr.includes(',') || cellStr.includes('"') || cellStr.includes('\n')) {
+              return `"${cellStr.replace(/"/g, '""')}"`;
+            }
+            return cellStr;
+          }).join(',')
+        )
+      ].join('\n');
+
+      // Create and download the file
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      const url = URL.createObjectURL(blob);
+      link.setAttribute('href', url);
+      link.setAttribute('download', `property_${properties[0]?.id || 'export'}_${new Date().toISOString().split('T')[0]}.csv`);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      showSuccess('Property data exported successfully!', 'Export Complete');
+    } catch (error) {
+      console.error('CSV export error:', error);
+      showError('Failed to export property data. Please try again.', 'Export Failed');
     }
   };
 
@@ -441,9 +926,25 @@ export default function PropertyDetailsPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 py-6">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Header */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 mb-6">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        {/* Main Layout - Left Sidebar + Content */}
+        <div className="flex gap-6">
+          {/* Left Sidebar - Engagement Center (Hidden on mobile) */}
+          {isEngageContext && user && (
+            <div className="w-80 flex-shrink-0 hidden lg:block">
+              <div className="sticky top-6">
+                <EngagementCenter
+                  selectedProperties={property ? [property] : []}
+                  onDocumentAction={handleDocumentAction}
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Main Content */}
+          <div className="flex-1">
+            {/* Header */}
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 mb-6">
           <div className="p-6 pb-4">
             <div className="flex items-center justify-between mb-4">
               <button
@@ -678,7 +1179,71 @@ export default function PropertyDetailsPage() {
           </div>
         )}
 
-        <PropertyInfoSections property={property} />
+            <PropertyInfoSections property={property} />
+            
+            {AlertComponent}
+            
+            {/* Cash Flow Reports Modal */}
+            <CashFlowReportsModal
+              isOpen={showCashFlowReportsModal}
+              onClose={() => setShowCashFlowReportsModal(false)}
+              onGenerate={handleGenerateReportFromModal}
+            />
+            
+            {/* Offers Modal */}
+            {showOffersModal && (
+              <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                <div className="bg-white rounded-lg p-6 max-w-2xl mx-4 w-full">
+                  <div className="flex items-center justify-between mb-6">
+                    <h3 className="text-lg font-medium text-gray-900">Select an Analysis</h3>
+                    <button
+                      onClick={() => setShowOffersModal(false)}
+                      className="text-gray-400 hover:text-gray-600"
+                    >
+                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </div>
+                  
+                  <div className="space-y-3 max-h-96 overflow-y-auto">
+                    {selectedPropertyOffers.length === 0 ? (
+                      <div className="text-center py-8">
+                        <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                          <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 4z" />
+                          </svg>
+                        </div>
+                        <h4 className="text-sm font-medium text-gray-900 mb-1">No offers found</h4>
+                        <p className="text-sm text-gray-500">No offers have been created yet.</p>
+                      </div>
+                    ) : (
+                      selectedPropertyOffers.map((offer) => (
+                        <div
+                          key={offer.id}
+                          onClick={() => handleOfferSelection(offer.id, offer.property_id)}
+                          className="border border-gray-200 rounded-lg p-4 cursor-pointer hover:bg-blue-50 hover:border-blue-300 transition-colors"
+                        >
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <h4 className="text-lg font-semibold text-gray-900">{offer.name}</h4>
+                              <p className="text-sm text-gray-600 mt-1">{offer.description}</p>
+                              <p className="text-xs text-gray-500 mt-2">{offer.property_address}</p>
+                            </div>
+                            <div className="text-right">
+                              <div className="text-lg font-semibold text-blue-600">{offer.offer_amount}</div>
+                              <div className="text-xs text-gray-500">{offer.created_date}</div>
+                            </div>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );

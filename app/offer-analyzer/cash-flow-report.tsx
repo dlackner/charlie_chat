@@ -292,6 +292,9 @@ export const generate10YearCashFlowReport = async (props: CashFlowReportProps) =
   
   // Helper function to format currency
   const formatCurrency = (amount: number): string => {
+    if (amount === null || amount === undefined || isNaN(amount)) {
+      return '$0';
+    }
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: 'USD',
@@ -302,11 +305,17 @@ export const generate10YearCashFlowReport = async (props: CashFlowReportProps) =
 
   // Helper function to format percentage
   const formatPercent = (value: number): string => {
+    if (value === null || value === undefined || isNaN(value)) {
+      return '0.0%';
+    }
     return `${value.toFixed(1)}%`;
   };
 
   // Helper function to format numbers without currency
   const formatNumber = (amount: number): string => {
+    if (amount === null || amount === undefined || isNaN(amount)) {
+      return '0';
+    }
     return new Intl.NumberFormat('en-US', {
       minimumFractionDigits: 0,
       maximumFractionDigits: 0,

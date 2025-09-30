@@ -144,6 +144,7 @@ export default function CommunityPage() {
             trend="up"
             icon={<Users className="h-6 w-6" />}
             subtitle="Registered community members"
+            color="blue"
           />
           <CommunityStatCard
             title="Properties Searched"
@@ -152,6 +153,7 @@ export default function CommunityPage() {
             trend="up"
             icon={<MapPin className="h-6 w-6" />}
             subtitle="Total properties analyzed"
+            color="purple"
           />
           <CommunityStatCard
             title="Properties Favorited"
@@ -160,6 +162,7 @@ export default function CommunityPage() {
             trend="up"
             icon={<Building className="h-6 w-6" />}
             subtitle="Total saved across all users"
+            color="green"
           />
           <CommunityStatCard
             title="Avg Property Value"
@@ -168,6 +171,7 @@ export default function CommunityPage() {
             trend="up"
             icon={<DollarSign className="h-6 w-6" />}
             subtitle="Average estimated value"
+            color="orange"
           />
         </div>
 
@@ -207,32 +211,36 @@ export default function CommunityPage() {
 }
 
 // Community Stat Card Component
-function CommunityStatCard({ title, value, change, trend, icon, subtitle }: {
+function CommunityStatCard({ title, value, change, trend, icon, subtitle, color }: {
   title: string;
   value: string;
   change: string;
   trend: 'up' | 'down';
   icon: React.ReactNode;
   subtitle: string;
+  color?: 'green' | 'blue' | 'purple' | 'orange';
 }) {
+  const borderColorClasses = {
+    green: 'border-l-green-500',
+    blue: 'border-l-blue-500',
+    purple: 'border-l-purple-500',
+    orange: 'border-l-orange-500'
+  };
+  
+  const colorClass = color ? borderColorClasses[color] : 'border-l-blue-500';
+  
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-      <div className="flex items-center justify-between mb-4">
-        <div className="p-3 bg-blue-50 rounded-lg text-blue-600">
-          {icon}
+    <div className={`bg-white rounded-lg shadow-sm border border-gray-200 p-6 border-l-4 ${colorClass}`}>
+      <div className="text-4xl font-bold text-gray-900">{value}</div>
+      <div className="text-lg font-medium text-gray-700 mt-2">{title}</div>
+      {change && (
+        <div className={`flex items-center text-sm font-medium mt-3 ${
+          trend === 'up' ? 'text-green-600' : 'text-red-600'
+        }`}>
+          {trend === 'up' ? <TrendingUp className="h-4 w-4 mr-1" /> : <TrendingDown className="h-4 w-4 mr-1" />}
+          {change}
         </div>
-        {change && (
-          <div className={`flex items-center text-sm font-medium ${
-            trend === 'up' ? 'text-green-600' : 'text-red-600'
-          }`}>
-            {trend === 'up' ? <TrendingUp className="h-4 w-4 mr-1" /> : <TrendingDown className="h-4 w-4 mr-1" />}
-            {change}
-          </div>
-        )}
-      </div>
-      <div className="text-2xl font-bold text-gray-900 mb-1">{value}</div>
-      <div className="text-sm text-gray-600">{title}</div>
-      <div className="text-xs text-gray-500 mt-1">{subtitle}</div>
+      )}
     </div>
   );
 }

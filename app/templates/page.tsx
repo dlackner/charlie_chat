@@ -408,15 +408,15 @@ function Home() {
       if (!formData.propertyAddress.trim()) missingFields.push("Property Address");
       if (!formData.purchasePrice.trim()) missingFields.push("Purchase Price");
       if (!formData.earnestMoney.trim()) missingFields.push("Earnest Money");
-      if (!formData.ownerFirst.trim()) missingFields.push("Owner First Name");
-      if (!formData.ownerLast.trim()) missingFields.push("Owner Last Name");
+      // Owner first name is optional (for companies)
+      if (!formData.ownerLast.trim() && !formData.ownerFirst.trim()) missingFields.push("Owner Name (First or Last)");
       if (!formData.ownerStreet.trim()) missingFields.push("Owner Street Address");
       if (!formData.ownerCity.trim()) missingFields.push("Owner City");
       if (!formData.ownerState.trim()) missingFields.push("Owner State");
       if (!formData.ownerZip.trim()) missingFields.push("Owner ZIP Code");
 
       if (missingFields.length > 0) {
-        const errorMessage = `Please add your Offer Terms to the template`;
+        const errorMessage = `Please add Owner Information and Offer Terms to the template`;
         if (typeof window !== 'undefined' && (window as any).toast) {
           (window as any).toast.error(errorMessage);
         } else {

@@ -527,7 +527,8 @@ function EngagePageContent() {
   };
 
   const handleOfferSelection = (offerId: number, propertyId: string) => {
-    const property = savedProperties.find(p => p.id.toString() === propertyId);
+    // Find property by original_property_id (numeric) since offer.property_id is numeric
+    const property = savedProperties.find(p => p.original_property_id?.toString() === propertyId);
     if (!property) {
       // If property not found in current saved properties, still navigate with minimal data
       const params = new URLSearchParams({
@@ -540,6 +541,7 @@ function EngagePageContent() {
     }
 
     // Navigate to offer analyzer with the selected offer ID and property data
+    // Use property.id (UUID from saved_properties) not original_property_id
     const params = new URLSearchParams({
       address: property.address,
       city: property.city,
@@ -547,7 +549,7 @@ function EngagePageContent() {
       units: property.units.toString(),
       assessed: property.assessed,
       built: property.built.toString(),
-      id: property.id.toString(),
+      id: property.id.toString(), // This should be the UUID
       offerId: offerId.toString()
     });
     router.push(`/offer-analyzer?${params.toString()}`);
@@ -1107,7 +1109,7 @@ function EngagePageContent() {
         const { data: currentFavorite } = await supabase
           .from('user_favorites')
           .select('notes')
-          .eq('user_id', user.id)
+          .eq('user_id', user?.id)
           .eq('property_id', property.original_property_id)
           .single();
         

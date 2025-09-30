@@ -662,7 +662,7 @@ export default function OfferAnalyzerPage() {
   const handleCancelOverwrite = () => {
     setPendingOfferData(null);
     setShowDuplicateAlert(false);
-    // Keep the SaveOfferModal open so user can choose a different name
+    setShowSaveOfferModal(true); // Re-open the save modal so user can choose a different name
   };
 
   // Separate function to actually perform the save

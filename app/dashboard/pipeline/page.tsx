@@ -1053,11 +1053,18 @@ function DealQualityMatrix({ user, authLoading }: { user: any; authLoading: bool
               const totalCount = Object.values(quadrantCounts).reduce((sum, c) => sum + c, 0);
               const percentage = totalCount > 0 ? Math.round((count / totalCount) * 100) : 0;
               
+              const quadrantColors = {
+                SLEEPERS: 'bg-blue-100',
+                GOLDMINES: 'bg-green-100',
+                CAUTIONARIES: 'bg-red-50',
+                FIXERS: 'bg-yellow-100',
+                TWEENERS: 'bg-purple-100'
+              };
+              
               return (
-                <div key={quadrant} className="text-center p-4 bg-gray-50 rounded-lg">
-                  <div className="text-2xl mb-2">{info.emoji}</div>
-                  <div className="text-lg font-bold text-gray-900">{count}</div>
-                  <div className="text-sm font-medium text-gray-800">{info.name}</div>
+                <div key={quadrant} className={`text-center p-4 rounded-lg ${quadrantColors[quadrant as keyof typeof quadrantColors]}`}>
+                  <div className="text-3xl font-bold text-gray-900">{count}</div>
+                  <div className="text-lg font-medium text-gray-800">{info.name}</div>
                   <div className="text-xs text-gray-600 mt-1">({info.desc})</div>
                   <div className="text-xs text-gray-500 mt-1 italic">{info.fullDesc}</div>
                   <div className="text-xs text-gray-500 mt-1">{percentage}%</div>

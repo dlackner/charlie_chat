@@ -90,19 +90,15 @@ function DiscoverPageContent() {
     }
     setViewMode(mode);
   };
-  const [currentPage, setCurrentPage] = useState(0);
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
   const [lastSearchFilters, setLastSearchFilters] = useState<any>(null);
   const [favoritePropertyIds, setFavoritePropertyIds] = useState<string[]>([]);
-  const [currentFavoritesPage, setCurrentFavoritesPage] = useState(0);
-  const [isLoadingMoreFavorites, setIsLoadingMoreFavorites] = useState(false);
+  const [currentFavoritesPage, setCurrentFavoritesPage] = useState(1);
   const [totalFavoritesCount, setTotalFavoritesCount] = useState(0);
   const [locationFilter, setLocationFilter] = useState('');
   const [allFavorites, setAllFavorites] = useState<any[]>([]);
   const [mySearches, setMySearches] = useState<any[]>([]);
   const [isLoadingMySearches, setIsLoadingMySearches] = useState(false);
-  
-  // Constants
   
   // Constants
   const FAVORITES_PER_PAGE = 12;
@@ -170,6 +166,65 @@ function DiscoverPageContent() {
     // Always show by recency (favorites are already sorted by saved_at DESC from API)
     return filtered;
   };
+  
+  // Pagination calculations for favorites
+  const filteredFavorites = getFilteredFavorites();
+  const totalFavoritesPages = Math.ceil(filteredFavorites.length / FAVORITES_PER_PAGE);
+  const favoritesStartIndex = (currentFavoritesPage - 1) * FAVORITES_PER_PAGE;
+  const favoritesEndIndex = favoritesStartIndex + FAVORITES_PER_PAGE;
+  const paginatedFavorites = filteredFavorites.slice(favoritesStartIndex, favoritesEndIndex);
+  
+  // Pagination calculations for search results  
+  const totalSearchPages = Math.ceil(propertyCount / FAVORITES_PER_PAGE);
+  const searchStartIndex = (currentPage - 1) * FAVORITES_PER_PAGE;
+  const searchEndIndex = searchStartIndex + FAVORITES_PER_PAGE;
+  const paginatedSearchResults = searchResults.slice(searchStartIndex, searchEndIndex);
+  
+  // Update recentProperties when favorites page changes
+  useEffect(() => {
+    if (!hasSearched && paginatedFavorites.length > 0) {
+      setRecentProperties(paginatedFavorites);
+    }
+  }, [currentFavoritesPage, locationFilter, allFavorites, hasSearched]);
+  
+  
+  // Load more search results when navigating to a page that needs more data
+  useEffect(() => {
+    if (hasSearched && totalSearchPages > 1 && searchResults.length < propertyCount) {
+      const neededResults = currentPage * FAVORITES_PER_PAGE;
+      if (neededResults > searchResults.length) {
+        // Need to load more results
+        const loadMoreSearchResults = async () => {
+          if (!lastSearchFilters) return;
+          
+          try {
+            const nextResultIndex = searchResults.length;
+            const response = await fetch('/api/realestateapi', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                ...lastSearchFilters,
+                property_type: "MFR",
+                size: 12 * (currentPage - Math.floor(searchResults.length / FAVORITES_PER_PAGE)),
+                resultIndex: nextResultIndex
+              })
+            });
+            
+            if (response.ok) {
+              const data = await response.json();
+              setSearchResults(prev => [...prev, ...(data.data || [])]);
+            }
+          } catch (error) {
+            console.error('Error loading more search results:', error);
+          }
+        };
+        
+        loadMoreSearchResults();
+      }
+    }
+  }, [currentPage, hasSearched, searchResults.length, propertyCount, totalSearchPages, lastSearchFilters]);
   
   // Filter states - initialize from sessionStorage if available
   const [filters, setFilters] = useState(() => {
@@ -240,6 +295,11 @@ function DiscoverPageContent() {
     private_lender: null as boolean | null
     };
   });
+  
+  // Reset to first page when search changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, filters]);
   
   // Collapsible section states - restore from sessionStorage or default to all closed
   const [collapsedSections, setCollapsedSections] = useState(() => {
@@ -458,11 +518,11 @@ function DiscoverPageContent() {
           
           // Get real property data from saved_properties table using existing supabase client
           if (supabase) {
-            const firstPageIds = limitedFavoriteIds.slice(0, FAVORITES_PER_PAGE);
+            // Load ALL property data for pagination to work correctly
             const { data: propertiesData, error: propertiesError } = await supabase
               .from('saved_properties')
               .select('*')
-              .in('property_id', firstPageIds);
+              .in('property_id', limitedFavoriteIds);
             
             if (propertiesError) {
               // Error loading property data
@@ -479,11 +539,10 @@ function DiscoverPageContent() {
                 address_full: prop.address_full || prop.address_street || 'Address Not Available'
               })) || [];
               
-              setAllFavorites(limitedFavoriteIds);
-              setTotalFavoritesCount(limitedFavoriteIds.length);
-              setRecentProperties(mappedProperties);
-              setPropertyCount(mappedProperties.length);
-              setCurrentFavoritesPage(0);
+              setAllFavorites(mappedProperties); // Store ALL property data, not just IDs
+              setTotalFavoritesCount(mappedProperties.length);
+              // recentProperties will be set by the useEffect when paginatedFavorites changes
+              setCurrentFavoritesPage(1);
               setHasSearched(false);
               setIsLoadingRecent(false);
               return;
@@ -524,54 +583,11 @@ function DiscoverPageContent() {
     }
   }, [user]); // Add user dependency for saved searches
 
-  // Load more favorites function
-  const loadMoreFavorites = async () => {
-    if (isLoadingMoreFavorites) return;
-    
-    setIsLoadingMoreFavorites(true);
-    
-    try {
-      const filteredFavorites = getFilteredFavorites();
-      const nextPage = currentFavoritesPage + 1;
-      const startIndex = nextPage * FAVORITES_PER_PAGE;
-      const endIndex = startIndex + FAVORITES_PER_PAGE;
-      const nextPageIds = filteredFavorites.slice(startIndex, endIndex);
-      
-      if (nextPageIds.length > 0 && supabase) {
-        // Fetch actual property data from database using existing supabase client
-        const { data: propertiesData, error: propertiesError } = await supabase
-          .from('saved_properties')
-          .select('*')
-          .in('property_id', nextPageIds);
-        
-        if (propertiesError) {
-          // Error loading more property data
-        } else {
-          // Map database fields to component expected fields
-          const mappedProperties = propertiesData?.map(prop => ({
-            ...prop,
-            id: prop.property_id || prop.id,
-            units: prop.units_count || 0,
-            address_full: prop.address_full || prop.address_street || 'Address Not Available'
-          })) || [];
-          
-          // Append to existing properties
-          setRecentProperties(prev => [...prev, ...mappedProperties]);
-          setPropertyCount(prev => prev + mappedProperties.length);
-          setCurrentFavoritesPage(nextPage);
-        }
-      }
-    } catch (error) {
-      // Error loading more favorites
-    } finally {
-      setIsLoadingMoreFavorites(false);
-    }
-  };
   
   // Handle location filter changes
   const handleLocationFilterChange = (newFilter: string) => {
     setLocationFilter(newFilter);
-    setCurrentFavoritesPage(0);
+    setCurrentFavoritesPage(1);
     
     // Apply filter and show first page
     const filteredFavorites = filterFavoritesByLocation(allFavorites, newFilter);
@@ -701,7 +717,7 @@ function DiscoverPageContent() {
     
     setIsSearching(true);
     setRecentProperties([]);
-    setCurrentPage(0); // Reset pagination for new search
+    setCurrentPage(1); // Reset pagination for new search
     
     try {
       // Helper function to capitalize words properly
@@ -920,42 +936,6 @@ function DiscoverPageContent() {
     await performSearch(searchQuery);
   };
 
-  const loadMoreProperties = async () => {
-    if (!lastSearchFilters || isLoadingMore) return;
-    
-    setIsLoadingMore(true);
-    
-    try {
-      const nextResultIndex = searchResults.length; // Use current results length as starting index
-      const response = await fetch('/api/realestateapi', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          ...lastSearchFilters,
-          property_type: "MFR", // Only multifamily properties
-          size: 12,
-          resultIndex: nextResultIndex // Start from current results length
-        })
-      });
-      
-      if (!response.ok) {
-        throw new Error('Load more failed');
-      }
-      
-      const data = await response.json();
-      
-      // Append new results to existing results
-      setSearchResults(prev => [...prev, ...(data.data || [])]);
-      setCurrentPage(prev => prev + 1);
-      
-    } catch (error) {
-      // Load more error
-    } finally {
-      setIsLoadingMore(false);
-    }
-  };
   
   const updateFilter = (key: string, value: any) => {
     setFilters((prev: any) => ({ ...prev, [key]: value }));
@@ -2649,23 +2629,57 @@ function DiscoverPageContent() {
                   </div>
                 )}
                 
-                {/* Load More Favorites Button */}
-                {getFilteredFavorites().length > recentProperties.length && (
-                  <div className="text-center py-8">
-                    <button 
-                      onClick={loadMoreFavorites}
-                      disabled={isLoadingMoreFavorites}
-                      className="bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white px-6 py-3 rounded-lg transition-colors font-medium cursor-pointer disabled:cursor-not-allowed"
+                {/* Favorites Pagination Controls */}
+                {totalFavoritesPages > 1 && (
+                  <div className="mt-8 flex items-center justify-center space-x-2">
+                    <button
+                      onClick={() => setCurrentFavoritesPage(prev => Math.max(1, prev - 1))}
+                      disabled={currentFavoritesPage === 1}
+                      className="px-3 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      {isLoadingMoreFavorites ? (
-                        <>
-                          <div className="inline-block animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                          Loading More Favorites...
-                        </>
-                      ) : (
-                        `Load More Properties (${getFilteredFavorites().length - recentProperties.length} remaining)`
-                      )}
+                      Previous
                     </button>
+                    
+                    <div className="flex items-center space-x-1">
+                      {Array.from({ length: Math.min(5, totalFavoritesPages) }, (_, i) => {
+                        let pageNumber;
+                        if (totalFavoritesPages <= 5) {
+                          pageNumber = i + 1;
+                        } else if (currentFavoritesPage <= 3) {
+                          pageNumber = i + 1;
+                        } else if (currentFavoritesPage >= totalFavoritesPages - 2) {
+                          pageNumber = totalFavoritesPages - 4 + i;
+                        } else {
+                          pageNumber = currentFavoritesPage - 2 + i;
+                        }
+                        
+                        return (
+                          <button
+                            key={i}
+                            onClick={() => setCurrentFavoritesPage(pageNumber)}
+                            className={`w-10 h-10 rounded-lg ${
+                              currentFavoritesPage === pageNumber
+                                ? 'bg-blue-600 text-white'
+                                : 'border border-gray-300 text-gray-700 hover:bg-gray-50'
+                            }`}
+                          >
+                            {pageNumber}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    
+                    <button
+                      onClick={() => setCurrentFavoritesPage(prev => Math.min(totalFavoritesPages, prev + 1))}
+                      disabled={currentFavoritesPage === totalFavoritesPages}
+                      className="px-3 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Next
+                    </button>
+                    
+                    <div className="ml-4 text-sm text-gray-600">
+                      Showing {favoritesStartIndex + 1}-{Math.min(favoritesEndIndex, filteredFavorites.length)} of {filteredFavorites.length} properties
+                    </div>
                   </div>
                 )}
               </div>
@@ -2676,8 +2690,8 @@ function DiscoverPageContent() {
                   <>
                     {/* Search Results Grid */}
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                      {searchResults.length > 0 ? (
-                        searchResults.map((property, i) => (
+                      {paginatedSearchResults.length > 0 ? (
+                        paginatedSearchResults.map((property, i) => (
                           <PropertyCard 
                             key={property.id || i} 
                             property={property} 
@@ -2698,22 +2712,57 @@ function DiscoverPageContent() {
                       )}
                     </div>
                     
-                    {searchResults.length > 0 && propertyCount > searchResults.length && (
-                      <div className="text-center py-8">
-                        <button 
-                          onClick={loadMoreProperties}
-                          disabled={isLoadingMore}
-                          className="bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white px-6 py-3 rounded-lg transition-colors font-medium cursor-pointer disabled:cursor-not-allowed"
+                    {/* Search Results Pagination Controls */}
+                    {totalSearchPages > 1 && (
+                      <div className="mt-8 flex items-center justify-center space-x-2">
+                        <button
+                          onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                          disabled={currentPage === 1}
+                          className="px-3 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                          {isLoadingMore ? (
-                            <>
-                              <div className="inline-block animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                              Loading More...
-                            </>
-                          ) : (
-                            `Load More Properties (${propertyCount - searchResults.length} remaining)`
-                          )}
+                          Previous
                         </button>
+                        
+                        <div className="flex items-center space-x-1">
+                          {Array.from({ length: Math.min(5, totalSearchPages) }, (_, i) => {
+                            let pageNumber;
+                            if (totalSearchPages <= 5) {
+                              pageNumber = i + 1;
+                            } else if (currentPage <= 3) {
+                              pageNumber = i + 1;
+                            } else if (currentPage >= totalSearchPages - 2) {
+                              pageNumber = totalSearchPages - 4 + i;
+                            } else {
+                              pageNumber = currentPage - 2 + i;
+                            }
+                            
+                            return (
+                              <button
+                                key={i}
+                                onClick={() => setCurrentPage(pageNumber)}
+                                className={`w-10 h-10 rounded-lg ${
+                                  currentPage === pageNumber
+                                    ? 'bg-blue-600 text-white'
+                                    : 'border border-gray-300 text-gray-700 hover:bg-gray-50'
+                                }`}
+                              >
+                                {pageNumber}
+                              </button>
+                            );
+                          })}
+                        </div>
+                        
+                        <button
+                          onClick={() => setCurrentPage(prev => Math.min(totalSearchPages, prev + 1))}
+                          disabled={currentPage === totalSearchPages}
+                          className="px-3 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          Next
+                        </button>
+                        
+                        <div className="ml-4 text-sm text-gray-600">
+                          Showing {searchStartIndex + 1}-{Math.min(searchEndIndex, searchResults.length)} of {propertyCount} properties
+                        </div>
                       </div>
                     )}
                   </>
@@ -2723,7 +2772,7 @@ function DiscoverPageContent() {
                     {/* Left: Map */}
                     <div className="w-2/5">
                       <PropertyMapWithRents
-                        properties={searchResults}
+                        properties={paginatedSearchResults}
                         className="h-full rounded-lg border border-gray-200"
                         context="discover"
                         currentViewMode={viewMode}
@@ -2736,8 +2785,8 @@ function DiscoverPageContent() {
                     {/* Right: Cards in 2-column grid */}
                     <div className="flex-1 overflow-y-auto">
                       <div className="grid grid-cols-2 gap-4 pr-4">
-                        {searchResults.length > 0 ? (
-                          searchResults.map((property, i) => (
+                        {paginatedSearchResults.length > 0 ? (
+                          paginatedSearchResults.map((property, i) => (
                             <PropertyCard 
                               key={property.id || i} 
                               property={property} 
@@ -2758,6 +2807,60 @@ function DiscoverPageContent() {
                         )}
                       </div>
                     </div>
+                    
+                    {/* Combined View Pagination Controls */}
+                    {totalSearchPages > 1 && (
+                      <div className="mt-8 flex items-center justify-center space-x-2">
+                        <button
+                          onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                          disabled={currentPage === 1}
+                          className="px-3 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          Previous
+                        </button>
+                        
+                        <div className="flex items-center space-x-1">
+                          {Array.from({ length: Math.min(5, totalSearchPages) }, (_, i) => {
+                            let pageNumber;
+                            if (totalSearchPages <= 5) {
+                              pageNumber = i + 1;
+                            } else if (currentPage <= 3) {
+                              pageNumber = i + 1;
+                            } else if (currentPage >= totalSearchPages - 2) {
+                              pageNumber = totalSearchPages - 4 + i;
+                            } else {
+                              pageNumber = currentPage - 2 + i;
+                            }
+                            
+                            return (
+                              <button
+                                key={i}
+                                onClick={() => setCurrentPage(pageNumber)}
+                                className={`w-10 h-10 rounded-lg ${
+                                  currentPage === pageNumber
+                                    ? 'bg-blue-600 text-white'
+                                    : 'border border-gray-300 text-gray-700 hover:bg-gray-50'
+                                }`}
+                              >
+                                {pageNumber}
+                              </button>
+                            );
+                          })}
+                        </div>
+                        
+                        <button
+                          onClick={() => setCurrentPage(prev => Math.min(totalSearchPages, prev + 1))}
+                          disabled={currentPage === totalSearchPages}
+                          className="px-3 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          Next
+                        </button>
+                        
+                        <div className="ml-4 text-sm text-gray-600">
+                          Showing {searchStartIndex + 1}-{Math.min(searchEndIndex, searchResults.length)} of {propertyCount} properties
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
