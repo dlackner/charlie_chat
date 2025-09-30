@@ -111,7 +111,12 @@ export async function GET(request: NextRequest) {
 
     try {
       // Call the real estate API using the same pattern as the discover page
-      const realEstateResponse = await fetch('http://localhost:3000/api/realestateapi', {
+      const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 
+        (process.env.NODE_ENV === 'production' 
+          ? 'https://www.multifamilyos.ai' 
+          : 'http://localhost:3000');
+      
+      const realEstateResponse = await fetch(`${baseUrl}/api/realestateapi`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -317,7 +322,11 @@ async function generateRealAITrends(marketDetails: any, marketProperties: any[],
     // Get rental data for this market (simulate what the map shows)
     let rentalInsights = '';
     try {
-      const rentResponse = await fetch('http://localhost:3000/Monthly%20Rental%20Rates.csv?v=3');
+      const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 
+        (process.env.NODE_ENV === 'production' 
+          ? 'https://www.multifamilyos.ai' 
+          : 'http://localhost:3000');
+      const rentResponse = await fetch(`${baseUrl}/Monthly%20Rental%20Rates.csv?v=3`);
       if (rentResponse.ok) {
         const csvText = await rentResponse.text();
         const lines = csvText.split('\n');
