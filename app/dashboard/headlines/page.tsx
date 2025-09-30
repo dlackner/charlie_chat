@@ -510,15 +510,15 @@ export default function HomePage() {
                 <h3 className="text-lg font-semibold text-purple-900 mb-3">AI Market Trends</h3>
                 <div className="space-y-3">
                   <div className="text-sm text-purple-800">
-                    <div className="font-medium mb-1">🔥 Hot Trend</div>
+                    <div className="font-medium mb-1">Hot Trend</div>
                     <div>{marketInsights?.aiTrends.hotTrend || 'Analyzing market patterns...'}</div>
                   </div>
                   <div className="text-sm text-purple-800">
-                    <div className="font-medium mb-1">📈 Price Movement</div>
+                    <div className="font-medium mb-1">Price Movement</div>
                     <div>{marketInsights?.aiTrends.priceMovement || 'Processing price data...'}</div>
                   </div>
                   <div className="text-sm text-purple-800">
-                    <div className="font-medium mb-1">💡 Recommendation</div>
+                    <div className="font-medium mb-1">Recommendation</div>
                     <div>{marketInsights?.aiTrends.recommendation || 'Generating insights...'}</div>
                   </div>
                 </div>
@@ -588,18 +588,19 @@ function MetricCard({
   icon: React.ReactNode;
   color: 'green' | 'blue' | 'purple' | 'orange';
 }) {
-  const colorClasses = {
-    green: 'text-green-600 bg-green-50',
-    blue: 'text-blue-600 bg-blue-50',
-    purple: 'text-purple-600 bg-purple-50',
-    orange: 'text-orange-600 bg-orange-50'
+  const borderColorClasses = {
+    green: 'border-l-green-500',
+    blue: 'border-l-blue-500',
+    purple: 'border-l-purple-500',
+    orange: 'border-l-orange-500'
   };
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+    <div className={`bg-white rounded-lg shadow-sm border border-gray-200 p-6 border-l-4 ${borderColorClasses[color]}`}>
       <div className="flex items-center justify-between">
-        <div className={`p-3 rounded-lg ${colorClasses[color]}`}>
-          {icon}
+        <div>
+          <div className="text-4xl font-bold text-gray-900">{value}</div>
+          <div className="text-lg font-medium text-gray-700 mt-2">{title}</div>
         </div>
         <div className={`flex items-center text-sm font-medium ${
           trend === 'up' ? 'text-green-600' : 'text-red-600'
@@ -611,10 +612,6 @@ function MetricCard({
           )}
           {change}
         </div>
-      </div>
-      <div className="mt-4">
-        <div className="text-2xl font-bold text-gray-900">{value}</div>
-        <div className="text-sm text-gray-600">{title}</div>
       </div>
     </div>
   );
@@ -633,25 +630,17 @@ function ActivityCard({
   icon: React.ReactNode;
   color: 'green' | 'blue' | 'purple' | 'orange';
 }) {
-  const colorClasses = {
-    green: 'text-green-600 bg-green-50',
-    blue: 'text-blue-600 bg-blue-50',
-    purple: 'text-purple-600 bg-purple-50',
-    orange: 'text-orange-600 bg-orange-50'
+  const borderColorClasses = {
+    green: 'border-l-green-500',
+    blue: 'border-l-blue-500',
+    purple: 'border-l-purple-500',
+    orange: 'border-l-orange-500'
   };
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-      <div className="flex items-center justify-center">
-        <div className={`p-3 rounded-lg ${colorClasses[color]}`}>
-          {icon}
-        </div>
-      </div>
-      <div className="mt-4">
-        <div className="text-2xl font-bold text-gray-900">{value}</div>
-        <div className="text-sm text-gray-600">{title}</div>
-        <div className="text-xs text-gray-500 mt-1">{description}</div>
-      </div>
+    <div className={`bg-white rounded-lg shadow-sm border border-gray-200 p-6 border-l-4 ${borderColorClasses[color]}`}>
+      <div className="text-4xl font-bold text-gray-900">{value}</div>
+      <div className="text-lg font-medium text-gray-700 mt-2">{title}</div>
     </div>
   );
 }

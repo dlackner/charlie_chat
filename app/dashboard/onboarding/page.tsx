@@ -613,10 +613,7 @@ function TaskCard({
         </button>
         
         <div className="flex-1 min-w-0">
-          <div className="flex items-center space-x-2 mb-1">
-            <div className="text-gray-500">
-              {task.icon}
-            </div>
+          <div className="mb-1">
             <h4 className={`font-medium text-sm ${
               completed ? 'text-green-800 line-through' : 'text-gray-900'
             }`}>

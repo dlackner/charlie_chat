@@ -178,13 +178,25 @@ export default function PropertyIntelligenceChart({ data, chartType }: PropertyI
   }
 
   // Mixed bar/line chart - need to use ComposedChart for combining bar and line
-  // Prepare data with both metrics
-  const chartData = data.map((item) => ({
-    status: item.status,
-    count: item.count,
-    value_millions: item.estimated_value / 1000000, // Convert to millions for readability
-    percentage: item.percentage
-  }));
+  // Define pipeline stages order (same as funnel)
+  const pipelineOrder = ['Reviewing', 'Analyzing', 'Engaged', 'LOI Sent', 'Acquired', 'Rejected'];
+  
+  // Prepare data with both metrics and sort by pipeline order
+  const chartData = [...data]
+    .sort((a, b) => {
+      const aIndex = pipelineOrder.indexOf(a.status);
+      const bIndex = pipelineOrder.indexOf(b.status);
+      // If status not in order array, put at end
+      if (aIndex === -1) return 1;
+      if (bIndex === -1) return -1;
+      return aIndex - bIndex;
+    })
+    .map((item) => ({
+      status: item.status,
+      count: item.count,
+      value_millions: item.estimated_value / 1000000, // Convert to millions for readability
+      percentage: item.percentage
+    }));
 
   return (
     <div className="h-full">

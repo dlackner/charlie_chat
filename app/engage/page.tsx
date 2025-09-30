@@ -55,6 +55,8 @@ function EngagePageContent() {
   const [selectedPropertyOffers, setSelectedPropertyOffers] = useState<any[]>([]);
   const [showCashFlowReportsModal, setShowCashFlowReportsModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const propertiesPerPage = 12;
   const statusDropdownRef = useRef<HTMLDivElement>(null);
   const marketDropdownRef = useRef<HTMLDivElement>(null);
   const statusDropdownTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -245,6 +247,17 @@ function EngagePageContent() {
     
     return matchesStatus && matchesPipelineStage && matchesMarket && matchesSource && matchesSearch;
   });
+
+  // Reset to first page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [selectedStatuses, selectedMarkets, selectedSource, selectedPipelineStage, searchQuery]);
+
+  // Calculate pagination
+  const totalPages = Math.ceil(filteredProperties.length / propertiesPerPage);
+  const startIndex = (currentPage - 1) * propertiesPerPage;
+  const endIndex = startIndex + propertiesPerPage;
+  const paginatedProperties = filteredProperties.slice(startIndex, endIndex);
 
   const togglePropertySelection = (propertyId: number) => {
     setSelectedProperties(prev => 
@@ -1090,27 +1103,42 @@ function EngagePageContent() {
         const oneWeekReminderNote = `@${formatDate(oneWeekLater)} One week email reminder`;
         const twoWeekReminderNote = `@${formatDate(twoWeeksLater)} Two week email reminder`;
         
-        // Add both reminder notes to the property
-        await Promise.all([
-          fetch('/api/favorites/notes', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              property_id: property.original_property_id,
-              note: oneWeekReminderNote
-            })
-          }),
-          fetch('/api/favorites/notes', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              property_id: property.original_property_id,
-              note: twoWeekReminderNote
-            })
-          })
-        ]);
+        // First, get the current notes from the database
+        const { data: currentFavorite } = await supabase
+          .from('user_favorites')
+          .select('notes')
+          .eq('user_id', user.id)
+          .eq('property_id', property.original_property_id)
+          .single();
         
-        console.log('Email reminder notes added:', { oneWeekReminderNote, twoWeekReminderNote });
+        const existingNotes = currentFavorite?.notes || '';
+        
+        // Combine existing notes with new reminder notes
+        const updatedNotes = existingNotes 
+          ? `${existingNotes}\n${oneWeekReminderNote}\n${twoWeekReminderNote}`
+          : `${oneWeekReminderNote}\n${twoWeekReminderNote}`;
+        
+        // Update notes with both reminders
+        const response = await fetch('/api/favorites/update-notes', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            property_id: property.original_property_id,
+            notes: updatedNotes
+          })
+        });
+        
+        if (!response.ok) {
+          throw new Error('Failed to update notes');
+        }
+        
+        // Refresh the property to show updated notes
+        setSavedProperties(prev => prev.map(p => {
+          if (p.original_property_id === property.original_property_id) {
+            return { ...p, notes: updatedNotes };
+          }
+          return p;
+        }));
       } catch (noteError) {
         console.error('Failed to add reminder notes:', noteError);
         // Don't fail the email send if notes fail
@@ -1215,17 +1243,42 @@ function EngagePageContent() {
             
             const reminderNote = `@${formatDate(tenDaysLater)} Marketing letter follow-up reminder`;
             
-            // Add reminder note to the property
-            await fetch('/api/favorites/notes', {
+            // First, get the current notes from the database
+            const { data: currentFavorite } = await supabase
+              .from('user_favorites')
+              .select('notes')
+              .eq('user_id', user.id)
+              .eq('property_id', property.original_property_id)
+              .single();
+            
+            const existingNotes = currentFavorite?.notes || '';
+            
+            // Combine existing notes with new reminder note
+            const updatedNotes = existingNotes 
+              ? `${existingNotes}\n${reminderNote}`
+              : reminderNote;
+            
+            // Update notes with reminder
+            const response = await fetch('/api/favorites/update-notes', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
                 property_id: property.original_property_id,
-                note: reminderNote
+                notes: updatedNotes
               })
             });
             
-            console.log('Marketing letter reminder note added:', reminderNote);
+            if (!response.ok) {
+              throw new Error('Failed to update notes');
+            }
+            
+            // Update the local state immediately to show the new notes
+            setSavedProperties(prev => prev.map(p => {
+              if (p.original_property_id === property.original_property_id) {
+                return { ...p, notes: updatedNotes };
+              }
+              return p;
+            }));
           } catch (noteError) {
             console.error('Failed to add marketing letter reminder note:', noteError);
             // Don't fail the letter generation if notes fail
@@ -1960,7 +2013,7 @@ function EngagePageContent() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredProperties.map((property) => (
+            {paginatedProperties.map((property) => (
               <PropertyCard
                 key={property.id}
                 property={property}
@@ -1974,6 +2027,60 @@ function EngagePageContent() {
               />
             ))}
             </div>
+
+            {/* Pagination Controls */}
+            {totalPages > 1 && (
+              <div className="mt-8 flex items-center justify-center space-x-2">
+                <button
+                  onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                  disabled={currentPage === 1}
+                  className="px-3 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Previous
+                </button>
+                
+                <div className="flex items-center space-x-1">
+                  {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                    let pageNumber;
+                    if (totalPages <= 5) {
+                      pageNumber = i + 1;
+                    } else if (currentPage <= 3) {
+                      pageNumber = i + 1;
+                    } else if (currentPage >= totalPages - 2) {
+                      pageNumber = totalPages - 4 + i;
+                    } else {
+                      pageNumber = currentPage - 2 + i;
+                    }
+                    
+                    return (
+                      <button
+                        key={i}
+                        onClick={() => setCurrentPage(pageNumber)}
+                        className={`w-10 h-10 rounded-lg ${
+                          currentPage === pageNumber
+                            ? 'bg-blue-600 text-white'
+                            : 'border border-gray-300 text-gray-700 hover:bg-gray-50'
+                        }`}
+                      >
+                        {pageNumber}
+                      </button>
+                    );
+                  })}
+                </div>
+                
+                <button
+                  onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                  disabled={currentPage === totalPages}
+                  className="px-3 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Next
+                </button>
+                
+                <div className="ml-4 text-sm text-gray-600">
+                  Showing {startIndex + 1}-{Math.min(endIndex, filteredProperties.length)} of {filteredProperties.length} properties
+                </div>
+              </div>
+            )}
           </div>
         ) : null}
 
@@ -1992,7 +2099,7 @@ function EngagePageContent() {
             {/* Right: Properties in 2-column grid */}
             <div className="flex-1 overflow-y-auto">
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                {filteredProperties.map((property) => (
+                {paginatedProperties.map((property) => (
                   <PropertyCard
                     key={property.id}
                     property={property}
@@ -2013,6 +2120,60 @@ function EngagePageContent() {
                     <Heart className="h-12 w-12 text-gray-400 mx-auto mb-4" />
                     <h3 className="text-lg font-medium text-gray-900 mb-2">No Properties Found</h3>
                     <p className="text-gray-600">No properties match your current filters.</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Pagination Controls for Map View */}
+              {totalPages > 1 && (
+                <div className="mt-4 flex items-center justify-center space-x-2">
+                  <button
+                    onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                    disabled={currentPage === 1}
+                    className="px-3 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                  >
+                    Previous
+                  </button>
+                  
+                  <div className="flex items-center space-x-1">
+                    {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                      let pageNumber;
+                      if (totalPages <= 5) {
+                        pageNumber = i + 1;
+                      } else if (currentPage <= 3) {
+                        pageNumber = i + 1;
+                      } else if (currentPage >= totalPages - 2) {
+                        pageNumber = totalPages - 4 + i;
+                      } else {
+                        pageNumber = currentPage - 2 + i;
+                      }
+                      
+                      return (
+                        <button
+                          key={i}
+                          onClick={() => setCurrentPage(pageNumber)}
+                          className={`w-8 h-8 rounded-lg text-sm ${
+                            currentPage === pageNumber
+                              ? 'bg-blue-600 text-white'
+                              : 'border border-gray-300 text-gray-700 hover:bg-gray-50'
+                          }`}
+                        >
+                          {pageNumber}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  
+                  <button
+                    onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                    disabled={currentPage === totalPages}
+                    className="px-3 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                  >
+                    Next
+                  </button>
+                  
+                  <div className="ml-4 text-xs text-gray-600">
+                    {startIndex + 1}-{Math.min(endIndex, filteredProperties.length)} of {filteredProperties.length}
                   </div>
                 </div>
               )}
@@ -2233,6 +2394,10 @@ function PropertyCard({
   const [isFavorited, setIsFavorited] = useState(true); // Start as favorited since this is engage page
   const [notes, setNotes] = useState(property.notes || '');
   
+  // Update local notes state when property.notes changes
+  useEffect(() => {
+    setNotes(property.notes || '');
+  }, [property.notes]);
 
   const updateFavoriteStatus = async (newStatus: string) => {
     try {
