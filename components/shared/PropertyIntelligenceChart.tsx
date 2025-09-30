@@ -133,9 +133,17 @@ export default function PropertyIntelligenceChart({ data, chartType }: PropertyI
   }
 
   if (chartType === 'funnel') {
-    // Transform data for funnel chart - sort by count descending
+    // Define pipeline stages order
+    const pipelineOrder = ['Reviewing', 'Analyzing', 'Engaged', 'LOI Sent', 'Acquired'];
+    
+    // Transform data for funnel chart - sort by pipeline order
     const funnelData = [...data]
-      .sort((a, b) => b.count - a.count)
+      .filter(item => pipelineOrder.includes(item.status)) // Only include stages in the pipeline order
+      .sort((a, b) => {
+        const aIndex = pipelineOrder.indexOf(a.status);
+        const bIndex = pipelineOrder.indexOf(b.status);
+        return aIndex - bIndex;
+      })
       .map((item) => ({
         ...item,
         name: item.status,

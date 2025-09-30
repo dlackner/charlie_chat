@@ -34,6 +34,7 @@ function EngagePageContent() {
   const [selectedStatuses, setSelectedStatuses] = useState<string[]>([]);
   const [selectedMarkets, setSelectedMarkets] = useState<string[]>([]);
   const [selectedSource, setSelectedSource] = useState('All');
+  const [selectedPipelineStage, setSelectedPipelineStage] = useState<string>('all');
   const [showStatusDropdown, setShowStatusDropdown] = useState(false);
   const [showMarketDropdown, setShowMarketDropdown] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -212,6 +213,9 @@ function EngagePageContent() {
   const filteredProperties = savedProperties.filter(property => {
     const matchesStatus = selectedStatuses.length === 0 || selectedStatuses.includes(property.pipelineStatus);
     
+    // Pipeline stage filtering
+    const matchesPipelineStage = selectedPipelineStage === 'all' || property.pipelineStatus === selectedPipelineStage;
+    
     // Enhanced market matching: include both market name AND geographic location
     let matchesMarket = selectedMarkets.length === 0;
     if (!matchesMarket && selectedMarkets.length > 0) {
@@ -239,7 +243,7 @@ function EngagePageContent() {
       property.address.toLowerCase().includes(searchQuery.toLowerCase()) ||
       property.city.toLowerCase().includes(searchQuery.toLowerCase());
     
-    return matchesStatus && matchesMarket && matchesSource && matchesSearch;
+    return matchesStatus && matchesPipelineStage && matchesMarket && matchesSource && matchesSearch;
   });
 
   const togglePropertySelection = (propertyId: number) => {
@@ -1393,223 +1397,147 @@ function EngagePageContent() {
           </div>
         </div>
 
-        {/* Status and Market Filters with View Mode Toggle */}
-        <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center mb-6 space-y-4 lg:space-y-0">
-          
-          {/* Status and Market Filters */}
-          <div className="flex items-center space-x-4">
-            <div className="flex items-center space-x-2">
-              <Filter className="h-4 w-4 text-gray-500" />
-              
-              {/* Status Filter */}
-              <div 
-                className="relative" 
-                ref={statusDropdownRef}
-                onMouseEnter={() => {
-                  // Clear any existing timeout when mouse enters
-                  if (statusDropdownTimeoutRef.current) {
-                    clearTimeout(statusDropdownTimeoutRef.current);
-                    statusDropdownTimeoutRef.current = null;
-                  }
-                }}
-                onMouseLeave={() => {
-                  // Set timeout to close dropdown when mouse leaves
-                  if (showStatusDropdown) {
-                    statusDropdownTimeoutRef.current = setTimeout(() => {
-                      setShowStatusDropdown(false);
-                    }, 300); // 300ms delay
-                  }
-                }}
-              >
-                <button
-                  onClick={() => setShowStatusDropdown(!showStatusDropdown)}
-                  className="appearance-none bg-white border border-gray-300 rounded-lg px-3 py-2 pr-8 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 min-w-[140px] text-left"
-                >
-                  Status ({selectedStatuses.length} selected)
-                </button>
-                <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
-                
-                {showStatusDropdown && (
-                  <div 
-                    className="absolute top-full left-0 mt-1 bg-white border border-gray-300 rounded-lg shadow-lg z-50 min-w-[200px]"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <div className="p-3">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-sm font-medium">Status Options</span>
-                        <button
-                          onClick={() => {
-                            if (selectedStatuses.length === uniqueStatuses.length) {
-                              setSelectedStatuses([]);
-                            } else {
-                              setSelectedStatuses([...uniqueStatuses]);
-                            }
-                          }}
-                          className="text-xs text-blue-600 hover:text-blue-700"
-                        >
-                          {selectedStatuses.length === uniqueStatuses.length ? 'Clear All' : 'Select All'}
-                        </button>
-                      </div>
-                      <div className="max-h-48 overflow-y-auto">
-                        {uniqueStatuses.map(status => (
-                          <label key={status} className="flex items-center space-x-2 py-1 cursor-pointer">
-                            <input
-                              type="checkbox"
-                              checked={selectedStatuses.includes(status)}
-                              onChange={(e) => {
-                                if (e.target.checked) {
-                                  setSelectedStatuses(prev => [...prev, status]);
-                                } else {
-                                  setSelectedStatuses(prev => prev.filter(s => s !== status));
-                                }
-                              }}
-                              className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 text-xs"
-                            />
-                            <span className="text-sm">{status}</span>
-                          </label>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Market Filter */}
-              <div 
-                className="relative" 
-                ref={marketDropdownRef}
-                onMouseEnter={() => {
-                  // Clear any existing timeout when mouse enters
-                  if (marketDropdownTimeoutRef.current) {
-                    clearTimeout(marketDropdownTimeoutRef.current);
-                    marketDropdownTimeoutRef.current = null;
-                  }
-                }}
-                onMouseLeave={() => {
-                  // Set timeout to close dropdown when mouse leaves
-                  if (showMarketDropdown) {
-                    marketDropdownTimeoutRef.current = setTimeout(() => {
-                      setShowMarketDropdown(false);
-                    }, 300); // 300ms delay
-                  }
-                }}
-              >
-                <button
-                  onClick={() => setShowMarketDropdown(!showMarketDropdown)}
-                  className="appearance-none bg-white border border-gray-300 rounded-lg px-3 py-2 pr-8 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 min-w-[140px] text-left"
-                >
-                  Markets ({selectedMarkets.length} selected)
-                </button>
-                <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
-                
-                {showMarketDropdown && (
-                  <div 
-                    className="absolute top-full left-0 mt-1 bg-white border border-gray-300 rounded-lg shadow-lg z-50 min-w-[200px]"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <div className="p-3">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-sm font-medium">Market Options</span>
-                        <button
-                          onClick={() => {
-                            if (selectedMarkets.length === uniqueMarkets.length) {
-                              setSelectedMarkets([]);
-                            } else {
-                              setSelectedMarkets([...uniqueMarkets]);
-                            }
-                          }}
-                          className="text-xs text-blue-600 hover:text-blue-700"
-                        >
-                          {selectedMarkets.length === uniqueMarkets.length ? 'Clear All' : 'Select All'}
-                        </button>
-                      </div>
-                      <div className="max-h-48 overflow-y-auto">
-                        {uniqueMarkets.map(market => (
-                          <label key={market} className="flex items-center space-x-2 py-1 cursor-pointer">
-                            <input
-                              type="checkbox"
-                              checked={selectedMarkets.includes(market)}
-                              onChange={(e) => {
-                                if (e.target.checked) {
-                                  setSelectedMarkets(prev => [...prev, market]);
-                                } else {
-                                  setSelectedMarkets(prev => prev.filter(m => m !== market));
-                                }
-                              }}
-                              className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 text-xs"
-                            />
-                            <span className="text-sm">{market}</span>
-                          </label>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Source Filter */}
-              <div className="relative">
-                <select
-                  value={selectedSource}
-                  onChange={(e) => setSelectedSource(e.target.value)}
-                  className="appearance-none bg-white border border-gray-300 rounded-lg px-3 py-2 pr-8 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                >
-                  {uniqueSources.map(source => (
-                    <option key={source} value={source}>
-                      {source === 'All' ? 'All Sources' : source}
-                    </option>
-                  ))}
-                </select>
-                <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
-              </div>
-              
-              {/* Clear Filters Button */}
-              {(selectedStatuses.length > 0 || selectedMarkets.length > 0 || selectedSource !== 'All') && (
-                <button
-                  onClick={() => {
-                    setSelectedStatuses([]);
-                    setSelectedMarkets([]);
-                    setSelectedSource('All');
-                  }}
-                  className="text-sm text-blue-600 hover:text-blue-700 font-medium"
-                >
-                  Clear Filters
-                </button>
-              )}
-            </div>
-          </div>
-
-          {/* View Mode Toggle - Hide map option on mobile */}
-          <div className="flex items-center bg-gray-100 rounded-lg p-1">
-            <button
-              onClick={() => setViewMode('cards')}
-              className={`flex items-center px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                viewMode === 'cards' 
-                  ? 'bg-white text-gray-900 shadow-sm' 
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
-            >
-              <Grid3x3 className="h-4 w-4 mr-1.5 hidden lg:block" />
-              <span className="hidden lg:inline">Cards</span>
-            </button>
-            <button
-              onClick={() => setViewMode('map')}
-              className={`hidden lg:flex items-center px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                viewMode === 'map' 
-                  ? 'bg-white text-gray-900 shadow-sm' 
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
-            >
-              <Map className="h-4 w-4 mr-1.5" />
-              Map
-            </button>
-          </div>
-        </div>
 
         {/* Main Layout - Left Sidebar + Content */}
         <div className="flex gap-6">
           {/* Left Sidebar - Engagement Center */}
           <div className="w-80 flex-shrink-0 hidden lg:block">
+            {/* Spacer to align with pipeline cards */}
+            <div className="h-2 mb-4"></div>
+            
+            {/* View Mode Toggle and Filters */}
+            <div className="mb-3">
+              <div className="flex flex-col space-y-3">
+                {/* View Mode Toggle */}
+                <div className="flex items-center bg-gray-100 rounded-lg p-1">
+                  <button
+                    onClick={() => setViewMode('cards')}
+                    className={`flex items-center px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                      viewMode === 'cards' 
+                        ? 'bg-white text-gray-900 shadow-sm' 
+                        : 'text-gray-600 hover:text-gray-900'
+                    }`}
+                  >
+                    <Grid3x3 className="h-4 w-4 mr-1.5" />
+                    <span>Cards</span>
+                  </button>
+                  <button
+                    onClick={() => setViewMode('map')}
+                    className={`flex items-center px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                      viewMode === 'map' 
+                        ? 'bg-white text-gray-900 shadow-sm' 
+                        : 'text-gray-600 hover:text-gray-900'
+                    }`}
+                  >
+                    <Map className="h-4 w-4 mr-1.5" />
+                    Map
+                  </button>
+                </div>
+
+                {/* Market Filter */}
+                <div 
+                  className="relative" 
+                  ref={marketDropdownRef}
+                  onMouseEnter={() => {
+                    // Clear any existing timeout when mouse enters
+                    if (marketDropdownTimeoutRef.current) {
+                      clearTimeout(marketDropdownTimeoutRef.current);
+                      marketDropdownTimeoutRef.current = null;
+                    }
+                  }}
+                  onMouseLeave={() => {
+                    // Set timeout to close dropdown when mouse leaves
+                    if (showMarketDropdown) {
+                      marketDropdownTimeoutRef.current = setTimeout(() => {
+                        setShowMarketDropdown(false);
+                      }, 300); // 300ms delay
+                    }
+                  }}
+                >
+                  <button
+                    onClick={() => setShowMarketDropdown(!showMarketDropdown)}
+                    className="w-full appearance-none bg-white border border-gray-300 rounded-lg px-3 py-2 pr-8 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-left"
+                  >
+                    Markets ({selectedMarkets.length} selected)
+                  </button>
+                  <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+                  
+                  {showMarketDropdown && (
+                    <div 
+                      className="absolute top-full left-0 mt-1 bg-white border border-gray-300 rounded-lg shadow-lg z-50 min-w-[200px]"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <div className="p-3">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-sm font-medium">Market Options</span>
+                          <button
+                            onClick={() => {
+                              if (selectedMarkets.length === uniqueMarkets.length) {
+                                setSelectedMarkets([]);
+                              } else {
+                                setSelectedMarkets([...uniqueMarkets]);
+                              }
+                            }}
+                            className="text-xs text-blue-600 hover:text-blue-700"
+                          >
+                            {selectedMarkets.length === uniqueMarkets.length ? 'Clear All' : 'Select All'}
+                          </button>
+                        </div>
+                        <div className="max-h-48 overflow-y-auto">
+                          {uniqueMarkets.map(market => (
+                            <label key={market} className="flex items-center space-x-2 py-1 cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={selectedMarkets.includes(market)}
+                                onChange={(e) => {
+                                  if (e.target.checked) {
+                                    setSelectedMarkets(prev => [...prev, market]);
+                                  } else {
+                                    setSelectedMarkets(prev => prev.filter(m => m !== market));
+                                  }
+                                }}
+                                className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 text-xs"
+                              />
+                              <span className="text-sm">{market}</span>
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Source Filter */}
+                <div className="relative">
+                  <select
+                    value={selectedSource}
+                    onChange={(e) => setSelectedSource(e.target.value)}
+                    className="w-full appearance-none bg-white border border-gray-300 rounded-lg px-3 py-2 pr-8 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    {uniqueSources.map(source => (
+                      <option key={source} value={source}>
+                        {source === 'All' ? 'All Sources' : source}
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+                </div>
+                
+                {/* Clear Filters Button */}
+                {(selectedStatuses.length > 0 || selectedMarkets.length > 0 || selectedSource !== 'All') && (
+                  <button
+                    onClick={() => {
+                      setSelectedStatuses([]);
+                      setSelectedMarkets([]);
+                      setSelectedSource('All');
+                    }}
+                    className="text-sm text-blue-600 hover:text-blue-700 font-medium text-left"
+                  >
+                    Clear Filters
+                  </button>
+                )}
+              </div>
+            </div>
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 sticky top-6 overflow-hidden">
               {/* Header */}
               <div className="p-4 border-b border-gray-200">
@@ -1852,6 +1780,7 @@ function EngagePageContent() {
                       setSelectedStatuses([]);
                       setSelectedMarkets([]);
                       setSelectedSource('All');
+                      setSelectedPipelineStage('all');
                     }}
                     className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
                   >
@@ -1862,7 +1791,175 @@ function EngagePageContent() {
             </div>
           </div>
         ) : viewMode === 'cards' ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div>
+            {/* Pipeline Status Metric Cards */}
+            <div className="mb-6">
+              <div className="flex items-center justify-between gap-2 md:gap-4">
+                {(() => {
+                  const stages = ['Reviewing', 'Analyzing', 'Engaged', 'LOI Sent'];
+                  const stageMetrics = stages.map(stage => {
+                    // Apply market and source filters to stage properties
+                    const stageProperties = savedProperties.filter(property => {
+                      // Must match the pipeline stage
+                      const matchesStage = property.pipelineStatus === stage;
+                      
+                      // Apply market filter
+                      let matchesMarket = selectedMarkets.length === 0;
+                      if (!matchesMarket && selectedMarkets.length > 0) {
+                        for (const selectedMarket of selectedMarkets) {
+                          if (selectedMarket === 'No market' && !property.market_key) {
+                            matchesMarket = true;
+                            break;
+                          } else if (selectedMarket !== 'No market') {
+                            if (property.market === selectedMarket) {
+                              matchesMarket = true;
+                              break;
+                            }
+                          }
+                        }
+                      }
+                      
+                      // Apply source filter
+                      const matchesSource = selectedSource === 'All' || 
+                        (selectedSource === 'Algorithm' && property.source === 'A') ||
+                        (selectedSource === 'Manual' && property.source === 'M');
+                      
+                      return matchesStage && matchesMarket && matchesSource;
+                    });
+                    return {
+                      name: stage,
+                      count: stageProperties.length,
+                      units: stageProperties.reduce((sum, p) => sum + (parseInt(p.units) || 0), 0),
+                      assessedValue: stageProperties.reduce((sum, p) => sum + (parseFloat(p.assessed?.replace(/[$,]/g, '')) || 0), 0),
+                      estimatedValue: stageProperties.reduce((sum, p) => sum + (parseFloat(p.estimated?.replace(/[$,]/g, '')) || 0), 0)
+                    };
+                  });
+
+                  // Calculate totals for the summary card (also apply market and source filters)
+                  const allActiveProperties = savedProperties.filter(property => {
+                    // Include all pipeline stages for "All Active"
+                    const isActiveStage = stages.includes(property.pipelineStatus);
+                    
+                    // Apply market filter
+                    let matchesMarket = selectedMarkets.length === 0;
+                    if (!matchesMarket && selectedMarkets.length > 0) {
+                      for (const selectedMarket of selectedMarkets) {
+                        if (selectedMarket === 'No market' && !property.market_key) {
+                          matchesMarket = true;
+                          break;
+                        } else if (selectedMarket !== 'No market') {
+                          if (property.market === selectedMarket) {
+                            matchesMarket = true;
+                            break;
+                          }
+                        }
+                      }
+                    }
+                    
+                    // Apply source filter
+                    const matchesSource = selectedSource === 'All' || 
+                      (selectedSource === 'Algorithm' && property.source === 'A') ||
+                      (selectedSource === 'Manual' && property.source === 'M');
+                    
+                    return isActiveStage && matchesMarket && matchesSource;
+                  });
+
+                  const totalMetrics = {
+                    name: 'All Active',
+                    count: allActiveProperties.length,
+                    units: allActiveProperties.reduce((sum, p) => sum + (parseInt(p.units) || 0), 0),
+                    assessedValue: allActiveProperties.reduce((sum, p) => sum + (parseFloat(p.assessed?.replace(/[$,]/g, '')) || 0), 0),
+                    estimatedValue: allActiveProperties.reduce((sum, p) => sum + (parseFloat(p.estimated?.replace(/[$,]/g, '')) || 0), 0)
+                  };
+
+                  const formatCurrency = (value: number) => {
+                    if (value >= 1000000) return `$${(value / 1000000).toFixed(1)}M`;
+                    if (value >= 1000) return `$${(value / 1000).toFixed(0)}K`;
+                    return `$${value.toFixed(0)}`;
+                  };
+
+                  const allMetrics = [totalMetrics, ...stageMetrics];
+
+                  // Color scheme: cool to warm background colors
+                  const getCardStyles = (metricName: string, index: number) => {
+                    const isSelected = selectedPipelineStage === (index === 0 ? 'all' : metricName);
+                    
+                    if (index === 0) {
+                      // "All Active" card - primary blue background
+                      return isSelected 
+                        ? 'bg-blue-600 text-white shadow-lg border-blue-700' 
+                        : 'bg-blue-500 text-white hover:bg-blue-600 border-blue-500';
+                    }
+                    
+                    // Stage cards with higher opacity, unique colors, starting with purple
+                    const colors = [
+                      // Reviewing (gray - matches kanban)
+                      { bg: 'bg-gray-400/40', hover: 'hover:bg-gray-500/40', selected: 'bg-gray-500/40', border: 'border-gray-400', text: 'text-gray-900' },
+                      // Analyzing (yellow - matches kanban)  
+                      { bg: 'bg-yellow-400/40', hover: 'hover:bg-yellow-500/40', selected: 'bg-yellow-500/40', border: 'border-yellow-400', text: 'text-gray-900' },
+                      // Engaged (blue - matches kanban)
+                      { bg: 'bg-blue-400/40', hover: 'hover:bg-blue-500/40', selected: 'bg-blue-500/40', border: 'border-blue-400', text: 'text-gray-900' },
+                      // LOI Sent (purple - matches kanban)
+                      { bg: 'bg-purple-400/40', hover: 'hover:bg-purple-500/40', selected: 'bg-purple-500/40', border: 'border-purple-400', text: 'text-gray-900' }
+                    ];
+                    
+                    const colorIndex = index - 1; // Subtract 1 because first card is "All Active"
+                    const color = colors[colorIndex] || colors[0];
+                    
+                    return isSelected 
+                      ? `${color.selected} ${color.text} shadow-lg ${color.border}` 
+                      : `${color.bg} ${color.text} ${color.hover} ${color.border}`;
+                  };
+
+                  const cardElements: React.ReactElement[] = [];
+                  
+                  allMetrics.forEach((metric, index) => {
+                    const isDisabled = metric.count === 0;
+                    const isClickable = !isDisabled;
+                    
+                    // Add the card
+                    cardElements.push(
+                      <div
+                        key={metric.name}
+                        onClick={isClickable ? () => setSelectedPipelineStage(index === 0 ? 'all' : metric.name) : undefined}
+                        className={`rounded-lg border-2 p-3 md:p-4 transition-all flex-shrink-0 w-32 md:w-40 lg:w-48 ${
+                          isDisabled 
+                            ? 'opacity-50 cursor-not-allowed bg-gray-300 border-gray-400' 
+                            : `hover:shadow-md cursor-pointer ${getCardStyles(metric.name, index)}`
+                        }`}
+                      >
+                        <div className="text-center">
+                          <div className={`text-2xl md:text-3xl lg:text-4xl font-bold mb-0 leading-tight ${isDisabled ? 'text-gray-500' : ''}`}>{metric.count}</div>
+                          <div className={`text-sm md:text-base lg:text-lg font-semibold mb-0 leading-tight ${isDisabled ? 'text-gray-600' : ''}`}>{metric.name}</div>
+                          <div className={`text-sm space-y-0 leading-tight ${isDisabled ? 'text-gray-500' : 'opacity-90'}`}>
+                            <div>{metric.units} units</div>
+                            <div>{formatCurrency(metric.assessedValue)} assessed</div>
+                            <div>{formatCurrency(metric.estimatedValue)} market</div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                    
+                    // Add arrow after each card except the last one
+                    if (index < allMetrics.length - 1) {
+                      cardElements.push(
+                        <div key={`arrow-${index}`} className="flex items-center">
+                          <div className="bg-gray-100 border-2 border-gray-300 rounded-full p-2 md:p-3 shadow-sm">
+                            <svg className="w-4 h-4 md:w-5 md:h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M9 5l7 7-7 7" />
+                            </svg>
+                          </div>
+                        </div>
+                      );
+                    }
+                  });
+                  
+                  return cardElements;
+                })()}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredProperties.map((property) => (
               <PropertyCard
                 key={property.id}
@@ -1876,6 +1973,7 @@ function EngagePageContent() {
                 onRemoveFromFavorites={handleRemoveFromFavorites}
               />
             ))}
+            </div>
           </div>
         ) : null}
 
