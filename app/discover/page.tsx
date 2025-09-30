@@ -3825,12 +3825,7 @@ function PropertyCard({
       {/* Property Image - Google Street View */}
       <div className="relative">
         <div 
-          className="relative aspect-[4/3] bg-gray-200 cursor-pointer group"
-          onClick={() => {
-            const address = `${displayProperty.address_full || displayProperty.address_street}, ${displayProperty.address_city}, ${displayProperty.address_state} ${displayProperty.address_zip}`;
-            const mapsUrl = `https://www.google.com/maps/search/${encodeURIComponent(address)}`;
-            window.open(mapsUrl, '_blank');
-          }}
+          className="relative aspect-[4/3] bg-gray-200 group"
         >
           <img 
             src={(() => {

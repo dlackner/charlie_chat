@@ -9,6 +9,7 @@ interface StreetViewImageProps {
   className?: string;
   width?: number;
   height?: number;
+  disableClick?: boolean;
 }
 
 export const StreetViewImage: React.FC<StreetViewImageProps> = ({
@@ -17,7 +18,8 @@ export const StreetViewImage: React.FC<StreetViewImageProps> = ({
   longitude,
   className = '',
   width = 400,
-  height = 300
+  height = 300,
+  disableClick = false
 }) => {
   const [imageError, setImageError] = useState(false);
   const [isChecking, setIsChecking] = useState(true);
@@ -121,31 +123,33 @@ export const StreetViewImage: React.FC<StreetViewImageProps> = ({
   if (!hasImagery || imageError) {
     return (
       <div 
-        className={`bg-gray-100 rounded border flex items-center justify-center cursor-pointer hover:bg-gray-200 relative ${className}`}
-        onClick={handleImageClick}
-        title="Click to open Google Street View"
+        className={`bg-gray-100 rounded border flex items-center justify-center relative ${disableClick ? '' : 'cursor-pointer hover:bg-gray-200'} ${className}`}
+        onClick={disableClick ? undefined : handleImageClick}
+        title={disableClick ? undefined : "Click to open Google Street View"}
       >
         <img 
           src="/Google%20Street%20View.png"
           alt="Street View Placeholder"
           className="w-full h-full object-cover rounded"
         />
-        <div className="absolute bottom-2 left-0 right-0 text-center">
-          <span className="text-xs text-gray-600 bg-white/80 px-2 py-1 rounded">Click for street view</span>
-        </div>
+        {!disableClick && (
+          <div className="absolute bottom-2 left-0 right-0 text-center">
+            <span className="text-xs text-gray-600 bg-white/80 px-2 py-1 rounded">Click for street view</span>
+          </div>
+        )}
       </div>
     );
   }
 
   return (
-    <div className={`relative cursor-pointer ${className}`}>
+    <div className={`relative ${disableClick ? '' : 'cursor-pointer'} ${className}`}>
       <img
         src={imageUrl || generateStreetViewImageUrl(width, height)}
         alt={`Street view of ${address}`}
-        className="w-full h-full object-cover rounded border hover:opacity-90 transition-opacity"
-        onClick={handleImageClick}
+        className={`w-full h-full object-cover rounded border ${disableClick ? '' : 'hover:opacity-90 transition-opacity'}`}
+        onClick={disableClick ? undefined : handleImageClick}
         onError={() => setImageError(true)}
-        title="Click to open live Google Street View"
+        title={disableClick ? undefined : "Click to open live Google Street View"}
       />
     </div>
   );

@@ -205,21 +205,21 @@ export default function CapitalClubPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
               <div className="text-center">
                 <div className="inline-flex items-center justify-center w-12 h-12 bg-blue-100 rounded-lg mb-4">
-                  <Shield className="h-6 w-6 text-blue-600" />
+                  <Users className="h-6 w-6 text-blue-600" />
                 </div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">Vetted Opportunities</h3>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">Investor Database</h3>
                 <p className="text-gray-600">
-                  Access pre-screened multifamily investment opportunities with verified financials.
+                  Access our comprehensive investor database for your deals and build lasting capital partnerships.
                 </p>
               </div>
 
               <div className="text-center">
                 <div className="inline-flex items-center justify-center w-12 h-12 bg-purple-100 rounded-lg mb-4">
-                  <Users className="h-6 w-6 text-purple-600" />
+                  <TrendingUp className="h-6 w-6 text-purple-600" />
                 </div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">Capital Network</h3>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">Deal Promotion</h3>
                 <p className="text-gray-600">
-                  Connect with other investors for joint ventures and capital partnerships.
+                  Promote your next multifamily property to our exclusive network of qualified investors.
                 </p>
               </div>
 
@@ -227,29 +227,29 @@ export default function CapitalClubPage() {
                 <div className="inline-flex items-center justify-center w-12 h-12 bg-green-100 rounded-lg mb-4">
                   <Zap className="h-6 w-6 text-green-600" />
                 </div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">Priority Access</h3>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">Capital Access</h3>
                 <p className="text-gray-600">
-                  First access to new listings and investment opportunities in your target markets.
+                  Get help accessing capital when you're in the middle of a money raise for your projects.
                 </p>
               </div>
 
               <div className="text-center">
                 <div className="inline-flex items-center justify-center w-12 h-12 bg-orange-100 rounded-lg mb-4">
-                  <Star className="h-6 w-6 text-orange-600" />
+                  <Shield className="h-6 w-6 text-orange-600" />
                 </div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">Expert Insights</h3>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">Mortgage Qualification</h3>
                 <p className="text-gray-600">
-                  Market analysis and investment guidance from experienced multifamily professionals.
+                  Access to key principals who can help you qualify for multifamily mortgages and financing.
                 </p>
               </div>
 
               <div className="text-center">
                 <div className="inline-flex items-center justify-center w-12 h-12 bg-red-100 rounded-lg mb-4">
-                  <TrendingUp className="h-6 w-6 text-red-600" />
+                  <Star className="h-6 w-6 text-red-600" />
                 </div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">Deal Flow</h3>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">Database Building</h3>
                 <p className="text-gray-600">
-                  Consistent pipeline of investment-grade multifamily properties and partnerships.
+                  Build your investor database from zero to hero using our proven marketing campaigns and webinars.
                 </p>
               </div>
 
@@ -257,9 +257,9 @@ export default function CapitalClubPage() {
                 <div className="inline-flex items-center justify-center w-12 h-12 bg-indigo-100 rounded-lg mb-4">
                   <Crown className="h-6 w-6 text-indigo-600" />
                 </div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">Exclusive Events</h3>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">Exclusive Network</h3>
                 <p className="text-gray-600">
-                  Member-only networking events, property tours, and educational workshops.
+                  Member-only access to our curated network of investors, lenders, and industry professionals.
                 </p>
               </div>
             </div>
@@ -311,29 +311,13 @@ export default function CapitalClubPage() {
               </div>
             </div>
             
-            <div className="space-y-4">
-              <div className="bg-blue-50 rounded-lg p-4">
-                <h4 className="font-medium text-blue-900 mb-2">What You'll Get:</h4>
-                <ul className="text-sm text-blue-800 space-y-1">
-                  <li>• Access to vetted multifamily investment opportunities</li>
-                  <li>• Network of capital partners and co-investors</li>
-                  <li>• Priority deal flow and market insights</li>
-                  <li>• Exclusive member events and education</li>
-                </ul>
-              </div>
-              
-              <div className="bg-gray-50 rounded-lg p-4">
-                <h4 className="font-medium text-gray-900 mb-2">Membership Requirements:</h4>
-                <ul className="text-sm text-gray-700 space-y-1">
-                  <li>• Active multifamily real estate investor</li>
-                  <li>• Commitment to community collaboration</li>
-                  <li>• Professional conduct and integrity</li>
-                </ul>
-              </div>
-            </div>
+            <p className="text-gray-600 mb-6">
+              Join our exclusive community of multifamily real estate investors and gain access to capital networks, 
+              deal promotion, and expert resources to accelerate your investment success.
+            </p>
             
-            <p className="text-sm text-gray-600 mt-6">
-              By enrolling, you confirm that you meet the membership requirements and agree to 
+            <p className="text-sm text-gray-600">
+              By enrolling, you confirm that you are an active multifamily real estate investor and agree to 
               participate professionally in the Capital Club community.
             </p>
           </div>

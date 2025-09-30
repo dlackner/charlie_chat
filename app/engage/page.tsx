@@ -1987,32 +1987,32 @@ function EngagePageContent() {
                     const isSelected = selectedPipelineStage === (index === 0 ? 'all' : metricName);
                     
                     if (index === 0) {
-                      // "All Active" card - primary blue background
+                      // "All Active" card - white background with green left border
                       return isSelected 
-                        ? 'bg-blue-600 text-white shadow-lg border-blue-700' 
-                        : 'bg-blue-500 text-white hover:bg-blue-600 border-blue-500';
+                        ? 'bg-white text-gray-900 shadow-lg border-l-4 border-l-green-500 border-t border-r border-b border-gray-200' 
+                        : 'bg-white text-gray-900 hover:shadow-md border-l-4 border-l-green-500 border-t border-r border-b border-gray-200';
                     }
                     
-                    // Stage cards with higher opacity, unique colors, starting with purple
+                    // Stage cards with white backgrounds and colored left borders
                     const colors = [
-                      // Reviewing (gray - matches kanban)
-                      { bg: 'bg-gray-400/40', hover: 'hover:bg-gray-500/40', selected: 'bg-gray-500/40', border: 'border-gray-400', text: 'text-gray-900' },
-                      // Analyzing (yellow - matches kanban)  
-                      { bg: 'bg-yellow-400/40', hover: 'hover:bg-yellow-500/40', selected: 'bg-yellow-500/40', border: 'border-yellow-400', text: 'text-gray-900' },
-                      // Engaged (blue - matches kanban)
-                      { bg: 'bg-blue-400/40', hover: 'hover:bg-blue-500/40', selected: 'bg-blue-500/40', border: 'border-blue-400', text: 'text-gray-900' },
-                      // LOI Sent (purple - matches kanban)
-                      { bg: 'bg-purple-400/40', hover: 'hover:bg-purple-500/40', selected: 'bg-purple-500/40', border: 'border-purple-400', text: 'text-gray-900' },
-                      // Acquired/Rejected (red for completion)
-                      { bg: 'bg-red-400/40', hover: 'hover:bg-red-500/40', selected: 'bg-red-500/40', border: 'border-red-400', text: 'text-gray-900' }
+                      // Reviewing (gray)
+                      { leftBorder: 'border-l-gray-500' },
+                      // Analyzing (yellow)  
+                      { leftBorder: 'border-l-yellow-500' },
+                      // Engaged (blue)
+                      { leftBorder: 'border-l-blue-500' },
+                      // LOI Sent (purple)
+                      { leftBorder: 'border-l-purple-500' },
+                      // Acquired/Rejected (red)
+                      { leftBorder: 'border-l-red-500' }
                     ];
                     
                     const colorIndex = index - 1; // Subtract 1 because first card is "All Active"
                     const color = colors[colorIndex] || colors[0];
                     
                     return isSelected 
-                      ? `${color.selected} ${color.text} shadow-lg ${color.border}` 
-                      : `${color.bg} ${color.text} ${color.hover} ${color.border}`;
+                      ? `bg-white text-gray-900 shadow-lg border-l-4 ${color.leftBorder} border-t border-r border-b border-gray-300` 
+                      : `bg-white text-gray-900 hover:shadow-md border-l-4 ${color.leftBorder} border-t border-r border-b border-gray-200`;
                   };
 
                   const cardElements: React.ReactElement[] = [];
@@ -2026,18 +2026,17 @@ function EngagePageContent() {
                       <div
                         key={metric.name}
                         onClick={isClickable ? () => setSelectedPipelineStage(index === 0 ? 'all' : metric.name) : undefined}
-                        className={`rounded-lg border-2 p-2 md:p-3 transition-all flex-shrink-0 w-28 md:w-32 lg:w-40 ${
+                        className={`rounded-lg border-2 p-1 md:p-2 transition-all flex-shrink-0 w-28 md:w-32 lg:w-40 ${
                           isDisabled 
                             ? 'opacity-50 cursor-not-allowed bg-gray-300 border-gray-400' 
                             : `hover:shadow-md cursor-pointer ${getCardStyles(metric.name, index)}`
                         }`}
                       >
                         <div className="text-center">
-                          <div className={`text-xl md:text-2xl lg:text-3xl font-bold mb-0 leading-tight ${isDisabled ? 'text-gray-500' : ''}`}>{metric.count}</div>
-                          <div className={`text-xs md:text-sm lg:text-base font-semibold mb-0 leading-tight ${isDisabled ? 'text-gray-600' : ''}`}>{metric.name}</div>
+                          <div className={`text-lg md:text-xl lg:text-2xl font-bold mb-0 leading-tight ${isDisabled ? 'text-gray-500' : ''}`}>{metric.count}</div>
+                          <div className={`text-xs md:text-sm font-semibold mb-0 leading-tight ${isDisabled ? 'text-gray-600' : ''}`}>{metric.name}</div>
                           <div className={`text-xs space-y-0 leading-tight ${isDisabled ? 'text-gray-500' : 'opacity-90'}`}>
                             <div>{metric.units} units</div>
-                            <div>{formatCurrency(metric.assessedValue)} assessed</div>
                             <div>{formatCurrency(metric.estimatedValue)} market</div>
                           </div>
                         </div>
@@ -2702,9 +2701,17 @@ function PropertyCard({
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
             placeholder="Add notes... Use @MM/DD/YY for reminders"
-            className="w-full text-xs border border-gray-200 rounded px-2 py-1 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 resize-none"
+            className="w-full text-xs border border-gray-200 rounded px-2 py-1 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 resize-y"
             rows={2}
-            onBlur={async () => {
+            onBlur={async (e) => {
+              // Reset height to standard size
+              e.target.style.height = 'auto';
+              e.target.style.height = `${e.target.scrollHeight}px`;
+              
+              // Then auto-resize back to 2 rows worth
+              setTimeout(() => {
+                e.target.style.height = '40px'; // Standard 2-row height
+              }, 0);
               
               try {
                 const payload = {

@@ -1050,6 +1050,7 @@ function RecommendationCard({
             className="h-full w-full object-cover"
             width={400}
             height={200}
+            disableClick={true}
           />
           
           {/* Property counter */}
@@ -1057,21 +1058,6 @@ function RecommendationCard({
             Property {index} of {total}
           </div>
           
-          {/* Zillow Button */}
-          <button 
-            onClick={(e) => {
-              e.stopPropagation();
-              const address = property.address_full || property.address_street || '';
-              const zillowUrl = `https://www.zillow.com/homes/${address.replace(/\s+/g, '-')}-${property.address_city}-${property.address_state}-${property.address_zip}_rb/`;
-              window.open(zillowUrl, '_blank');
-            }}
-            className="absolute bottom-3 right-3 bg-white/95 hover:bg-white rounded-lg p-1.5 shadow-sm transition-colors group cursor-pointer"
-            title="View on Zillow"
-          >
-            <svg className="w-4 h-4 text-blue-600" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M12 2L2 12h3v8h4v-6h6v6h4v-8h3L12 2z"/>
-            </svg>
-          </button>
         </div>
 
         {/* Property Details */}
