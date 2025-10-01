@@ -892,13 +892,19 @@ export default function PropertyDetailsPage() {
             console.error('Failed to update skip trace timestamp:', dbError);
           }
           
-          setSkipTraceData({
-            error: 'No skip trace data available - property address not found in database',
-            contacts: [],
-            confidence: 'Failed',
-            traceDate: new Date().toLocaleDateString()
-          });
-          setIsSkipTraceExpanded(true);
+          // Don't overwrite existing good data on refresh failure
+          if (!skipTraceData || skipTraceData.error) {
+            setSkipTraceData({
+              error: 'No skip trace data available - property address not found in database',
+              contacts: [],
+              confidence: 'Failed',
+              traceDate: new Date().toLocaleDateString()
+            });
+            setIsSkipTraceExpanded(true);
+          } else {
+            // Keep existing data and show error message
+            showError('Skip trace refresh failed - keeping existing data', 'Refresh Failed');
+          }
           setIsSkipTracing(false);
           return;
         }
@@ -1255,7 +1261,7 @@ export default function PropertyDetailsPage() {
                         </div>
                         
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                          {skipTraceData.contacts?.map((contact: any, index: number) => (
+                          {skipTraceData.contacts && Array.isArray(skipTraceData.contacts) ? skipTraceData.contacts.map((contact: any, index: number) => (
                             <div key={index} className="bg-gray-50 rounded-lg p-4 border border-gray-200">
                               <div className="flex items-center justify-between mb-3">
                                 <div className="flex items-center">
@@ -1291,7 +1297,37 @@ export default function PropertyDetailsPage() {
                                 </div>
                               </div>
                             </div>
-                          ))}
+                          )) : (
+                            // Fallback for single contact object (legacy format)
+                            <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                              <div className="flex items-center justify-between mb-3">
+                                <div className="flex items-center">
+                                  <div className="p-2 bg-blue-100 rounded-lg mr-2">
+                                    <User className="h-4 w-4 text-blue-600" />
+                                  </div>
+                                  <div>
+                                    <h4 className="font-medium text-gray-900">{skipTraceData.name}</h4>
+                                    <p className="text-xs text-gray-500">Property Owner</p>
+                                  </div>
+                                </div>
+                              </div>
+                              
+                              <div className="space-y-2 text-sm">
+                                {skipTraceData.email && (
+                                  <div className="flex items-center text-gray-600">
+                                    <Mail className="h-4 w-4 mr-2" />
+                                    <span>{skipTraceData.email}</span>
+                                  </div>
+                                )}
+                                {skipTraceData.phone1 && (
+                                  <div className="flex items-center text-gray-600">
+                                    <Phone className="h-4 w-4 mr-2" />
+                                    <span>{skipTraceData.phone1}</span>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          )}
                         </div>
                         
                         <div className="mt-6 pt-4 border-t border-gray-200 bg-blue-50 rounded-lg p-4">
@@ -1302,7 +1338,7 @@ export default function PropertyDetailsPage() {
                             <div>
                               <h4 className="font-medium text-blue-900 mb-1">Skip Trace Complete</h4>
                               <p className="text-sm text-blue-700">
-                                Found {skipTraceData.contacts?.length || 0} contact records. All information is current as of the trace date.
+                                Found {skipTraceData.contacts?.length || 1} contact records. All information is current as of the trace date.
                                 Use this data to reach out to property owners for potential investment opportunities.
                               </p>
                             </div>
