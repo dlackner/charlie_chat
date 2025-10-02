@@ -80,7 +80,7 @@ function SuccessPageContent() {
           
           // Small delay to show success message, then redirect
           setTimeout(() => {
-            router.push('/dashboard');
+            router.push('/dashboard/onboarding');
           }, 3000);
         } else {
           setVerificationResult({
@@ -137,7 +137,7 @@ function SuccessPageContent() {
             Redirecting you to your dashboard...
           </p>
           <button
-            onClick={() => router.push('/dashboard')}
+            onClick={() => router.push('/dashboard/onboarding')}
             className="w-full bg-blue-600 text-white py-3 px-6 rounded-lg font-semibold hover:bg-blue-700 transition-colors"
           >
             Go to Dashboard
