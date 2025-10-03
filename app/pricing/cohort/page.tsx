@@ -27,6 +27,13 @@ export default function CohortPricingPage() {
     setIsLoading(true);
 
     try {
+      // Get the session token for authorization
+      const { data: { session } } = await supabaseClient.auth.getSession();
+      
+      if (!session?.access_token) {
+        throw new Error('No valid session found');
+      }
+
       const priceId = billingCycle === 'annual' 
         ? process.env.NEXT_PUBLIC_MULTIFAMILY_COHORT_ANNUAL_PRICE
         : process.env.NEXT_PUBLIC_MULTIFAMILY_COHORT_MONTHLY_PRICE;
@@ -39,6 +46,7 @@ export default function CohortPricingPage() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
         },
         body: JSON.stringify({
           priceId,

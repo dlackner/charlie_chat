@@ -8,10 +8,11 @@
 
 import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { ChevronLeft, ChevronRight, TrendingUp, FileText, Mail, DollarSign, Building, Users, Target, Zap, Globe, Brain, BarChart3, MessageSquare, Calendar, CheckCircle, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, TrendingUp, FileText, Mail, DollarSign, Building, Users, Target, Zap, Globe, Brain, BarChart3, MessageSquare, Calendar, CheckCircle, X, Crown } from 'lucide-react';
 import Image from 'next/image';
 import { Dialog } from '@headlessui/react';
 import TypewriterChatDemo from '@/components/ui/TypewriterChatDemo';
+import OperatingSystemDiagram from '@/components/operating-system/OperatingSystemDiagram';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 
 export default function Home() {
@@ -463,8 +464,50 @@ export default function Home() {
         </div>
       </div>
 
+      {/* Access Funding Section */}
+      <div className="bg-purple-50 py-16">
+        <div className="max-w-6xl mx-auto px-6">
+          <div className="text-center">
+            <div className="flex justify-center mb-6">
+              <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full">
+                <Crown className="h-8 w-8 text-white" />
+              </div>
+            </div>
+            
+            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-6">
+              Access Funding from Members of the Community
+            </h2>
+            
+            <div className="max-w-4xl mx-auto mb-8">
+              <p className="text-xl text-gray-700 leading-relaxed">
+                Connect with an exclusive network of elite multifamily investors who are actively seeking investment opportunities and partnership deals. Our private member community creates a unique environment where experienced investors share deal flow, co-invest on larger acquisitions, and provide capital for promising projects.
+              </p>
+            </div>
+            
+            <button
+              onClick={() => {
+                // Check if user is authenticated
+                supabaseClient.auth.getSession().then(({ data: { session } }) => {
+                  if (session) {
+                    // User is logged in, go directly to Capital Club
+                    window.location.href = '/capital-club';
+                  } else {
+                    // User not logged in, redirect to login with capital-club redirect
+                    window.location.href = '/auth/callback?redirect=/capital-club';
+                  }
+                });
+              }}
+              className="inline-flex items-center px-8 py-4 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold text-lg rounded-xl hover:from-blue-700 hover:to-purple-700 transition-all duration-200 transform hover:scale-105 shadow-lg"
+            >
+              <Crown className="h-5 w-5 mr-2" />
+              Learn More
+            </button>
+          </div>
+        </div>
+      </div>
+
       {/* Built-In AI Property Coach */}
-      <div className="bg-gray-50 pt-8 pb-12">
+      <div className="bg-gray-50 pt-16 pb-12">
         <div className="max-w-7xl mx-auto px-6">
           <div className="text-center mb-8">
             <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
@@ -511,7 +554,7 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Why MultifamilyOS */}
+      {/* Operating System Overview */}
       <div className="bg-gray-900 py-20">
         <div className="max-w-7xl mx-auto px-6">
           <div className="text-center mb-16">
@@ -523,24 +566,23 @@ export default function Home() {
             </p>
           </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8">
-            {benefits.map((benefit, index) => (
-              <div key={index} className="bg-white rounded-xl p-6 hover:shadow-xl transition-all duration-300 border border-gray-200">
-                <div className="flex flex-col items-start">
-                  <div className="p-3 bg-blue-100 rounded-lg mb-4">
-                    <div className="text-blue-600">
-                      {benefit.icon}
-                    </div>
-                  </div>
-                  <h3 className="text-xl font-semibold text-gray-900 mb-3">
-                    {benefit.title}
-                  </h3>
-                  <p className="text-gray-600 leading-relaxed">
-                    {benefit.description}
-                  </p>
-                </div>
+          <div className="flex items-center">
+            {/* Circular Diagram */}
+            <div className="flex-shrink-0 mr-16">
+              <div className="relative w-[500px] h-[500px]">
+                <OperatingSystemDiagram />
               </div>
-            ))}
+            </div>
+            
+            {/* Text Content */}
+            <div className="text-white flex-1">
+              <h3 className="text-2xl md:text-3xl font-bold mb-6">
+                Complete Operating System Flow
+              </h3>
+              <p className="text-lg text-gray-300 leading-relaxed">
+                MultiFamilyOS orchestrates every aspect of your multifamily business through one unified platform. Each module seamlessly connects to the next, creating an intelligent, automated workflow that scales with your portfolio.
+              </p>
+            </div>
           </div>
         </div>
       </div>

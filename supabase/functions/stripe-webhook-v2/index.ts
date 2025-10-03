@@ -1,16 +1,10 @@
 // supabase/functions/stripe-webhook-v2/index.ts
-/*
- * MFOS V2 - Stripe Webhook Handler
- * Clean subscription-only webhook for new user class system
- * Handles: checkout.session.completed, invoice.payment_succeeded, customer events
- * Maps to new user classes: trial, core, plus, pro, cohort
- */
-
+// Based on working version, updated with new user classes
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import Stripe from 'https://esm.sh/stripe@14';
 
-console.log("🚀 MFOS V2 Stripe Webhook starting up...");
+console.log("Function starting up...");
 
 const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') ?? '', {
   apiVersion: '2023-10-16'
@@ -18,6 +12,12 @@ const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') ?? '', {
 
 serve(async (req) => {
   console.log("🛎️ Request received:", req.method, req.url);
+  
+  // Log ALL headers to debug the missing signature issue
+  console.log("📋 All request headers:");
+  for (const [key, value] of req.headers.entries()) {
+    console.log(`  ${key}: ${value}`);
+  }
   
   try {
     if (req.method === 'OPTIONS') {
@@ -29,6 +29,7 @@ serve(async (req) => {
     const signature = req.headers.get('stripe-signature');
     if (!signature) {
       console.error("❌ Missing Stripe signature");
+      console.error("❌ Available headers:", Array.from(req.headers.keys()));
       return new Response('Missing signature', { status: 400 });
     }
 
@@ -38,16 +39,11 @@ serve(async (req) => {
       signature, 
       Deno.env.get('STRIPE_WEBHOOK_SIGNING_SECRET') ?? ''
     );
-
+    
     console.log("✅ Webhook verified, event type:", event.type);
 
-    // Only process subscription-related events
-    if (![
-      'checkout.session.completed',
-      'invoice.payment_succeeded', 
-      'customer.created',
-      'customer.updated'
-    ].includes(event.type)) {
+    // Process multiple event types including subscription updates
+    if (!['checkout.session.completed', 'invoice.payment_succeeded', 'customer.subscription.created', 'customer.subscription.updated'].includes(event.type)) {
       console.log("🚫 Ignoring event:", event.type);
       return new Response(JSON.stringify({ received: true, ignored: true }), {
         status: 200,
@@ -69,9 +65,9 @@ serve(async (req) => {
       case 'invoice.payment_succeeded':
         await processInvoicePayment(event.data.object, supabase, stripe);
         break;
-      case 'customer.created':
-      case 'customer.updated':
-        await syncCustomerToProfile(event.data.object, supabase);
+      case 'customer.subscription.created':
+      case 'customer.subscription.updated':
+        await processSubscriptionEvent(event.data.object, supabase, stripe);
         break;
     }
 
@@ -95,28 +91,23 @@ serve(async (req) => {
 });
 
 // Sync customer data to profile
-async function syncCustomerToProfile(customer: any, supabase: any) {
+async function syncCustomerToProfile(customer, supabase) {
   console.log("👤 Syncing customer data to profile:", customer.id);
+  const profileUpdates = {};
   
-  const profileUpdates: any = {};
-  
-  // Map Stripe customer fields to profile fields
   if (customer.name) profileUpdates.full_name = customer.name;
   if (customer.email) profileUpdates.email = customer.email;
   if (customer.phone) profileUpdates.phone_number = customer.phone;
   
-  // Handle address if present
   if (customer.address) {
     if (customer.address.line1) profileUpdates.street_address = customer.address.line1;
     if (customer.address.city) profileUpdates.city = customer.address.city;
     if (customer.address.state) profileUpdates.state = customer.address.state;
     if (customer.address.postal_code) profileUpdates.zipcode = customer.address.postal_code;
   }
-  
-  // Only update if we have data to update
+
   if (Object.keys(profileUpdates).length > 0) {
     profileUpdates.updated_at = new Date().toISOString();
-    
     const { error } = await supabase
       .from('profiles')
       .update(profileUpdates)
@@ -133,12 +124,12 @@ async function syncCustomerToProfile(customer: any, supabase: any) {
 }
 
 // Process checkout session completion
-async function processCheckoutSession(session: any, supabase: any, stripe: Stripe) {
+async function processCheckoutSession(session, supabase, stripe) {
   console.log("💳 Checkout completed event received");
   console.log("Session metadata:", session.metadata);
   console.log("Session mode:", session.mode);
   console.log("Session customer:", session.customer);
-
+  
   const userIdFromMetadata = session.metadata?.userId;
   if (!userIdFromMetadata) {
     console.error("❌ Missing userId in metadata:", session.metadata);
@@ -146,14 +137,14 @@ async function processCheckoutSession(session: any, supabase: any, stripe: Strip
   }
 
   console.log("🔍 Looking up user:", userIdFromMetadata);
-
+  
   // Look up user profile
   const { data: profile, error: profileError } = await supabase
     .from("profiles")
     .select("user_id, email, user_class")
     .eq("user_id", userIdFromMetadata)
     .single();
-
+    
   if (profileError || !profile) {
     console.error("❌ Profile lookup error:", profileError);
     throw new Error(`Profile lookup error: ${profileError?.message}`);
@@ -169,11 +160,10 @@ async function processCheckoutSession(session: any, supabase: any, stripe: Strip
       await syncCustomerToProfile(customer, supabase);
     } catch (customerError) {
       console.error("⚠️ Failed to fetch/sync customer data:", customerError.message);
-      // Don't fail the whole process if customer sync fails
     }
   }
 
-  // Only process subscription mode (no more credit purchases)
+  // Only process subscription mode
   if (session.mode === "subscription") {
     await handleSubscription(session, profile, supabase, stripe);
   } else {
@@ -181,28 +171,24 @@ async function processCheckoutSession(session: any, supabase: any, stripe: Strip
   }
 }
 
-// Handle subscription creation/update with new user class system
-async function handleSubscription(session: any, profile: any, supabase: any, stripe: Stripe) {
-  console.log("📋 Processing subscription with new user class system");
-
-  // Get price ID from line items
+// Handle subscription with NEW user class mappings
+async function handleSubscription(session, profile, supabase, stripe) {
+  console.log("📋 Processing subscription with NEW user class system");
+  
   const sessionWithItems = await stripe.checkout.sessions.retrieve(session.id, {
     expand: ["line_items.data.price"]
   });
-
   const priceId = sessionWithItems.line_items?.data?.[0]?.price?.id;
   console.log("📋 Subscription price ID:", priceId);
 
-  // Map price IDs to NEW user classes (plus, pro, cohort only - core is free)
-  const priceToClassMap: Record<string, string> = {
+  // NEW user class mappings
+  const priceToClassMap = {
     // MultifamilyOS V2 Plus Plan  
     [Deno.env.get('NEXT_PUBLIC_MULTIFAMILYOS_PLUS_MONTHLY_PRICE') ?? '']: "plus",
     [Deno.env.get('NEXT_PUBLIC_MULTIFAMILYOS_PLUS_ANNUAL_PRICE') ?? '']: "plus",
-    
     // MultifamilyOS V2 Pro Plan
-    [Deno.env.get('NEXT_PUBLIC_MULTIFAMILYOS_PRO_MONTHLY_PRICE') ?? '']: "pro", 
+    [Deno.env.get('NEXT_PUBLIC_MULTIFAMILYOS_PRO_MONTHLY_PRICE') ?? '']: "pro",
     [Deno.env.get('NEXT_PUBLIC_MULTIFAMILYOS_PRO_ANNUAL_PRICE') ?? '']: "pro",
-    
     // Cohort Plan
     [Deno.env.get('NEXT_PUBLIC_MULTIFAMILY_COHORT_MONTHLY_PRICE') ?? '']: "cohort",
     [Deno.env.get('NEXT_PUBLIC_MULTIFAMILY_COHORT_ANNUAL_PRICE') ?? '']: "cohort"
@@ -211,13 +197,11 @@ async function handleSubscription(session: any, profile: any, supabase: any, str
   const assignedUserClass = priceToClassMap[priceId || ''] || "plus";
   console.log(`📋 Assigning NEW user_class: ${assignedUserClass}`);
 
-  // Get full subscription details from Stripe if subscription exists
   if (session.subscription) {
     try {
       const subscription = await stripe.subscriptions.retrieve(session.subscription);
       console.log("✅ Retrieved subscription details from Stripe");
-
-      // Insert or update subscription record
+      
       const { error: subscriptionError } = await supabase
         .from("subscriptions")
         .upsert([{
@@ -245,7 +229,7 @@ async function handleSubscription(session: any, profile: any, supabase: any, str
           onConflict: 'user_id',
           ignoreDuplicates: false
         });
-
+        
       if (subscriptionError) {
         console.error("🔥 Subscription upsert failed:", subscriptionError);
       } else {
@@ -253,13 +237,10 @@ async function handleSubscription(session: any, profile: any, supabase: any, str
       }
     } catch (stripeError) {
       console.error("❌ Failed to retrieve subscription details:", stripeError.message);
-      console.log("⚠️ Continuing with profile update...");
     }
-  } else {
-    console.log("⚠️ No subscription ID in session");
   }
 
-  // Update user profile with NEW user class (no more credits field)
+  // Update user profile with NEW user class
   const { error: profileUpdateError } = await supabase
     .from("profiles")
     .update({
@@ -268,7 +249,7 @@ async function handleSubscription(session: any, profile: any, supabase: any, str
       updated_at: new Date().toISOString()
     })
     .eq("user_id", profile.user_id);
-
+    
   if (profileUpdateError) {
     console.error("🔥 Profile update failed:", profileUpdateError);
     throw new Error(`Profile update failed: ${profileUpdateError.message}`);
@@ -277,13 +258,33 @@ async function handleSubscription(session: any, profile: any, supabase: any, str
   console.log(`✅ Subscription processed! User class updated to: ${assignedUserClass}`);
 }
 
+// Process subscription events (created/updated)
+async function processSubscriptionEvent(subscription, supabase, stripe) {
+  console.log("📋 Subscription event received:", subscription.id);
+  console.log("📋 Subscription status:", subscription.status);
+  
+  // Find user by customer ID
+  const { data: profile, error: profileError } = await supabase
+    .from("profiles")
+    .select("user_id, email, user_class")
+    .eq("stripe_customer_id", subscription.customer)
+    .single();
+    
+  if (profileError || !profile) {
+    console.error("❌ Could not find user for customer:", subscription.customer);
+    return;
+  }
+
+  console.log("✅ Found user profile:", profile.user_id);
+  await updateSubscriptionRecord(subscription, profile, supabase);
+}
+
 // Process invoice payment for subscription renewals
-async function processInvoicePayment(invoice: any, supabase: any, stripe: Stripe) {
+async function processInvoicePayment(invoice, supabase, stripe) {
   console.log("🧾 Invoice payment succeeded event received");
   console.log("Invoice subscription:", invoice.subscription);
   console.log("Invoice customer:", invoice.customer);
 
-  // Always sync customer data regardless of subscription status
   if (invoice.customer) {
     try {
       console.log("👤 Syncing customer data from invoice payment");
@@ -299,13 +300,12 @@ async function processInvoicePayment(invoice: any, supabase: any, stripe: Stripe
     return;
   }
 
-  // Find user by stripe customer ID
   const { data: profile, error: profileError } = await supabase
     .from("profiles")
     .select("user_id, email, user_class")
     .eq("stripe_customer_id", invoice.customer)
     .single();
-
+    
   if (profileError || !profile) {
     console.error("❌ Could not find user for customer:", invoice.customer);
     return;
@@ -313,37 +313,30 @@ async function processInvoicePayment(invoice: any, supabase: any, stripe: Stripe
 
   console.log("✅ Found user profile:", profile.user_id);
 
-  // Get subscription details and update record
   const subscription = await stripe.subscriptions.retrieve(invoice.subscription);
   console.log("📋 Retrieved subscription:", subscription.id);
-
+  
   await updateSubscriptionRecord(subscription, profile, supabase);
 }
 
-// Update subscription record with new user class mapping
-async function updateSubscriptionRecord(subscription: any, profile: any, supabase: any) {
-  console.log("🔄 Updating subscription record with new user class system");
+// Update subscription record with NEW user class mapping
+async function updateSubscriptionRecord(subscription, profile, supabase) {
+  console.log("🔄 Updating subscription record with NEW user class system");
   
   const priceId = subscription.items.data[0]?.price?.id;
-
-  // Map price to NEW user class (plus, pro, cohort only - core is free)
-  const priceToClassMap: Record<string, string> = {
-    // MultifamilyOS V2 Plus Plan
+  
+  // NEW user class mappings
+  const priceToClassMap = {
     [Deno.env.get('NEXT_PUBLIC_MULTIFAMILYOS_PLUS_MONTHLY_PRICE') ?? '']: "plus",
     [Deno.env.get('NEXT_PUBLIC_MULTIFAMILYOS_PLUS_ANNUAL_PRICE') ?? '']: "plus",
-    
-    // MultifamilyOS V2 Pro Plan
     [Deno.env.get('NEXT_PUBLIC_MULTIFAMILYOS_PRO_MONTHLY_PRICE') ?? '']: "pro",
     [Deno.env.get('NEXT_PUBLIC_MULTIFAMILYOS_PRO_ANNUAL_PRICE') ?? '']: "pro",
-    
-    // Cohort Plan
     [Deno.env.get('NEXT_PUBLIC_MULTIFAMILY_COHORT_MONTHLY_PRICE') ?? '']: "cohort",
     [Deno.env.get('NEXT_PUBLIC_MULTIFAMILY_COHORT_ANNUAL_PRICE') ?? '']: "cohort"
   };
 
   const assignedUserClass = priceToClassMap[priceId || ''] || "plus";
 
-  // Update subscription record
   const { error: subscriptionError } = await supabase
     .from("subscriptions")
     .upsert([{
@@ -369,14 +362,13 @@ async function updateSubscriptionRecord(subscription: any, profile: any, supabas
       onConflict: 'user_id',
       ignoreDuplicates: false
     });
-
+    
   if (subscriptionError) {
     console.error("🔥 Subscription update failed:", subscriptionError);
   } else {
     console.log("✅ Subscription record updated");
   }
 
-  // Update user profile with NEW user class (no credits field)
   const { error: profileUpdateError } = await supabase
     .from("profiles")
     .update({
@@ -385,7 +377,7 @@ async function updateSubscriptionRecord(subscription: any, profile: any, supabas
       updated_at: new Date().toISOString()
     })
     .eq("user_id", profile.user_id);
-
+    
   if (profileUpdateError) {
     console.error("🔥 Profile update failed:", profileUpdateError);
   } else {

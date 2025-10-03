@@ -15,44 +15,7 @@ const productPricing: Record<
   string,
   { monthly?: string; annual?: string; mode: "subscription" | "payment" }
 > = {
-  // Legacy Charlie Chat Pro Monthly Product (keep for existing links)
-  [process.env.NEXT_PUBLIC_CHARLIE_CHAT_PRO_MONTHLY_PRODUCT!]: {
-    monthly: process.env.NEXT_PUBLIC_CHARLIE_CHAT_PRO_MONTHLY_PRICE!,
-    annual: process.env.NEXT_PUBLIC_CHARLIE_CHAT_PRO_ANNUAL_PRICE!,
-    mode: "subscription",
-  },
-  // Legacy Charlie Chat Pro Annual Product (keep for existing links)
-  [process.env.NEXT_PUBLIC_CHARLIE_CHAT_PRO_ANNUAL_PRODUCT!]: {
-    monthly: process.env.NEXT_PUBLIC_CHARLIE_CHAT_PRO_MONTHLY_PRICE!,
-    annual: process.env.NEXT_PUBLIC_CHARLIE_CHAT_PRO_ANNUAL_PRICE!,
-    mode: "subscription",
-  },
-  // Legacy Charlie Chat Plus Monthly Product (keep for existing links)
-  [process.env.NEXT_PUBLIC_CHARLIE_CHAT_PLUS_MONTHLY_PRODUCT!]: {
-    monthly: process.env.NEXT_PUBLIC_CHARLIE_CHAT_PLUS_MONTHLY_PRICE!,
-    annual: process.env.NEXT_PUBLIC_CHARLIE_CHAT_PLUS_ANNUAL_PRICE!,
-    mode: "subscription",
-  },
-  // Legacy Charlie Chat Plus Annual Product (keep for existing links)
-  [process.env.NEXT_PUBLIC_CHARLIE_CHAT_PLUS_ANNUAL_PRODUCT!]: {
-    monthly: process.env.NEXT_PUBLIC_CHARLIE_CHAT_PLUS_MONTHLY_PRICE!,
-    annual: process.env.NEXT_PUBLIC_CHARLIE_CHAT_PLUS_ANNUAL_PRICE!,
-    mode: "subscription",
-  },
-  // Legacy Cohort Monthly Product (keep for existing links)
-  [process.env.NEXT_PUBLIC_COHORT_MONTHLY_PRODUCT!]: {
-    monthly: process.env.NEXT_PUBLIC_COHORT_MONTHLY_PRICE!,
-    annual: process.env.NEXT_PUBLIC_COHORT_ANNUAL_PRICE!,
-    mode: "subscription",
-  },
-  // Legacy Cohort Annual Product (keep for existing links)
-  [process.env.NEXT_PUBLIC_COHORT_ANNUAL_PRODUCT!]: {
-    monthly: process.env.NEXT_PUBLIC_COHORT_MONTHLY_PRICE!,
-    annual: process.env.NEXT_PUBLIC_COHORT_ANNUAL_PRICE!,
-    mode: "subscription",
-  },
-  
-  // NEW MULTIFAMILYOS PRODUCTS (primary products for new subscriptions)
+  // MULTIFAMILYOS PRODUCTS
   // MultiFamilyOS Plus Monthly Product
   [process.env.NEXT_PUBLIC_MULTIFAMILYOS_PLUS_MONTHLY_PRODUCT!]: {
     monthly: process.env.NEXT_PUBLIC_MULTIFAMILYOS_PLUS_MONTHLY_PRICE!,
@@ -114,6 +77,7 @@ export async function POST(req: NextRequest) {
     }
 
     const userId = user.id;
+    console.log("🔍 DEBUG: User ID for checkout:", userId);
 
     // Handle subscription purchases only
     const body = await req.json();
