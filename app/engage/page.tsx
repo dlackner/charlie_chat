@@ -38,7 +38,7 @@ function EngagePageContent() {
   const [showStatusDropdown, setShowStatusDropdown] = useState(false);
   const [showMarketDropdown, setShowMarketDropdown] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedProperties, setSelectedProperties] = useState<number[]>([]);
+  const [selectedProperties, setSelectedProperties] = useState<string[]>([]);
   
   // Engagement Center dropdown states
   const [showMarketingMaterials, setShowMarketingMaterials] = useState(false);
@@ -261,7 +261,7 @@ function EngagePageContent() {
   const endIndex = startIndex + propertiesPerPage;
   const paginatedProperties = filteredProperties.slice(startIndex, endIndex);
 
-  const togglePropertySelection = (propertyId: number) => {
+  const togglePropertySelection = (propertyId: string) => {
     setSelectedProperties(prev => 
       prev.includes(propertyId) 
         ? prev.filter(id => id !== propertyId)
@@ -270,7 +270,7 @@ function EngagePageContent() {
   };
 
   const selectAll = () => {
-    setSelectedProperties(filteredProperties.map(p => p.id));
+    setSelectedProperties(filteredProperties.map(p => p.property_id));
   };
 
   const clearSelection = () => {
@@ -350,7 +350,7 @@ function EngagePageContent() {
 
       // Remove all deleted properties from the UI
       setSavedProperties(prev => prev.filter(property => 
-        !selectedProperties.includes((property.original_property_id || property.id).toString())
+        !selectedProperties.includes(property.property_id)
       ));
 
       // Clear selections
@@ -459,8 +459,8 @@ function EngagePageContent() {
     }
   };
 
-  const handleLOIGeneration = (propertyId: number) => {
-    const property = savedProperties.find(p => p.id === propertyId);
+  const handleLOIGeneration = (propertyId: string) => {
+    const property = savedProperties.find(p => p.property_id === propertyId);
     if (!property) return;
 
     // Navigate to templates page with property data for LOI generation
@@ -475,8 +475,8 @@ function EngagePageContent() {
 
   };
 
-  const handlePurchaseSaleGeneration = (propertyId: number) => {
-    const property = savedProperties.find(p => p.id === propertyId);
+  const handlePurchaseSaleGeneration = (propertyId: string) => {
+    const property = savedProperties.find(p => p.property_id === propertyId);
     if (!property) return;
     // Navigate to templates page with property data for Purchase & Sale generation
     const params = new URLSearchParams({
@@ -964,8 +964,8 @@ function EngagePageContent() {
     }
   };
 
-  const handleEmailGeneration = async (propertyId: number) => {
-    const property = savedProperties.find(p => p.id === propertyId);
+  const handleEmailGeneration = async (propertyId: string) => {
+    const property = savedProperties.find(p => p.property_id === propertyId);
     if (!property) return;
 
     // Parse skip trace data to extract email address
@@ -1159,7 +1159,7 @@ function EngagePageContent() {
     }
   };
 
-  const handleGenerateMarketingLetters = async (propertyIds: number[]) => {
+  const handleGenerateMarketingLetters = async (propertyIds: string[]) => {
     try {
       // Get user profile info for sender details
       if (!user) {
@@ -1359,7 +1359,7 @@ function EngagePageContent() {
           handlePurchaseSaleGeneration(selectedProperties[0]);
         } else if (action === 'create-offer') {
           // Navigate to offer analyzer
-          const property = savedProperties.find(p => p.id === selectedProperties[0]);
+          const property = savedProperties.find(p => p.property_id === selectedProperties[0]);
           if (property) {
             const params = new URLSearchParams({
               address: property.address,
@@ -2067,8 +2067,8 @@ function EngagePageContent() {
               <PropertyCard
                 key={property.id}
                 property={property}
-                isSelected={selectedProperties.includes(property.id)}
-                onToggleSelect={() => togglePropertySelection(property.id)}
+                isSelected={selectedProperties.includes(property.property_id)}
+                onToggleSelect={() => togglePropertySelection(property.property_id)}
                 marketOptions={marketOptions}
                 onStatusUpdate={handleStatusUpdate}
                 onMarketUpdate={handleMarketUpdate}
@@ -2153,8 +2153,8 @@ function EngagePageContent() {
                   <PropertyCard
                     key={property.id}
                     property={property}
-                    isSelected={selectedProperties.includes(property.id)}
-                    onToggleSelect={() => togglePropertySelection(property.id)}
+                    isSelected={selectedProperties.includes(property.property_id)}
+                    onToggleSelect={() => togglePropertySelection(property.property_id)}
                     marketOptions={marketOptions}
                     onStatusUpdate={handleStatusUpdate}
                     onMarketUpdate={handleMarketUpdate}

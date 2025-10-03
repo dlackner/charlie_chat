@@ -50,6 +50,32 @@ export default function MobileNavigation() {
   const pathname = usePathname();
   const router = useRouter();
   const { supabase, user } = useAuth();
+  
+  // Get search params safely for client-side only
+  const [contextParam, setContextParam] = useState<string | null>(null);
+  
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      setContextParam(params.get('context'));
+    }
+  }, [pathname]);
+
+  // Helper function to determine if a navigation item is active
+  const isNavItemActive = (item: NavigationItem) => {
+    if (item.href === '/' && pathname === '/') return true;
+    if (item.href === '/' && pathname !== '/') return false;
+    
+    // Special handling for property details pages
+    if (pathname.startsWith('/discover/property/')) {
+      if (contextParam === 'engage' && item.href === '/engage') return true;
+      if (contextParam === 'buybox' && item.href === '/discover') return true;
+      if (!contextParam && item.href === '/discover') return true;
+      return false;
+    }
+    
+    return pathname.startsWith(item.href);
+  };
   const { showSubscriptionModal, setShowSubscriptionModal } = useModal();
   const { userClass, showTrialEndModal, setShowTrialEndModal } = useTrialStatus();
   
@@ -342,7 +368,7 @@ export default function MobileNavigation() {
           {/* Navigation Items */}
           <nav className="flex-1 p-4 space-y-1">
             {navigation.map((item) => {
-              const isActive = item.href === '/' ? pathname === '/' : pathname.startsWith(item.href);
+              const isActive = isNavItemActive(item);
               const isSubmenuOpen = openSubmenus[item.name];
               const Icon = item.icon;
               
@@ -505,7 +531,7 @@ export default function MobileNavigation() {
             <nav className="flex-1 flex justify-center">
               <div className="flex space-x-4">
               {navigation.filter(item => item.name !== 'ACCOUNT' && item.name !== 'PRICING').map((item) => {
-                const isActive = item.href === '/' ? pathname === '/' : pathname.startsWith(item.href);
+                const isActive = isNavItemActive(item);
                 const isSubmenuOpen = openSubmenus[item.name];
                 const Icon = item.icon;
                 

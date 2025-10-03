@@ -486,16 +486,7 @@ export default function Home() {
             
             <button
               onClick={() => {
-                // Check if user is authenticated
-                supabaseClient.auth.getSession().then(({ data: { session } }) => {
-                  if (session) {
-                    // User is logged in, go directly to Capital Club
-                    window.location.href = '/capital-club';
-                  } else {
-                    // User not logged in, redirect to login with capital-club redirect
-                    window.location.href = '/auth/callback?redirect=/capital-club';
-                  }
-                });
+                window.location.href = '/capital-club';
               }}
               className="inline-flex items-center px-8 py-4 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold text-lg rounded-xl hover:from-blue-700 hover:to-purple-700 transition-all duration-200 transform hover:scale-105 shadow-lg"
             >

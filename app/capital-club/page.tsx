@@ -7,19 +7,18 @@
 
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { AuthGuard } from '@/components/auth/AuthGuard';
 import { StandardModalWithActions } from '@/components/shared/StandardModal';
-import { Crown, Users, Building, TrendingUp, Star, Shield, Zap } from 'lucide-react';
+import { Crown, Users, TrendingUp, Star, Shield, Zap } from 'lucide-react';
 
 export default function CapitalClubPage() {
   const { user, supabase } = useAuth();
   const [isEnrolled, setIsEnrolled] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [showEnrollModal, setShowEnrollModal] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [showSignInRequiredModal, setShowSignInRequiredModal] = useState(false);
   const [isEnrolling, setIsEnrolling] = useState(false);
-  const [clubMembersCount, setClubMembersCount] = useState(0);
   const [userClass, setUserClass] = useState<string>('trial');
 
   // Fetch user enrollment status and club metrics
@@ -38,16 +37,6 @@ export default function CapitalClubPage() {
         if (!profileError && profile) {
           setIsEnrolled(profile.capital_club_enrolled || false);
           setUserClass(profile.user_class || 'trial');
-        }
-
-        // Get count of enrolled club members
-        const { count, error: countError } = await supabase
-          .from('profiles')
-          .select('*', { count: 'exact', head: true })
-          .eq('capital_club_enrolled', true);
-
-        if (!countError) {
-          setClubMembersCount(count || 0);
         }
 
       } catch (error) {
@@ -78,7 +67,6 @@ export default function CapitalClubPage() {
       }
 
       setIsEnrolled(true);
-      setClubMembersCount(prev => prev + 1);
       setShowEnrollModal(false);
       
       // Show success modal
@@ -103,8 +91,7 @@ export default function CapitalClubPage() {
   }
 
   return (
-    <AuthGuard>
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
           {/* Hero Section */}
           <div className="text-center mb-16">
@@ -117,29 +104,6 @@ export default function CapitalClubPage() {
             <p className="text-xl text-gray-600 max-w-3xl mx-auto mb-8">
               An exclusive community of multifamily real estate investors connecting capital with opportunity.
             </p>
-            
-            {isEnrolled ? (
-              <div className="inline-flex items-center px-6 py-3 bg-green-100 text-green-800 rounded-full font-medium">
-                <Crown className="h-5 w-5 mr-2" />
-                Club Member
-              </div>
-            ) : (
-              <button
-                onClick={() => {
-                  // Check if user is eligible (plus, pro, or cohort)
-                  const eligibleClasses = ['plus', 'pro', 'cohort'];
-                  if (eligibleClasses.includes(userClass)) {
-                    setShowEnrollModal(true);
-                  } else {
-                    setShowUpgradeModal(true);
-                  }
-                }}
-                className="inline-flex items-center px-8 py-4 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-medium rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all shadow-lg hover:shadow-xl"
-              >
-                <Crown className="h-5 w-5 mr-2" />
-                Join the Capital Club
-              </button>
-            )}
           </div>
 
           {/* Metrics Cards - Hidden for now */}
@@ -273,27 +237,35 @@ export default function CapitalClubPage() {
           </div>
 
           {/* CTA Section */}
-          {!isEnrolled && (
+          {!(user && isEnrolled) && (
             <div className="text-center">
               <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl p-12 text-white">
                 <h2 className="text-3xl font-bold mb-4">Ready to Join?</h2>
-                <p className="text-xl mb-8 opacity-90">
+                <p className="text-xl mb-6 opacity-90">
                   Become part of an exclusive community driving multifamily investment success.
+                </p>
+                <p className="text-lg mb-8 opacity-80">
+                  Available to MultifamilyOS Professional and Cohort members.
                 </p>
                 <button
                   onClick={() => {
-                    // Check if user is eligible (plus, pro, or cohort)
-                    const eligibleClasses = ['plus', 'pro', 'cohort'];
-                    if (eligibleClasses.includes(userClass)) {
-                      setShowEnrollModal(true);
+                    if (!user) {
+                      // Show sign-in required modal
+                      setShowSignInRequiredModal(true);
                     } else {
-                      setShowUpgradeModal(true);
+                      // Check if user is eligible (plus, pro, or cohort)
+                      const eligibleClasses = ['plus', 'pro', 'cohort'];
+                      if (eligibleClasses.includes(userClass)) {
+                        setShowEnrollModal(true);
+                      } else {
+                        setShowUpgradeModal(true);
+                      }
                     }
                   }}
                   className="inline-flex items-center px-8 py-4 bg-white text-blue-600 font-medium rounded-lg hover:bg-gray-50 transition-colors shadow-lg"
                 >
                   <Crown className="h-5 w-5 mr-2" />
-                  Enroll in Capital Club
+                  Join the Capital Club
                 </button>
               </div>
             </div>
@@ -306,7 +278,7 @@ export default function CapitalClubPage() {
           onClose={() => setShowEnrollModal(false)}
           title="Join the Capital Club"
           primaryAction={{
-            label: isEnrolling ? 'Enrolling...' : 'Enroll Now',
+            label: isEnrolling ? 'Joining...' : 'Join Now',
             onClick: handleEnroll,
             disabled: isEnrolling
           }}
@@ -333,7 +305,7 @@ export default function CapitalClubPage() {
             
             <p className="text-sm text-gray-600">
               By enrolling, you confirm that you are an active multifamily real estate investor and agree to 
-              participate professionally in the Capital Club community.
+              participate in the Capital Club community.
             </p>
           </div>
         </StandardModalWithActions>
@@ -362,11 +334,6 @@ export default function CapitalClubPage() {
                 You're now part of an exclusive community of multifamily real estate investors. 
                 We'll be contacting you soon with more details about the Capital Club, including 
                 how to access our investor database, submit properties, and connect with other members.
-              </p>
-              
-              <p className="text-gray-600 mt-4">
-                Your Capital Club welcome packet will be sent to you in the coming months with 
-                exclusive member resources and opportunities.
               </p>
             </div>
           </div>
@@ -415,7 +382,39 @@ export default function CapitalClubPage() {
             </div>
           </div>
         </StandardModalWithActions>
+
+        {/* Sign-In Required Modal */}
+        <StandardModalWithActions
+          isOpen={showSignInRequiredModal}
+          onClose={() => setShowSignInRequiredModal(false)}
+          title="Sign In Required"
+          primaryAction={{
+            label: 'Go to Home Page',
+            onClick: () => {
+              window.location.href = '/';
+            },
+          }}
+          secondaryAction={{
+            label: 'Cancel',
+            onClick: () => setShowSignInRequiredModal(false)
+          }}
+        >
+          <div className="p-6">
+            <div className="flex flex-col items-center text-center">
+              <div className="w-16 h-16 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full flex items-center justify-center mb-6">
+                <Crown className="w-8 h-8 text-white" />
+              </div>
+              
+              <h3 className="text-xl font-semibold text-gray-900 mb-4">
+                Please Sign In to Join
+              </h3>
+              
+              <p className="text-gray-600">
+                To join the Capital Club, please return to the home page, sign in to your account, and then return here to complete your enrollment.
+              </p>
+            </div>
+          </div>
+        </StandardModalWithActions>
       </div>
-    </AuthGuard>
   );
 }
