@@ -73,22 +73,18 @@ function categorizeReminder(reminderDate: string): { type: 'today' | 'upcoming' 
   console.log('  - Diff time:', diffTime);
   console.log('  - Diff days:', diffDays);
   
-  // Get start of current week (Sunday)
-  const startOfWeek = new Date(today);
-  startOfWeek.setDate(today.getDate() - today.getDay());
-  
-  // Get end of current week (Saturday)
-  const endOfWeek = new Date(startOfWeek);
-  endOfWeek.setDate(startOfWeek.getDate() + 6);
+  // Get the date 7 days from today
+  const sevenDaysFromToday = new Date(today);
+  sevenDaysFromToday.setDate(today.getDate() + 7);
   
   // Determine type
   let type: 'today' | 'upcoming' | 'overdue';
   if (diffDays === 0) {
     type = 'today';
-  } else if (reminder >= startOfWeek && reminder <= endOfWeek && diffDays > 0) {
-    type = 'upcoming'; // Only this week's future dates
+  } else if (diffDays > 0 && diffDays <= 7) {
+    type = 'upcoming'; // Next 7 days (1-7 days from today)
   } else {
-    type = 'overdue'; // Past dates or dates beyond this week
+    type = 'overdue'; // Past dates or dates beyond 7 days
   }
   
   console.log('  - Final type:', type);
@@ -163,12 +159,12 @@ export async function GET(req: NextRequest) {
       if (favorite.notes) {
         const parsedReminders = parseRemindersFromNote(favorite.notes);
         
-        parsedReminders.forEach((parsed) => {
+        parsedReminders.forEach((parsed, index) => {
           const { type, priority } = categorizeReminder(parsed.date);
           const propertyData = favorite.saved_properties as any;
           
           reminders.push({
-            id: `${favorite.property_id}-${parsed.date}`,
+            id: `${favorite.property_id}-${parsed.date}-${index}`,
             property_id: favorite.property_id,
             property_address: propertyData?.address_street || propertyData?.address_full || 'Unknown Address',
             reminder_date: parsed.date,

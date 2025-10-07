@@ -4,10 +4,25 @@
  */
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 const OperatingSystemDiagram = () => {
   const [hoveredSlice, setHoveredSlice] = useState<string | null>(null);
+  const [isMobile, setIsMobile] = useState(false);
+
+  // Check if device is mobile to disable hover effects
+  useEffect(() => {
+    const checkMobile = () => {
+      if (typeof window !== 'undefined') {
+        setIsMobile(window.innerWidth < 768);
+      }
+    };
+    
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   const modules = [
     {
@@ -75,7 +90,7 @@ const OperatingSystemDiagram = () => {
 
   return (
     <div className="relative">
-      <svg width="500" height="500" viewBox="-250 -250 500 500" className="drop-shadow-lg">
+      <svg width="100%" height="100%" viewBox="-250 -250 500 500" className="drop-shadow-lg">
         {/* Outer slices */}
         {modules.map((module, index) => {
           const path = createSlicePath(index, modules.length, 230, 120);
@@ -92,8 +107,8 @@ const OperatingSystemDiagram = () => {
                 className={`cursor-pointer transition-all duration-200 ${
                   isHovered ? 'opacity-90 drop-shadow-xl' : 'opacity-90'
                 }`}
-                onMouseEnter={() => setHoveredSlice(module.id)}
-                onMouseLeave={() => setHoveredSlice(null)}
+                onMouseEnter={() => !isMobile && setHoveredSlice(module.id)}
+                onMouseLeave={() => !isMobile && setHoveredSlice(null)}
               />
               <text
                 x={textPos.x}
@@ -153,8 +168,8 @@ const OperatingSystemDiagram = () => {
             className={`cursor-pointer transition-all duration-200 ${
               hoveredSlice === 'coaching' ? 'opacity-90' : 'opacity-90'
             }`}
-            onMouseEnter={() => setHoveredSlice('coaching')}
-            onMouseLeave={() => setHoveredSlice(null)}
+            onMouseEnter={() => !isMobile && setHoveredSlice('coaching')}
+            onMouseLeave={() => !isMobile && setHoveredSlice(null)}
           />
         </g>
 

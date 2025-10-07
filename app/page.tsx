@@ -557,20 +557,20 @@ export default function Home() {
             </p>
           </div>
           
-          <div className="flex items-center">
+          <div className="flex flex-col lg:flex-row lg:items-center gap-12 lg:gap-16">
             {/* Circular Diagram */}
-            <div className="flex-shrink-0 mr-16">
-              <div className="relative w-[500px] h-[500px]">
+            <div className="flex-shrink-0 flex justify-center lg:justify-start">
+              <div className="relative w-[220px] h-[220px] sm:w-[280px] sm:h-[280px] lg:w-[500px] lg:h-[500px]">
                 <OperatingSystemDiagram />
               </div>
             </div>
             
             {/* Text Content */}
-            <div className="text-white flex-1">
-              <h3 className="text-2xl md:text-3xl font-bold mb-6">
+            <div className="text-white flex-1 text-center lg:text-left">
+              <h3 className="text-xl sm:text-2xl lg:text-3xl font-bold mb-4 lg:mb-6">
                 Complete Operating System Flow
               </h3>
-              <p className="text-lg text-gray-300 leading-relaxed">
+              <p className="text-base sm:text-lg text-gray-300 leading-relaxed">
                 MultiFamilyOS orchestrates every aspect of your multifamily business through one unified platform. Each module seamlessly connects to the next, creating an intelligent, automated workflow that scales with your portfolio.
               </p>
             </div>

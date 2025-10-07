@@ -2470,7 +2470,7 @@ function DiscoverPageContent() {
           </div>
 
           {/* Right Side - Results */}
-          <div className="flex-1">
+          <div className="flex-1 overflow-x-hidden">
             {/* Results Header */}
             <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center mb-6 space-y-4 lg:space-y-0">
               <div className="flex-1 min-w-0">
@@ -2546,7 +2546,7 @@ function DiscoverPageContent() {
               <div>
                 {/* Recent Properties Grid */}
                 {viewMode === 'cards' ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pr-8">
                     {recentProperties.map((property, index) => (
                       <RecentPropertyCard 
                         key={property.property_id || property.id || `property-${index}`} 
@@ -2581,7 +2581,7 @@ function DiscoverPageContent() {
                     
                     {/* Right: Cards in 2-column grid */}
                     <div className="flex-1 overflow-y-auto">
-                      <div className="grid grid-cols-2 gap-4 pr-4">
+                      <div className="grid grid-cols-2 gap-4 pr-16">
                         {recentProperties.map((property, index) => (
                           <RecentPropertyCard 
                             key={property.property_id || property.id || `property-${index}`} 
@@ -2755,7 +2755,7 @@ function DiscoverPageContent() {
                     
                     {/* Right: Cards in 2-column grid */}
                     <div className="flex-1 overflow-y-auto">
-                      <div className="grid grid-cols-2 gap-4 pr-4">
+                      <div className="grid grid-cols-2 gap-4 pr-16">
                         {paginatedSearchResults.length > 0 ? (
                           paginatedSearchResults.map((property, i) => (
                             <PropertyCard 
@@ -2882,7 +2882,7 @@ function DiscoverPageContent() {
           className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-full shadow-lg flex items-center space-x-2 transition-colors"
         >
           <SlidersHorizontal className="h-4 w-4" />
-          <span>Search</span>
+          <span>Filter</span>
         </button>
       </div>
 
@@ -3654,15 +3654,7 @@ function RecentPropertyCard({
   return (
     <div className="bg-white rounded-lg border border-gray-200 overflow-hidden hover:shadow-lg transition-all duration-200">
       {/* Property Image */}
-      <div className="relative">
-        <div 
-          className="relative aspect-[4/3] bg-gray-200 group"
-          // onClick={() => {
-          //   const address = `${property.address_full || property.address_street}, ${property.address_city}, ${property.address_state} ${property.address_zip}`;
-          //   const mapsUrl = `https://www.google.com/maps/search/${encodeURIComponent(address)}`;
-          //   window.open(mapsUrl, '_blank');
-          // }}
-        >
+      <div className="relative aspect-[3/2] sm:aspect-[4/3] bg-gray-200">
           <img 
             src={(() => {
               const address = `${property.address_full || property.address_street}, ${property.address_city}, ${property.address_state} ${property.address_zip}`;
@@ -3687,7 +3679,6 @@ function RecentPropertyCard({
               <div className="text-sm font-medium">Property Photo</div>
             </div>
           </div>
-        </div>
         
         {/* Heart Favorite Button */}
         <button 
@@ -3823,10 +3814,7 @@ function PropertyCard({
   return (
     <div className="bg-white rounded-lg border border-gray-200 overflow-hidden hover:shadow-lg transition-all duration-200">
       {/* Property Image - Google Street View */}
-      <div className="relative">
-        <div 
-          className="relative aspect-[4/3] bg-gray-200 group"
-        >
+      <div className="relative aspect-[3/2] sm:aspect-[4/3] bg-gray-200">
           <img 
             src={(() => {
               const address = `${displayProperty.address_full || displayProperty.address_street}, ${displayProperty.address_city}, ${displayProperty.address_state} ${displayProperty.address_zip}`;
@@ -3851,7 +3839,6 @@ function PropertyCard({
               <div className="text-sm font-medium">Property Photo</div>
             </div>
           </div>
-        </div>
         
         {/* Heart Favorite Button */}
         <button 

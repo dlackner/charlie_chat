@@ -456,6 +456,10 @@ export default function PropertyDetailsPage() {
       case 'csv':
         handleCSVExport([transformedProperty]);
         break;
+      case 'roadtrip':
+        // The params.id is already the numeric property_id we need
+        router.push(`/roadtrip?propertyId=${params.id}`);
+        break;
       default:
         showWarning(`Action "${action}" not implemented`, 'Feature Coming Soon');
     }

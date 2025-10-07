@@ -8,7 +8,7 @@
 
 import { useState, useEffect, useRef, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { Search, Heart, Grid3x3, Map, Filter, ChevronDown, FileText, MapPin, Trash2 } from 'lucide-react';
+import { Search, Heart, Grid3x3, Map, Filter, ChevronDown, FileText, MapPin, Trash2, Route } from 'lucide-react';
 import { AuthGuard } from '@/components/auth/AuthGuard';
 import PropertyMapWithRents from '@/components/shared/PropertyMapWithRents';
 import { generate10YearCashFlowReport } from '../offer-analyzer/cash-flow-report';
@@ -44,7 +44,7 @@ function EngagePageContent() {
   const [showMarketingMaterials, setShowMarketingMaterials] = useState(false);
   const [showLegalDocuments, setShowLegalDocuments] = useState(false);
   const [showFinancialAnalysis, setShowFinancialAnalysis] = useState(false);
-  const [showDownload, setShowDownload] = useState(false);
+  const [showToolbox, setShowToolbox] = useState(false);
   const [savedProperties, setSavedProperties] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -265,12 +265,13 @@ function EngagePageContent() {
     setSelectedProperties(prev => 
       prev.includes(propertyId) 
         ? prev.filter(id => id !== propertyId)
-        : [...prev, propertyId]
+        : [propertyId] // Only allow one property to be selected at a time
     );
   };
 
   const selectAll = () => {
-    setSelectedProperties(filteredProperties.map(p => p.property_id));
+    // No longer allow selecting all properties - only one at a time
+    setSelectedProperties([]);
   };
 
   const clearSelection = () => {
@@ -1416,15 +1417,15 @@ function EngagePageContent() {
             
             {/* Left side - Selection and Search */}
             <div className="flex flex-col sm:flex-row sm:items-center space-y-3 sm:space-y-0 sm:space-x-4">
-              {/* Select All Checkbox */}
+              {/* Clear Selection Checkbox */}
               <div className="flex items-center space-x-2">
                 <input
                   type="checkbox"
-                  checked={selectedProperties.length === filteredProperties.length && filteredProperties.length > 0}
-                  onChange={selectedProperties.length === filteredProperties.length ? clearSelection : selectAll}
+                  checked={selectedProperties.length > 0}
+                  onChange={clearSelection}
                   className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                 />
-                <span className="text-sm text-gray-700">Select All</span>
+                <span className="text-sm text-gray-700">Clear Selection</span>
               </div>
 
               {/* Delete Selected Button */}
@@ -1769,14 +1770,32 @@ function EngagePageContent() {
               {/* Download Section */}
               <div>
                 <button
-                  onClick={() => setShowDownload(!showDownload)}
+                  onClick={() => setShowToolbox(!showToolbox)}
                   className="w-full px-4 py-3 text-left hover:bg-gray-50 flex items-center justify-between"
                 >
-                  <span className="text-sm font-normal text-gray-900">DOWNLOAD</span>
-                  <ChevronDown className={`h-4 w-4 text-gray-500 transition-transform ${showDownload ? 'rotate-180' : ''}`} />
+                  <span className="text-sm font-normal text-gray-900">TOOLBOX</span>
+                  <ChevronDown className={`h-4 w-4 text-gray-500 transition-transform ${showToolbox ? 'rotate-180' : ''}`} />
                 </button>
-                {showDownload && (
+                {showToolbox && (
                   <div className="px-4 pb-3 space-y-2">
+                    <button
+                      onClick={() => {
+                        if (selectedProperties.length === 1) {
+                          router.push(`/roadtrip?propertyId=${selectedProperties[0]}`);
+                        }
+                      }}
+                      disabled={selectedProperties.length !== 1}
+                      className="block w-full text-left py-2 px-3 text-sm text-gray-700 hover:bg-blue-100 disabled:text-gray-400 disabled:cursor-not-allowed rounded transition-colors"
+                      title="Explore nearby properties around selected property"
+                    >
+                      <div className="flex items-center">
+                        <Route className="h-4 w-4 mr-2" />
+                        <div>
+                          <div>Road Trip</div>
+                          <div className="text-xs text-gray-500">Explore nearby properties</div>
+                        </div>
+                      </div>
+                    </button>
                     <button
                       onClick={() => handleDocumentAction('csv')}
                       className="block w-full text-left py-2 px-3 text-sm text-gray-700 hover:bg-blue-100 disabled:text-gray-400 disabled:cursor-not-allowed rounded transition-colors"
@@ -1862,7 +1881,7 @@ function EngagePageContent() {
         ) : viewMode === 'cards' ? (
           <div>
             {/* Pipeline Status Metric Cards */}
-            <div className="mb-6">
+            <div className="mb-6 hidden lg:block">
               <div className="flex items-center justify-between gap-2 md:gap-4">
                 {(() => {
                   const stages = ['Reviewing', 'Analyzing', 'Engaged', 'LOI Sent'];

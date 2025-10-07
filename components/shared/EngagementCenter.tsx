@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { ChevronDown, FileText } from 'lucide-react';
+import { ChevronDown, FileText, Route } from 'lucide-react';
 
 interface EngagementCenterProps {
   selectedProperties: any[];
@@ -17,7 +17,7 @@ export function EngagementCenter({
   const [showMarketingMaterials, setShowMarketingMaterials] = useState(false);
   const [showLegalDocuments, setShowLegalDocuments] = useState(false);
   const [showFinancialAnalysis, setShowFinancialAnalysis] = useState(false);
-  const [showDownload, setShowDownload] = useState(false);
+  const [showToolbox, setShowToolbox] = useState(false);
 
   const selectedCount = selectedProperties.length;
   const hasSelection = selectedCount > 0;
@@ -183,17 +183,31 @@ export function EngagementCenter({
         )}
       </div>
 
-      {/* Download Section */}
+      {/* Toolbox Section */}
       <div>
         <button
-          onClick={() => setShowDownload(!showDownload)}
+          onClick={() => setShowToolbox(!showToolbox)}
           className="w-full px-4 py-3 text-left hover:bg-gray-50 flex items-center justify-between"
         >
-          <span className="text-sm font-normal text-gray-900">DOWNLOAD</span>
-          <ChevronDown className={`h-4 w-4 text-gray-500 transition-transform ${showDownload ? 'rotate-180' : ''}`} />
+          <span className="text-sm font-normal text-gray-900">TOOLBOX</span>
+          <ChevronDown className={`h-4 w-4 text-gray-500 transition-transform ${showToolbox ? 'rotate-180' : ''}`} />
         </button>
-        {showDownload && (
+        {showToolbox && (
           <div className="px-4 pb-3 space-y-2">
+            <button
+              onClick={() => onDocumentAction('roadtrip')}
+              className="block w-full text-left py-2 px-3 text-sm text-gray-700 hover:bg-blue-100 disabled:text-gray-400 disabled:cursor-not-allowed rounded transition-colors"
+              disabled={!hasSingleSelection}
+              title="Explore nearby properties around selected property"
+            >
+              <div className="flex items-center">
+                <Route className="h-4 w-4 mr-2" />
+                <div>
+                  <div>Road Trip</div>
+                  <div className="text-xs text-gray-500">Explore nearby properties</div>
+                </div>
+              </div>
+            </button>
             <button
               onClick={() => onDocumentAction('csv')}
               className="block w-full text-left py-2 px-3 text-sm text-gray-700 hover:bg-blue-100 disabled:text-gray-400 disabled:cursor-not-allowed rounded transition-colors"
