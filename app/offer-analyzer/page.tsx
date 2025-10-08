@@ -443,6 +443,7 @@ export default function OfferAnalyzerPage() {
   // Function to get current offer data for saving
   const getCurrentOfferData = () => {
     return {
+      // === INPUT PARAMETERS ===
       purchasePrice,
       downPaymentPercentage,
       interestRate,
@@ -472,6 +473,30 @@ export default function OfferAnalyzerPage() {
       capitalReservePerUnitAnnual,
       deferredCapitalReservePerUnit,
       holdingPeriodYears,
+      
+      // === CALCULATED RESULTS ===
+      projected_irr: irr.toFixed(2) + '%',
+      cash_on_cash_return: cashOnCashReturn.toFixed(2) + '%',
+      roi_at_horizon: roiAtHorizon.toFixed(2) + '%',
+      projected_equity_at_horizon: projectedEquityAtHorizon,
+      
+      // Additional calculated fields
+      gross_operating_income: effectiveGrossIncome,
+      net_operating_income: netOperatingIncome,
+      debt_service_coverage_ratio: debtServiceCoverageRatio.toFixed(2),
+      cash_flow_before_tax: cashFlowBeforeTax,
+      cash_flow_after_capital_reserve: cashFlowAfterCapitalReserve,
+      annual_debt_service: annualDebtService,
+      loan_balance_year_1: calculateRemainingLoanBalance(1),
+      cap_rate_year_1: capRate.toFixed(2) + '%',
+      break_even_point: breakEvenYear ? `${breakEvenYear} years` : null,
+      total_acquisition_cost: purchasePrice + (purchasePrice * (closingCostsPercentage / 100)),
+      total_cash_invested: totalInitialInvestment,
+      down_payment_amount: downPaymentAmount,
+      loan_amount: loanAmount,
+      monthly_mortgage_payment: monthlyMortgagePayment,
+      expense_ratio_year_1: expenseRatio.toFixed(2) + '%',
+      
       usePercentageMode,
       operatingExpensePercentage,
       savedAt: new Date().toISOString()
@@ -641,20 +666,35 @@ export default function OfferAnalyzerPage() {
     if (isDuplicate) {
       // Store the pending offer data and show warning dialog
       setPendingOfferData({ name: offerName, description: offerDescription });
-      setShowDuplicateAlert(true);
-      return; // Exit here, user will decide in the modal
+      // Close save modal first, then show duplicate alert
+      setShowSaveOfferModal(false);
+      // Use setTimeout to ensure save modal closes before duplicate alert appears
+      setTimeout(() => setShowDuplicateAlert(true), 0);
+      return;
     }
 
     // If no duplicate, proceed with save
     await performSaveOffer(offerName, offerDescription);
+    // SaveOfferModal will close itself after successful save
   };
 
   // Handle user choice to overwrite existing offer
   const handleConfirmOverwrite = async () => {
     if (pendingOfferData) {
-      await performSaveOffer(pendingOfferData.name, pendingOfferData.description);
-      setPendingOfferData(null);
-      setShowDuplicateAlert(false);
+      try {
+        // Perform the save without duplicate check (we already know we want to overwrite)
+        await performSaveOffer(pendingOfferData.name, pendingOfferData.description);
+        
+        // Clear everything at once to minimize visual glitches
+        setPendingOfferData(null);
+        setShowDuplicateAlert(false);
+        setShowSaveOfferModal(false);
+      } catch (error) {
+        console.error('Error during overwrite save:', error);
+        // If there's an error, close duplicate and show save modal
+        setShowDuplicateAlert(false);
+        setShowSaveOfferModal(true);
+      }
     }
   };
 

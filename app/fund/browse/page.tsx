@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { AuthGuard } from '@/components/auth/AuthGuard';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -33,7 +33,7 @@ interface Submission {
   submitter_email?: string;
 }
 
-export default function BrowseSubmissionsPage() {
+function BrowseSubmissionsContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user, supabase, isLoading: authLoading } = useAuth();
@@ -110,7 +110,7 @@ export default function BrowseSubmissionsPage() {
       // Increment view count
       await supabase
         .from('submissions')
-        .update({ view_count: submissions.find(s => s.id === submissionId)?.view_count + 1 || 1 })
+        .update({ view_count: (submissions.find(s => s.id === submissionId)?.view_count || 0) + 1 })
         .eq('id', submissionId);
 
       // Navigate to submission details
@@ -283,5 +283,22 @@ export default function BrowseSubmissionsPage() {
         </div>
       </div>
     </AuthGuard>
+  );
+}
+
+export default function BrowseSubmissionsPage() {
+  return (
+    <Suspense fallback={
+      <AuthGuard>
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <p className="text-gray-600">Loading submissions...</p>
+          </div>
+        </div>
+      </AuthGuard>
+    }>
+      <BrowseSubmissionsContent />
+    </Suspense>
   );
 }

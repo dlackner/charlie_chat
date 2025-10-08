@@ -176,8 +176,9 @@ function RoadtripContent() {
             };
             
             // Update search radius circle
-            if (map.getSource('search-radius-circle')) {
-              map.getSource('search-radius-circle').setData({
+            const radiusSource = map.getSource('search-radius-circle');
+            if (radiusSource && 'setData' in radiusSource) {
+              (radiusSource as mapboxgl.GeoJSONSource).setData({
                 type: 'Feature',
                 properties: {},
                 geometry: {
@@ -189,8 +190,9 @@ function RoadtripContent() {
             
             // Update or remove half-radius circle
             if (searchRadius > 0.5) {
-              if (map.getSource('half-radius-circle')) {
-                map.getSource('half-radius-circle').setData({
+              const halfRadiusSource = map.getSource('half-radius-circle');
+              if (halfRadiusSource && 'setData' in halfRadiusSource) {
+                (halfRadiusSource as mapboxgl.GeoJSONSource).setData({
                   type: 'Feature',
                   properties: {},
                   geometry: {
@@ -231,10 +233,10 @@ function RoadtripContent() {
             }
             
             // Clear existing nearby property markers
-            if (map._nearbyMarkers) {
-              map._nearbyMarkers.forEach(marker => marker.remove());
+            if ((map as any)._nearbyMarkers) {
+              (map as any)._nearbyMarkers.forEach((marker: mapboxgl.Marker) => marker.remove());
             }
-            map._nearbyMarkers = [];
+            (map as any)._nearbyMarkers = [];
             
             // Add new nearby property markers
             filtered.forEach((property) => {
@@ -258,8 +260,8 @@ function RoadtripContent() {
                 .addTo(map);
 
               // Store marker reference for cleanup
-              if (!map._nearbyMarkers) map._nearbyMarkers = [];
-              map._nearbyMarkers.push(marker);
+              if (!(map as any)._nearbyMarkers) (map as any)._nearbyMarkers = [];
+              (map as any)._nearbyMarkers.push(marker);
 
               // Add click events for popup
               marker.getElement().addEventListener('click', () => {
@@ -514,10 +516,10 @@ function RoadtripContent() {
         });
 
         // Clear any existing nearby property markers first
-        if (map._nearbyMarkers) {
-          map._nearbyMarkers.forEach(marker => marker.remove());
+        if ((map as any)._nearbyMarkers) {
+          (map as any)._nearbyMarkers.forEach((marker: mapboxgl.Marker) => marker.remove());
         }
-        map._nearbyMarkers = [];
+        (map as any)._nearbyMarkers = [];
 
         // Add nearby property markers (blue)
         nearbyProperties.forEach((property) => {
@@ -551,8 +553,8 @@ function RoadtripContent() {
             .addTo(map);
 
           // Store marker reference for cleanup
-          if (!map._nearbyMarkers) map._nearbyMarkers = [];
-          map._nearbyMarkers.push(marker);
+          if (!(map as any)._nearbyMarkers) (map as any)._nearbyMarkers = [];
+          (map as any)._nearbyMarkers.push(marker);
 
           // Add click events for popup (single click handler)
           marker.getElement().addEventListener('click', () => {

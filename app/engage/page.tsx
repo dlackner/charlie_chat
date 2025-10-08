@@ -909,6 +909,32 @@ function EngagePageContent() {
       }
       const profileData = await profileResponse.json();
 
+      // Extract pre-calculated metrics from offer data to ensure consistency
+      // Helper function to parse percentage fields (removes % and converts to number)
+      const parsePercentage = (value: string | number | undefined) => {
+        if (typeof value === 'string') {
+          return parseFloat(value.replace('%', ''));
+        }
+        return typeof value === 'number' ? value : undefined;
+      };
+      
+      const preCalculatedMetrics = {
+        cashOnCashReturn: offerData.cash_on_cash_return ? parsePercentage(offerData.cash_on_cash_return) : undefined,
+        capRate: offerData.cap_rate_year_1 ? parsePercentage(offerData.cap_rate_year_1) : undefined,
+        debtServiceCoverageRatio: offerData.debt_service_coverage_ratio ? parseFloat(offerData.debt_service_coverage_ratio) : undefined,
+        expenseRatio: offerData.expense_ratio_year_1 ? parsePercentage(offerData.expense_ratio_year_1) : undefined,
+        projectedIRR: offerData.projected_irr ? parsePercentage(offerData.projected_irr) : undefined,
+        totalROI: offerData.roi_at_horizon ? parsePercentage(offerData.roi_at_horizon) : undefined,
+        projectedEquity: offerData.projected_equity_at_horizon ? parseFloat(offerData.projected_equity_at_horizon) : undefined,
+        netOperatingIncome: offerData.net_operating_income ? parseFloat(offerData.net_operating_income) : undefined,
+        cashFlowBeforeTax: offerData.cash_flow_before_tax ? parseFloat(offerData.cash_flow_before_tax) : undefined
+      };
+
+      // Filter out undefined values
+      const validPreCalculatedMetrics = Object.fromEntries(
+        Object.entries(preCalculatedMetrics).filter(([_, value]) => value !== undefined)
+      );
+
       // Generate the cash flow report
       await generate10YearCashFlowReport({
         // Property address from offer
@@ -950,9 +976,21 @@ function EngagePageContent() {
         // Investment timeline
         holdingPeriodYears: parseInt(offerData.holdingPeriodYears) || 10,
         
+        // Exit strategy
+        dispositionCapRate: parseFloat(offerData.dispositionCapRate) || 6,
+        
         // Mode settings
         usePercentageMode: offerData.usePercentageMode || false,
-        operatingExpensePercentage: parseFloat(offerData.operatingExpensePercentage) || 50
+        operatingExpensePercentage: parseFloat(offerData.operatingExpensePercentage) || 50,
+        
+        // Pre-calculated metrics to ensure consistency with offer analyzer
+        preCalculatedMetrics: Object.keys(validPreCalculatedMetrics).length > 0 ? validPreCalculatedMetrics : undefined,
+        
+        // Report branding
+        userName: profileData.name || 'User',
+        userEmail: profileData.email || '',
+        userPhone: profileData.phone || '',
+        reportTitle: `${propertyWithOffer.offer_name || 'Investment Analysis'} - 10-Year Cash Flow Analysis`
       });
       
       // Show success message

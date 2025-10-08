@@ -277,7 +277,7 @@ export default function CapitalClubMockupPage() {
                     setSelectedPropertyId(e.target.value);
                     setSelectedOfferId(null);
                     // Check if property has offers
-                    const offers = mockOfferScenarios[e.target.value] || [];
+                    const offers = mockOfferScenarios[e.target.value as keyof typeof mockOfferScenarios] || [];
                     if (offers.length === 0) {
                       setShowOfferPrompt(true);
                     }
@@ -294,7 +294,7 @@ export default function CapitalClubMockupPage() {
               </div>
 
               {/* Step 2: Offer Scenario Selection */}
-              {selectedPropertyId && (mockOfferScenarios[selectedPropertyId]?.length > 0) && (
+              {selectedPropertyId && (mockOfferScenarios[selectedPropertyId as keyof typeof mockOfferScenarios]?.length > 0) && (
                 <div className="mb-6">
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Select Offer Scenario
@@ -305,7 +305,7 @@ export default function CapitalClubMockupPage() {
                     className="max-w-2xl border border-gray-300 rounded-lg p-3"
                   >
                     <option value="">Choose an offer scenario...</option>
-                    {mockOfferScenarios[selectedPropertyId].map(offer => (
+                    {mockOfferScenarios[selectedPropertyId as keyof typeof mockOfferScenarios]?.map(offer => (
                       <option key={offer.offer_id} value={offer.offer_id}>
                         {offer.name} - ${(offer.purchase_price / 1000000).toFixed(2)}M (IRR: {offer.projected_irr})
                       </option>
@@ -315,7 +315,7 @@ export default function CapitalClubMockupPage() {
               )}
 
               {/* No Offers Alert */}
-              {showOfferPrompt && selectedPropertyId && (mockOfferScenarios[selectedPropertyId]?.length === 0) && (
+              {showOfferPrompt && selectedPropertyId && (mockOfferScenarios[selectedPropertyId as keyof typeof mockOfferScenarios]?.length === 0) && (
                 <div className="mb-6 bg-yellow-50 border border-yellow-200 rounded-lg p-4">
                   <div className="flex items-start">
                     <div className="flex-shrink-0">
@@ -340,7 +340,7 @@ export default function CapitalClubMockupPage() {
                     <h3 className="text-lg font-semibold text-gray-900 mb-4">Selected Property</h3>
                     {(() => {
                       const property = mockFavorites.find(p => p.property_id === selectedPropertyId);
-                      const offer = mockOfferScenarios[selectedPropertyId]?.find(o => o.offer_id === selectedOfferId);
+                      const offer = mockOfferScenarios[selectedPropertyId as keyof typeof mockOfferScenarios]?.find(o => o.offer_id === selectedOfferId);
                       return property ? (
                         <div className="flex gap-6">
                           <div className="w-48 h-32 bg-gray-300 rounded-lg flex items-center justify-center">

@@ -44,6 +44,21 @@ serve(async (req) => {
     
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
+    // Email addresses to exclude from reports
+    const EXCLUDED_EMAILS = [
+      'dlackner@hotmail.com',
+      'dplackner@gmail.com',
+      'dhlackner@gmail.com',
+      'dan@folkdot.com',
+      'chasdobens@gmail.com',
+      'charles@dacc.law',
+      'emma@multifamilyos.com',
+      'info@multifamilyinvestingacademy.com',
+      'esledge@gmail.com',
+      'charles@dobenslaw.com',
+      // Add more excluded emails here as needed
+    ]
+
     // Get current date for report
     const today = new Date()
     const yesterday = new Date(today)
@@ -108,9 +123,20 @@ serve(async (req) => {
       // Continue without auth data if it fails
     }
 
+    // Filter out excluded email addresses
+    const filteredUsers = (users || []).filter(user => 
+      !EXCLUDED_EMAILS.includes(user.email.toLowerCase())
+    )
+
+    // Log excluded users count
+    const excludedCount = (users || []).length - filteredUsers.length
+    if (excludedCount > 0) {
+      console.log(`Excluded ${excludedCount} users from report`)
+    }
+
     // Get property counts for each user
     const usersWithCounts = await Promise.all(
-      (users || []).map(async (user) => {
+      filteredUsers.map(async (user) => {
         const { count } = await supabase
           .from('user_favorites')
           .select('*', { count: 'exact', head: true })
@@ -176,6 +202,7 @@ serve(async (req) => {
         <li>${proUsers.length} Pro Users</li>
         <li>${plusUsers.length} Plus Users</li>
       </ul>
+      ${excludedCount > 0 ? `<p style="color: #666; font-size: 0.9em;"><em>* ${excludedCount} internal/test accounts excluded from report</em></p>` : ''}
     </div>
     
     <h3>=== NEW TRIAL USERS (Last 24 Hours) ===</h3>
@@ -224,7 +251,7 @@ serve(async (req) => {
     // Send email using Resend
     const emailPayload = {
       from: 'MultifamilyOS <onboarding@resend.dev>',
-      to: ['help.charliechat@gmail.com'],
+      to: ['dlackner@hotmail.com'],
       subject: `MultifamilyOS Daily Summary - ${reportDate}`,
       html: reportContent,
     }

@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { AuthGuard } from '@/components/auth/AuthGuard';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter, useParams } from 'next/navigation';
+import { generate10YearCashFlowReport } from '@/app/offer-analyzer/cash-flow-report';
 import { 
   Building, 
   MapPin, 
@@ -26,6 +27,8 @@ interface Submission {
   interest_count: number;
   user_id: string;
   offer_scenario_id: string;
+  cash_flow_pdf_url?: string;
+  investment_analysis_pdf_url?: string;
   // Property details will be joined
   address?: string;
   city?: string;
@@ -160,6 +163,18 @@ export default function SubmissionDetailsPage() {
     }
   };
 
+  // Handle 10-Year Cash Flow report generation
+  const handleGenerate10YearCashFlow = async () => {
+    if (!submission) return;
+
+    // Check if PDF exists - if so, just open it
+    if (submission.cash_flow_pdf_url) {
+      window.open(submission.cash_flow_pdf_url, '_blank');
+    } else {
+      alert('No cash flow report available for this submission.');
+    }
+  };
+
   // Format date
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString();
@@ -250,7 +265,7 @@ export default function SubmissionDetailsPage() {
                   <h2 className="text-xl font-semibold text-gray-900 mb-4">Reports & Analysis</h2>
                   <div className="grid grid-cols-1 gap-4">
                     <button 
-                      onClick={() => window.open(`/fund/property-profile?property=${submission.property_id}`, '_blank')}
+                      onClick={() => router.push(`/fund/property-profile?property=${submission.property_id}&offer=${submission.offer_scenario_id}&returnUrl=/fund/browse/${submissionId}`)}
                       className="flex items-center justify-between p-4 bg-purple-50 rounded-lg hover:bg-purple-100 transition-colors"
                     >
                       <div className="flex items-center">
@@ -262,7 +277,10 @@ export default function SubmissionDetailsPage() {
                       </div>
                       <Eye className="h-4 w-4 text-purple-600" />
                     </button>
-                    <button className="flex items-center justify-between p-4 bg-green-50 rounded-lg hover:bg-green-100 transition-colors">
+                    <button 
+                      onClick={handleGenerate10YearCashFlow}
+                      className="flex items-center justify-between p-4 bg-green-50 rounded-lg hover:bg-green-100 transition-colors"
+                    >
                       <div className="flex items-center">
                         <TrendingUp className="h-5 w-5 text-green-600 mr-3" />
                         <div className="text-left">

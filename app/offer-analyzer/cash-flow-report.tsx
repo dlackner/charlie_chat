@@ -55,6 +55,31 @@ interface CashFlowReportProps {
   // Capital Expenditures
   capitalReservePerUnitAnnual: number;
   holdingPeriodYears: number;
+  
+  // Exit Strategy
+  dispositionCapRate?: number;
+  
+  // Report Branding (optional)
+  userName?: string;
+  userEmail?: string;
+  userPhone?: string;
+  reportTitle?: string;
+  
+  // Pre-calculated values (optional - when provided, these override calculations)
+  preCalculatedMetrics?: {
+    cashOnCashReturn?: number;
+    capRate?: number;
+    debtServiceCoverageRatio?: number;
+    expenseRatio?: number;
+    projectedIRR?: number;
+    totalROI?: number;
+    projectedEquity?: number;
+    netOperatingIncome?: number;
+    cashFlowBeforeTax?: number;
+  };
+  
+  // Options
+  returnBlob?: boolean; // If true, returns blob instead of downloading
 }
 
 interface YearlyData {
@@ -85,7 +110,7 @@ interface YearlyData {
   cashFlowAfterTax: number;
 }
 
-export const generate10YearCashFlowReport = async (props: CashFlowReportProps) => {
+export const generate10YearCashFlowReport = async (props: CashFlowReportProps): Promise<Blob | void> => {
   const {
     propertyStreet,
     propertyCity,
@@ -486,20 +511,21 @@ export const generate10YearCashFlowReport = async (props: CashFlowReportProps) =
   // Reset text color to black for content
   doc.setTextColor(0, 0, 0);
   
-  // Calculate key metrics
+  // Calculate key metrics - use pre-calculated values if provided, otherwise calculate
   const year1Data = yearlyData[0];
   
-  // Expense Ratio (Total Operating Expenses / Gross Operating Income)
-  const expenseRatio = year1Data.effectiveGrossIncome > 0 ? (year1Data.totalOperatingExpenses / year1Data.effectiveGrossIncome) * 100 : 0;
+  // Use pre-calculated values if available, otherwise calculate
+  const expenseRatio = props.preCalculatedMetrics?.expenseRatio ?? 
+    (year1Data.effectiveGrossIncome > 0 ? (year1Data.totalOperatingExpenses / year1Data.effectiveGrossIncome) * 100 : 0);
   
-  // Cap Rate (NOI / Purchase Price)
-  const capRate = purchasePrice > 0 ? (year1Data.netOperatingIncome / purchasePrice) * 100 : 0;
+  const capRate = props.preCalculatedMetrics?.capRate ?? 
+    (purchasePrice > 0 ? (year1Data.netOperatingIncome / purchasePrice) * 100 : 0);
   
-  // Debt Service Coverage Ratio (NOI / Annual Debt Service)
-  const dscr = annualDebtService > 0 ? year1Data.netOperatingIncome / annualDebtService : 0;
+  const dscr = props.preCalculatedMetrics?.debtServiceCoverageRatio ?? 
+    (annualDebtService > 0 ? year1Data.netOperatingIncome / annualDebtService : 0);
   
-  // Cash-on-Cash Return (Year 1 Cash Flow / Initial Investment)
-  const cashOnCashReturn = totalInitialInvestment > 0 ? (year1Data.cashFlowAfterTax / totalInitialInvestment) * 100 : 0;
+  const cashOnCashReturn = props.preCalculatedMetrics?.cashOnCashReturn ?? 
+    (totalInitialInvestment > 0 ? (year1Data.cashFlowAfterTax / totalInitialInvestment) * 100 : 0);
   
   // Calculate actual remaining loan balance at end of holding period
   let finalLoanBalance = loanAmount;
@@ -508,21 +534,24 @@ export const generate10YearCashFlowReport = async (props: CashFlowReportProps) =
     finalLoanBalance -= yearData.principalPayment;
   }
   
-  // Projected property value with conservative 3% annual appreciation
-  const projectedPropertyValue = purchasePrice * Math.pow(1.03, holdingPeriodYears);
+  // Use pre-calculated projected equity if available, otherwise calculate
+  const projectedEquity = props.preCalculatedMetrics?.projectedEquity ?? (() => {
+    const projectedPropertyValue = purchasePrice * Math.pow(1.03, holdingPeriodYears);
+    return projectedPropertyValue - Math.max(0, finalLoanBalance);
+  })();
   
-  // Projected Equity = Property Value - Remaining Loan Balance
-  const projectedEquity = projectedPropertyValue - Math.max(0, finalLoanBalance);
+  // Use pre-calculated IRR and ROI if available, otherwise calculate
+  const annualizedReturn = props.preCalculatedMetrics?.projectedIRR ?? (() => {
+    const totalCashFlows = yearlyData.reduce((sum, data) => sum + data.cashFlowAfterTax, 0);
+    const totalReturn = totalCashFlows + projectedEquity;
+    return totalInitialInvestment > 0 ? (Math.pow(totalReturn / totalInitialInvestment, 1/holdingPeriodYears) - 1) * 100 : 0;
+  })();
   
-  // Calculate total returns for annualized return and ROI
-  const totalCashFlows = yearlyData.reduce((sum, data) => sum + data.cashFlowAfterTax, 0);
-  const totalReturn = totalCashFlows + projectedEquity;
-  
-  // Annualized return (not true IRR, but compound annual growth rate)
-  const annualizedReturn = totalInitialInvestment > 0 ? (Math.pow(totalReturn / totalInitialInvestment, 1/holdingPeriodYears) - 1) * 100 : 0;
-  
-  // Total ROI over holding period
-  const totalROI = totalInitialInvestment > 0 ? ((totalReturn - totalInitialInvestment) / totalInitialInvestment) * 100 : 0;
+  const totalROI = props.preCalculatedMetrics?.totalROI ?? (() => {
+    const totalCashFlows = yearlyData.reduce((sum, data) => sum + data.cashFlowAfterTax, 0);
+    const totalReturn = totalCashFlows + projectedEquity;
+    return totalInitialInvestment > 0 ? ((totalReturn - totalInitialInvestment) / totalInitialInvestment) * 100 : 0;
+  })();
   
   // Display metrics (more compact)
   doc.setFont('helvetica', 'normal');
@@ -670,8 +699,15 @@ export const generate10YearCashFlowReport = async (props: CashFlowReportProps) =
     });
   });
 
-  // Save the PDF
-  doc.save('10-Year-Investment-Analysis.pdf');
+  // Save the PDF or return blob based on options
+  if (props.returnBlob) {
+    // Return the PDF as a blob instead of downloading
+    const pdfBlob = doc.output('blob');
+    return pdfBlob;
+  } else {
+    // Download the PDF directly
+    doc.save('10-Year-Investment-Analysis.pdf');
+  }
 };
 
 export default generate10YearCashFlowReport;

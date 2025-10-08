@@ -203,10 +203,6 @@ export const PropertyInfoSections: React.FC<PropertyInfoSectionsProps> = ({ prop
               <span className="font-medium">{formatYesNo(property.auction)}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-gray-600">Tax Lien:</span>
-              <span className="font-medium">{formatYesNo(property.tax_lien)}</span>
-            </div>
-            <div className="flex justify-between">
               <span className="text-gray-600">Pre Foreclosure:</span>
               <span className="font-medium">{formatYesNo(property.pre_foreclosure)}</span>
             </div>
