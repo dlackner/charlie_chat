@@ -30,7 +30,8 @@ import {
   ChevronUp,
   DollarSign,
   House,
-  BarChart3
+  BarChart3,
+  TrendingUp
 } from 'lucide-react';
 
 interface NavigationItem {
@@ -251,6 +252,26 @@ export default function MobileNavigation() {
         href: '/engage',
         icon: Users,
         disabled: isNotLoggedIn || (isLoadingUserClass ? false : !canAccessEngage(currentUserClass))
+      },
+
+      // Fund
+      {
+        name: 'FUND',
+        href: '/fund',
+        icon: TrendingUp,
+        disabled: isNotLoggedIn,
+        submenu: [
+          { 
+            name: 'Create Submission', 
+            href: hasAccess(currentUserClass, 'fund_create') ? '/fund/create' : undefined,
+            disabled: !hasAccess(currentUserClass, 'fund_create')
+          },
+          { 
+            name: 'Browse Submissions', 
+            href: hasAccess(currentUserClass, 'fund_browse') ? '/fund/browse' : undefined,
+            disabled: !hasAccess(currentUserClass, 'fund_browse')
+          }
+        ]
       },
 
       // AI Coach
@@ -514,7 +535,7 @@ export default function MobileNavigation() {
         <div className="px-4 sm:px-6 lg:px-8">
           <div className="flex items-center h-16">
             {/* Logo */}
-            <div className="flex-shrink-0">
+            <div className="flex-shrink-0 w-48">
               <Image 
                 src="/MFOS AI Logo.png" 
                 alt="Charlie Chat AI" 
@@ -528,8 +549,8 @@ export default function MobileNavigation() {
             </div>
 
             {/* Centered Navigation */}
-            <nav className="flex-1 flex justify-center">
-              <div className="flex space-x-4">
+            <nav className="flex-1 flex justify-center items-center">
+              <div className="flex space-x-6">
               {navigation.filter(item => item.name !== 'ACCOUNT' && item.name !== 'PRICING').map((item) => {
                 const isActive = isNavItemActive(item);
                 const isSubmenuOpen = openSubmenus[item.name];
@@ -659,7 +680,7 @@ export default function MobileNavigation() {
             </nav>
 
             {/* Right-aligned Pricing and Account */}
-            <div className="flex-shrink-0 flex space-x-3 mr-4">
+            <div className="flex-shrink-0 flex space-x-3 items-center justify-end w-48">
               {/* Pricing Button */}
               {(() => {
                 const pricingItem = navigation.find(item => item.name === 'PRICING');

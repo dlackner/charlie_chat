@@ -16,10 +16,8 @@ export default function CapitalClubPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [showEnrollModal, setShowEnrollModal] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
-  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [showSignInRequiredModal, setShowSignInRequiredModal] = useState(false);
   const [isEnrolling, setIsEnrolling] = useState(false);
-  const [userClass, setUserClass] = useState<string>('trial');
 
   // Fetch user enrollment status and club metrics
   useEffect(() => {
@@ -27,16 +25,15 @@ export default function CapitalClubPage() {
       if (!user?.id || !supabase) return;
 
       try {
-        // Get user's enrollment status and user class
+        // Get user's enrollment status
         const { data: profile, error: profileError } = await supabase
           .from('profiles')
-          .select('capital_club_enrolled, user_class')
+          .select('capital_club_enrolled')
           .eq('user_id', user.id)
           .single();
 
         if (!profileError && profile) {
           setIsEnrolled(profile.capital_club_enrolled || false);
-          setUserClass(profile.user_class || 'trial');
         }
 
       } catch (error) {
@@ -168,72 +165,108 @@ export default function CapitalClubPage() {
           </div> */}
 
           {/* Benefits Section */}
-          <div className="bg-white rounded-2xl shadow-lg p-8 md:p-12 mb-16 mt-16">
+          <div className="mb-16 mt-16">
+            {/* Access Level Cards */}
             <h2 className="text-3xl font-bold text-gray-900 text-center mb-12">
-              Exclusive Member Benefits
+              Capital Club Access Levels
             </h2>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              <div className="text-center">
-                <div className="inline-flex items-center justify-center w-12 h-12 bg-blue-100 rounded-lg mb-4">
-                  <Users className="h-6 w-6 text-blue-600" />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-16">
+              {/* Core/Plus Members */}
+              <div className="bg-white rounded-2xl shadow-lg p-8">
+                <div className="flex items-center mb-6">
+                  <div className="inline-flex items-center justify-center w-12 h-12 bg-blue-100 rounded-lg mr-4">
+                    <TrendingUp className="h-6 w-6 text-blue-600" />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold text-gray-900">Core & Plus Members</h3>
+                    <p className="text-sm text-gray-600">Investment Access</p>
+                  </div>
                 </div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">Investor Database</h3>
-                <p className="text-gray-600">
-                  Access our comprehensive investor database for your deals and build lasting capital partnerships.
-                </p>
+                <div className="space-y-3">
+                  <div className="flex items-start">
+                    <div className="w-5 h-5 mt-0.5 mr-3 flex-shrink-0">
+                      <svg className="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                    </div>
+                    <p className="text-gray-700">Invest in deals originated by Professional & Cohort members</p>
+                  </div>
+                  <div className="flex items-start">
+                    <div className="w-5 h-5 mt-0.5 mr-3 flex-shrink-0">
+                      <svg className="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                    </div>
+                    <p className="text-gray-700">Network with other investors</p>
+                  </div>
+                  <div className="flex items-start">
+                    <div className="w-5 h-5 mt-0.5 mr-3 flex-shrink-0">
+                      <svg className="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                    </div>
+                    <p className="text-gray-700">Professional deal analysis and underwriting</p>
+                  </div>
+                  <div className="flex items-start">
+                    <div className="w-5 h-5 mt-0.5 mr-3 flex-shrink-0">
+                      <svg className="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </div>
+                    <p className="text-gray-500">Cannot submit properties for funding</p>
+                  </div>
+                </div>
               </div>
 
-              <div className="text-center">
-                <div className="inline-flex items-center justify-center w-12 h-12 bg-purple-100 rounded-lg mb-4">
-                  <TrendingUp className="h-6 w-6 text-purple-600" />
+              {/* Pro/Cohort Members */}
+              <div className="bg-gradient-to-br from-blue-50 to-purple-50 rounded-2xl shadow-lg p-8 border-2 border-purple-200">
+                <div className="flex items-center mb-6">
+                  <div className="inline-flex items-center justify-center w-12 h-12 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg mr-4">
+                    <Crown className="h-6 w-6 text-white" />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold text-gray-900">Professional & Cohort Members</h3>
+                    <p className="text-sm text-gray-600">Full Access</p>
+                  </div>
                 </div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">Deal Promotion</h3>
-                <p className="text-gray-600">
-                  Promote your next multifamily property to our exclusive network of qualified investors.
-                </p>
-              </div>
-
-              <div className="text-center">
-                <div className="inline-flex items-center justify-center w-12 h-12 bg-green-100 rounded-lg mb-4">
-                  <Zap className="h-6 w-6 text-green-600" />
+                <div className="space-y-3">
+                  <div className="flex items-start">
+                    <div className="w-5 h-5 mt-0.5 mr-3 flex-shrink-0">
+                      <svg className="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                    </div>
+                    <p className="text-gray-700 font-semibold">Submit properties for Capital Club funding</p>
+                  </div>
+                  <div className="flex items-start">
+                    <div className="w-5 h-5 mt-0.5 mr-3 flex-shrink-0">
+                      <svg className="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                    </div>
+                    <p className="text-gray-700">Act as Program Manager for your transactions</p>
+                  </div>
+                  <div className="flex items-start">
+                    <div className="w-5 h-5 mt-0.5 mr-3 flex-shrink-0">
+                      <svg className="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                    </div>
+                    <p className="text-gray-700">Access investor database for capital raising</p>
+                  </div>
+                  <div className="flex items-start">
+                    <div className="w-5 h-5 mt-0.5 mr-3 flex-shrink-0">
+                      <svg className="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                    </div>
+                    <p className="text-gray-700">Priority deal promotion to network</p>
+                  </div>
                 </div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">Capital Access</h3>
-                <p className="text-gray-600">
-                  Get help accessing capital when you're in the middle of a money raise for your projects.
-                </p>
-              </div>
-
-              <div className="text-center">
-                <div className="inline-flex items-center justify-center w-12 h-12 bg-orange-100 rounded-lg mb-4">
-                  <Shield className="h-6 w-6 text-orange-600" />
-                </div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">Mortgage Qualification</h3>
-                <p className="text-gray-600">
-                  Access to key principals who can help you qualify for multifamily mortgages and financing.
-                </p>
-              </div>
-
-              <div className="text-center">
-                <div className="inline-flex items-center justify-center w-12 h-12 bg-red-100 rounded-lg mb-4">
-                  <Star className="h-6 w-6 text-red-600" />
-                </div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">Database Building</h3>
-                <p className="text-gray-600">
-                  Build your investor database from zero to hero using our proven marketing campaigns and webinars.
-                </p>
-              </div>
-
-              <div className="text-center">
-                <div className="inline-flex items-center justify-center w-12 h-12 bg-indigo-100 rounded-lg mb-4">
-                  <Crown className="h-6 w-6 text-indigo-600" />
-                </div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">Exclusive Network</h3>
-                <p className="text-gray-600">
-                  Member-only access to our curated network of investors, lenders, and industry professionals.
-                </p>
               </div>
             </div>
+
           </div>
 
           {/* CTA Section */}
@@ -241,11 +274,8 @@ export default function CapitalClubPage() {
             <div className="text-center">
               <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl p-12 text-white">
                 <h2 className="text-3xl font-bold mb-4">Ready to Join?</h2>
-                <p className="text-xl mb-6 opacity-90">
+                <p className="text-xl mb-8 opacity-90">
                   Become part of an exclusive community driving multifamily investment success.
-                </p>
-                <p className="text-lg mb-8 opacity-80">
-                  Available to MultifamilyOS Professional and Cohort members.
                 </p>
                 <button
                   onClick={() => {
@@ -253,13 +283,8 @@ export default function CapitalClubPage() {
                       // Show sign-in required modal
                       setShowSignInRequiredModal(true);
                     } else {
-                      // Check if user is eligible (plus, pro, or cohort)
-                      const eligibleClasses = ['plus', 'pro', 'cohort'];
-                      if (eligibleClasses.includes(userClass)) {
-                        setShowEnrollModal(true);
-                      } else {
-                        setShowUpgradeModal(true);
-                      }
+                      // Everyone can join - show enrollment modal
+                      setShowEnrollModal(true);
                     }
                   }}
                   className="inline-flex items-center px-8 py-4 bg-white text-blue-600 font-medium rounded-lg hover:bg-gray-50 transition-colors shadow-lg"
@@ -339,49 +364,6 @@ export default function CapitalClubPage() {
           </div>
         </StandardModalWithActions>
 
-        {/* Upgrade Required Modal */}
-        <StandardModalWithActions
-          isOpen={showUpgradeModal}
-          onClose={() => setShowUpgradeModal(false)}
-          title="Capital Club Membership"
-          primaryAction={{
-            label: 'Understood',
-            onClick: () => setShowUpgradeModal(false),
-          }}
-        >
-          <div className="p-6">
-            <div className="flex flex-col items-center text-center">
-              <div className="w-16 h-16 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full flex items-center justify-center mb-6">
-                <Crown className="w-8 h-8 text-white" />
-              </div>
-              
-              <h3 className="text-xl font-semibold text-gray-900 mb-4">
-                Thank You for Your Interest!
-              </h3>
-              
-              <p className="text-gray-600 mb-6">
-                We appreciate your interest in the Capital Club. The Capital Club is currently available 
-                exclusively to our Plus, Professional, and Cohort members.
-              </p>
-              
-              <div className="bg-blue-50 rounded-lg p-4 w-full">
-                <p className="text-blue-700 text-sm font-medium mb-2">
-                  Eligible Membership Levels:
-                </p>
-                <ul className="text-blue-600 text-sm space-y-1">
-                  <li>• MultifamilyOS Plus</li>
-                  <li>• MultifamilyOS Professional</li>
-                  <li>• Cohort Members</li>
-                </ul>
-              </div>
-              
-              <p className="text-gray-500 text-sm mt-4">
-                Please consider upgrading your membership to access the Capital Club and connect with 
-                our exclusive community of multifamily investors.
-              </p>
-            </div>
-          </div>
-        </StandardModalWithActions>
 
         {/* Sign-In Required Modal */}
         <StandardModalWithActions

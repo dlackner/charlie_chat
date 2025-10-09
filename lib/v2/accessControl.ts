@@ -5,17 +5,13 @@
  * Part of the new V2 application architecture
  */
 
-// V2 User Classes (including legacy mappings)
+// V2 User Classes
 export type UserClass = 
   | 'trial' 
   | 'core' 
   | 'plus' 
   | 'pro' 
   | 'cohort'
-  // Legacy user classes that map to new ones
-  | 'charlie_chat'        // Legacy -> maps to 'core'
-  | 'charlie_chat_plus'   // Legacy -> maps to 'plus' 
-  | 'charlie_chat_pro'    // Legacy -> maps to 'pro'
   | null;
 
 // Available features/pages in V2
@@ -38,6 +34,8 @@ export type Feature =
   | 'ai_coach'
   | 'ai_coach_attachments'
   | 'ai_coach_threads'
+  | 'fund_browse'
+  | 'fund_create'
   | 'pricing'
   | 'account'
   | 'property_analyzer';
@@ -64,6 +62,7 @@ const PERMISSIONS: Record<Exclude<UserClass, null>, Feature[]> = {
     'ai_coach',
     'ai_coach_attachments',
     'ai_coach_threads',
+    'fund_browse',
     'pricing',
     'account',
     'property_analyzer'
@@ -78,6 +77,7 @@ const PERMISSIONS: Record<Exclude<UserClass, null>, Feature[]> = {
     'discover_saved',
     'discover_property_details',
     'ai_coach',
+    'fund_browse',
     'pricing',
     'account'
   ],
@@ -102,6 +102,7 @@ const PERMISSIONS: Record<Exclude<UserClass, null>, Feature[]> = {
     'ai_coach',
     'ai_coach_attachments',
     'ai_coach_threads',
+    'fund_browse',
     'pricing',
     'account',
     'property_analyzer'
@@ -127,6 +128,8 @@ const PERMISSIONS: Record<Exclude<UserClass, null>, Feature[]> = {
     'ai_coach',
     'ai_coach_attachments',
     'ai_coach_threads',
+    'fund_browse',
+    'fund_create',
     'pricing',
     'account',
     'property_analyzer'
@@ -152,71 +155,8 @@ const PERMISSIONS: Record<Exclude<UserClass, null>, Feature[]> = {
     'ai_coach',
     'ai_coach_attachments',
     'ai_coach_threads', 
-    'pricing',
-    'account',
-    'property_analyzer'
-  ],
-
-  // Legacy user classes - mapped to their new equivalents
-  charlie_chat: [
-    'dashboard',
-    'dashboard_headlines',
-    'dashboard_community',
-    'dashboard_metrics',
-    'dashboard_pipeline',
-    'dashboard_onboarding',
-    'discover',
-    'discover_buybox',
-    'discover_property_details',
-    'ai_coach',
-    'pricing',
-    'account',
-    'property_analyzer'
-  ],
-
-  charlie_chat_plus: [
-    'dashboard',
-    'dashboard_headlines',
-    'dashboard_community', 
-    'dashboard_metrics',
-    'dashboard_pipeline',
-    'dashboard_onboarding',
-    'discover',
-    'discover_buybox',
-    'discover_saved',
-    'discover_saved_searches',
-    'discover_property_details',
-    'discover_favorite_properties',
-    'discover_investment_analysis',
-    'engage',
-    'engage_templates',
-    'ai_coach',
-    'ai_coach_attachments',
-    'ai_coach_threads',
-    'pricing',
-    'account',
-    'property_analyzer'
-  ],
-
-  charlie_chat_pro: [
-    'dashboard',
-    'dashboard_headlines',
-    'dashboard_community',
-    'dashboard_metrics', 
-    'dashboard_pipeline',
-    'dashboard_onboarding',
-    'discover',
-    'discover_buybox', 
-    'discover_saved',
-    'discover_saved_searches',
-    'discover_property_details',
-    'discover_favorite_properties',
-    'discover_investment_analysis',
-    'engage',
-    'engage_templates', 
-    'ai_coach',
-    'ai_coach_attachments',
-    'ai_coach_threads',
+    'fund_browse',
+    'fund_create',
     'pricing',
     'account',
     'property_analyzer'
@@ -224,39 +164,12 @@ const PERMISSIONS: Record<Exclude<UserClass, null>, Feature[]> = {
 };
 
 /**
- * Normalize legacy user classes to new V2 classes
- */
-function normalizeUserClass(userClass: UserClass): Exclude<UserClass, null> | null {
-  if (!userClass) return null;
-  
-  // Map legacy classes to new ones
-  switch (userClass) {
-    case 'charlie_chat':
-      return 'core';
-    case 'charlie_chat_plus':
-      return 'plus';
-    case 'charlie_chat_pro':
-      return 'pro';
-    // Already normalized classes pass through
-    case 'trial':
-    case 'core':
-    case 'plus':
-    case 'pro':
-    case 'cohort':
-      return userClass;
-    default:
-      return null;
-  }
-}
-
-/**
  * Check if a user class has access to a specific feature
  */
 export function hasAccess(userClass: UserClass, feature: Feature): boolean {
-  const normalizedClass = normalizeUserClass(userClass);
-  if (!normalizedClass) return false;
+  if (!userClass) return false;
   
-  const permissions = PERMISSIONS[normalizedClass];
+  const permissions = PERMISSIONS[userClass];
   return permissions ? permissions.includes(feature) : false;
 }
 
@@ -264,10 +177,9 @@ export function hasAccess(userClass: UserClass, feature: Feature): boolean {
  * Get all features a user class has access to
  */
 export function getAllowedFeatures(userClass: UserClass): Feature[] {
-  const normalizedClass = normalizeUserClass(userClass);
-  if (!normalizedClass) return ['pricing']; // Unauth users can only see pricing
+  if (!userClass) return ['pricing']; // Unauth users can only see pricing
   
-  return PERMISSIONS[normalizedClass] || [];
+  return PERMISSIONS[userClass] || [];
 }
 
 /**
@@ -300,34 +212,27 @@ export function canAccessEngage(userClass: UserClass): boolean {
  * Check if user is on active trial
  */
 export function isTrial(userClass: UserClass): boolean {
-  const normalizedClass = normalizeUserClass(userClass);
-  return normalizedClass === 'trial';
+  return userClass === 'trial';
 }
 
 /**
  * Check if user has premium features (plus/pro/cohort)
  */
 export function hasPremiumAccess(userClass: UserClass): boolean {
-  const normalizedClass = normalizeUserClass(userClass);
-  return normalizedClass === 'plus' || normalizedClass === 'pro' || normalizedClass === 'cohort';
+  return userClass === 'plus' || userClass === 'pro' || userClass === 'cohort';
 }
 
 /**
  * Get user class display name
  */
 export function getUserClassDisplayName(userClass: UserClass): string {
-  const normalizedClass = normalizeUserClass(userClass);
   const displayNames: Record<Exclude<UserClass, null>, string> = {
     trial: 'Trial',
     core: 'Core',
     plus: 'Plus',
     pro: 'Pro',
-    cohort: 'Cohort',
-    // Legacy classes (though these should be normalized, keeping for safety)
-    charlie_chat: 'Core',
-    charlie_chat_plus: 'Plus', 
-    charlie_chat_pro: 'Pro'
+    cohort: 'Cohort'
   };
   
-  return normalizedClass ? displayNames[normalizedClass] : 'Guest';
+  return userClass ? displayNames[userClass] : 'Guest';
 }

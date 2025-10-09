@@ -394,9 +394,13 @@ export default function PricingPage() {
             <li className="flex items-start"><span className="w-2 h-2 bg-indigo-600 rounded-full mt-2 mr-3 flex-shrink-0"></span>Master Class Training Program</li>
             <li className="flex items-start"><span className="w-2 h-2 bg-indigo-600 rounded-full mt-2 mr-3 flex-shrink-0"></span>Community Access</li>
           </ul>
+          <div className="flex-grow"></div>
+          <div className="text-lg font-semibold text-green-600 mb-4 text-center">
+            Access to Capital Club Funding
+          </div>
           <button
             onClick={() => handleCheckout(isAnnual ? PRO_ANNUAL : PRO_MONTHLY, isAnnual ? "annual" : "monthly")}
-            className="mt-auto w-full bg-black text-white py-2 rounded font-semibold transition duration-200 transform hover:scale-105 hover:bg-indigo-600 hover:shadow-xl"
+            className="w-full bg-black text-white py-2 rounded font-semibold transition duration-200 transform hover:scale-105 hover:bg-indigo-600 hover:shadow-xl"
           >
             Get Access
           </button>
@@ -418,9 +422,13 @@ export default function PricingPage() {
             <li className="flex items-start"><span className="w-2 h-2 rounded-full mt-2 mr-3 flex-shrink-0" style={{ backgroundColor: '#1C599F' }}></span>Step-by-step roadmap for your multifamily investing journey</li>
             <li className="flex items-start"><span className="w-2 h-2 rounded-full mt-2 mr-3 flex-shrink-0" style={{ backgroundColor: '#1C599F' }}></span>One-on-one access to attorney Charles Dobens</li>
           </ul>
+          <div className="flex-grow"></div>
+          <div className="text-lg font-semibold text-green-600 mb-4 text-center">
+            Access to Capital Club Funding
+          </div>
           <button
             onClick={() => window.open("https://multifamilyos.com/multifamilyos-cohort-program/", "_blank")}
-            className="mt-auto w-full bg-black text-white py-2 rounded font-semibold transition duration-200 transform hover:scale-105 hover:bg-blue-600 hover:shadow-xl"
+            className="w-full bg-black text-white py-2 rounded font-semibold transition duration-200 transform hover:scale-105 hover:bg-blue-600 hover:shadow-xl"
           >
             Apply Now
           </button>
@@ -1066,24 +1074,54 @@ export default function PricingPage() {
           
           <div className="divide-y divide-gray-100">
             <div className="grid grid-cols-5 gap-0 hover:bg-gray-50/50 transition-colors">
-              <div className="px-6 py-4 text-sm font-medium text-gray-900">Membership in the MultifamilyOS Equity Club</div>
+              <div className="px-6 py-4 text-sm font-medium text-gray-900">Membership in the MultifamilyOS Capital Club</div>
               <div className="px-6 py-4 text-center border-l border-gray-100">
-                <div className="w-5 h-5 rounded-full bg-gray-200 mx-auto flex items-center justify-center">
-                  <div className="w-2 h-0.5 bg-gray-400"></div>
-                </div>
-              </div>
-              <div className="px-6 py-4 text-center border-l border-gray-100">
-                <div className="w-5 h-5 rounded-full bg-gray-200 mx-auto flex items-center justify-center">
-                  <div className="w-2 h-0.5 bg-gray-400"></div>
-                </div>
-              </div>
-              <div className="px-6 py-4 text-center border-l border-gray-100">
-                <div className="w-5 h-5 rounded-full bg-indigo-600 mx-auto flex items-center justify-center mb-1">
+                <div className="w-5 h-5 rounded-full bg-green-600 mx-auto flex items-center justify-center">
                   <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                   </svg>
                 </div>
-                <div className="text-xs text-gray-500">After 6 months</div>
+              </div>
+              <div className="px-6 py-4 text-center border-l border-gray-100">
+                <div className="w-5 h-5 rounded-full bg-blue-600 mx-auto flex items-center justify-center">
+                  <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                  </svg>
+                </div>
+              </div>
+              <div className="px-6 py-4 text-center border-l border-gray-100">
+                <div className="w-5 h-5 rounded-full bg-indigo-600 mx-auto flex items-center justify-center">
+                  <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                  </svg>
+                </div>
+              </div>
+              <div className="px-6 py-4 text-center border-l border-gray-100">
+                <div className="w-5 h-5 rounded-full mx-auto flex items-center justify-center" style={{backgroundColor: '#1C599F'}}>
+                  <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                  </svg>
+                </div>
+              </div>
+            </div>
+            <div className="grid grid-cols-5 gap-0 hover:bg-gray-50/50 transition-colors">
+              <div className="px-6 py-4 text-sm font-medium text-gray-900">Access Capital Club Funding</div>
+              <div className="px-6 py-4 text-center border-l border-gray-100">
+                <div className="w-5 h-5 rounded-full bg-gray-200 mx-auto flex items-center justify-center">
+                  <div className="w-2 h-0.5 bg-gray-400"></div>
+                </div>
+              </div>
+              <div className="px-6 py-4 text-center border-l border-gray-100">
+                <div className="w-5 h-5 rounded-full bg-gray-200 mx-auto flex items-center justify-center">
+                  <div className="w-2 h-0.5 bg-gray-400"></div>
+                </div>
+              </div>
+              <div className="px-6 py-4 text-center border-l border-gray-100">
+                <div className="w-5 h-5 rounded-full bg-indigo-600 mx-auto flex items-center justify-center">
+                  <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                  </svg>
+                </div>
               </div>
               <div className="px-6 py-4 text-center border-l border-gray-100">
                 <div className="w-5 h-5 rounded-full mx-auto flex items-center justify-center" style={{backgroundColor: '#1C599F'}}>

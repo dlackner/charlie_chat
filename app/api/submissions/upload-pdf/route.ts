@@ -32,15 +32,14 @@ export async function POST(req: NextRequest) {
     const formData = await req.formData();
     const file = formData.get('file') as File;
     const submissionId = formData.get('submissionId') as string;
-    const fileType = formData.get('fileType') as string; // 'cash_flow' or 'investment_analysis'
-
-    if (!file || !submissionId || !fileType) {
+    // Only handle cash flow PDFs now
+    if (!file || !submissionId) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
-    // Generate unique filename
+    // Generate unique filename for cash flow PDF
     const timestamp = new Date().getTime();
-    const fileName = `${user.id}/${submissionId}/${fileType}_${timestamp}.pdf`;
+    const fileName = `${user.id}/${submissionId}/cash_flow_${timestamp}.pdf`;
 
     // Upload to Supabase Storage
     const { data: uploadData, error: uploadError } = await supabase.storage
@@ -60,12 +59,10 @@ export async function POST(req: NextRequest) {
       .from('submission-pdfs')
       .getPublicUrl(fileName);
 
-    // Update submissions table with the URL
-    const updateColumn = fileType === 'cash_flow' ? 'cash_flow_pdf_url' : 'investment_analysis_pdf_url';
-    
+    // Update submissions table with the cash flow PDF URL
     const { error: updateError } = await supabase
       .from('submissions')
-      .update({ [updateColumn]: publicUrl })
+      .update({ cash_flow_pdf_url: publicUrl })
       .eq('id', submissionId)
       .eq('user_id', user.id); // Ensure user owns this submission
 

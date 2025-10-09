@@ -172,6 +172,7 @@ serve(async (req) => {
     })
 
     // Categorize users
+    const allTrialUsers = processedUsers.filter(user => user.user_class === 'trial')
     const newTrialUsers = processedUsers.filter(user => 
       user.user_class === 'trial' && 
       user.created_at >= yesterdayStr + 'T00:00:00'
@@ -188,7 +189,7 @@ serve(async (req) => {
       day: 'numeric' 
     })
 
-    const totalUsers = newTrialUsers.length + existingCoreUsers.length + proUsers.length + plusUsers.length
+    const totalUsers = allTrialUsers.length + existingCoreUsers.length + proUsers.length + plusUsers.length
     
     let reportContent = `
     <h2>MultifamilyOS Daily Summary - ${reportDate}</h2>
@@ -198,6 +199,7 @@ serve(async (req) => {
       <p><strong>Total Users: ${totalUsers}</strong></p>
       <ul>
         <li>${newTrialUsers.length} New Trial Users (Last 24 Hours)</li>
+        <li>${allTrialUsers.length} Total Trial Users</li>
         <li>${existingCoreUsers.length} Core Users</li>
         <li>${proUsers.length} Pro Users</li>
         <li>${plusUsers.length} Plus Users</li>
@@ -215,6 +217,16 @@ serve(async (req) => {
         const createdDate = new Date(user.created_at).toLocaleString('en-US')
         const lastSignIn = user.last_sign_in_at ? new Date(user.last_sign_in_at).toLocaleString('en-US') : 'Never'
         reportContent += `<p>${user.email} - Day ${user.trialDays} (Registered: ${createdDate}, Last Sign In: ${lastSignIn})</p>`
+      })
+    }
+
+    reportContent += `<h3>=== ALL TRIAL USERS ===</h3>`
+    if (allTrialUsers.length === 0) {
+      reportContent += `<p>No trial users.</p>`
+    } else {
+      allTrialUsers.forEach(user => {
+        const lastSignIn = user.last_sign_in_at ? new Date(user.last_sign_in_at).toLocaleString('en-US') : 'Never'
+        reportContent += `<p>${user.email} - Trial Day ${user.trialDays} (${user.property_count} properties favorited, Last Sign In: ${lastSignIn})</p>`
       })
     }
 
@@ -288,6 +300,7 @@ serve(async (req) => {
         totalUsers,
         breakdown: {
           newTrial: newTrialUsers.length,
+          allTrial: allTrialUsers.length,
           core: existingCoreUsers.length, 
           pro: proUsers.length,
           plus: plusUsers.length

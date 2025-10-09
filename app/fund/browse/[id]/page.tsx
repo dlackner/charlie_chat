@@ -14,7 +14,8 @@ import {
   Download,
   ArrowLeft,
   TrendingUp,
-  FileText
+  FileText,
+  Printer
 } from 'lucide-react';
 
 interface Submission {
@@ -28,7 +29,14 @@ interface Submission {
   user_id: string;
   offer_scenario_id: string;
   cash_flow_pdf_url?: string;
-  investment_analysis_pdf_url?: string;
+  investment_analysis_html?: any; // JSONB
+  investment_analysis_html_updated_at?: string;
+  // Financial metrics
+  purchase_price?: number;
+  cash_on_cash_return?: string;
+  irr?: string;
+  cap_rate?: string;
+  dcr?: string;
   // Property details will be joined
   address?: string;
   city?: string;
@@ -49,6 +57,7 @@ export default function SubmissionDetailsPage() {
   const [error, setError] = useState<string | null>(null);
   const [submission, setSubmission] = useState<Submission | null>(null);
   const [hasExpressedInterest, setHasExpressedInterest] = useState(false);
+  const [showInvestmentAnalysis, setShowInvestmentAnalysis] = useState(false);
 
   // Fetch submission details
   useEffect(() => {
@@ -56,19 +65,73 @@ export default function SubmissionDetailsPage() {
       if (!submissionId || !supabase) return;
 
       try {
+
+        // First, let's get just the submission without joins
+        const { data: rawSubmission, error: rawError } = await supabase
+          .from('submissions')
+          .select('*')
+          .eq('id', submissionId)
+          .single();
+
+
+        // Try to get the property separately
+        if (rawSubmission?.property_id) {
+          const { data: propertyCheck, error: propError } = await supabase
+            .from('saved_properties')
+            .select('property_id, address_street')
+            .eq('property_id', rawSubmission.property_id)
+            .single();
+          
+        }
+
+        // Get submission with saved_properties join only
         const { data, error } = await supabase
           .from('submissions')
           .select(`
             *,
-            properties (address, city, state, units_count),
-            profiles (full_name, email)
+            saved_properties (address_street, address_full, address_city, address_state, units_count)
           `)
           .eq('id', submissionId)
           .eq('is_public', true)
           .eq('status', 'active')
           .single();
 
-        if (error) throw error;
+
+        if (error) {
+          console.error('Supabase error details:', error);
+          throw error;
+        }
+
+        if (!data) {
+          throw new Error(`No submission found with ID ${submissionId} that is public and active`);
+        }
+
+        // Separately fetch profile data
+        let profileData = null;
+        if (data.user_id) {
+          const { data: profile, error: profileError } = await supabase
+            .from('profiles')
+            .select('full_name, email')
+            .eq('user_id', data.user_id)
+            .single();
+          
+          profileData = profile;
+        }
+
+        // Fetch offer scenario details if available
+        let offerData = null;
+        if (data.offer_scenario_id) {
+          const { data: offerScenarioData } = await supabase
+            .from('offer_scenarios')
+            .select('offer_data')
+            .eq('id', data.offer_scenario_id)
+            .single();
+          
+          offerData = offerScenarioData?.offer_data;
+        }
+
+        // Combine the data
+        data.profiles = profileData;
 
         const formattedSubmission: Submission = {
           id: data.id,
@@ -80,13 +143,23 @@ export default function SubmissionDetailsPage() {
           interest_count: data.interest_count,
           user_id: data.user_id,
           offer_scenario_id: data.offer_scenario_id,
-          address: data.properties?.address,
-          city: data.properties?.city,
-          state: data.properties?.state,
-          units_count: data.properties?.units_count,
+          cash_flow_pdf_url: data.cash_flow_pdf_url,
+          investment_analysis_html: data.investment_analysis_html,
+          investment_analysis_html_updated_at: data.investment_analysis_html_updated_at,
+          address: data.saved_properties?.address_street || data.saved_properties?.address_full,
+          city: data.saved_properties?.address_city,
+          state: data.saved_properties?.address_state,
+          units_count: data.saved_properties?.units_count,
           submitter_name: data.profiles?.full_name,
-          submitter_email: data.profiles?.email
+          submitter_email: data.profiles?.email,
+          // Extract metrics from offer_data
+          cap_rate: offerData?.dispositionCapRate ? `${offerData.dispositionCapRate}%` : undefined,
+          dcr: offerData?.debt_service_coverage_ratio || undefined,
+          cash_on_cash_return: offerData?.cash_on_cash_return || undefined,
+          irr: offerData?.projected_irr || undefined,
+          purchase_price: offerData?.purchasePrice || undefined
         };
+
 
         setSubmission(formattedSubmission);
 
@@ -104,7 +177,9 @@ export default function SubmissionDetailsPage() {
 
       } catch (err) {
         console.error('Error fetching submission:', err);
-        setError('Failed to load submission details');
+        console.error('Submission ID:', submissionId);
+        console.error('Error details:', err);
+        setError(err instanceof Error ? err.message : 'Failed to load submission details');
       } finally {
         setLoading(false);
       }
@@ -165,6 +240,7 @@ export default function SubmissionDetailsPage() {
 
   // Handle 10-Year Cash Flow report generation
   const handleGenerate10YearCashFlow = async () => {
+    
     if (!submission) return;
 
     // Check if PDF exists - if so, just open it
@@ -239,44 +315,116 @@ export default function SubmissionDetailsPage() {
                     <MapPin className="h-4 w-4 mr-1" />
                     {submission.city}, {submission.state} • {submission.units_count} Units
                   </p>
-                  <div className="h-64 bg-gray-300 rounded-lg flex items-center justify-center mb-6">
-                    <Building className="h-24 w-24 text-gray-500" />
+                  <div 
+                    className="h-64 bg-gray-200 relative mb-6 cursor-pointer"
+                    onClick={() => {
+                      const fullAddress = `${submission.address}, ${submission.city}, ${submission.state}`;
+                      const encodedAddress = encodeURIComponent(fullAddress);
+                      const streetViewUrl = `https://www.google.com/maps/place/${encodedAddress}`;
+                      window.open(streetViewUrl, '_blank', 'noopener,noreferrer');
+                    }}
+                  >
+                    <img 
+                      src={`https://maps.googleapis.com/maps/api/streetview?size=400x300&location=${encodeURIComponent(submission.address + ', ' + submission.city + ', ' + submission.state)}&key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}`}
+                      alt={submission.address}
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        e.currentTarget.src = '';
+                        e.currentTarget.style.display = 'none';
+                        e.currentTarget.parentElement?.classList.add('flex', 'items-center', 'justify-center');
+                        const icon = document.createElement('div');
+                        icon.innerHTML = '<svg class="h-24 w-24 text-gray-400" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M4 4a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2H4z" /></svg>';
+                        e.currentTarget.parentElement?.appendChild(icon.firstChild as Node);
+                      }}
+                    />
                   </div>
                 </div>
 
-                {/* Deal Summary */}
-                <div className="mb-8">
-                  <h2 className="text-xl font-semibold text-gray-900 mb-4">Deal Summary</h2>
-                  <p className="text-gray-700 mb-4 whitespace-pre-wrap">
-                    {submission.deal_summary}
-                  </p>
-                  <div className="grid grid-cols-1 gap-4">
-                    <div className="bg-gray-50 rounded-lg p-4">
-                      <div className="flex items-center justify-between">
-                        <span className="text-gray-600">Partnership Type</span>
-                        <span className="font-semibold">{submission.partnership_type}</span>
+                {/* Financial Highlights Section */}
+                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg mb-6 overflow-hidden">
+                  {/* Highlights Header Band */}
+                  <div className="bg-blue-600 px-4 py-2">
+                    <h4 className="text-xs font-bold text-white uppercase tracking-wider">Highlights</h4>
+                  </div>
+                  
+                  {/* Metrics Grid */}
+                  <div className="p-4">
+                    <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <p className="text-xs text-gray-600 font-medium">Capital Structure</p>
+                      <p className="text-base font-semibold text-gray-900">{submission.partnership_type}</p>
+                    </div>
+                    {submission.purchase_price && (
+                      <div>
+                        <p className="text-xs text-gray-600 font-medium">Purchase Price</p>
+                        <p className="text-base font-semibold text-gray-900">
+                          ${(submission.purchase_price / 1000000).toFixed(2)}M
+                        </p>
                       </div>
+                    )}
+                    {submission.cash_on_cash_return && (
+                      <div>
+                        <p className="text-xs text-gray-600 font-medium">Cash on Cash</p>
+                        <p className="text-base font-semibold text-gray-900">{submission.cash_on_cash_return}</p>
+                      </div>
+                    )}
+                    {submission.irr && (
+                      <div>
+                        <p className="text-xs text-gray-600 font-medium">IRR</p>
+                        <p className="text-base font-semibold text-gray-900">{submission.irr}</p>
+                      </div>
+                    )}
+                    {submission.cap_rate && (
+                      <div>
+                        <p className="text-xs text-gray-600 font-medium">Cap Rate</p>
+                        <p className="text-base font-semibold text-gray-900">{submission.cap_rate}</p>
+                      </div>
+                    )}
+                    {submission.dcr && (
+                      <div>
+                        <p className="text-xs text-gray-600 font-medium">DCR</p>
+                        <p className="text-base font-semibold text-gray-900">{submission.dcr}</p>
+                      </div>
+                    )}
                     </div>
                   </div>
                 </div>
 
-                {/* Reports */}
-                <div className="mb-8">
-                  <h2 className="text-xl font-semibold text-gray-900 mb-4">Reports & Analysis</h2>
-                  <div className="grid grid-cols-1 gap-4">
-                    <button 
-                      onClick={() => router.push(`/fund/property-profile?property=${submission.property_id}&offer=${submission.offer_scenario_id}&returnUrl=/fund/browse/${submissionId}`)}
-                      className="flex items-center justify-between p-4 bg-purple-50 rounded-lg hover:bg-purple-100 transition-colors"
-                    >
-                      <div className="flex items-center">
-                        <Building className="h-5 w-5 text-purple-600 mr-3" />
-                        <div className="text-left">
-                          <span className="font-medium block">Property Profile</span>
-                          <span className="text-sm text-gray-600">Complete property details with images</span>
+
+                {/* Reports & Analysis */}
+                <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg mb-8 overflow-hidden">
+                  {/* Reports Header Band */}
+                  <div className="bg-green-600 px-4 py-2">
+                    <h2 className="text-xs font-bold text-white uppercase tracking-wider">Reports & Analysis</h2>
+                  </div>
+                  
+                  {/* Reports Content */}
+                  <div className="p-4">
+                    <div className="grid grid-cols-1 gap-4">
+                    {/* Property Profile */}
+                    <div className="flex items-center gap-2">
+                      <button 
+                        onClick={() => router.push(`/fund/property-profile?property=${submission.property_id}&offer=${submission.offer_scenario_id}&returnUrl=/fund/browse/${submissionId}`)}
+                        className="flex-1 flex items-center justify-between p-4 bg-purple-50 rounded-lg hover:bg-purple-100 transition-colors"
+                      >
+                        <div className="flex items-center">
+                          <Building className="h-5 w-5 text-purple-600 mr-3" />
+                          <div className="text-left">
+                            <span className="font-medium block">Property Profile</span>
+                          </div>
                         </div>
-                      </div>
-                      <Eye className="h-4 w-4 text-purple-600" />
-                    </button>
+                        <Eye className="h-4 w-4 text-purple-600" />
+                      </button>
+                      <button 
+                        onClick={() => window.open(`/fund/property-profile-print?property=${submission.property_id}&offer=${submission.offer_scenario_id}`, '_blank')}
+                        className="p-4 bg-purple-50 rounded-lg hover:bg-purple-100 transition-colors"
+                        title="Print Property Profile"
+                      >
+                        <Printer className="h-4 w-4 text-purple-600" />
+                      </button>
+                    </div>
+
+                    {/* 10-Year Cash Flow */}
                     <button 
                       onClick={handleGenerate10YearCashFlow}
                       className="flex items-center justify-between p-4 bg-green-50 rounded-lg hover:bg-green-100 transition-colors"
@@ -285,24 +433,48 @@ export default function SubmissionDetailsPage() {
                         <TrendingUp className="h-5 w-5 text-green-600 mr-3" />
                         <div className="text-left">
                           <span className="font-medium block">10-Year Cash Flow</span>
-                          <span className="text-sm text-gray-600">PDF projection from offer analyzer</span>
                         </div>
                       </div>
                       <Download className="h-4 w-4 text-green-600" />
                     </button>
-                    <button 
-                      onClick={() => window.open(`/fund/investment-analysis?property=${submission.property_id}&offer=${submission.offer_scenario_id}`, '_blank')}
-                      className="flex items-center justify-between p-4 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors"
-                    >
-                      <div className="flex items-center">
-                        <FileText className="h-5 w-5 text-blue-600 mr-3" />
-                        <div className="text-left">
-                          <span className="font-medium block">Investment Analysis</span>
-                          <span className="text-sm text-gray-600">AI-generated comprehensive report</span>
+
+                    {/* Investment Analysis */}
+                    <div className="flex items-center gap-2">
+                      <button 
+                        onClick={() => {
+                          if (submission.investment_analysis_html?.html) {
+                            // Toggle inline display
+                            setShowInvestmentAnalysis(!showInvestmentAnalysis);
+                          } else {
+                            alert('No investment analysis available for this submission.');
+                          }
+                        }}
+                        className="flex-1 flex items-center justify-between p-4 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors"
+                      >
+                        <div className="flex items-center">
+                          <FileText className="h-5 w-5 text-blue-600 mr-3" />
+                          <div className="text-left">
+                            <span className="font-medium block">
+                              {submission.investment_analysis_html?.html ? 
+                                (showInvestmentAnalysis ? 'Hide Investment Analysis' : 'Show Investment Analysis') :
+                                'Investment Analysis'
+                              }
+                            </span>
+                          </div>
                         </div>
-                      </div>
-                      <Download className="h-4 w-4 text-blue-600" />
-                    </button>
+                        <Eye className="h-4 w-4 text-blue-600" />
+                      </button>
+                      {submission.investment_analysis_html?.html && (
+                        <button 
+                          onClick={() => window.open(`/fund/investment-analysis-print-view/${submissionId}`, '_blank')}
+                          className="p-4 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors"
+                          title="Print Investment Analysis"
+                        >
+                          <Printer className="h-4 w-4 text-blue-600" />
+                        </button>
+                      )}
+                    </div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -376,6 +548,64 @@ export default function SubmissionDetailsPage() {
               </div>
             </div>
           </div>
+
+          {/* Inline Investment Analysis */}
+          {showInvestmentAnalysis && submission?.investment_analysis_html?.html && (
+            <div className="mt-12 bg-white rounded-xl shadow-lg overflow-hidden">
+              <div className="bg-gradient-to-r from-blue-600 to-purple-600 px-6 py-4">
+                <div className="flex items-start justify-between">
+                  <div className="flex-1 pr-4">
+                    <h2 className="text-xl font-semibold text-white">Investment Analysis</h2>
+                    <p className="text-sm text-white opacity-90 mt-1">
+                      {submission.address}, {submission.city}, {submission.state}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => setShowInvestmentAnalysis(false)}
+                    className="text-white hover:text-gray-200 transition-colors flex-shrink-0"
+                  >
+                    <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+              <div className="p-6">
+                <style jsx>{`
+                  .investment-analysis-inline .min-h-screen {
+                    min-height: auto !important;
+                  }
+                  .investment-analysis-inline .bg-gray-50 {
+                    background-color: transparent !important;
+                  }
+                  .investment-analysis-inline .max-w-4xl {
+                    max-width: none !important;
+                  }
+                  .investment-analysis-inline .mx-auto {
+                    margin-left: 0 !important;
+                    margin-right: 0 !important;
+                  }
+                  .investment-analysis-inline .px-4,
+                  .investment-analysis-inline .px-6,
+                  .investment-analysis-inline .px-8 {
+                    padding-left: 0 !important;
+                    padding-right: 0 !important;
+                  }
+                  .investment-analysis-inline nav,
+                  .investment-analysis-inline header,
+                  .investment-analysis-inline [class*="shadow-sm"][class*="border-b"] {
+                    display: none !important;
+                  }
+                `}</style>
+                <div 
+                  className="investment-analysis-inline"
+                  dangerouslySetInnerHTML={{ 
+                    __html: submission.investment_analysis_html.html
+                  }} 
+                />
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </AuthGuard>

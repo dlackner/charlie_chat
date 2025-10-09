@@ -7,11 +7,10 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { generate10YearCashFlowReport } from '@/app/offer-analyzer/cash-flow-report';
 import { 
-  Building, 
-  TrendingUp,
-  FileText,
   Plus,
-  ArrowLeft
+  ArrowLeft,
+  CheckCircle,
+  AlertCircle
 } from 'lucide-react';
 
 interface Property {
@@ -86,8 +85,9 @@ function CreateSubmissionContent() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [loadingOffers, setLoadingOffers] = useState(false);
-  const [selectedSentiment, setSelectedSentiment] = useState<string>('measured');
+  const [selectedSentiment, setSelectedSentiment] = useState<string>('confident');
   const [hoveredSentiment, setHoveredSentiment] = useState<string | null>(null);
+  const [hasInvestmentAnalysis, setHasInvestmentAnalysis] = useState(false);
 
   // Real data states
   const [engagedProperties, setEngagedProperties] = useState<Property[]>([]);
@@ -97,6 +97,7 @@ function CreateSubmissionContent() {
   useEffect(() => {
     const propertyParam = searchParams?.get('property');
     const offerParam = searchParams?.get('offer');
+    const sentimentParam = searchParams?.get('sentiment');
     
     if (propertyParam) {
       setSelectedPropertyId(propertyParam);
@@ -107,7 +108,24 @@ function CreateSubmissionContent() {
     if (offerParam) {
       setSelectedOfferId(offerParam);
     }
+    
+    // Restore sentiment from URL param first, then localStorage
+    const sentimentToRestore = sentimentParam || localStorage.getItem('selectedSentiment') || localStorage.getItem('lastUsedSentiment');
+    if (sentimentToRestore && INVESTMENT_SENTIMENTS.some(s => s.value === sentimentToRestore)) {
+      setSelectedSentiment(sentimentToRestore);
+    }
+    
+    // Check if investment analysis has been generated
+    const analysisGenerated = localStorage.getItem('investmentAnalysisPdf') === 'generated';
+    setHasInvestmentAnalysis(analysisGenerated);
   }, [searchParams]);
+
+  // Save sentiment to localStorage whenever it changes
+  useEffect(() => {
+    if (selectedSentiment) {
+      localStorage.setItem('selectedSentiment', selectedSentiment);
+    }
+  }, [selectedSentiment]);
 
   // Fetch engaged/LOI properties
   useEffect(() => {
@@ -115,7 +133,6 @@ function CreateSubmissionContent() {
       try {
         if (!user || !supabase) return;
 
-        console.log('Current user ID:', user.id);
 
         const { data, error } = await supabase
           .from('user_favorites')
@@ -140,12 +157,6 @@ function CreateSubmissionContent() {
           throw error;
         }
 
-        console.log('Favorites query result:', data);
-        console.log('Query was:', {
-          table: 'user_favorites',
-          user_id: user.id,
-          filter: 'favorite_status IN (Engaged, LOI Sent)'
-        });
 
         const formattedProperties: Property[] = data?.map(item => ({
           property_id: item.property_id,
@@ -345,6 +356,11 @@ function CreateSubmissionContent() {
         return;
       }
 
+      // Get partnership type from modal form - target the specific select by ID
+      const partnershipTypeElement = document.getElementById('partnership-type-select') as HTMLSelectElement;
+      const partnershipType = partnershipTypeElement?.value || 'Limited Partner';
+
+      
       const { data, error } = await supabase
         .from('submissions')
         .insert({
@@ -352,7 +368,7 @@ function CreateSubmissionContent() {
           property_id: selectedPropertyId,
           offer_scenario_id: selectedOfferId,
           deal_summary: dealSummary,
-          partnership_type: 'Limited Partner',
+          partnership_type: partnershipType,
           investment_sentiment: selectedSentiment,
           status: 'active',
           is_public: true
@@ -360,7 +376,10 @@ function CreateSubmissionContent() {
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase submission creation error:', error);
+        throw error;
+      }
 
       // Generate and upload the 10-year cash flow PDF
       try {
@@ -474,7 +493,9 @@ function CreateSubmissionContent() {
               });
 
               if (!uploadResponse.ok) {
-                console.error('Failed to upload cash flow PDF');
+                const errorText = await uploadResponse.text();
+                console.error('Failed to upload cash flow PDF:', uploadResponse.status, errorText);
+                // Continue anyway - don't fail the submission
               }
             }
           }
@@ -482,6 +503,40 @@ function CreateSubmissionContent() {
       } catch (pdfError) {
         console.error('Error generating/uploading cash flow PDF:', pdfError);
         // Don't fail the submission if PDF generation fails
+      }
+
+      // Clean up localStorage after submission creation
+      localStorage.removeItem('investmentAnalysisPdf');
+      localStorage.removeItem('investmentAnalysisPdfData');
+      localStorage.removeItem('lastUsedSentiment');
+
+      // Save HTML snapshot if it exists in localStorage
+      try {
+        const htmlSnapshotData = localStorage.getItem('investmentAnalysisHtmlSnapshot');
+        
+        
+        if (htmlSnapshotData) {
+          const htmlSnapshot = JSON.parse(htmlSnapshotData);
+          
+          
+          const { error: htmlError } = await supabase
+            .from('submissions')
+            .update({
+              investment_analysis_html: htmlSnapshot,
+              investment_analysis_html_updated_at: new Date().toISOString()
+            })
+            .eq('id', data.id);
+          
+          if (htmlError) {
+            console.error('❌ Error saving HTML snapshot to database:', htmlError);
+          } else {
+            // Clean up localStorage
+            localStorage.removeItem('investmentAnalysisHtmlSnapshot');
+          }
+        }
+      } catch (htmlError) {
+        console.error('💥 Error saving HTML snapshot:', htmlError);
+        // Don't fail the submission if HTML snapshot saving fails
       }
 
       setShowSubmissionModal(false);
@@ -628,7 +683,7 @@ function CreateSubmissionContent() {
                 <label className="block text-sm font-medium text-gray-700 mb-4">
                   Investment Presentation Style
                 </label>
-                <div className="relative bg-white border border-gray-200 rounded-lg p-8">
+                <div className="relative bg-gradient-to-br from-blue-50 via-white to-purple-50 border border-gray-200 rounded-lg p-8 shadow-sm">
                   {/* Speedometer SVG */}
                   <div className="flex justify-center mb-4">
                     <svg width="384" height="240" viewBox="0 0 384 240" className="overflow-visible">
@@ -801,10 +856,10 @@ function CreateSubmissionContent() {
                       
                       return displaySentiment ? (
                         <div>
-                          <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                          <h3 className="text-xl font-bold text-blue-700 mb-3">
                             {displaySentiment.label}
                           </h3>
-                          <p className="text-sm text-gray-600 max-w-md mx-auto">
+                          <p className="text-base text-gray-700 max-w-lg mx-auto leading-relaxed">
                             {displaySentiment.description}
                           </p>
                         </div>
@@ -844,8 +899,21 @@ function CreateSubmissionContent() {
                     const offer = getSelectedOffer();
                     return property && offer ? (
                       <div className="flex gap-6">
-                        <div className="w-48 h-32 bg-gray-300 rounded-lg flex items-center justify-center">
-                          <Building className="h-12 w-12 text-gray-500" />
+                        <div className="w-48 h-32 bg-gray-300 rounded-lg flex items-center justify-center overflow-hidden">
+                          <img
+                            src={`https://maps.googleapis.com/maps/api/streetview?size=400x300&location=${encodeURIComponent(property.address + ', ' + property.city + ', ' + property.state)}&heading=0&pitch=0&key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || 'AIzaSyBOA7lqk8SbE4B7OEWp2F3Fk8cWU3GHgQg'}`}
+                            alt={`Street view of ${property.address}`}
+                            className="w-full h-full object-cover rounded-lg"
+                            onError={(e) => {
+                              // Fallback to building icon if image fails to load
+                              const target = e.target as HTMLImageElement;
+                              target.style.display = 'none';
+                              const parent = target.parentElement;
+                              if (parent) {
+                                parent.innerHTML = '<svg class="h-12 w-12 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path></svg>';
+                              }
+                            }}
+                          />
                         </div>
                         <div className="flex-1">
                           <h4 className="font-semibold text-gray-900">{property.address}</h4>
@@ -874,31 +942,59 @@ function CreateSubmissionContent() {
                   })()}
                 </div>
 
-                {/* Auto-generated Reports Preview */}
-                <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                {/* Attachments Section */}
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Attachments</h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
                   <button 
-                    onClick={() => router.push(`/fund/property-profile?property=${selectedPropertyId}&offer=${selectedOfferId}&returnUrl=${encodeURIComponent(`/fund/create?property=${selectedPropertyId}&offer=${selectedOfferId}`)}`)}
-                    className="bg-purple-50 rounded-lg p-4 text-center hover:bg-purple-100 transition-colors"
+                    onClick={() => router.push(`/fund/property-profile?property=${selectedPropertyId}&offer=${selectedOfferId}&returnUrl=${encodeURIComponent(`/fund/create?property=${selectedPropertyId}&offer=${selectedOfferId}&sentiment=${selectedSentiment}`)}`)}
+                    className="bg-white rounded-lg p-6 shadow-sm border border-gray-200 hover:shadow-md transition-shadow text-left relative"
                   >
-                    <Building className="h-8 w-8 text-purple-600 mx-auto mb-2" />
-                    <h4 className="font-medium text-gray-900">Property Profile</h4>
-                    <p className="text-sm text-gray-600">Detailed property data with images</p>
+                    <div className="absolute top-4 right-4">
+                      <div className="flex items-center gap-1 text-xs text-green-600">
+                        <CheckCircle className="h-3 w-3" />
+                        <span className="font-medium">Ready</span>
+                      </div>
+                    </div>
+                    <div className="border-l-4 border-purple-500 pl-4">
+                      <div className="text-xl font-bold text-gray-900">Property Profile</div>
+                    </div>
                   </button>
+                  
                   <button 
                     onClick={handleGenerate10YearCashFlow}
-                    className="bg-green-50 rounded-lg p-4 text-center hover:bg-green-100 transition-colors"
+                    className="bg-white rounded-lg p-6 shadow-sm border border-gray-200 hover:shadow-md transition-shadow text-left relative"
                   >
-                    <TrendingUp className="h-8 w-8 text-green-600 mx-auto mb-2" />
-                    <h4 className="font-medium text-gray-900">10-Year Cash Flow</h4>
-                    <p className="text-sm text-gray-600">PDF from offer analyzer</p>
+                    <div className="absolute top-4 right-4">
+                      <div className="flex items-center gap-1 text-xs text-green-600">
+                        <CheckCircle className="h-3 w-3" />
+                        <span className="font-medium">Ready</span>
+                      </div>
+                    </div>
+                    <div className="border-l-4 border-green-500 pl-4">
+                      <div className="text-xl font-bold text-gray-900">10-Year Cash Flow</div>
+                    </div>
                   </button>
+                  
                   <button 
-                    onClick={() => window.open(`/fund/investment-analysis?property=${selectedPropertyId}&offer=${selectedOfferId}`, '_blank')}
-                    className="bg-blue-50 rounded-lg p-4 text-center hover:bg-blue-100 transition-colors"
+                    onClick={() => router.push(`/fund/investment-analysis?property=${selectedPropertyId}&offer=${selectedOfferId}&sentiment=${selectedSentiment}`)}
+                    className="bg-white rounded-lg p-6 shadow-sm border border-gray-200 hover:shadow-md transition-shadow text-left relative"
                   >
-                    <FileText className="h-8 w-8 text-blue-600 mx-auto mb-2" />
-                    <h4 className="font-medium text-gray-900">Investment Analysis</h4>
-                    <p className="text-sm text-gray-600">AI-generated comprehensive report</p>
+                    <div className="absolute top-4 right-4">
+                      {hasInvestmentAnalysis ? (
+                        <div className="flex items-center gap-1 text-xs text-green-600">
+                          <CheckCircle className="h-3 w-3" />
+                          <span className="font-medium">Generated</span>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-1 text-xs text-orange-600">
+                          <AlertCircle className="h-3 w-3" />
+                          <span className="font-medium">Action Needed</span>
+                        </div>
+                      )}
+                    </div>
+                    <div className="border-l-4 border-blue-500 pl-4">
+                      <div className="text-xl font-bold text-gray-900">Investment Analysis</div>
+                    </div>
                   </button>
                 </div>
 
@@ -945,10 +1041,15 @@ function CreateSubmissionContent() {
 
             <div className="mb-6">
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Partnership Type
+                Capital Structure
               </label>
-              <select className="w-full border border-gray-300 rounded-lg p-3" defaultValue="Limited Partner">
+              <select id="partnership-type-select" className="w-full border border-gray-300 rounded-lg p-3" defaultValue="Limited Partner">
+                <option value="506(b)">506(b)</option>
+                <option value="506(c)">506(c)</option>
+                <option value="Capital Club">Capital Club</option>
+                <option value="Crowd Funding">Crowd Funding</option>
                 <option value="Limited Partner">Limited Partner</option>
+                <option value="Private Equity">Private Equity</option>
               </select>
             </div>
 

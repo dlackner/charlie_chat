@@ -381,12 +381,10 @@ export default function CapitalClubMockupPage() {
                     >
                       <Building className="h-8 w-8 text-purple-600 mx-auto mb-2" />
                       <h4 className="font-medium text-gray-900">Property Profile</h4>
-                      <p className="text-sm text-gray-600">Detailed property data with images</p>
                     </button>
                     <div className="bg-green-50 rounded-lg p-4 text-center">
                       <TrendingUp className="h-8 w-8 text-green-600 mx-auto mb-2" />
                       <h4 className="font-medium text-gray-900">10-Year Cash Flow</h4>
-                      <p className="text-sm text-gray-600">PDF from offer analyzer</p>
                     </div>
                     <button 
                       onClick={() => window.open('/capital-club-mockup/investment-analysis', '_blank')}
@@ -394,7 +392,6 @@ export default function CapitalClubMockupPage() {
                     >
                       <FileText className="h-8 w-8 text-blue-600 mx-auto mb-2" />
                       <h4 className="font-medium text-gray-900">Investment Analysis</h4>
-                      <p className="text-sm text-gray-600">AI-generated comprehensive report</p>
                     </button>
                   </div>
 
@@ -563,7 +560,6 @@ export default function CapitalClubMockupPage() {
                           <FileText className="h-5 w-5 text-blue-600 mr-3" />
                           <div className="text-left">
                             <span className="font-medium block">Investment Analysis</span>
-                            <span className="text-sm text-gray-600">AI-generated comprehensive report</span>
                           </div>
                         </div>
                         <Download className="h-4 w-4 text-blue-600" />
