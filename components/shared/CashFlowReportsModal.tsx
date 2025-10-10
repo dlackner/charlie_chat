@@ -169,7 +169,7 @@ export const CashFlowReportsModal: React.FC<CashFlowReportsModalProps> = ({
             </div>
           ) : (
             /* Properties List */
-            <div className="overflow-y-auto h-full">
+            <div className="overflow-y-auto max-h-96">
               <div className="p-6 space-y-3">
                 {propertiesWithOffers.map((property) => (
                   <div

@@ -71,7 +71,6 @@ SELECT
   sp.estimated_equity,
   sp.auction,
   sp.reo,
-  sp.tax_lien,
   sp.pre_foreclosure,
   sp.out_of_state_absentee_owner,
   -- Calculate derived metrics
@@ -86,7 +85,7 @@ WHERE uf.is_active = true;
 CREATE INDEX IF NOT EXISTS idx_saved_properties_city_state ON saved_properties(address_city, address_state);
 CREATE INDEX IF NOT EXISTS idx_saved_properties_units_price ON saved_properties(units_count, estimated_value);
 CREATE INDEX IF NOT EXISTS idx_saved_properties_year_built ON saved_properties(year_built);
-CREATE INDEX IF NOT EXISTS idx_saved_properties_deal_signals ON saved_properties(auction, reo, tax_lien, pre_foreclosure);
+CREATE INDEX IF NOT EXISTS idx_saved_properties_deal_signals ON saved_properties(auction, reo, pre_foreclosure);
 CREATE INDEX IF NOT EXISTS idx_saved_properties_location ON saved_properties(latitude, longitude);
 CREATE INDEX IF NOT EXISTS idx_user_favorites_batch ON user_favorites(recommendation_batch_id);
 CREATE INDEX IF NOT EXISTS idx_user_favorites_type_generated ON user_favorites(recommendation_type, generated_at);

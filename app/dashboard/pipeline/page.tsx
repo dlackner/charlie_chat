@@ -886,7 +886,6 @@ function DealQualityMatrix({ user, authLoading }: { user: any; authLoading: bool
               out_of_state_absentee_owner,
               auction,
               reo,
-              tax_lien,
               pre_foreclosure,
               private_lender
             )
@@ -1331,9 +1330,6 @@ function DealQualityMatrix({ user, authLoading }: { user: any; authLoading: bool
                 )}
                 {selectedProperty.reo && (
                   <span className="px-2 py-1 text-xs bg-orange-100 text-orange-800 rounded">REO</span>
-                )}
-                {selectedProperty.tax_lien && (
-                  <span className="px-2 py-1 text-xs bg-yellow-100 text-yellow-800 rounded">Tax Lien</span>
                 )}
                 {selectedProperty.pre_foreclosure && (
                   <span className="px-2 py-1 text-xs bg-purple-100 text-purple-800 rounded">Pre-Foreclosure</span>

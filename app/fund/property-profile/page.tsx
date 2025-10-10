@@ -42,7 +42,6 @@ interface Property {
   assumable?: boolean;
   reo?: boolean;
   auction?: boolean;
-  tax_lien?: boolean;
   pre_foreclosure?: boolean;
   private_lender?: boolean;
 }

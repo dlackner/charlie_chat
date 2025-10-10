@@ -38,7 +38,6 @@ interface MMRProperty {
     out_of_state_absentee_owner?: boolean;
     mls_active?: boolean;
     reo?: boolean;
-    tax_lien?: boolean;
     auction?: boolean;
     pre_foreclosure?: boolean;
     flood_zone?: boolean;
@@ -316,7 +315,6 @@ export const WeeklyRecommendationsModalMMR: React.FC<WeeklyRecommendationsModalM
                         years_owned: currentProperty.years_owned,
                         out_of_state_absentee_owner: currentProperty.out_of_state_absentee_owner,
                         reo: currentProperty.reo,
-                        tax_lien: currentProperty.tax_lien,
                         auction: currentProperty.auction,
                         pre_foreclosure: currentProperty.pre_foreclosure
                     },
@@ -768,10 +766,6 @@ export const WeeklyRecommendationsModalMMR: React.FC<WeeklyRecommendationsModalM
                                                 <div className="flex">
                                                     <span>REO:&nbsp;</span>
                                                     <span className="font-medium">{currentProperty.reo ? 'Yes' : 'No'}</span>
-                                                </div>
-                                                <div className="flex">
-                                                    <span>Tax Lien:&nbsp;</span>
-                                                    <span className="font-medium">{currentProperty.tax_lien ? 'Yes' : 'No'}</span>
                                                 </div>
                                                 <div className="flex">
                                                     <span>Auction:&nbsp;</span>

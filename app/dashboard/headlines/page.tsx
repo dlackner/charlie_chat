@@ -18,7 +18,8 @@ import {
   Activity,
   AlertCircle,
   Calendar,
-  Clock
+  Clock,
+  Crown
 } from 'lucide-react';
 
 interface DashboardMetrics {
@@ -652,6 +653,10 @@ function RemindersSection({ user }: { user: any }) {
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingRecommendations, setIsLoadingRecommendations] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  
+  // Investment activity state
+  const [submissionMetrics, setSubmissionMetrics] = useState({ activeCount: 0, newThisWeek: 0 });
+  const [isLoadingSubmissions, setIsLoadingSubmissions] = useState(false);
 
   // Fetch reminders from API
   useEffect(() => {
@@ -723,6 +728,30 @@ function RemindersSection({ user }: { user: any }) {
     fetchPendingRecommendations();
   }, [user]);
 
+  // Fetch submission metrics
+  useEffect(() => {
+    const fetchSubmissionMetrics = async () => {
+      setIsLoadingSubmissions(true);
+      try {
+        const response = await fetch('/api/submissions/metrics');
+        if (response.ok) {
+          const data = await response.json();
+          setSubmissionMetrics({
+            activeCount: data.activeCount || 0,
+            newThisWeek: data.newThisWeek || 0
+          });
+        }
+      } catch (error) {
+        console.error('Error fetching submission metrics:', error);
+        setSubmissionMetrics({ activeCount: 0, newThisWeek: 0 });
+      } finally {
+        setIsLoadingSubmissions(false);
+      }
+    };
+
+    fetchSubmissionMetrics();
+  }, []);
+
   return (
     <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-8">
       <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center">
@@ -752,7 +781,7 @@ function RemindersSection({ user }: { user: any }) {
           <p className="text-sm text-gray-500 mt-1">Add reminders to your property notes using @MM/DD/YYYY format</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {/* Today's Reminders */}
           <div className="bg-red-50 border border-red-200 rounded-lg p-4">
             <h3 className="font-semibold text-red-800 mb-2 flex items-center">
@@ -803,7 +832,7 @@ function RemindersSection({ user }: { user: any }) {
                 <div className="space-y-2">
                   <div className="bg-white rounded p-3 border border-gray-200">
                     <div className="text-sm font-medium text-gray-900 mb-1">
-                      Weekly Algorithm Recommendations
+                      Weekly Buy Box Recommendations
                     </div>
                     <div className="text-xs text-gray-600 mb-2">
                       You have {pendingRecommendations} property recommendation{pendingRecommendations !== 1 ? 's' : ''} to review from our weekly analysis.
@@ -817,6 +846,65 @@ function RemindersSection({ user }: { user: any }) {
                   </div>
                 </div>
               )}
+            </div>
+          </div>
+
+          {/* Capital Club */}
+          <div className="relative p-1 rounded-xl shadow-lg overflow-visible" style={{background: 'linear-gradient(135deg, #3b82f6, #9333ea)'}}>
+            <div className="bg-white rounded-lg p-4 h-full">
+              {/* Slanted Banner */}
+              <div className="absolute -top-2 -right-6 transform rotate-12 z-10">
+                <Link 
+                  href="/capital-club"
+                  className="block bg-gradient-to-r from-blue-600 to-purple-600 text-white text-sm font-bold px-6 py-2 shadow-xl hover:from-blue-700 hover:to-purple-700 transition-all whitespace-nowrap rounded-md"
+                >
+                  Join the Capital Club
+                </Link>
+              </div>
+              
+              <h3 className="font-semibold text-gray-900 mb-2 flex items-center">
+                <Crown className="h-4 w-4 mr-2 text-blue-600" />
+                Capital Club
+              </h3>
+              <div>
+                {isLoadingSubmissions ? (
+                  <div className="flex items-center justify-center py-4">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                    <span className="ml-2 text-sm text-gray-600">Loading...</span>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <div className="bg-blue-50 rounded p-3 border border-blue-200">
+                      <div className="text-sm font-medium text-gray-900 mb-1">
+                        Looking for Funding
+                      </div>
+                      <div className="text-xs text-gray-600 mb-2">
+                        {submissionMetrics.activeCount} propert{submissionMetrics.activeCount !== 1 ? 'ies' : 'y'} looking for funding.
+                      </div>
+                      <Link 
+                        href="/fund/browse"
+                        className="text-xs text-blue-600 hover:text-blue-700 font-medium"
+                      >
+                        Browse Opportunities →
+                      </Link>
+                    </div>
+                    <div className="bg-blue-50 rounded p-3 border border-blue-200">
+                      <div className="text-sm font-medium text-gray-900 mb-1">
+                        New This Week
+                      </div>
+                      <div className="text-xs text-gray-600 mb-2">
+                        {submissionMetrics.newThisWeek} new propert{submissionMetrics.newThisWeek !== 1 ? 'ies' : 'y'} added in the past 7 days.
+                      </div>
+                      <Link 
+                        href="/fund/browse"
+                        className="text-xs text-blue-600 hover:text-blue-700 font-medium"
+                      >
+                        View Latest →
+                      </Link>
+                    </div>
+                </div>
+              )}
+            </div>
             </div>
           </div>
         </div>

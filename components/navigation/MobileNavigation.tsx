@@ -261,11 +261,12 @@ export default function MobileNavigation() {
         icon: TrendingUp,
         disabled: isNotLoggedIn,
         submenu: [
-          { 
+          // Hide Create Submission on mobile
+          ...(isMobile ? [] : [{ 
             name: 'Create Submission', 
             href: hasAccess(currentUserClass, 'fund_create') ? '/fund/create' : undefined,
             disabled: !hasAccess(currentUserClass, 'fund_create')
-          },
+          }]),
           { 
             name: 'Browse Submissions', 
             href: hasAccess(currentUserClass, 'fund_browse') ? '/fund/browse' : undefined,

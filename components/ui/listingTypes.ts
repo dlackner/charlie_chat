@@ -88,7 +88,6 @@ export interface Listing {
   reo?: boolean;
   foreclosure?: boolean;
   pre_foreclosure?: boolean;
-  tax_lien?: boolean;
   private_lender?: boolean;
   free_clear?: boolean;
   
@@ -147,7 +146,6 @@ export const CAMEL_TO_SNAKE_MAPPING = {
   mlsActive: 'mls_active',
   forSale: 'for_sale',
   preForeclosure: 'pre_foreclosure',
-  taxLien: 'tax_lien',
   privateLender: 'private_lender',
   freeClear: 'free_clear',
   floodZone: 'flood_zone',
