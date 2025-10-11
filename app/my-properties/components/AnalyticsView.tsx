@@ -476,7 +476,6 @@ function calculateDistressScore(property: SavedProperty): number {
   if (property.reo) distressCount++;
   if (property.pre_foreclosure) distressCount++;
   if (property.auction) distressCount++;
-  if (property.tax_lien) distressCount++;
   if (property.private_lender) distressCount++; // Private lender can indicate distress
   
   // Return a score from 0 (no distress) to 5 (maximum distress)

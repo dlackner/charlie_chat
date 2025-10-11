@@ -175,6 +175,9 @@ export async function POST(req: NextRequest) {
       mls_cancelled,
       mls_days_on_market_min,
       mls_days_on_market_max,
+      // Unit type filters
+      mfh_2to4,
+      mfh_5plus,
       // ADD COMPOUND QUERY FIELDS:
       or,
       and
@@ -241,6 +244,9 @@ export async function POST(req: NextRequest) {
       mls_cancelled,
       mls_days_on_market_min,
       mls_days_on_market_max,
+      // Unit type filters
+      mfh_2to4,
+      mfh_5plus,
       // ADD COMPOUND QUERY FIELDS TO PAYLOAD:
       ...(or && { or }),
       ...(and && { and })

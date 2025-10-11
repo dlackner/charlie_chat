@@ -74,7 +74,7 @@ export class PropertyRecommendationEngine {
     'owner_occupied', 'corporate_owned', 'years_owned', 'out_of_state_absentee_owner', 'investor_buyer',
     
     // Property status flags
-    'for_sale', 'mls_active', 'auction', 'reo', 'tax_lien', 'pre_foreclosure', 'assumable', 'private_lender',
+    'for_sale', 'mls_active', 'auction', 'reo', 'pre_foreclosure', 'assumable', 'private_lender',
     
     // Financial characteristics
     'estimated_equity', 'mortgage_balance', 'rent_estimate', 'listing_price',
@@ -358,7 +358,6 @@ export class PropertyRecommendationEngine {
     if (property.auction || property.reo || property.pre_foreclosure) {
       reasons.push("Distressed situation - potential value opportunity");
     }
-    if (property.tax_lien) reasons.push("Tax lien - investigate opportunity");
     if (property.private_lender) reasons.push("Private lender financing - flexible terms possible");
 
     // Property characteristics

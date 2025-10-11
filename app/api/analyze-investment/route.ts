@@ -179,7 +179,7 @@ async function performOpenAIAnalysis(prompt: string, maxTokens: number = 300): P
         }
       ],
       max_tokens: maxTokens,
-      temperature: 0.1
+      temperature: 0.5
     });
 
     return completion.choices[0]?.message?.content || '';

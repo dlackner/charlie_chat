@@ -103,7 +103,6 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
         const flags = [];
         if (property.auction) flags.push('Auction');
         if (property.reo) flags.push('REO');
-        if (property.tax_lien) flags.push('Tax Lien');
         if (property.pre_foreclosure) flags.push('Pre-Foreclosure');
         if (property.private_lender) flags.push('Private Lender');
         if (property.out_of_state_absentee_owner) flags.push('Absentee Owner');
@@ -550,10 +549,6 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
                             <div className="flex">
                                 <span>REO:&nbsp;</span>
                                 <span className="font-medium">{property.reo ? 'Yes' : 'No'}</span>
-                            </div>
-                            <div className="flex">
-                                <span>Tax Lien:&nbsp;</span>
-                                <span className="font-medium">{property.tax_lien ? 'Yes' : 'No'}</span>
                             </div>
                             <div className="flex">
                                 <span>Pre-Foreclosure:&nbsp;</span>

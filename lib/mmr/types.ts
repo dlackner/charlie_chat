@@ -42,7 +42,6 @@ export interface SavedProperty {
   assumable?: boolean;
   auction?: boolean;
   reo?: boolean;
-  tax_lien?: boolean;
   pre_foreclosure?: boolean;
   foreclosure?: boolean;
   private_lender?: boolean;

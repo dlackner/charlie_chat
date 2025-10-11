@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { AuthGuard } from '@/components/auth/AuthGuard';
 import { useAuth } from '@/contexts/AuthContext';
-import { useRouter, useParams } from 'next/navigation';
+import { useRouter, useParams, useSearchParams } from 'next/navigation';
 import { generate10YearCashFlowReport } from '@/app/offer-analyzer/cash-flow-report';
 import { 
   Building, 
@@ -15,7 +15,12 @@ import {
   ArrowLeft,
   TrendingUp,
   FileText,
-  Printer
+  Printer,
+  MessageCircle,
+  Send,
+  Reply,
+  Edit2,
+  Trash2
 } from 'lucide-react';
 
 interface Submission {
@@ -47,9 +52,23 @@ interface Submission {
   submitter_email?: string;
 }
 
+interface Comment {
+  id: string;
+  comment_text: string;
+  reply_to_comment_id: string | null;
+  reply_context_snippet: string | null;
+  created_at: string;
+  updated_at: string;
+  is_edited: boolean;
+  user_id: string;
+  user_name: string;
+  replies: Comment[];
+}
+
 export default function SubmissionDetailsPage() {
   const router = useRouter();
   const params = useParams();
+  const searchParams = useSearchParams();
   const submissionId = params?.id as string;
   const { user, supabase, isLoading: authLoading } = useAuth();
   
@@ -58,6 +77,15 @@ export default function SubmissionDetailsPage() {
   const [submission, setSubmission] = useState<Submission | null>(null);
   const [hasExpressedInterest, setHasExpressedInterest] = useState(false);
   const [showInvestmentAnalysis, setShowInvestmentAnalysis] = useState(false);
+  
+  // Comment state
+  const [comments, setComments] = useState<Comment[]>([]);
+  const [commentsLoading, setCommentsLoading] = useState(false);
+  const [newComment, setNewComment] = useState('');
+  const [replyingTo, setReplyingTo] = useState<string | null>(null);
+  const [replyText, setReplyText] = useState('');
+  const [editingComment, setEditingComment] = useState<string | null>(null);
+  const [editText, setEditText] = useState('');
 
   // Fetch submission details
   useEffect(() => {
@@ -188,6 +216,200 @@ export default function SubmissionDetailsPage() {
     fetchSubmission();
   }, [submissionId, supabase, user]);
 
+  // Fetch comments
+  const fetchComments = async () => {
+    if (!submissionId || !supabase) return;
+    
+    setCommentsLoading(true);
+    try {
+      const response = await fetch(`/api/submissions/${submissionId}/comments`);
+      if (response.ok) {
+        const data = await response.json();
+        setComments(data.comments || []);
+      } else {
+        const errorData = await response.text();
+        console.error('Failed to fetch comments:', response.status, errorData);
+      }
+    } catch (error) {
+      console.error('Error fetching comments:', error);
+    } finally {
+      setCommentsLoading(false);
+    }
+  };
+
+  // Load comments when submission loads
+  useEffect(() => {
+    if (submission) {
+      fetchComments();
+    }
+  }, [submission]);
+
+  // Create new comment
+  const handleSubmitComment = async () => {
+    if (!newComment.trim() || !user || !submissionId) return;
+
+    try {
+      const response = await fetch(`/api/submissions/${submissionId}/comments`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          comment_text: newComment.trim(),
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setComments(prev => [data.comment, ...prev]);
+        setNewComment('');
+      } else {
+        const errorData = await response.json();
+        if (errorData.error?.includes('Profile incomplete')) {
+          alert('Please complete your profile with your first and last name before commenting. You can update your profile in Account settings.');
+        } else {
+          alert(errorData.error || 'Failed to post comment');
+        }
+      }
+    } catch (error) {
+      console.error('Error posting comment:', error);
+      alert('Failed to post comment');
+    }
+  };
+
+  // Submit reply
+  const handleSubmitReply = async (parentCommentId: string, parentText: string) => {
+    if (!replyText.trim() || !user || !submissionId) return;
+
+    try {
+      const response = await fetch(`/api/submissions/${submissionId}/comments`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          comment_text: replyText.trim(),
+          reply_to_comment_id: parentCommentId,
+          reply_context_snippet: parentText.length > 100 ? parentText.substring(0, 97) + '...' : parentText,
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        // Add reply to the parent comment
+        setComments(prev => 
+          prev.map(comment => 
+            comment.id === parentCommentId 
+              ? { ...comment, replies: [...comment.replies, data.comment] }
+              : comment
+          )
+        );
+        setReplyText('');
+        setReplyingTo(null);
+      } else {
+        const errorData = await response.json();
+        alert(errorData.error || 'Failed to post reply');
+      }
+    } catch (error) {
+      console.error('Error posting reply:', error);
+      alert('Failed to post reply');
+    }
+  };
+
+  // Edit comment
+  const handleEditComment = async (commentId: string) => {
+    if (!editText.trim()) return;
+
+    try {
+      const response = await fetch(`/api/comments/${commentId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          comment_text: editText.trim(),
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        // Update comment in state
+        setComments(prev => 
+          prev.map(comment => {
+            if (comment.id === commentId) {
+              return data.comment;
+            }
+            // Check replies
+            if (comment.replies.some(reply => reply.id === commentId)) {
+              return {
+                ...comment,
+                replies: comment.replies.map(reply => 
+                  reply.id === commentId ? data.comment : reply
+                )
+              };
+            }
+            return comment;
+          })
+        );
+        setEditingComment(null);
+        setEditText('');
+      } else {
+        const errorData = await response.json();
+        alert(errorData.error || 'Failed to edit comment');
+      }
+    } catch (error) {
+      console.error('Error editing comment:', error);
+      alert('Failed to edit comment');
+    }
+  };
+
+  // Delete comment
+  const handleDeleteComment = async (commentId: string) => {
+    if (!confirm('Are you sure you want to delete this comment?')) return;
+
+    try {
+      const response = await fetch(`/api/comments/${commentId}`, {
+        method: 'DELETE',
+      });
+
+      if (response.ok) {
+        // Remove comment from state
+        setComments(prev => 
+          prev.filter(comment => {
+            if (comment.id === commentId) return false;
+            // Filter out replies too
+            comment.replies = comment.replies.filter(reply => reply.id !== commentId);
+            return true;
+          })
+        );
+      } else {
+        const errorData = await response.json();
+        alert(errorData.error || 'Failed to delete comment');
+      }
+    } catch (error) {
+      console.error('Error deleting comment:', error);
+      alert('Failed to delete comment');
+    }
+  };
+
+  // Format date for comments
+  const formatCommentDate = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    
+    if (diffDays === 0) {
+      return 'Today';
+    } else if (diffDays === 1) {
+      return 'Yesterday';
+    } else if (diffDays < 7) {
+      return `${diffDays} days ago`;
+    } else {
+      return date.toLocaleDateString();
+    }
+  };
+
   // Handle expressing interest
   const handleExpressInterest = async () => {
     try {
@@ -276,10 +498,17 @@ export default function SubmissionDetailsPage() {
           <div className="text-center">
             <p className="text-red-600 mb-4">{error || 'Submission not found'}</p>
             <button 
-              onClick={() => router.push('/fund/browse')} 
+              onClick={() => {
+                const source = searchParams?.get('source');
+                if (source === 'manage') {
+                  router.push('/fund/create');
+                } else {
+                  router.push('/fund/browse');
+                }
+              }} 
               className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
             >
-              Back to Browse
+              Back
             </button>
           </div>
         </div>
@@ -295,11 +524,18 @@ export default function SubmissionDetailsPage() {
           {/* Header */}
           <div className="mb-8">
             <button
-              onClick={() => router.push('/fund/browse')}
+              onClick={() => {
+                const source = searchParams?.get('source');
+                if (source === 'manage') {
+                  router.push('/fund/create');
+                } else {
+                  router.push('/fund/browse');
+                }
+              }}
               className="inline-flex items-center text-blue-600 hover:text-blue-700 mb-4"
             >
               <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to Browse
+              Back
             </button>
           </div>
 
@@ -341,139 +577,186 @@ export default function SubmissionDetailsPage() {
                 </div>
 
                 {/* Financial Highlights Section */}
-                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg mb-6 overflow-hidden">
+                <div className="bg-white border border-gray-200 shadow-sm rounded-lg mb-6 overflow-hidden">
                   {/* Highlights Header Band */}
-                  <div className="bg-blue-600 px-4 py-2">
-                    <h4 className="text-xs font-bold text-white uppercase tracking-wider">Highlights</h4>
+                  <div className="bg-blue-600 px-6 py-3 border-b border-gray-200">
+                    <h4 className="text-sm font-medium text-white tracking-wide">HIGHLIGHTS</h4>
                   </div>
                   
                   {/* Metrics Grid */}
-                  <div className="p-4">
-                    <div className="grid grid-cols-2 gap-3">
+                  <div className="p-6">
+                    <div className="grid grid-cols-2 gap-6">
                     <div>
-                      <p className="text-xs text-gray-600 font-medium">Capital Structure</p>
-                      <p className="text-base font-semibold text-gray-900">{submission.partnership_type}</p>
+                      <p className="text-xs text-gray-500 font-medium uppercase tracking-wide mb-1">Submitted By</p>
+                      <p className="text-lg font-semibold text-gray-900">{submission.submitter_name || 'Anonymous'}</p>
+                      {submission.submitter_email && (
+                        <p className="text-sm text-blue-600 mt-1">{submission.submitter_email}</p>
+                      )}
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-500 font-medium uppercase tracking-wide mb-1">Capital Structure</p>
+                      <p className="text-lg font-semibold text-gray-900">{submission.partnership_type}</p>
                     </div>
                     {submission.purchase_price && (
                       <div>
-                        <p className="text-xs text-gray-600 font-medium">Purchase Price</p>
-                        <p className="text-base font-semibold text-gray-900">
+                        <p className="text-xs text-gray-500 font-medium uppercase tracking-wide mb-1">Purchase Price</p>
+                        <p className="text-lg font-semibold text-gray-900">
                           ${(submission.purchase_price / 1000000).toFixed(2)}M
                         </p>
                       </div>
                     )}
                     {submission.cash_on_cash_return && (
                       <div>
-                        <p className="text-xs text-gray-600 font-medium">Cash on Cash</p>
-                        <p className="text-base font-semibold text-gray-900">{submission.cash_on_cash_return}</p>
+                        <p className="text-xs text-gray-500 font-medium uppercase tracking-wide mb-1">Cash on Cash</p>
+                        <p className="text-lg font-semibold text-gray-900">{submission.cash_on_cash_return}</p>
                       </div>
                     )}
                     {submission.irr && (
                       <div>
-                        <p className="text-xs text-gray-600 font-medium">IRR</p>
-                        <p className="text-base font-semibold text-gray-900">{submission.irr}</p>
+                        <p className="text-xs text-gray-500 font-medium uppercase tracking-wide mb-1">IRR</p>
+                        <p className="text-lg font-semibold text-gray-900">{submission.irr}</p>
                       </div>
                     )}
                     {submission.cap_rate && (
                       <div>
-                        <p className="text-xs text-gray-600 font-medium">Cap Rate</p>
-                        <p className="text-base font-semibold text-gray-900">{submission.cap_rate}</p>
+                        <p className="text-xs text-gray-500 font-medium uppercase tracking-wide mb-1">Cap Rate</p>
+                        <p className="text-lg font-semibold text-gray-900">{submission.cap_rate}</p>
                       </div>
                     )}
                     {submission.dcr && (
                       <div>
-                        <p className="text-xs text-gray-600 font-medium">DCR</p>
-                        <p className="text-base font-semibold text-gray-900">{submission.dcr}</p>
+                        <p className="text-xs text-gray-500 font-medium uppercase tracking-wide mb-1">DCR</p>
+                        <p className="text-lg font-semibold text-gray-900">{submission.dcr}</p>
                       </div>
                     )}
+                    <div>
+                      <p className="text-xs text-gray-500 font-medium uppercase tracking-wide mb-1">Submitted</p>
+                      <p className="text-lg font-semibold text-gray-900">{formatDate(submission.created_at)}</p>
+                    </div>
                     </div>
                   </div>
                 </div>
 
 
                 {/* Reports & Analysis */}
-                <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg mb-8 overflow-hidden">
+                <div className="bg-white border border-gray-200 shadow-sm rounded-lg mb-8 overflow-hidden">
                   {/* Reports Header Band */}
-                  <div className="bg-green-600 px-4 py-2">
-                    <h2 className="text-xs font-bold text-white uppercase tracking-wider">Reports & Analysis</h2>
+                  <div className="bg-blue-600 px-6 py-3 border-b border-gray-200">
+                    <h2 className="text-sm font-medium text-white tracking-wide">REPORTS & ANALYSIS</h2>
                   </div>
                   
                   {/* Reports Content */}
-                  <div className="p-4">
-                    <div className="grid grid-cols-1 gap-4">
-                    {/* Property Profile */}
-                    <div className="flex items-center gap-2">
-                      <button 
-                        onClick={() => router.push(`/fund/property-profile?property=${submission.property_id}&offer=${submission.offer_scenario_id}&returnUrl=/fund/browse/${submissionId}`)}
-                        className="flex-1 flex items-center justify-between p-4 bg-purple-50 rounded-lg hover:bg-purple-100 transition-colors"
-                      >
-                        <div className="flex items-center">
-                          <Building className="h-5 w-5 text-purple-600 mr-3" />
-                          <div className="text-left">
-                            <span className="font-medium block">Property Profile</span>
+                  <div className="p-6">
+                    {/* Investment Thesis */}
+                    {submission.deal_summary && (
+                      <div className="mb-6">
+                        <h3 className="text-lg font-semibold text-gray-900 mb-3">Investment Thesis</h3>
+                        <div className="group bg-gray-50 rounded-lg p-4 border border-gray-200 hover:bg-gray-100 hover:border-gray-300 transition-all duration-200 cursor-pointer">
+                          <div className="text-sm text-gray-700 line-clamp-3 group-hover:line-clamp-none transition-all duration-200">
+                            {submission.deal_summary}
                           </div>
-                        </div>
-                        <Eye className="h-4 w-4 text-purple-600" />
-                      </button>
-                      <button 
-                        onClick={() => window.open(`/fund/property-profile-print?property=${submission.property_id}&offer=${submission.offer_scenario_id}`, '_blank')}
-                        className="p-4 bg-purple-50 rounded-lg hover:bg-purple-100 transition-colors"
-                        title="Print Property Profile"
-                      >
-                        <Printer className="h-4 w-4 text-purple-600" />
-                      </button>
-                    </div>
-
-                    {/* 10-Year Cash Flow */}
-                    <button 
-                      onClick={handleGenerate10YearCashFlow}
-                      className="flex items-center justify-between p-4 bg-green-50 rounded-lg hover:bg-green-100 transition-colors"
-                    >
-                      <div className="flex items-center">
-                        <TrendingUp className="h-5 w-5 text-green-600 mr-3" />
-                        <div className="text-left">
-                          <span className="font-medium block">10-Year Cash Flow</span>
+                          <div className="text-xs text-gray-500 mt-2 opacity-60 group-hover:opacity-100 transition-opacity">
+                            Hover to expand full text
+                          </div>
                         </div>
                       </div>
-                      <Download className="h-4 w-4 text-green-600" />
-                    </button>
+                    )}
+                    
+                    {/* Report Cards Grid */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                      {/* Property Profile */}
+                      <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
+                        <div className="border-l-4 border-purple-500 pl-4 mb-4">
+                          <div className="text-lg font-bold text-gray-900">Property Profile</div>
+                        </div>
+                        <div className="flex gap-2">
+                          <button 
+                            onClick={() => router.push(`/fund/property-profile?property=${submission.property_id}&offer=${submission.offer_scenario_id}&returnUrl=/fund/browse/${submissionId}`)}
+                            className="flex-1 px-3 py-2 bg-purple-600 text-white text-sm rounded hover:bg-purple-700 transition-colors"
+                          >
+                            View
+                          </button>
+                          <button 
+                            onClick={() => window.open(`/fund/property-profile-print?property=${submission.property_id}&offer=${submission.offer_scenario_id}`, '_blank')}
+                            className="px-3 py-2 bg-gray-200 text-gray-700 text-sm rounded hover:bg-gray-300 transition-colors"
+                            title="Print Property Profile"
+                          >
+                            <Printer className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </div>
 
-                    {/* Investment Analysis */}
-                    <div className="flex items-center gap-2">
-                      <button 
-                        onClick={() => {
-                          if (submission.investment_analysis_html?.html) {
-                            // Toggle inline display
-                            setShowInvestmentAnalysis(!showInvestmentAnalysis);
-                          } else {
-                            alert('No investment analysis available for this submission.');
-                          }
-                        }}
-                        className="flex-1 flex items-center justify-between p-4 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors"
-                      >
-                        <div className="flex items-center">
-                          <FileText className="h-5 w-5 text-blue-600 mr-3" />
-                          <div className="text-left">
-                            <span className="font-medium block">
-                              {submission.investment_analysis_html?.html ? 
-                                (showInvestmentAnalysis ? 'Hide Investment Analysis' : 'Show Investment Analysis') :
-                                'Investment Analysis'
-                              }
-                            </span>
+                      {/* 10-Year Cash Flow */}
+                      <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
+                        <div className="border-l-4 border-green-500 pl-4 mb-4">
+                          <div className="text-lg font-bold text-gray-900">10-Year Cash Flow</div>
+                        </div>
+                        <div className="flex gap-2">
+                          <button 
+                            onClick={handleGenerate10YearCashFlow}
+                            className="flex-1 px-3 py-2 bg-green-600 text-white text-sm rounded hover:bg-green-700 transition-colors"
+                          >
+                            View
+                          </button>
+                          <button 
+                            onClick={handleGenerate10YearCashFlow}
+                            className="px-3 py-2 bg-gray-200 text-gray-700 text-sm rounded hover:bg-gray-300 transition-colors"
+                            title="Print 10-Year Cash Flow"
+                          >
+                            <Printer className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Pricing Scenario */}
+                      {submission.offer_scenario_id && (
+                        <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
+                          <div className="border-l-4 border-orange-500 pl-4 mb-4">
+                            <div className="text-lg font-bold text-gray-900">Pricing Scenario</div>
+                          </div>
+                          <div className="flex gap-2">
+                            <button 
+                              onClick={() => router.push(`/fund/pricing-scenario-view/${submission.offer_scenario_id}`)}
+                              className="flex-1 px-3 py-2 bg-orange-600 text-white text-sm rounded hover:bg-orange-700 transition-colors"
+                            >
+                              View
+                            </button>
                           </div>
                         </div>
-                        <Eye className="h-4 w-4 text-blue-600" />
-                      </button>
-                      {submission.investment_analysis_html?.html && (
-                        <button 
-                          onClick={() => window.open(`/fund/investment-analysis-print-view/${submissionId}`, '_blank')}
-                          className="p-4 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors"
-                          title="Print Investment Analysis"
-                        >
-                          <Printer className="h-4 w-4 text-blue-600" />
-                        </button>
                       )}
-                    </div>
+
+                      {/* Investment Analysis */}
+                      <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
+                        <div className="border-l-4 border-blue-500 pl-4 mb-4">
+                          <div className="text-lg font-bold text-gray-900">Investment Analysis</div>
+                        </div>
+                        <div className="flex gap-2">
+                          <button 
+                            onClick={() => {
+                              if (submission.investment_analysis_html?.html) {
+                                setShowInvestmentAnalysis(!showInvestmentAnalysis);
+                              } else {
+                                alert('No investment analysis available for this submission.');
+                              }
+                            }}
+                            className="flex-1 px-3 py-2 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 transition-colors"
+                          >
+                            {submission.investment_analysis_html?.html ? 
+                              (showInvestmentAnalysis ? 'Hide' : 'Show') :
+                              'View'
+                            }
+                          </button>
+                          {submission.investment_analysis_html?.html && (
+                            <button 
+                              onClick={() => window.open(`/fund/investment-analysis-print-view/${submissionId}`, '_blank')}
+                              className="px-3 py-2 bg-gray-200 text-gray-700 text-sm rounded hover:bg-gray-300 transition-colors"
+                              title="Print Investment Analysis"
+                            >
+                              <Printer className="h-4 w-4" />
+                            </button>
+                          )}
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -481,68 +764,291 @@ export default function SubmissionDetailsPage() {
 
               {/* Sidebar */}
               <div className="lg:col-span-1">
-                {/* Submitter Info */}
+                {/* Interest & Views */}
                 <div className="bg-gray-50 rounded-lg p-6 mb-6">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Submitted By</h3>
-                  <div className="text-center">
-                    <div className="w-16 h-16 bg-blue-600 rounded-full flex items-center justify-center mx-auto mb-3">
-                      <span className="text-white font-semibold text-lg">
-                        {submission.submitter_name ? 
-                          submission.submitter_name.split(' ').map(n => n[0]).join('').toUpperCase() : 
-                          'U'
-                        }
-                      </span>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="text-center">
+                      <h3 className="text-lg font-semibold text-gray-900 mb-2">Interest Level</h3>
+                      <div className="text-3xl font-bold text-blue-600 mb-1">{submission.interest_count}</div>
+                      <div className="text-sm text-gray-600">Investors interested</div>
                     </div>
-                    <h4 className="font-semibold text-gray-900">{submission.submitter_name || 'Anonymous'}</h4>
-                    <p className="text-sm text-gray-600 mb-4">Investor</p>
-                    {submission.submitter_email && (
-                      <a
-                        href={`mailto:${submission.submitter_email}`}
-                        className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                      >
-                        <Mail className="h-4 w-4 mr-2" />
-                        Contact
-                      </a>
-                    )}
-                  </div>
-                </div>
-
-                {/* Interest Tracking */}
-                <div className="bg-gray-50 rounded-lg p-6 mb-6">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Interest Level</h3>
-                  <div className="text-center mb-4">
-                    <div className="text-3xl font-bold text-blue-600 mb-1">{submission.interest_count}</div>
-                    <div className="text-sm text-gray-600">investors interested</div>
+                    <div className="text-center">
+                      <h3 className="text-lg font-semibold text-gray-900 mb-2">Views</h3>
+                      <div className="text-3xl font-bold text-green-600 mb-1">{submission.view_count}</div>
+                      <div className="text-sm text-gray-600">Property views</div>
+                    </div>
                   </div>
                   <button 
                     onClick={handleExpressInterest}
-                    className={`w-full px-4 py-2 rounded-lg transition-colors mb-3 ${
+                    className={`w-full px-4 py-2 rounded-lg transition-colors mt-4 ${
                       hasExpressedInterest 
                         ? 'bg-gray-500 text-white hover:bg-gray-600' 
                         : 'bg-red-500 text-white hover:bg-red-600'
                     }`}
                   >
                     <Heart className={`h-4 w-4 mr-2 inline ${hasExpressedInterest ? 'fill-current' : ''}`} />
-                    {hasExpressedInterest ? 'Interest Expressed' : 'Express Interest'}
+                    {hasExpressedInterest ? 'Remove Interest' : 'Express Interest'}
                   </button>
                 </div>
 
-                {/* Quick Stats */}
+                {/* Comments Section */}
                 <div className="bg-gray-50 rounded-lg p-6">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Stats</h3>
-                  <div className="space-y-3">
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Posted</span>
-                      <span className="font-medium">{formatDate(submission.created_at)}</span>
+                  <div className="flex items-center mb-4">
+                    <MessageCircle className="h-5 w-5 text-gray-600 mr-2" />
+                    <h3 className="text-lg font-semibold text-gray-900">
+                      Discussion ({comments.length})
+                    </h3>
+                  </div>
+
+                  {/* New Comment Form */}
+                  {user ? (
+                    <div className="mb-6">
+                      <textarea
+                        value={newComment}
+                        onChange={(e) => setNewComment(e.target.value)}
+                        placeholder="Share your thoughts about this property..."
+                        className="w-full p-3 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        rows={3}
+                        maxLength={500}
+                      />
+                      <div className="flex justify-between items-center mt-2">
+                        <span className="text-xs text-gray-500">
+                          {newComment.length}/500 characters
+                        </span>
+                        <button
+                          onClick={handleSubmitComment}
+                          disabled={!newComment.trim()}
+                          className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+                        >
+                          <Send className="h-4 w-4 mr-2" />
+                          Comment
+                        </button>
+                      </div>
                     </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Views</span>
-                      <span className="font-medium">{submission.view_count}</span>
+                  ) : (
+                    <div className="mb-6 p-4 bg-blue-50 rounded-lg text-center">
+                      <p className="text-blue-700">Please sign in to join the discussion</p>
                     </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Interested</span>
-                      <span className="font-medium">{submission.interest_count}</span>
-                    </div>
+                  )}
+
+                  {/* Comments List */}
+                  <div className="h-150 overflow-y-auto border border-gray-200 rounded-lg bg-white">
+                    {commentsLoading ? (
+                      <div className="text-center py-4">
+                        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mx-auto"></div>
+                      </div>
+                    ) : comments.length === 0 ? (
+                      <div className="text-center py-8 text-gray-500">
+                        <MessageCircle className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                        <p>No comments yet. Be the first to share your thoughts!</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-4 p-4">
+                        {comments.map((comment) => (
+                          <div key={comment.id} className="border-b border-gray-200 pb-4 last:border-b-0">
+                            {/* Main Comment */}
+                            <div className="mb-3">
+                              <div className="flex items-start justify-between mb-2">
+                                <div className="flex items-center">
+                                  <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center mr-3">
+                                    <span className="text-white text-xs font-semibold">
+                                      {comment.user_name.split(' ').map(n => n[0]).join('').toUpperCase()}
+                                    </span>
+                                  </div>
+                                  <div>
+                                    <span className="font-medium text-gray-900">{comment.user_name}</span>
+                                    <span className="text-xs text-gray-500 ml-2">
+                                      {formatCommentDate(comment.created_at)}
+                                      {comment.is_edited && ' (edited)'}
+                                    </span>
+                                  </div>
+                                </div>
+                                {user?.id === comment.user_id && (
+                                  <div className="flex space-x-1">
+                                    <button
+                                      onClick={() => {
+                                        setEditingComment(comment.id);
+                                        setEditText(comment.comment_text);
+                                      }}
+                                      className="p-1 text-gray-400 hover:text-blue-600"
+                                    >
+                                      <Edit2 className="h-3 w-3" />
+                                    </button>
+                                    <button
+                                      onClick={() => handleDeleteComment(comment.id)}
+                                      className="p-1 text-gray-400 hover:text-red-600"
+                                    >
+                                      <Trash2 className="h-3 w-3" />
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+                              
+                              {editingComment === comment.id ? (
+                                <div className="ml-11">
+                                  <textarea
+                                    value={editText}
+                                    onChange={(e) => setEditText(e.target.value)}
+                                    className="w-full p-2 border border-gray-300 rounded text-sm resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                    rows={2}
+                                    maxLength={500}
+                                  />
+                                  <div className="flex justify-end space-x-2 mt-2">
+                                    <button
+                                      onClick={() => {
+                                        setEditingComment(null);
+                                        setEditText('');
+                                      }}
+                                      className="px-3 py-1 text-xs text-gray-600 hover:text-gray-800"
+                                    >
+                                      Cancel
+                                    </button>
+                                    <button
+                                      onClick={() => handleEditComment(comment.id)}
+                                      disabled={!editText.trim()}
+                                      className="px-3 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 disabled:bg-gray-300"
+                                    >
+                                      Save
+                                    </button>
+                                  </div>
+                                </div>
+                              ) : (
+                                <>
+                                  <p className="text-gray-800 ml-11 text-sm">{comment.comment_text}</p>
+                                  {user && (
+                                    <button
+                                      onClick={() => setReplyingTo(comment.id)}
+                                      className="ml-11 mt-2 text-xs text-blue-600 hover:text-blue-700 flex items-center"
+                                    >
+                                      <Reply className="h-3 w-3 mr-1" />
+                                      Reply
+                                    </button>
+                                  )}
+                                </>
+                              )}
+                            </div>
+
+                            {/* Reply Form */}
+                            {replyingTo === comment.id && (
+                              <div className="ml-11 mb-3">
+                                <div className="bg-gray-100 p-2 rounded text-xs text-gray-600 mb-2">
+                                  Replying to: "{comment.comment_text.length > 50 ? comment.comment_text.substring(0, 50) + '...' : comment.comment_text}"
+                                </div>
+                                <textarea
+                                  value={replyText}
+                                  onChange={(e) => setReplyText(e.target.value)}
+                                  placeholder="Write your reply..."
+                                  className="w-full p-2 border border-gray-300 rounded text-sm resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                  rows={2}
+                                  maxLength={500}
+                                />
+                                <div className="flex justify-end space-x-2 mt-2">
+                                  <button
+                                    onClick={() => {
+                                      setReplyingTo(null);
+                                      setReplyText('');
+                                    }}
+                                    className="px-3 py-1 text-xs text-gray-600 hover:text-gray-800"
+                                  >
+                                    Cancel
+                                  </button>
+                                  <button
+                                    onClick={() => handleSubmitReply(comment.id, comment.comment_text)}
+                                    disabled={!replyText.trim()}
+                                    className="px-3 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 disabled:bg-gray-300"
+                                  >
+                                    Reply
+                                  </button>
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Replies */}
+                            {comment.replies.length > 0 && (
+                              <div className="ml-11 space-y-3">
+                                {comment.replies.map((reply) => (
+                                  <div key={reply.id} className="border-l-2 border-gray-200 pl-4">
+                                    <div className="flex items-start justify-between mb-1">
+                                      <div className="flex items-center">
+                                        <div className="w-6 h-6 bg-gray-400 rounded-full flex items-center justify-center mr-2">
+                                          <span className="text-white text-xs font-semibold">
+                                            {reply.user_name.split(' ').map(n => n[0]).join('').toUpperCase()}
+                                          </span>
+                                        </div>
+                                        <div>
+                                          <span className="font-medium text-gray-900 text-sm">{reply.user_name}</span>
+                                          <span className="text-xs text-gray-500 ml-2">
+                                            {formatCommentDate(reply.created_at)}
+                                            {reply.is_edited && ' (edited)'}
+                                          </span>
+                                        </div>
+                                      </div>
+                                      {user?.id === reply.user_id && (
+                                        <div className="flex space-x-1">
+                                          <button
+                                            onClick={() => {
+                                              setEditingComment(reply.id);
+                                              setEditText(reply.comment_text);
+                                            }}
+                                            className="p-1 text-gray-400 hover:text-blue-600"
+                                          >
+                                            <Edit2 className="h-3 w-3" />
+                                          </button>
+                                          <button
+                                            onClick={() => handleDeleteComment(reply.id)}
+                                            className="p-1 text-gray-400 hover:text-red-600"
+                                          >
+                                            <Trash2 className="h-3 w-3" />
+                                          </button>
+                                        </div>
+                                      )}
+                                    </div>
+                                    
+                                    {reply.reply_context_snippet && (
+                                      <div className="text-xs text-gray-500 italic ml-8 mb-1">
+                                        "{reply.reply_context_snippet}"
+                                      </div>
+                                    )}
+                                    
+                                    {editingComment === reply.id ? (
+                                      <div className="ml-8">
+                                        <textarea
+                                          value={editText}
+                                          onChange={(e) => setEditText(e.target.value)}
+                                          className="w-full p-2 border border-gray-300 rounded text-sm resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                          rows={2}
+                                          maxLength={500}
+                                        />
+                                        <div className="flex justify-end space-x-2 mt-2">
+                                          <button
+                                            onClick={() => {
+                                              setEditingComment(null);
+                                              setEditText('');
+                                            }}
+                                            className="px-3 py-1 text-xs text-gray-600 hover:text-gray-800"
+                                          >
+                                            Cancel
+                                          </button>
+                                          <button
+                                            onClick={() => handleEditComment(reply.id)}
+                                            disabled={!editText.trim()}
+                                            className="px-3 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 disabled:bg-gray-300"
+                                          >
+                                            Save
+                                          </button>
+                                        </div>
+                                      </div>
+                                    ) : (
+                                      <p className="text-gray-800 ml-8 text-sm">{reply.comment_text}</p>
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>

@@ -74,11 +74,10 @@ const isMotivatedSeller = (listing: Listing): boolean => {
 
 const isDistressed = (listing: Listing): boolean => {
   const result = !!(listing.pre_foreclosure ||
-    listing.tax_lien ||
     listing.reo ||
     listing.auction ||
     listing.foreclosure);
-  console.log('isDistressed - preForeclosure:', listing.pre_foreclosure, 'taxLien:', listing.tax_lien, 'reo:', listing.reo, 'auction:', listing.auction, 'foreclosure:', listing.foreclosure, 'result:', result);
+  console.log('isDistressed - preForeclosure:', listing.pre_foreclosure, 'reo:', listing.reo, 'auction:', listing.auction, 'foreclosure:', listing.foreclosure, 'result:', result);
   return result;
 };
 

@@ -43,7 +43,6 @@ export const PropertyActions = ({ listing }: PropertyActionsProps) => {
     const flags = [];
     if (listing.auction) flags.push('Auction');
     if (listing.reo) flags.push('REO');
-    if (listing.tax_lien) flags.push('Tax Lien');
     if (listing.pre_foreclosure) flags.push('Pre-Foreclosure');
     if (listing.private_lender) flags.push('Private Lender');
     if (listing.out_of_state_absentee_owner) flags.push('Absentee Owner');
@@ -145,7 +144,6 @@ export const PropertyActions = ({ listing }: PropertyActionsProps) => {
       ["Assumable:", listing.assumable ? "Yes" : "No"],
       ["REO:", listing.reo ? "Yes" : "No"],
       ["Auction:", listing.auction ? "Yes" : "No"],
-      ["Tax Lien:", listing.tax_lien ? "Yes" : "No"],
       ["Pre Foreclosure:", listing.pre_foreclosure ? "Yes" : "No"],
       ["Private Lender:", listing.private_lender ? "Yes" : "No"],
     ], rightX, startY + 101);
@@ -291,10 +289,6 @@ export const PropertyActions = ({ listing }: PropertyActionsProps) => {
               <div className="flex">
                 <span>REO:&nbsp;</span>
                 <span className="font-medium">{listing.reo ? 'Yes' : 'No'}</span>
-              </div>
-              <div className="flex">
-                <span>Tax Lien:&nbsp;</span>
-                <span className="font-medium">{listing.tax_lien ? 'Yes' : 'No'}</span>
               </div>
               <div className="flex">
                 <span>Pre-Foreclosure:&nbsp;</span>

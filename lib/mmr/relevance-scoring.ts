@@ -160,8 +160,7 @@ export function calculateRelevanceScore(
   const distressSignals = [
     property.pre_foreclosure,
     property.auction,
-    property.reo,
-    property.tax_lien
+    property.reo
   ].filter(Boolean).length;
   
   const distressFit = clamp01(distressSignals / 2); // cap at 1 with >=2 signals
@@ -177,8 +176,7 @@ export function calculateRelevanceScore(
     const distressTypes = [
       property.pre_foreclosure && "pre-foreclosure",
       property.auction && "auction",
-      property.reo && "REO",
-      property.tax_lien && "tax lien"
+      property.reo && "REO"
     ].filter(Boolean);
     reasons.push(`Distressed: ${distressTypes.join(", ")}`);
   }

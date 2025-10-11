@@ -101,7 +101,6 @@ const formatBooleanPrefName = (key: string): string => {
     const nameMap: { [key: string]: string } = {
         'out_of_state_absentee_owner': 'Out-of-State Owners',
         'reo': 'REO Properties',
-        'tax_lien': 'Tax Lien Properties', 
         'auction': 'Auction Properties',
         'pre_foreclosure': 'Pre-Foreclosure Properties'
     };

@@ -72,7 +72,6 @@ export const PropertyModal: React.FC<PropertyModalProps> = ({
     const flags = [];
     if (property.auction) flags.push('Auction');
     if (property.reo) flags.push('REO');
-    if (property.tax_lien) flags.push('Tax Lien');
     if (property.pre_foreclosure) flags.push('Pre-Foreclosure');
     if (property.private_lender) flags.push('Private Lender');
     if (property.out_of_state_absentee_owner) flags.push('Absentee Owner');

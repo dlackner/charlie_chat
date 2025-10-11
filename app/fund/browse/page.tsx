@@ -47,7 +47,15 @@ function BrowseSubmissionsContent() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [submissions, setSubmissions] = useState<Submission[]>([]);
+  const [filteredSubmissions, setFilteredSubmissions] = useState<Submission[]>([]);
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
+  
+  // Filter states
+  const [showFilters, setShowFilters] = useState(false);
+  const [partnershipTypeFilter, setPartnershipTypeFilter] = useState('');
+  const [userFilter, setUserFilter] = useState('');
+  const [availableUsers, setAvailableUsers] = useState<{id: string, name: string}[]>([]);
+  const [availablePartnershipTypes, setAvailablePartnershipTypes] = useState<string[]>([]);
 
   // Check for success message
   useEffect(() => {
@@ -130,6 +138,18 @@ function BrowseSubmissionsContent() {
         );
 
         setSubmissions(formattedSubmissions);
+        setFilteredSubmissions(formattedSubmissions);
+        
+        // Extract unique partnership types and users for filters
+        const uniquePartnershipTypes = [...new Set(formattedSubmissions.map(s => s.partnership_type))].filter(Boolean);
+        const uniqueUsers = [...new Map(
+          formattedSubmissions
+            .filter(s => s.submitter_name)
+            .map(s => [s.user_id, { id: s.user_id, name: s.submitter_name! }])
+        ).values()];
+        
+        setAvailablePartnershipTypes(uniquePartnershipTypes);
+        setAvailableUsers(uniqueUsers);
       } catch (err) {
         console.error('Error fetching submissions:', err);
         setError('Failed to load submissions');
@@ -140,6 +160,27 @@ function BrowseSubmissionsContent() {
 
     fetchSubmissions();
   }, [supabase]);
+
+  // Filter submissions when filters change
+  useEffect(() => {
+    let filtered = submissions;
+    
+    if (partnershipTypeFilter) {
+      filtered = filtered.filter(s => s.partnership_type === partnershipTypeFilter);
+    }
+    
+    if (userFilter) {
+      filtered = filtered.filter(s => s.user_id === userFilter);
+    }
+    
+    setFilteredSubmissions(filtered);
+  }, [submissions, partnershipTypeFilter, userFilter]);
+
+  // Clear filters
+  const clearFilters = () => {
+    setPartnershipTypeFilter('');
+    setUserFilter('');
+  };
 
   // Format date
   const formatDate = (dateString: string) => {
@@ -236,13 +277,93 @@ function BrowseSubmissionsContent() {
           <div className="bg-white rounded-xl shadow-lg p-8">
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-2xl font-bold text-gray-900">Investment Opportunities</h2>
-              <button className="inline-flex items-center px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors">
-                <Filter className="h-4 w-4 mr-2" />
-                Filter
-              </button>
+              <div className="flex items-center gap-4">
+                {(partnershipTypeFilter || userFilter) && (
+                  <span className="text-sm text-gray-600">
+                    {filteredSubmissions.length} of {submissions.length} results
+                  </span>
+                )}
+                <button 
+                  onClick={() => setShowFilters(!showFilters)}
+                  className={`inline-flex items-center px-4 py-2 rounded-lg transition-colors ${
+                    showFilters || partnershipTypeFilter || userFilter
+                      ? 'bg-blue-100 text-blue-700 border border-blue-300'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  <Filter className="h-4 w-4 mr-2" />
+                  Filter
+                </button>
+              </div>
             </div>
 
-            {submissions.length === 0 ? (
+            {/* Filter Controls */}
+            {showFilters && (
+              <div className="mb-6 p-4 bg-gray-50 rounded-lg border">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {/* Partnership Type Filter */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Partnership Type
+                    </label>
+                    <select
+                      value={partnershipTypeFilter}
+                      onChange={(e) => setPartnershipTypeFilter(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    >
+                      <option value="">All Types</option>
+                      {availablePartnershipTypes.map(type => (
+                        <option key={type} value={type}>{type}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* User Filter */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Submitted By
+                    </label>
+                    <select
+                      value={userFilter}
+                      onChange={(e) => setUserFilter(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    >
+                      <option value="">All Users</option>
+                      {availableUsers.map(user => (
+                        <option key={user.id} value={user.id}>{user.name}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Clear Filters */}
+                  <div className="flex items-end">
+                    <button
+                      onClick={clearFilters}
+                      disabled={!partnershipTypeFilter && !userFilter}
+                      className="w-full px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Clear Filters
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {filteredSubmissions.length === 0 && submissions.length > 0 ? (
+              <div className="text-center py-12">
+                <Filter className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-gray-900 mb-2">No results found</h3>
+                <p className="text-gray-500 mb-6">
+                  Try adjusting your filters to see more opportunities.
+                </p>
+                <button
+                  onClick={clearFilters}
+                  className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  Clear Filters
+                </button>
+              </div>
+            ) : submissions.length === 0 ? (
               <div className="text-center py-12">
                 <Building className="h-16 w-16 text-gray-300 mx-auto mb-4" />
                 <h3 className="text-lg font-medium text-gray-900 mb-2">No submissions available yet</h3>
@@ -258,7 +379,7 @@ function BrowseSubmissionsContent() {
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {submissions.map((submission) => (
+                {filteredSubmissions.map((submission) => (
                   <div 
                     key={submission.id} 
                     className="bg-white rounded-xl overflow-hidden hover:shadow-xl transition-all duration-300 cursor-pointer border border-gray-200"

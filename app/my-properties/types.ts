@@ -23,7 +23,6 @@ export interface BaseSavedProperty {
   out_of_state_absentee_owner: boolean;
   auction: boolean;
   reo: boolean;
-  tax_lien: boolean;
   pre_foreclosure: boolean;
   private_lender: boolean;
   saved_at: string;

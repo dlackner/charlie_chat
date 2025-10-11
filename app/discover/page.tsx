@@ -225,6 +225,8 @@ function DiscoverPageContent() {
     // Number of Units
     units_min: '',
     units_max: '',
+    mfh_2to4: null as boolean | null,
+    mfh_5plus: null as boolean | null,
     
     // Owner Information
     in_state_owner: null as boolean | null,
@@ -838,7 +840,6 @@ function DiscoverPageContent() {
         resultIndex: 0
       };
       
-      
       const response = await fetch('/api/realestateapi', {
         method: 'POST',
         headers: {
@@ -928,6 +929,8 @@ function DiscoverPageContent() {
       // Number of Units
       units_min: '',
       units_max: '',
+      mfh_2to4: null,
+      mfh_5plus: null,
       
       // Owner Information
       in_state_owner: null,
@@ -1281,6 +1284,8 @@ function DiscoverPageContent() {
       const fieldToSection: { [key: string]: string } = {
         units_min: 'units',
         units_max: 'units',
+        mfh_2to4: 'units',
+        mfh_5plus: 'units',
         in_state_owner: 'owner',
         out_of_state_owner: 'owner',
         corporate_owned: 'owner',
@@ -1333,6 +1338,8 @@ function DiscoverPageContent() {
         // Reset all other filters to defaults
         units_min: '',
         units_max: '',
+        mfh_2to4: null,
+        mfh_5plus: null,
         in_state_owner: null,
         out_of_state_owner: null,
         corporate_owned: null,
@@ -1406,6 +1413,8 @@ function DiscoverPageContent() {
         // Reset all other filters to defaults
         units_min: '',
         units_max: '',
+        mfh_2to4: null,
+        mfh_5plus: null,
         in_state_owner: null,
         out_of_state_owner: null,
         corporate_owned: null,
@@ -1460,6 +1469,8 @@ function DiscoverPageContent() {
       const fieldToSection: { [key: string]: string } = {
         units_min: 'units',
         units_max: 'units',
+        mfh_2to4: 'units',
+        mfh_5plus: 'units',
         in_state_owner: 'owner',
         out_of_state_owner: 'owner',
         corporate_owned: 'owner',
@@ -1511,6 +1522,8 @@ function DiscoverPageContent() {
         // Reset all other filters to defaults
         units_min: '',
         units_max: '',
+        mfh_2to4: null,
+        mfh_5plus: null,
         in_state_owner: null,
         out_of_state_owner: null,
         corporate_owned: null,
@@ -1589,6 +1602,8 @@ function DiscoverPageContent() {
         // Reset all other filters to defaults
         units_min: '',
         units_max: '',
+        mfh_2to4: null,
+        mfh_5plus: null,
         in_state_owner: null,
         out_of_state_owner: null,
         corporate_owned: null,
@@ -1848,22 +1863,58 @@ function DiscoverPageContent() {
                 onToggle={() => toggleSection('units')}
                 sectionKey="units"
               >
-                <div className="flex space-x-2">
-                  <input 
-                    type="number" 
-                    placeholder="Min"
-                    value={filters.units_min}
-                    onChange={(e) => updateFilter('units_min', e.target.value)}
-                    className="w-16 px-2 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  />
-                  <span className="flex items-center text-gray-500">—</span>
-                  <input 
-                    type="number" 
-                    placeholder="Max"
-                    value={filters.units_max}
-                    onChange={(e) => updateFilter('units_max', e.target.value)}
-                    className="w-16 px-2 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  />
+                <div className="space-y-3">
+                  <div className="flex space-x-2">
+                    <input 
+                      type="number" 
+                      placeholder="Min"
+                      value={filters.units_min}
+                      onChange={(e) => updateFilter('units_min', e.target.value)}
+                      className="w-16 px-2 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                    <span className="flex items-center text-gray-500">—</span>
+                    <input 
+                      type="number" 
+                      placeholder="Max"
+                      value={filters.units_max}
+                      onChange={(e) => updateFilter('units_max', e.target.value)}
+                      className="w-16 px-2 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+                  <div className="flex space-x-3">
+                    <label className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        checked={filters.mfh_2to4 === true}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            updateFilter('mfh_2to4', true);
+                            updateFilter('mfh_5plus', null);
+                          } else {
+                            updateFilter('mfh_2to4', null);
+                          }
+                        }}
+                        className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                      />
+                      <span className="text-sm text-gray-700">2-4 units</span>
+                    </label>
+                    <label className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        checked={filters.mfh_5plus === true}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            updateFilter('mfh_5plus', true);
+                            updateFilter('mfh_2to4', null);
+                          } else {
+                            updateFilter('mfh_5plus', null);
+                          }
+                        }}
+                        className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                      />
+                      <span className="text-sm text-gray-700">5+ units</span>
+                    </label>
+                  </div>
                 </div>
               </CollapsibleFilterSection>
 
@@ -2960,22 +3011,58 @@ function DiscoverPageContent() {
                   onToggle={() => toggleSection('units')}
                   sectionKey="units"
                 >
-                  <div className="flex space-x-2">
-                    <input 
-                      type="number" 
-                      placeholder="Min"
-                      value={filters.units_min}
-                      onChange={(e) => updateFilter('units_min', e.target.value)}
-                      className="w-16 px-2 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    />
-                    <span className="flex items-center text-gray-500">—</span>
-                    <input 
-                      type="number" 
-                      placeholder="Max"
-                      value={filters.units_max}
-                      onChange={(e) => updateFilter('units_max', e.target.value)}
-                      className="w-16 px-2 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    />
+                  <div className="space-y-3">
+                    <div className="flex space-x-2">
+                      <input 
+                        type="number" 
+                        placeholder="Min"
+                        value={filters.units_min}
+                        onChange={(e) => updateFilter('units_min', e.target.value)}
+                        className="w-16 px-2 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      />
+                      <span className="flex items-center text-gray-500">—</span>
+                      <input 
+                        type="number" 
+                        placeholder="Max"
+                        value={filters.units_max}
+                        onChange={(e) => updateFilter('units_max', e.target.value)}
+                        className="w-16 px-2 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      />
+                    </div>
+                    <div className="flex space-x-3">
+                      <label className="flex items-center space-x-2">
+                        <input
+                          type="checkbox"
+                          checked={filters.mfh_2to4 === true}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              updateFilter('mfh_2to4', true);
+                              updateFilter('mfh_5plus', null);
+                            } else {
+                              updateFilter('mfh_2to4', null);
+                            }
+                          }}
+                          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                        />
+                        <span className="text-sm text-gray-700">2-4 units</span>
+                      </label>
+                      <label className="flex items-center space-x-2">
+                        <input
+                          type="checkbox"
+                          checked={filters.mfh_5plus === true}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              updateFilter('mfh_5plus', true);
+                              updateFilter('mfh_2to4', null);
+                            } else {
+                              updateFilter('mfh_5plus', null);
+                            }
+                          }}
+                          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                        />
+                        <span className="text-sm text-gray-700">5+ units</span>
+                      </label>
+                    </div>
                   </div>
                 </CollapsibleFilterSection>
 

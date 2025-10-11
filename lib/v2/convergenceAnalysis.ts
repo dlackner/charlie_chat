@@ -259,7 +259,7 @@ const calculateLearnedPreferences = (decisions: any[], marketKey: string): any =
     
     // Boolean characteristics (out_of_state_absentee_owner, etc.)
     const booleanPrefs: any = {};
-    const booleanChars = ['out_of_state_absentee_owner', 'reo', 'tax_lien', 'auction', 'pre_foreclosure'];
+    const booleanChars = ['out_of_state_absentee_owner', 'reo', 'auction', 'pre_foreclosure'];
     
     booleanChars.forEach(char => {
         const favTrue = favorites.filter(f => f.property_characteristics?.[char] === true).length;

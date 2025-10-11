@@ -88,6 +88,59 @@ function InvestmentAnalysisContent() {
   const [editContent, setEditContent] = useState('');
   const [savingEdit, setSavingEdit] = useState(false);
 
+  // Check for saved HTML in localStorage on component mount
+  useEffect(() => {
+    const savedHtml = localStorage.getItem('investmentAnalysisHtmlSnapshot');
+    if (savedHtml) {
+      try {
+        const parsedHtml = JSON.parse(savedHtml);
+        if (parsedHtml.sections) {
+          // Convert saved sections back to AnalysisSection format
+          const restoredSections: AnalysisSection[] = parsedHtml.sections.map((section: any) => ({
+            title: section.title,
+            content: section.content,
+            editable: true
+          }));
+          setAnalysisSections(restoredSections);
+        }
+      } catch (error) {
+        console.error('Error parsing saved HTML:', error);
+      }
+    }
+  }, []);
+
+  // Prevent navigation during generation
+  useEffect(() => {
+    if (generating) {
+      // Prevent browser back/forward navigation
+      const handlePopState = (e: PopStateEvent) => {
+        e.preventDefault();
+        window.history.pushState(null, '', window.location.href);
+        return false;
+      };
+
+      // Prevent tab/window closing
+      const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+        e.preventDefault();
+        e.returnValue = 'Analysis generation in progress. Are you sure you want to leave?';
+        return 'Analysis generation in progress. Are you sure you want to leave?';
+      };
+
+      // Add event listeners
+      window.addEventListener('popstate', handlePopState);
+      window.addEventListener('beforeunload', handleBeforeUnload);
+      
+      // Push initial state to prevent back navigation
+      window.history.pushState(null, '', window.location.href);
+
+      // Cleanup
+      return () => {
+        window.removeEventListener('popstate', handlePopState);
+        window.removeEventListener('beforeunload', handleBeforeUnload);
+      };
+    }
+  }, [generating]);
+
   // Fetch data
   useEffect(() => {
     const fetchData = async () => {
@@ -377,8 +430,17 @@ function InvestmentAnalysisContent() {
         <div className="bg-white shadow-sm border-b">
           <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
             <button
-              onClick={() => router.push(`/fund/create?property=${propertyId}&offer=${offerId}`)}
-              className="flex items-center text-blue-600 hover:text-blue-700 font-medium mb-4"
+              onClick={() => {
+                if (!generating) {
+                  router.push(`/fund/create?property=${propertyId}&offer=${offerId}`);
+                }
+              }}
+              disabled={generating}
+              className={`flex items-center font-medium mb-4 ${
+                generating 
+                  ? 'text-gray-400 cursor-not-allowed' 
+                  : 'text-blue-600 hover:text-blue-700 cursor-pointer'
+              }`}
             >
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back
@@ -447,7 +509,7 @@ function InvestmentAnalysisContent() {
                   <button
                     onClick={generateAnalysis}
                     disabled={generating}
-                    className="w-full inline-flex items-center justify-center px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold rounded-lg hover:from-blue-700 hover:to-purple-700 disabled:opacity-50 transition-all duration-200 shadow-lg"
+                    className="w-full inline-flex items-center justify-center px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold rounded-lg hover:from-blue-700 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-lg"
                   >
                     {generating ? (
                       <>
@@ -470,19 +532,19 @@ function InvestmentAnalysisContent() {
                 // Define colors for each section
                 const sectionColors = [
                   'bg-gradient-to-r from-blue-600 to-blue-700', // Executive Summary
-                  'bg-gradient-to-r from-indigo-600 to-indigo-700', // Property Overview
-                  'bg-gradient-to-r from-purple-600 to-purple-700', // Market Analysis
-                  'bg-gradient-to-r from-green-600 to-green-700', // Financial Analysis
-                  'bg-gradient-to-r from-teal-600 to-teal-700', // Investment Strategy
-                  'bg-gradient-to-r from-orange-600 to-orange-700', // Risk Assessment
-                  'bg-gradient-to-r from-red-600 to-red-700', // Investment Recommendation
+                  'bg-gradient-to-r from-blue-600 to-blue-700', // Property Overview
+                  'bg-gradient-to-r from-blue-600 to-blue-700', // Market Analysis
+                  'bg-gradient-to-r from-blue-600 to-blue-700', // Financial Analysis
+                  'bg-gradient-to-r from-blue-600 to-blue-700', // Investment Strategy
+                  'bg-gradient-to-r from-blue-600 to-blue-700', // Risk Assessment
+                  'bg-gradient-to-r from-blue-600 to-blue-700', // Investment Recommendation
                 ];
                 
                 const sectionColor = sectionColors[index] || 'bg-gradient-to-r from-gray-600 to-gray-700';
                 
                 return (
                   <div key={index} className="bg-white rounded-lg shadow-sm border overflow-hidden">
-                    <div className={`${sectionColor} px-6 py-4`}>
+                    <div className={`${sectionColor} px-8 py-4`}>
                       <div className="flex items-center justify-between">
                         <h2 className="text-xl font-semibold text-white">{section.title}</h2>
                         {section.editable && (

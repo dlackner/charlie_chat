@@ -10,7 +10,9 @@ import {
   Plus,
   ArrowLeft,
   CheckCircle,
-  AlertCircle
+  AlertCircle,
+  Eye,
+  Trash2
 } from 'lucide-react';
 
 interface Property {
@@ -33,6 +35,23 @@ interface OfferScenario {
     projected_irr?: string;
     [key: string]: any;
   };
+}
+
+interface UserSubmission {
+  id: string;
+  property_id: string;
+  deal_summary: string;
+  partnership_type: string;
+  created_at: string;
+  status: string;
+  is_public: boolean;
+  view_count: number;
+  interest_count: number;
+  // Property details from join
+  address?: string;
+  city?: string;
+  state?: string;
+  units_count?: number;
 }
 
 const INVESTMENT_SENTIMENTS = [
@@ -77,7 +96,6 @@ function CreateSubmissionContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user, supabase, isLoading: authLoading } = useAuth();
-  const [showSubmissionModal, setShowSubmissionModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedPropertyId, setSelectedPropertyId] = useState<string | null>(null);
   const [selectedOfferId, setSelectedOfferId] = useState<string | null>(null);
@@ -85,8 +103,27 @@ function CreateSubmissionContent() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [loadingOffers, setLoadingOffers] = useState(false);
-  const [selectedSentiment, setSelectedSentiment] = useState<string>('confident');
+  const [selectedSentiment, setSelectedSentiment] = useState<string>(() => {
+    // Initialize with saved sentiment from localStorage if available
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('selectedSentiment') || 'confident';
+    }
+    return 'confident';
+  });
   const [hoveredSentiment, setHoveredSentiment] = useState<string | null>(null);
+  
+  // New state for submission name and investment thesis
+  const [submissionName, setSubmissionName] = useState<string>('');
+  const [investmentThesis, setInvestmentThesis] = useState<string>('');
+  const [analysisGenerated, setAnalysisGenerated] = useState<boolean>(false);
+  
+  // Submission management state
+  const [userSubmissions, setUserSubmissions] = useState<UserSubmission[]>([]);
+  const [submissionsLoading, setSubmissionsLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState<'my-submissions' | 'create-new'>('create-new');
+  const [showWithdrawModal, setShowWithdrawModal] = useState(false);
+  const [submissionToWithdraw, setSubmissionToWithdraw] = useState<string | null>(null);
+  const [showWithdrawSuccessModal, setShowWithdrawSuccessModal] = useState(false);
   const [hasInvestmentAnalysis, setHasInvestmentAnalysis] = useState(false);
 
   // Real data states
@@ -109,15 +146,52 @@ function CreateSubmissionContent() {
       setSelectedOfferId(offerParam);
     }
     
-    // Restore sentiment from URL param first, then localStorage
-    const sentimentToRestore = sentimentParam || localStorage.getItem('selectedSentiment') || localStorage.getItem('lastUsedSentiment');
+    // Restore sentiment - prioritize localStorage over URL param to maintain user's selection
+    const savedSentiment = localStorage.getItem('selectedSentiment');
+    const sentimentToRestore = savedSentiment || sentimentParam || localStorage.getItem('lastUsedSentiment') || 'confident';
     if (sentimentToRestore && INVESTMENT_SENTIMENTS.some(s => s.value === sentimentToRestore)) {
       setSelectedSentiment(sentimentToRestore);
     }
     
-    // Check if investment analysis has been generated
-    const analysisGenerated = localStorage.getItem('investmentAnalysisPdf') === 'generated';
-    setHasInvestmentAnalysis(analysisGenerated);
+    // Check if we have saved form data (for restoration after analysis generation)
+    const savedFormData = localStorage.getItem('createSubmissionFormData');
+    
+    if (!propertyParam && !offerParam && !sentimentParam) {
+      // No URL params - this is a fresh start, clear everything
+      localStorage.removeItem('investmentAnalysisHtmlSnapshot');
+      localStorage.removeItem('investmentAnalysisPdf');
+      localStorage.removeItem('selectedSentiment');
+      localStorage.removeItem('lastUsedSentiment');
+      localStorage.removeItem('createSubmissionFormData');
+      
+      // Reset all form states for fresh submission
+      setSelectedPropertyId(null);
+      setSelectedOfferId(null);
+      setSelectedSentiment('confident');
+      setSubmissionName('');
+      setInvestmentThesis('');
+      setAnalysisGenerated(false);
+      setShowOfferPrompt(false);
+    } else if (propertyParam && offerParam && savedFormData) {
+      // Coming back from analysis generation with URL params and saved data - restore form data
+      try {
+        const formData = JSON.parse(savedFormData);
+        setSubmissionName(formData.submissionName || '');
+        setInvestmentThesis(formData.investmentThesis || '');
+        // Property and offer will be set by URL params above
+        
+        // Check if analysis exists
+        const analysisExists = localStorage.getItem('investmentAnalysisHtmlSnapshot') !== null;
+        setAnalysisGenerated(analysisExists);
+      } catch (error) {
+        console.error('Error restoring form data:', error);
+        setAnalysisGenerated(false);
+      }
+    } else {
+      // Using URL params but no saved form data - check for existing analysis
+      const analysisExists = localStorage.getItem('investmentAnalysisHtmlSnapshot') !== null;
+      setAnalysisGenerated(analysisExists);
+    }
   }, [searchParams]);
 
   // Save sentiment to localStorage whenever it changes
@@ -126,6 +200,39 @@ function CreateSubmissionContent() {
       localStorage.setItem('selectedSentiment', selectedSentiment);
     }
   }, [selectedSentiment]);
+
+  // Save form data whenever key values change
+  useEffect(() => {
+    if (submissionName || investmentThesis || selectedPropertyId || selectedOfferId) {
+      const formData = {
+        submissionName,
+        investmentThesis,
+        selectedPropertyId,
+        selectedOfferId,
+        selectedSentiment
+      };
+      localStorage.setItem('createSubmissionFormData', JSON.stringify(formData));
+    }
+  }, [submissionName, investmentThesis, selectedPropertyId, selectedOfferId, selectedSentiment]);
+
+  // Check for analysis generation when returning to page
+  useEffect(() => {
+    const checkAnalysisStatus = () => {
+      const analysisExists = localStorage.getItem('investmentAnalysisHtmlSnapshot') !== null;
+      setAnalysisGenerated(analysisExists);
+    };
+
+    // Check immediately
+    checkAnalysisStatus();
+
+    // Also check when window focus returns (user comes back from analysis page)
+    const handleFocus = () => {
+      checkAnalysisStatus();
+    };
+
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
+  }, []);
 
   // Fetch engaged/LOI properties
   useEffect(() => {
@@ -225,6 +332,13 @@ function CreateSubmissionContent() {
       setShowOfferPrompt(!hasOffers);
     }
   }, [selectedPropertyId, offerScenarios, loadingOffers]);
+
+  // Fetch user submissions when My Submissions tab is selected
+  useEffect(() => {
+    if (activeTab === 'my-submissions' && userSubmissions.length === 0) {
+      fetchUserSubmissions();
+    }
+  }, [activeTab]);
 
   // Handle 10-Year Cash Flow report generation
   const handleGenerate10YearCashFlow = async () => {
@@ -338,27 +452,113 @@ function CreateSubmissionContent() {
     }
   };
 
+  // Fetch user submissions
+  const fetchUserSubmissions = async () => {
+    if (!supabase || !user) return;
+    
+    setSubmissionsLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('submissions')
+        .select(`
+          id,
+          property_id,
+          deal_summary,
+          partnership_type,
+          created_at,
+          status,
+          is_public,
+          view_count,
+          interest_count,
+          saved_properties (
+            address_street,
+            address_city,
+            address_state,
+            units_count
+          )
+        `)
+        .eq('user_id', user.id)
+        .eq('status', 'active')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      // Format the submissions data
+      const formattedSubmissions: UserSubmission[] = (data || []).map((item: any) => ({
+        id: item.id,
+        property_id: item.property_id,
+        deal_summary: item.deal_summary,
+        partnership_type: item.partnership_type,
+        created_at: item.created_at,
+        status: item.status,
+        is_public: item.is_public,
+        view_count: item.view_count,
+        interest_count: item.interest_count,
+        address: Array.isArray(item.saved_properties) ? item.saved_properties[0]?.address_street : item.saved_properties?.address_street,
+        city: Array.isArray(item.saved_properties) ? item.saved_properties[0]?.address_city : item.saved_properties?.address_city,
+        state: Array.isArray(item.saved_properties) ? item.saved_properties[0]?.address_state : item.saved_properties?.address_state,
+        units_count: Array.isArray(item.saved_properties) ? item.saved_properties[0]?.units_count : item.saved_properties?.units_count
+      }));
+
+      setUserSubmissions(formattedSubmissions);
+    } catch (err) {
+      console.error('Error fetching user submissions:', err);
+    } finally {
+      setSubmissionsLoading(false);
+    }
+  };
+
+  // Handle withdrawing a submission
+  const handleWithdrawSubmission = (submissionId: string) => {
+    setSubmissionToWithdraw(submissionId);
+    setShowWithdrawModal(true);
+  };
+
+  // Confirm withdrawal
+  const confirmWithdrawSubmission = async () => {
+    if (!supabase || !user || !submissionToWithdraw) return;
+
+    try {
+      console.log('Attempting to withdraw submission:', submissionToWithdraw, 'for user:', user.id);
+      
+      const { data, error } = await supabase
+        .from('submissions')
+        .update({ 
+          status: 'archived',
+          is_public: false 
+        })
+        .eq('id', submissionToWithdraw)
+        .eq('user_id', user.id);
+
+      console.log('Supabase response:', { data, error });
+
+      if (error) {
+        console.error('Supabase error details:', error);
+        throw error;
+      }
+
+      // Remove from local state
+      setUserSubmissions(prev => prev.filter(sub => sub.id !== submissionToWithdraw));
+      
+      setShowWithdrawModal(false);
+      setSubmissionToWithdraw(null);
+      setShowWithdrawSuccessModal(true);
+    } catch (err) {
+      console.error('Error withdrawing submission:', err);
+      alert(`Failed to withdraw submission: ${err instanceof Error ? err.message : 'Unknown error'}. Please try again.`);
+    }
+  };
+
   // Handle submission
   const handleSubmission = async () => {
-    if (!selectedPropertyId || !selectedOfferId) return;
+    if (!selectedPropertyId || !selectedOfferId || !submissionName.trim() || !investmentThesis.trim()) {
+      alert('Please complete all steps before creating your submission');
+      return;
+    }
 
     setIsSubmitting(true);
     try {
       if (!user || !supabase) throw new Error('User not authenticated');
-
-      // Get deal summary from modal form
-      const dealSummaryElement = document.querySelector('textarea[placeholder*="Describe the investment"]') as HTMLTextAreaElement;
-      const dealSummary = dealSummaryElement?.value || '';
-
-      if (!dealSummary.trim()) {
-        alert('Please enter a deal summary');
-        setIsSubmitting(false);
-        return;
-      }
-
-      // Get partnership type from modal form - target the specific select by ID
-      const partnershipTypeElement = document.getElementById('partnership-type-select') as HTMLSelectElement;
-      const partnershipType = partnershipTypeElement?.value || 'Limited Partner';
 
       
       const { data, error } = await supabase
@@ -367,9 +567,10 @@ function CreateSubmissionContent() {
           user_id: user.id,
           property_id: selectedPropertyId,
           offer_scenario_id: selectedOfferId,
-          deal_summary: dealSummary,
-          partnership_type: partnershipType,
+          deal_summary: investmentThesis,
+          partnership_type: 'Limited Partner', // Default for now
           investment_sentiment: selectedSentiment,
+          submission_name: submissionName,
           status: 'active',
           is_public: true
         })
@@ -539,7 +740,11 @@ function CreateSubmissionContent() {
         // Don't fail the submission if HTML snapshot saving fails
       }
 
-      setShowSubmissionModal(false);
+      // Clear saved form data after successful submission
+      localStorage.removeItem('createSubmissionFormData');
+      localStorage.removeItem('investmentAnalysisHtmlSnapshot');
+      localStorage.removeItem('selectedSentiment');
+      localStorage.removeItem('lastUsedSentiment');
       
       // Redirect to browse page with success message
       router.push(`/fund/browse?success=created&id=${data.id}`);
@@ -619,20 +824,168 @@ function CreateSubmissionContent() {
               Back
             </button>
             
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">Create Submission</h1>
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">Manage Submissions</h1>
             <p className="text-gray-600">
-              Share your investment opportunity with potential capital partners
+              Manage your existing submissions and create new investment opportunities
             </p>
           </div>
 
-          {/* Create Submission Form */}
-          <div className="bg-white rounded-xl shadow-lg p-8">
-            
-            {/* Step 1: Property Selection */}
+          {/* Tabs */}
+          <div className="bg-white rounded-xl shadow-lg mb-8">
+            <div className="border-b border-gray-200">
+              <nav className="flex">
+                <button
+                  onClick={() => setActiveTab('my-submissions')}
+                  className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
+                    activeTab === 'my-submissions'
+                      ? 'border-blue-500 text-blue-600 bg-blue-50'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  }`}
+                >
+                  My Submissions {userSubmissions.length > 0 && `(${userSubmissions.length})`}
+                </button>
+                <button
+                  onClick={() => setActiveTab('create-new')}
+                  className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
+                    activeTab === 'create-new'
+                      ? 'border-blue-500 text-blue-600 bg-blue-50'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  }`}
+                >
+                  Create New
+                </button>
+              </nav>
+            </div>
+
+            {/* Tab Content */}
+            <div className="p-8">
+              {activeTab === 'my-submissions' ? (
+                <div>
+                  <h2 className="text-xl font-semibold text-gray-900 mb-6">Active Submissions</h2>
+                  {submissionsLoading ? (
+                    <div className="text-center py-12">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
+                      <p className="text-gray-600">Loading submissions...</p>
+                    </div>
+                  ) : userSubmissions.length === 0 ? (
+                    <div className="text-center py-12">
+                      <p className="text-gray-500 mb-4">You have no active submissions yet.</p>
+                      <button
+                        onClick={() => setActiveTab('create-new')}
+                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                      >
+                        Create Your First Submission
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="space-y-6">
+                      {userSubmissions.map((submission) => (
+                        <div key={submission.id} className="border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow">
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <div className="flex items-start justify-between mb-3">
+                                <div>
+                                  <h3 className="text-lg font-semibold text-gray-900">
+                                    {submission.address}
+                                  </h3>
+                                  <p className="text-sm text-gray-600">
+                                    {submission.city}, {submission.state} • {submission.units_count} units
+                                  </p>
+                                </div>
+                                <div className="flex items-center gap-2 ml-4">
+                                  <button
+                                    onClick={() => router.push(`/fund/browse/${submission.id}?source=manage`)}
+                                    className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                                    title="View Details"
+                                  >
+                                    <Eye className="h-4 w-4" />
+                                  </button>
+                                  <button
+                                    onClick={() => handleWithdrawSubmission(submission.id)}
+                                    className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                    title="Withdraw Submission"
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </button>
+                                </div>
+                              </div>
+                              <div className="grid grid-cols-2 gap-4 text-sm text-gray-600 mb-4">
+                                <div>
+                                  <span className="font-medium">Partnership:</span> {submission.partnership_type}
+                                </div>
+                                <div>
+                                  <span className="font-medium">Created:</span> {new Date(submission.created_at).toLocaleDateString()}
+                                </div>
+                                <div>
+                                  <span className="font-medium">Views:</span> {submission.view_count}
+                                </div>
+                                <div>
+                                  <span className="font-medium">Interest:</span> {submission.interest_count}
+                                </div>
+                              </div>
+                              <p className="text-sm text-gray-700 line-clamp-3">
+                                {submission.deal_summary}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div>
+            {/* Step 1: Investment Overview */}
+            <div className="mb-8">
+              <h3 className="text-2xl font-bold text-gray-900 mb-2">Step 1: Investment Overview</h3>
+              <p className="text-gray-600 mb-6">Name your submission and describe your investment thesis</p>
+              
+              <div className="space-y-6">
+                {/* Submission Name */}
+                <div>
+                  <label htmlFor="submissionName" className="block text-sm font-medium text-gray-700 mb-2">
+                    Submission Name
+                  </label>
+                  <input
+                    type="text"
+                    id="submissionName"
+                    value={submissionName}
+                    onChange={(e) => setSubmissionName(e.target.value)}
+                    placeholder="e.g., Downtown Multifamily Opportunity"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+                
+                {/* Investment Thesis */}
+                <div>
+                  <label htmlFor="investmentThesis" className="block text-sm font-medium text-gray-700 mb-2">
+                    Investment Thesis
+                  </label>
+                  <textarea
+                    id="investmentThesis"
+                    value={investmentThesis}
+                    onChange={(e) => setInvestmentThesis(e.target.value)}
+                    placeholder="Describe the investment opportunity, key highlights, and what you're looking for in a partner..."
+                    rows={6}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-y min-h-[150px]"
+                  />
+                  <p className="mt-2 text-sm text-gray-500">
+                    This will be used as your deal summary. The text box will expand as you type.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Step 2: Property Selection */}
+            {submissionName.trim() && investmentThesis.trim() && (
+              <div className="mb-8">
+                <h3 className="text-2xl font-bold text-gray-900 mb-2">Step 2: Select a Property for Funding</h3>
+                <p className="text-gray-600 mb-6">Choose from properties where you've already sent an LOI or are actively engaged</p>
+              </div>
+            )}
+              
+            {submissionName.trim() && investmentThesis.trim() && (
             <div className="mb-6">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Select Property (Engaged or LOI Sent only)
-              </label>
               {engagedProperties.length === 0 ? (
                 <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
                   <p className="text-yellow-800">
@@ -655,34 +1008,110 @@ function CreateSubmissionContent() {
                 </select>
               )}
             </div>
+            )}
 
-            {/* Step 2: Offer Scenario Selection */}
-            {selectedPropertyId && offerScenarios[selectedPropertyId] && offerScenarios[selectedPropertyId].length > 0 && (
-              <div className="mb-6">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Select Pricing Scenario
-                </label>
-                <select
-                  value={selectedOfferId || ''}
-                  onChange={(e) => setSelectedOfferId(e.target.value)}
-                  className="w-full border border-gray-300 rounded-lg p-3"
-                >
-                  <option value="">Choose a pricing scenario...</option>
-                  {offerScenarios[selectedPropertyId].map(offer => (
-                    <option key={offer.id} value={offer.id}>
-                      {offer.offer_name} - ${((offer.offer_data.purchasePrice || 0) / 1000000).toFixed(2)}M {offer.offer_data.projected_irr ? `(IRR: ${offer.offer_data.projected_irr})` : ''}
-                    </option>
-                  ))}
-                </select>
+            {/* Step 3: Offer Scenario Selection */}
+            {selectedPropertyId && (
+              <>
+                <div className="mb-8">
+                  <h3 className="text-2xl font-bold text-gray-900 mb-2">Step 3: Select a Pricing Scenario</h3>
+                  <p className="text-gray-600 mb-6">A Pricing Scenario is required for a submission</p>
+                </div>
+                
+                {offerScenarios[selectedPropertyId] && offerScenarios[selectedPropertyId].length > 0 ? (
+                  <div className="mb-6">
+                    <select
+                      value={selectedOfferId || ''}
+                      onChange={(e) => setSelectedOfferId(e.target.value)}
+                      className="w-full border border-gray-300 rounded-lg p-3"
+                    >
+                      <option value="">Choose a pricing scenario...</option>
+                      {offerScenarios[selectedPropertyId].map(offer => (
+                        <option key={offer.id} value={offer.id}>
+                          {offer.offer_name} - ${((offer.offer_data.purchasePrice || 0) / 1000000).toFixed(2)}M {offer.offer_data.projected_irr ? `(IRR: ${offer.offer_data.projected_irr})` : ''}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                ) : (
+                  <div className="mb-6 bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                    <p className="text-yellow-800">
+                      No pricing scenarios found for this property. Please create an offer scenario first.
+                    </p>
+                  </div>
+                )}
+              </>
+            )}
+
+            {/* Selected Property Confirmation - shown after Steps 1 & 2 */}
+            {selectedPropertyId && selectedOfferId && (
+              <div className="bg-gray-50 rounded-lg p-6 mb-8">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Selected Property</h3>
+                {(() => {
+                  const property = getSelectedProperty();
+                  const offer = getSelectedOffer();
+                  return property && offer ? (
+                    <div className="flex gap-6">
+                      <div className="w-48 h-32 bg-gray-300 rounded-lg flex items-center justify-center overflow-hidden">
+                        <img
+                          src={`https://maps.googleapis.com/maps/api/streetview?size=400x300&location=${encodeURIComponent(property.address + ', ' + property.city + ', ' + property.state)}&heading=0&pitch=0&key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || 'AIzaSyBOA7lqk8SbE4B7OEWp2F3Fk8cWU3GHgQg'}`}
+                          alt={`Street view of ${property.address}`}
+                          className="w-full h-full object-cover rounded-lg"
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement;
+                            target.style.display = 'none';
+                            const parent = target.parentElement;
+                            if (parent) {
+                              parent.innerHTML = `
+                                <svg className="h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                                </svg>
+                              `;
+                            }
+                          }}
+                        />
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex items-start justify-between">
+                          <div>
+                            <h4 className="text-xl font-bold text-gray-900">{property.address}</h4>
+                            <p className="text-gray-600">{property.city}, {property.state}</p>
+                          </div>
+                        </div>
+                        <div className="mt-4 grid grid-cols-2 gap-4 text-sm">
+                          <div>
+                            <span className="text-sm text-gray-500">Units:</span>
+                            <span className="ml-2 font-medium text-gray-900">{property.units_count}</span>
+                          </div>
+                          <div>
+                            <span className="text-sm text-gray-500">Year Built:</span>
+                            <span className="ml-2 font-medium text-gray-900">{property.year_built || 'N/A'}</span>
+                          </div>
+                          <div>
+                            <span className="text-sm text-gray-500">Purchase Price:</span>
+                            <span className="ml-2 font-medium text-green-600">{formatCurrency(offer.offer_data.purchasePrice || 0)}</span>
+                          </div>
+                          <div>
+                            <span className="text-sm text-gray-500">Projected IRR:</span>
+                            <span className="ml-2 font-medium text-blue-600">{offer.offer_data.projected_irr || 'N/A'}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ) : null;
+                })()}
               </div>
             )}
 
             {/* Investment Sentiment Selection */}
             {selectedPropertyId && selectedOfferId && (
-              <div className="mb-6">
-                <label className="block text-sm font-medium text-gray-700 mb-4">
-                  Investment Presentation Style
-                </label>
+              <>
+                <div className="mb-8">
+                  <h3 className="text-2xl font-bold text-gray-900 mb-2">Step 4: Investment Presentation Style</h3>
+                  <p className="text-gray-600 mb-6">Your presentation style will be reflected in the AI-generated Investment Analysis</p>
+                </div>
+                
+                <div className="mb-6">
                 <div className="relative bg-gradient-to-br from-blue-50 via-white to-purple-50 border border-gray-200 rounded-lg p-8 shadow-sm">
                   {/* Speedometer SVG */}
                   <div className="flex justify-center mb-4">
@@ -868,10 +1297,32 @@ function CreateSubmissionContent() {
                   </div>
                 </div>
               </div>
+              </>
+            )}
+
+            {/* Step 4: Generate AI Investment Analysis */}
+            {selectedPropertyId && selectedOfferId && selectedSentiment && (
+              <div className="mb-8">
+                <h3 className="text-2xl font-bold text-gray-900 mb-2">Step 5: Generate AI Investment Analysis</h3>
+                <p className="text-gray-600 mb-6">You will have the opportunity to edit the analysis before submission</p>
+                
+                <button
+                  onClick={() => {
+                    const selectedProperty = engagedProperties.find(p => p.property_id === selectedPropertyId);
+                    const selectedOffer = offerScenarios[selectedPropertyId]?.find(o => o.id === selectedOfferId);
+                    if (selectedProperty && selectedOffer) {
+                      router.push(`/fund/investment-analysis?property=${selectedPropertyId}&offer=${selectedOfferId}&sentiment=${selectedSentiment}`);
+                    }
+                  }}
+                  className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all duration-200 shadow-lg"
+                >
+                  Generate Investment Analysis
+                </button>
+              </div>
             )}
 
             {/* No Offers Alert */}
-            {showOfferPrompt && selectedPropertyId && (!offerScenarios[selectedPropertyId] || offerScenarios[selectedPropertyId].length === 0) && (
+            {showOfferPrompt && selectedPropertyId && !loadingOffers && (!offerScenarios[selectedPropertyId] || offerScenarios[selectedPropertyId].length === 0) && (
               <div className="mb-6 bg-yellow-50 border border-yellow-200 rounded-lg p-4">
                 <div className="flex items-start">
                   <div className="flex-shrink-0">
@@ -889,72 +1340,18 @@ function CreateSubmissionContent() {
               </div>
             )}
 
-            {/* Property Preview - Only show when property AND offer are selected */}
+            {/* Step 5: Review Attachments */}
             {selectedPropertyId && selectedOfferId && (
               <>
-                <div className="bg-gray-50 rounded-lg p-6 mb-6">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Selected Property</h3>
-                  {(() => {
-                    const property = getSelectedProperty();
-                    const offer = getSelectedOffer();
-                    return property && offer ? (
-                      <div className="flex gap-6">
-                        <div className="w-48 h-32 bg-gray-300 rounded-lg flex items-center justify-center overflow-hidden">
-                          <img
-                            src={`https://maps.googleapis.com/maps/api/streetview?size=400x300&location=${encodeURIComponent(property.address + ', ' + property.city + ', ' + property.state)}&heading=0&pitch=0&key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || 'AIzaSyBOA7lqk8SbE4B7OEWp2F3Fk8cWU3GHgQg'}`}
-                            alt={`Street view of ${property.address}`}
-                            className="w-full h-full object-cover rounded-lg"
-                            onError={(e) => {
-                              // Fallback to building icon if image fails to load
-                              const target = e.target as HTMLImageElement;
-                              target.style.display = 'none';
-                              const parent = target.parentElement;
-                              if (parent) {
-                                parent.innerHTML = '<svg class="h-12 w-12 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path></svg>';
-                              }
-                            }}
-                          />
-                        </div>
-                        <div className="flex-1">
-                          <h4 className="font-semibold text-gray-900">{property.address}</h4>
-                          <p className="text-gray-600">{property.city}, {property.state}</p>
-                          <div className="grid grid-cols-2 gap-4 mt-3">
-                            <div>
-                              <span className="text-sm text-gray-500">Units:</span>
-                              <span className="ml-2 font-medium">{property.units_count}</span>
-                            </div>
-                            <div>
-                              <span className="text-sm text-gray-500">Year Built:</span>
-                              <span className="ml-2 font-medium">{property.year_built || 'N/A'}</span>
-                            </div>
-                            <div>
-                              <span className="text-sm text-gray-500">Purchase Price:</span>
-                              <span className="ml-2 font-medium text-green-600">{formatCurrency(offer.offer_data.purchasePrice || 0)}</span>
-                            </div>
-                            <div>
-                              <span className="text-sm text-gray-500">Projected IRR:</span>
-                              <span className="ml-2 font-medium text-blue-600">{offer.offer_data.projected_irr || 'N/A'}</span>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    ) : null;
-                  })()}
+                <div className="mb-8">
+                  <h3 className="text-2xl font-bold text-gray-900 mb-2">Step 6: Review Attachments</h3>
+                  <p className="text-gray-600 mb-6">Your submission will include these reports and analyses</p>
                 </div>
-
-                {/* Attachments Section */}
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Attachments</h3>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
                   <button 
                     onClick={() => router.push(`/fund/property-profile?property=${selectedPropertyId}&offer=${selectedOfferId}&returnUrl=${encodeURIComponent(`/fund/create?property=${selectedPropertyId}&offer=${selectedOfferId}&sentiment=${selectedSentiment}`)}`)}
-                    className="bg-white rounded-lg p-6 shadow-sm border border-gray-200 hover:shadow-md transition-shadow text-left relative"
+                    className="bg-white rounded-lg p-6 shadow-sm border border-gray-200 hover:shadow-md transition-shadow text-left"
                   >
-                    <div className="absolute top-4 right-4">
-                      <div className="flex items-center gap-1 text-xs text-green-600">
-                        <CheckCircle className="h-3 w-3" />
-                        <span className="font-medium">Ready</span>
-                      </div>
-                    </div>
                     <div className="border-l-4 border-purple-500 pl-4">
                       <div className="text-xl font-bold text-gray-900">Property Profile</div>
                     </div>
@@ -962,107 +1359,112 @@ function CreateSubmissionContent() {
                   
                   <button 
                     onClick={handleGenerate10YearCashFlow}
-                    className="bg-white rounded-lg p-6 shadow-sm border border-gray-200 hover:shadow-md transition-shadow text-left relative"
+                    className="bg-white rounded-lg p-6 shadow-sm border border-gray-200 hover:shadow-md transition-shadow text-left"
                   >
-                    <div className="absolute top-4 right-4">
-                      <div className="flex items-center gap-1 text-xs text-green-600">
-                        <CheckCircle className="h-3 w-3" />
-                        <span className="font-medium">Ready</span>
-                      </div>
-                    </div>
                     <div className="border-l-4 border-green-500 pl-4">
                       <div className="text-xl font-bold text-gray-900">10-Year Cash Flow</div>
                     </div>
                   </button>
                   
                   <button 
-                    onClick={() => router.push(`/fund/investment-analysis?property=${selectedPropertyId}&offer=${selectedOfferId}&sentiment=${selectedSentiment}`)}
-                    className="bg-white rounded-lg p-6 shadow-sm border border-gray-200 hover:shadow-md transition-shadow text-left relative"
+                    onClick={() => router.push(`/fund/pricing-scenario-view/${selectedOfferId}`)}
+                    className="bg-white rounded-lg p-6 shadow-sm border border-gray-200 hover:shadow-md transition-shadow text-left"
                   >
-                    <div className="absolute top-4 right-4">
-                      {hasInvestmentAnalysis ? (
-                        <div className="flex items-center gap-1 text-xs text-green-600">
-                          <CheckCircle className="h-3 w-3" />
-                          <span className="font-medium">Generated</span>
-                        </div>
-                      ) : (
-                        <div className="flex items-center gap-1 text-xs text-orange-600">
-                          <AlertCircle className="h-3 w-3" />
-                          <span className="font-medium">Action Needed</span>
-                        </div>
-                      )}
-                    </div>
-                    <div className="border-l-4 border-blue-500 pl-4">
-                      <div className="text-xl font-bold text-gray-900">Investment Analysis</div>
+                    <div className="border-l-4 border-orange-500 pl-4">
+                      <div className="text-xl font-bold text-gray-900">Pricing Scenario</div>
                     </div>
                   </button>
+
+                  {analysisGenerated && (
+                    <button 
+                      onClick={() => {
+                        // Always navigate to the investment analysis page, but it will handle showing existing vs generating new
+                        router.push(`/fund/investment-analysis?property=${selectedPropertyId}&offer=${selectedOfferId}&sentiment=${selectedSentiment}&returnUrl=${encodeURIComponent(`/fund/create?property=${selectedPropertyId}&offer=${selectedOfferId}&sentiment=${selectedSentiment}`)}`);
+                      }}
+                      className="bg-white rounded-lg p-6 shadow-sm border border-gray-200 hover:shadow-md transition-shadow text-left"
+                    >
+                      <div className="border-l-4 border-blue-500 pl-4">
+                        <div className="text-xl font-bold text-gray-900">Investment Analysis</div>
+                      </div>
+                    </button>
+                  )}
                 </div>
 
-                {/* Share Button */}
+                {/* Create Submission Button */}
                 <button
-                  onClick={() => setShowSubmissionModal(true)}
-                  className="inline-flex items-center px-6 py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors"
+                  onClick={handleSubmission}
+                  disabled={isSubmitting || !submissionName.trim() || !investmentThesis.trim() || !selectedPropertyId || !selectedOfferId || !analysisGenerated}
+                  className="inline-flex items-center px-6 py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
                 >
                   <Plus className="h-5 w-5 mr-2" />
-                  Create Submission
+                  {isSubmitting ? 'Creating...' : 'Create Submission'}
                 </button>
               </>
             )}
+                </div>
+              )}
+            </div>
           </div>
-        </div>
 
-        {/* Submission Modal */}
+        {/* Withdraw Submission Modal */}
         <StandardModalWithActions
-          isOpen={showSubmissionModal}
-          onClose={() => setShowSubmissionModal(false)}
-          title="Create Investment Submission"
+          isOpen={showWithdrawModal}
+          onClose={() => {
+            setShowWithdrawModal(false);
+            setSubmissionToWithdraw(null);
+          }}
+          title="Withdraw Submission"
           primaryAction={{
-            label: isSubmitting ? 'Creating...' : 'Create Submission',
-            onClick: handleSubmission,
-            disabled: isSubmitting
+            label: 'Withdraw',
+            onClick: confirmWithdrawSubmission,
+            disabled: false
           }}
           secondaryAction={{
             label: 'Cancel',
-            onClick: () => setShowSubmissionModal(false)
+            onClick: () => {
+              setShowWithdrawModal(false);
+              setSubmissionToWithdraw(null);
+            }
           }}
         >
           <div className="p-6">
-            <div className="mb-6">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Deal Summary
-              </label>
-              <textarea
-                className="w-full border border-gray-300 rounded-lg p-3 resize-none"
-                rows={3}
-                placeholder="Describe the investment opportunity, key highlights, and what you're looking for in a partner..."
-                defaultValue=""
-              />
-            </div>
+            <p className="text-gray-700 mb-2">
+              Are you sure you want to withdraw this submission?
+            </p>
+            <p className="text-gray-600 text-sm">
+              This action cannot be undone.
+            </p>
+          </div>
+        </StandardModalWithActions>
 
-            <div className="mb-6">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Capital Structure
-              </label>
-              <select id="partnership-type-select" className="w-full border border-gray-300 rounded-lg p-3" defaultValue="Limited Partner">
-                <option value="506(b)">506(b)</option>
-                <option value="506(c)">506(c)</option>
-                <option value="Capital Club">Capital Club</option>
-                <option value="Crowd Funding">Crowd Funding</option>
-                <option value="Limited Partner">Limited Partner</option>
-                <option value="Private Equity">Private Equity</option>
-              </select>
-            </div>
-
-            <div className="bg-blue-50 rounded-lg p-4">
-              <h4 className="font-medium text-blue-900 mb-2">What will be included:</h4>
-              <ul className="text-sm text-blue-800 space-y-1">
-                <li>• Property Profile - Complete property details with images and data</li>
-                <li>• 10-Year Cash Flow - PDF from your selected offer scenario</li>
-                <li>• Investment Analysis - AI-generated comprehensive investment report</li>
-              </ul>
+        {/* Withdraw Success Modal */}
+        <StandardModalWithActions
+          isOpen={showWithdrawSuccessModal}
+          onClose={() => setShowWithdrawSuccessModal(false)}
+          title="Submission Withdrawn"
+          primaryAction={{
+            label: 'OK',
+            onClick: () => setShowWithdrawSuccessModal(false),
+            disabled: false
+          }}
+        >
+          <div className="p-6">
+            <div className="flex items-center">
+              <div className="flex-shrink-0">
+                <svg className="h-5 w-5 text-green-400" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                </svg>
+              </div>
+              <div className="ml-3">
+                <p className="text-gray-700">
+                  Submission withdrawn successfully.
+                </p>
+              </div>
             </div>
           </div>
         </StandardModalWithActions>
+
+        </div>
       </div>
     </AuthGuard>
   );
