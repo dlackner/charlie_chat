@@ -4,6 +4,8 @@
  * Part of the new V2 API architecture
  */
 import OpenAI from "openai";
+
+export const dynamic = 'force-dynamic';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 

@@ -4,6 +4,8 @@
 
 import { AssistantResponse } from "ai";
 import OpenAI from "openai";
+
+export const dynamic = 'force-dynamic';
 import { createClient } from '@supabase/supabase-js';
 import { cookies } from 'next/headers';
 
