@@ -1881,7 +1881,7 @@ function DiscoverPageContent() {
                       className="w-16 px-2 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     />
                   </div>
-                  <div className="flex space-x-3">
+                  <div className="hidden flex space-x-3">
                     <label className="flex items-center space-x-2">
                       <input
                         type="checkbox"
@@ -3029,7 +3029,7 @@ function DiscoverPageContent() {
                         className="w-16 px-2 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                       />
                     </div>
-                    <div className="flex space-x-3">
+                    <div className="hidden flex space-x-3">
                       <label className="flex items-center space-x-2">
                         <input
                           type="checkbox"
