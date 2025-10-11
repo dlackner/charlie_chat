@@ -1054,7 +1054,7 @@ function CreateSubmissionContent() {
                     <div className="flex gap-6">
                       <div className="w-48 h-32 bg-gray-300 rounded-lg flex items-center justify-center overflow-hidden">
                         <img
-                          src={`https://maps.googleapis.com/maps/api/streetview?size=400x300&location=${encodeURIComponent(property.address + ', ' + property.city + ', ' + property.state)}&heading=0&pitch=0&key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || 'AIzaSyBOA7lqk8SbE4B7OEWp2F3Fk8cWU3GHgQg'}`}
+                          src={`https://maps.googleapis.com/maps/api/streetview?size=400x300&location=${encodeURIComponent(property.address + ', ' + property.city + ', ' + property.state)}&heading=0&pitch=0&key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}`}
                           alt={`Street view of ${property.address}`}
                           className="w-full h-full object-cover rounded-lg"
                           onError={(e) => {
