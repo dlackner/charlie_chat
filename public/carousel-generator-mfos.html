@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MFOS Carousel Slides Generator</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+
+        .slides-container {
+            display: flex;
+            flex-direction: column;
+            gap: 30px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .slide {
+            width: 1200px;
+            height: 600px;
+            position: relative;
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+            display: flex;
+            align-items: center;
+        }
+
+        .slide-content {
+            display: flex;
+            width: 100%;
+            height: 100%;
+            align-items: center;
+            padding: 60px;
+            gap: 60px;
+        }
+
+        .slide-text {
+            flex: 1;
+            color: white;
+            z-index: 2;
+        }
+
+        .slide-title {
+            font-size: 3.2rem;
+            font-weight: 700;
+            margin-bottom: 15px;
+            line-height: 1.1;
+        }
+
+        .slide-subtitle {
+            font-size: 1.5rem;
+            opacity: 0.9;
+            margin-bottom: 25px;
+            font-weight: 600;
+        }
+
+        .slide-description {
+            font-size: 1.1rem;
+            opacity: 0.85;
+            line-height: 1.6;
+            margin-bottom: 25px;
+        }
+
+        .feature-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .feature-list li {
+            padding: 6px 0;
+            font-size: 1rem;
+            opacity: 0.9;
+            position: relative;
+            padding-left: 25px;
+        }
+
+        .feature-list li:before {
+            content: "✓";
+            color: #4ade80;
+            font-weight: bold;
+            position: absolute;
+            left: 0;
+        }
+
+        .slide-visual {
+            flex: 1;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .mockup {
+            background: white;
+            border-radius: 16px;
+            padding: 30px;
+            box-shadow: 0 25px 50px rgba(0,0,0,0.3);
+            transform: perspective(1000px) rotateY(-10deg) rotateX(5deg);
+            max-width: 400px;
+            width: 100%;
+        }
+
+        /* MFOS Brand Colors - Blue gradient theme */
+        /* Slide 1 - Acquisitions Director */
+        .slide1 {
+            background: linear-gradient(135deg, #2563eb 0%, #4f46e5 100%);
+        }
+
+        .search-interface {
+            color: #333;
+        }
+
+        .search-button {
+            background: #2563eb;
+            color: white;
+            padding: 12px 20px;
+            border-radius: 8px;
+            border: none;
+            font-size: 1rem;
+            margin-bottom: 15px;
+            width: 100%;
+            cursor: pointer;
+        }
+
+        .filter-item {
+            padding: 10px 0;
+            border-bottom: 1px solid #e5e7eb;
+            color: #374151;
+            font-weight: 500;
+            font-size: 0.9rem;
+        }
+
+        /* Slide 2 - Marketing Assistant */
+        .slide2 {
+            background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+        }
+
+        .marketing-mockup {
+            color: #333;
+        }
+
+        .doc-header {
+            background: #3b82f6;
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            font-weight: 600;
+            margin-bottom: 20px;
+        }
+
+        .doc-options {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .doc-option {
+            padding: 12px;
+            background: #f8f9fa;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            text-align: center;
+            font-size: 0.85rem;
+            font-weight: 500;
+        }
+
+        .doc-option.selected {
+            border-color: #3b82f6;
+            background: #eff6ff;
+        }
+
+        .marketing-option {
+            padding: 12px;
+            background: #f8f9fa;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            margin-bottom: 10px;
+        }
+
+        /* Slide 3 - Underwriting Manager */
+        .slide3 {
+            background: linear-gradient(135deg, #1e40af 0%, #6366f1 100%);
+        }
+
+        .analysis-mockup {
+            color: #333;
+        }
+
+        .grade-badge {
+            background: #2563eb;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-weight: 700;
+            font-size: 1.2rem;
+            margin-bottom: 20px;
+            display: inline-block;
+        }
+
+        .metric-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .metric {
+            background: #f8f9fa;
+            padding: 12px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .metric-value {
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: #059669;
+        }
+
+        .metric-label {
+            font-size: 0.8rem;
+            color: #6b7280;
+            margin-top: 4px;
+        }
+
+        /* Slide 4 - Legal Department */
+        .slide4 {
+            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+        }
+
+        .legal-mockup {
+            color: #333;
+        }
+
+        .legal-header {
+            text-align: center;
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: #2563eb;
+            margin-bottom: 20px;
+        }
+
+        .legal-options {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 8px;
+            margin-bottom: 20px;
+        }
+
+        .legal-option {
+            padding: 10px 8px;
+            background: #f8f9fa;
+            border: 1px solid #e5e7eb;
+            border-radius: 6px;
+            text-align: center;
+            font-size: 0.8rem;
+            font-weight: 500;
+        }
+
+        .legal-option.selected {
+            border-color: #3b82f6;
+            background: #eff6ff;
+        }
+
+        /* Slide 5 - Investor Relations Specialist */
+        .slide5 {
+            background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
+        }
+
+        .financing-mockup {
+            color: #333;
+        }
+
+        .capital-header {
+            background: #3b82f6;
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            font-weight: 600;
+            margin-bottom: 20px;
+        }
+
+        .financing-metrics {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        .financing-metric {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            border-left: 4px solid #3b82f6;
+        }
+
+        .financing-value {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: #2563eb;
+        }
+
+        .financing-label {
+            font-size: 0.8rem;
+            color: #6b7280;
+            margin-top: 4px;
+        }
+
+        .download-section {
+            margin-top: 40px;
+            text-align: center;
+        }
+
+        .download-btn {
+            background: #2563eb;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            cursor: pointer;
+            margin: 0 10px 10px 0;
+        }
+
+        .download-btn:hover {
+            background: #1d4ed8;
+        }
+
+        @media (max-width: 768px) {
+            .slide {
+                width: 100%;
+                height: auto;
+                min-height: 500px;
+            }
+            
+            .slide-content {
+                flex-direction: column;
+                padding: 30px;
+                gap: 30px;
+            }
+            
+            .slide-title {
+                font-size: 2.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="slides-container">
+        <!-- Slide 1: Acquisitions Director -->
+        <div class="slide slide1" id="slide1">
+            <div class="slide-content">
+                <div class="slide-text">
+                    <div class="slide-title">Acquisitions Director</div>
+                    <div class="slide-subtitle">Scout Off-Market Opportunities</div>
+                    <div class="slide-description">AI-powered property discovery that finds hidden gems before they hit the market</div>
+                    <ul class="feature-list">
+                        <li>Advanced property filtering & search</li>
+                        <li>Off-market deal identification</li>
+                        <li>Owner contact information</li>
+                        <li>Distressed property alerts</li>
+                        <li>Market trend analysis</li>
+                    </ul>
+                </div>
+                <div class="slide-visual">
+                    <div class="mockup search-interface">
+                        <button class="search-button">🔍 Search Properties</button>
+                        <div class="filter-item">NUMBER OF UNITS ⌄</div>
+                        <div class="filter-item">OWNER INFORMATION ⌄</div>
+                        <div class="filter-item">SALE HISTORY ⌄</div>
+                        <div class="filter-item">PHYSICAL CHARACTERISTICS ⌄</div>
+                        <div class="filter-item">FINANCIAL INFORMATION ⌄</div>
+                        <div class="filter-item">DISTRESS & SPECIAL CONDITIONS ⌄</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 2: Marketing Assistant -->
+        <div class="slide slide2" id="slide2">
+            <div class="slide-content">
+                <div class="slide-text">
+                    <div class="slide-title">Marketing Assistant</div>
+                    <div class="slide-subtitle">Create Letters and Emails</div>
+                    <div class="slide-description">Generate professional marketing letters and emails that engage potential sellers</div>
+                    <ul class="feature-list">
+                        <li>Automated letter generation</li>
+                        <li>Personalized email campaigns</li>
+                        <li>Batch property targeting</li>
+                        <li>Output data to CSV files for easy integration with other tools and print shops</li>
+                    </ul>
+                </div>
+                <div class="slide-visual">
+                    <div class="mockup marketing-mockup">
+                        <div class="doc-header">📧 Engagement Center (1) ⌄</div>
+                        <div style="color: #6b7280; font-size: 0.9rem; margin-bottom: 20px; text-align: center;">MARKETING MATERIALS</div>
+                        <div class="marketing-option">
+                            <div style="display: flex; align-items: center; margin-bottom: 12px;">
+                                <span style="margin-right: 10px;">📄</span>
+                                <div>
+                                    <div style="font-weight: 600; font-size: 0.9rem;">Marketing Letter</div>
+                                    <div style="font-size: 0.8rem; color: #6b7280;">Batch multiple properties</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="marketing-option">
+                            <div style="display: flex; align-items: center; margin-bottom: 12px;">
+                                <span style="margin-right: 10px;">✉️</span>
+                                <div>
+                                    <div style="font-weight: 600; font-size: 0.9rem;">Marketing Email</div>
+                                    <div style="font-size: 0.8rem; color: #6b7280;">Select 1 property</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div style="border-top: 1px solid #e5e7eb; padding-top: 15px; margin-top: 15px;">
+                            <div style="color: #6b7280; font-size: 0.9rem; margin-bottom: 10px;">EXPORT OPTIONS</div>
+                            <div style="display: flex; align-items: center; margin-bottom: 8px;">
+                                <span style="margin-right: 10px;">📊</span>
+                                <div style="font-size: 0.85rem; font-weight: 500;">CSV Download</div>
+                            </div>
+                            <div style="font-size: 0.8rem; color: #6b7280;">Export filtered results</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 3: Underwriting Manager -->
+        <div class="slide slide3" id="slide3">
+            <div class="slide-content">
+                <div class="slide-text">
+                    <div class="slide-title">Underwriting Manager</div>
+                    <div class="slide-subtitle">Model Offers & Financial Statements</div>
+                    <div class="slide-description">Sophisticated financial modeling and investment analysis at your fingertips</div>
+                    <ul class="feature-list">
+                        <li>Investment grade analysis</li>
+                        <li>Cash flow projections</li>
+                        <li>ROI calculations</li>
+                        <li>Risk assessment</li>
+                        <li>Professional reports</li>
+                    </ul>
+                </div>
+                <div class="slide-visual">
+                    <div class="mockup analysis-mockup">
+                        <div class="grade-badge">Investment Grade: A+</div>
+                        <div class="metric-grid">
+                            <div class="metric">
+                                <div class="metric-value">$18,720</div>
+                                <div class="metric-label">Projected NOI</div>
+                            </div>
+                            <div class="metric">
+                                <div class="metric-value">6.5%</div>
+                                <div class="metric-label">Cap Rate</div>
+                            </div>
+                            <div class="metric">
+                                <div class="metric-value">$135,500</div>
+                                <div class="metric-label">Equity Position</div>
+                            </div>
+                            <div class="metric">
+                                <div class="metric-value">18.1%</div>
+                                <div class="metric-label">Cash-on-Cash</div>
+                            </div>
+                        </div>
+                        <div style="border-top: 1px solid #e5e7eb; padding-top: 15px; text-align: center;">
+                            <div style="font-size: 0.85rem; color: #059669; font-weight: 600;">Strong Investment Potential</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 4: Legal Department -->
+        <div class="slide slide4" id="slide4">
+            <div class="slide-content">
+                <div class="slide-text">
+                    <div class="slide-title">Legal Department</div>
+                    <div class="slide-subtitle">Generate LOIs & Purchase Agreements</div>
+                    <div class="slide-description">Professional legal documents generated instantly with proper terms and protections</div>
+                    <ul class="feature-list">
+                        <li>Letters of Intent (LOI)</li>
+                        <li>Purchase & Sale Agreements</li>
+                        <li>Automatically populated with owner information and your terms and conditions</li>
+                        <li>Refined through hundreds of successful real estate transactions</li>
+                    </ul>
+                </div>
+                <div class="slide-visual">
+                    <div class="mockup legal-mockup">
+                        <div class="legal-header">Generate Legal Documents</div>
+                        <div class="legal-options">
+                            <div class="legal-option selected">Short Form LOI</div>
+                            <div class="legal-option">Long Form LOI</div>
+                            <div class="legal-option">Master Lease</div>
+                            <div class="legal-option">Assumption</div>
+                            <div class="legal-option">Seller Financing</div>
+                            <div class="legal-option">Purchase & Sale</div>
+                        </div>
+                        <div style="border-top: 1px solid #e5e7eb; padding-top: 15px;">
+                            <div style="font-size: 0.9rem; color: #374151; margin-bottom: 8px;">📄 Letters of Intent</div>
+                            <div style="font-size: 0.9rem; color: #374151; margin-bottom: 8px;">📋 Purchase & Sale</div>
+                            <div style="font-size: 0.9rem; color: #374151;">⚡ Auto-Populated</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 5: Investor Relations Specialist -->
+        <div class="slide slide5" id="slide5">
+            <div class="slide-content">
+                <div class="slide-text">
+                    <div class="slide-title">Investor Relations Specialist</div>
+                    <div class="slide-subtitle">Capital Club for Property Investment</div>
+                    <div class="slide-description">Collaborate with members of the MultifamilyOS Community to fund your acquisitions</div>
+                    <ul class="feature-list">
+                        <li>Investment partner matching</li>
+                        <li>Financing structure options</li>
+                        <li>Capital requirements analysis</li>
+                        <li>Deal packaging support</li>
+                    </ul>
+                </div>
+                <div class="slide-visual">
+                    <div class="mockup financing-mockup">
+                        <div class="capital-header">💼 Capital Club Network</div>
+                        <div class="financing-metrics">
+                            <div class="financing-metric">
+                                <div class="financing-value">47</div>
+                                <div class="financing-label">Projects Funded</div>
+                            </div>
+                            <div class="financing-metric">
+                                <div class="financing-value">$2.3B</div>
+                                <div class="financing-label">Available Capital</div>
+                            </div>
+                            <div class="financing-metric">
+                                <div class="financing-value">156</div>
+                                <div class="financing-label">Active Investors</div>
+                            </div>
+                            <div class="financing-metric">
+                                <div class="financing-value">18.5%</div>
+                                <div class="financing-label">Target ROI</div>
+                            </div>
+                        </div>
+                        <div style="border-top: 1px solid #e5e7eb; padding-top: 15px; text-align: center;">
+                            <div style="font-size: 0.85rem; color: #2563eb; font-weight: 600;">Community Financing Network</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="download-section">
+        <h2>Download Individual Slides as PNG</h2>
+        <button class="download-btn" onclick="downloadSlide('slide1', 'acquisitions-director')">Download Acquisitions Director</button>
+        <button class="download-btn" onclick="downloadSlide('slide2', 'marketing-assistant')">Download Marketing Assistant</button>
+        <button class="download-btn" onclick="downloadSlide('slide3', 'underwriting-manager')">Download Underwriting Manager</button>
+        <button class="download-btn" onclick="downloadSlide('slide4', 'legal-department')">Download Legal Department</button>
+        <button class="download-btn" onclick="downloadSlide('slide5', 'investor-relations-specialist')">Download Investor Relations Specialist</button>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script>
+        async function downloadSlide(slideId, filename) {
+            const slide = document.getElementById(slideId);
+            
+            try {
+                const canvas = await html2canvas(slide, {
+                    width: 1200,
+                    height: 600,
+                    scale: 2,
+                    useCORS: true,
+                    allowTaint: true,
+                    backgroundColor: null
+                });
+                
+                const link = document.createElement('a');
+                link.download = `${filename}.png`;
+                link.href = canvas.toDataURL('image/png');
+                link.click();
+            } catch (error) {
+                console.error('Error generating PNG:', error);
+                alert('Error generating PNG. Please try again.');
+            }
+        }
+
+        // Auto-download all slides function
+        async function downloadAllSlides() {
+            const slides = [
+                {id: 'slide1', name: 'acquisitions-director'},
+                {id: 'slide2', name: 'marketing-assistant'},
+                {id: 'slide3', name: 'underwriting-manager'},
+                {id: 'slide4', name: 'legal-department'},
+                {id: 'slide5', name: 'investor-relations-specialist'}
+            ];
+
+            for (let i = 0; i < slides.length; i++) {
+                await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second between downloads
+                await downloadSlide(slides[i].id, slides[i].name);
+            }
+        }
+    </script>
+</body>
+</html>
