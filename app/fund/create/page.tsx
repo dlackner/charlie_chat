@@ -1028,7 +1028,7 @@ function CreateSubmissionContent() {
                       <option value="">Choose a pricing scenario...</option>
                       {offerScenarios[selectedPropertyId].map(offer => (
                         <option key={offer.id} value={offer.id}>
-                          {offer.offer_name} - ${((offer.offer_data.purchasePrice || 0) / 1000000).toFixed(2)}M {offer.offer_data.projected_irr ? `(IRR: ${offer.offer_data.projected_irr})` : ''}
+                          {offer.offer_name} - ${Math.round((offer.offer_data.purchasePrice || 0) / 1000000)}M {offer.offer_data.projected_irr ? `(IRR: ${offer.offer_data.projected_irr})` : ''}
                         </option>
                       ))}
                     </select>
