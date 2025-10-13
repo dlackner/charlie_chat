@@ -8,7 +8,8 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { StandardModalWithActions } from '@/components/shared/StandardModal';
-import { Crown, Users, TrendingUp, Star, Shield, Zap } from 'lucide-react';
+import CapitalClubDetailsModal from '@/components/shared/CapitalClubDetailsModal';
+import { Crown, Users, TrendingUp, Star, Shield, Zap, ExternalLink } from 'lucide-react';
 
 export default function CapitalClubPage() {
   const { user, supabase } = useAuth();
@@ -18,6 +19,7 @@ export default function CapitalClubPage() {
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [showSignInRequiredModal, setShowSignInRequiredModal] = useState(false);
   const [isEnrolling, setIsEnrolling] = useState(false);
+  const [showDetailsModal, setShowDetailsModal] = useState(false);
 
   // Fetch user enrollment status and club metrics
   useEffect(() => {
@@ -217,6 +219,15 @@ export default function CapitalClubPage() {
                     <p className="text-gray-500">Cannot submit properties for funding</p>
                   </div>
                 </div>
+                <div className="mt-6">
+                  <button
+                    onClick={() => setShowDetailsModal(true)}
+                    className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-bold text-lg py-4 px-6 rounded-lg shadow-lg transition-all duration-200 hover:shadow-xl transform hover:scale-105 flex items-center justify-center"
+                  >
+                    How does it work?
+                    <ExternalLink className="h-5 w-5 ml-2" />
+                  </button>
+                </div>
               </div>
 
               {/* Pro/Cohort Members */}
@@ -263,6 +274,15 @@ export default function CapitalClubPage() {
                     </div>
                     <p className="text-gray-700">Priority deal promotion to network</p>
                   </div>
+                </div>
+                <div className="mt-6">
+                  <button
+                    onClick={() => setShowDetailsModal(true)}
+                    className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-bold text-lg py-4 px-6 rounded-lg shadow-lg transition-all duration-200 hover:shadow-xl transform hover:scale-105 flex items-center justify-center"
+                  >
+                    How does it work?
+                    <ExternalLink className="h-5 w-5 ml-2" />
+                  </button>
                 </div>
               </div>
             </div>
@@ -397,6 +417,12 @@ export default function CapitalClubPage() {
             </div>
           </div>
         </StandardModalWithActions>
+
+        {/* Capital Club Details Modal */}
+        <CapitalClubDetailsModal 
+          isOpen={showDetailsModal} 
+          onClose={() => setShowDetailsModal(false)} 
+        />
       </div>
   );
 }
