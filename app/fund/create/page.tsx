@@ -112,8 +112,9 @@ function CreateSubmissionContent() {
   });
   const [hoveredSentiment, setHoveredSentiment] = useState<string | null>(null);
   
-  // New state for submission name and investment thesis
+  // New state for submission name, partnership type, and investment thesis
   const [submissionName, setSubmissionName] = useState<string>('');
+  const [partnershipType, setPartnershipType] = useState<string>('Limited Partner');
   const [investmentThesis, setInvestmentThesis] = useState<string>('');
   const [analysisGenerated, setAnalysisGenerated] = useState<boolean>(false);
   
@@ -125,6 +126,10 @@ function CreateSubmissionContent() {
   const [submissionToWithdraw, setSubmissionToWithdraw] = useState<string | null>(null);
   const [showWithdrawSuccessModal, setShowWithdrawSuccessModal] = useState(false);
   const [hasInvestmentAnalysis, setHasInvestmentAnalysis] = useState(false);
+  
+  // Other Documents modal state
+  const [showOtherDocumentsModal, setShowOtherDocumentsModal] = useState(false);
+  const [externalFileUrl, setExternalFileUrl] = useState('');
 
   // Real data states
   const [engagedProperties, setEngagedProperties] = useState<Property[]>([]);
@@ -177,6 +182,7 @@ function CreateSubmissionContent() {
       try {
         const formData = JSON.parse(savedFormData);
         setSubmissionName(formData.submissionName || '');
+        setPartnershipType(formData.partnershipType || 'Limited Partner');
         setInvestmentThesis(formData.investmentThesis || '');
         // Property and offer will be set by URL params above
         
@@ -206,6 +212,7 @@ function CreateSubmissionContent() {
     if (submissionName || investmentThesis || selectedPropertyId || selectedOfferId) {
       const formData = {
         submissionName,
+        partnershipType,
         investmentThesis,
         selectedPropertyId,
         selectedOfferId,
@@ -213,7 +220,7 @@ function CreateSubmissionContent() {
       };
       localStorage.setItem('createSubmissionFormData', JSON.stringify(formData));
     }
-  }, [submissionName, investmentThesis, selectedPropertyId, selectedOfferId, selectedSentiment]);
+  }, [submissionName, partnershipType, investmentThesis, selectedPropertyId, selectedOfferId, selectedSentiment]);
 
   // Check for analysis generation when returning to page
   useEffect(() => {
@@ -568,9 +575,10 @@ function CreateSubmissionContent() {
           property_id: selectedPropertyId,
           offer_scenario_id: selectedOfferId,
           deal_summary: investmentThesis,
-          partnership_type: 'Limited Partner', // Default for now
+          partnership_type: partnershipType,
           investment_sentiment: selectedSentiment,
           submission_name: submissionName,
+          external_file_url: externalFileUrl.trim() || null,
           status: 'active',
           is_public: true
         })
@@ -956,6 +964,29 @@ function CreateSubmissionContent() {
                   />
                 </div>
                 
+                {/* Partnership Type */}
+                <div>
+                  <label htmlFor="partnershipType" className="block text-sm font-medium text-gray-700 mb-2">
+                    Partnership Type
+                  </label>
+                  <select
+                    id="partnershipType"
+                    value={partnershipType}
+                    onChange={(e) => setPartnershipType(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="506(b)">506(b)</option>
+                    <option value="506(c)">506(c)</option>
+                    <option value="Capital Club">Capital Club</option>
+                    <option value="Crowd Funding">Crowd Funding</option>
+                    <option value="Limited Partner">Limited Partner</option>
+                    <option value="Private Equity">Private Equity</option>
+                  </select>
+                  <p className="mt-2 text-sm text-gray-500">
+                    Select the type of partnership structure for this investment opportunity.
+                  </p>
+                </div>
+                
                 {/* Investment Thesis */}
                 <div>
                   <label htmlFor="investmentThesis" className="block text-sm font-medium text-gray-700 mb-2">
@@ -1028,7 +1059,7 @@ function CreateSubmissionContent() {
                       <option value="">Choose a pricing scenario...</option>
                       {offerScenarios[selectedPropertyId].map(offer => (
                         <option key={offer.id} value={offer.id}>
-                          {offer.offer_name} - ${((offer.offer_data.purchasePrice || 0) / 1000000).toFixed(2)}M {offer.offer_data.projected_irr ? `(IRR: ${offer.offer_data.projected_irr})` : ''}
+                          {offer.offer_name} - ${Math.round((offer.offer_data.purchasePrice || 0) / 1000000)}M {offer.offer_data.projected_irr ? `(IRR: ${offer.offer_data.projected_irr})` : ''}
                         </option>
                       ))}
                     </select>
@@ -1347,13 +1378,13 @@ function CreateSubmissionContent() {
                   <h3 className="text-2xl font-bold text-gray-900 mb-2">Step 6: Review Attachments</h3>
                   <p className="text-gray-600 mb-6">Your submission will include these reports and analyses</p>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
                   <button 
                     onClick={() => router.push(`/fund/property-profile?property=${selectedPropertyId}&offer=${selectedOfferId}&returnUrl=${encodeURIComponent(`/fund/create?property=${selectedPropertyId}&offer=${selectedOfferId}&sentiment=${selectedSentiment}`)}`)}
                     className="bg-white rounded-lg p-6 shadow-sm border border-gray-200 hover:shadow-md transition-shadow text-left"
                   >
                     <div className="border-l-4 border-purple-500 pl-4">
-                      <div className="text-xl font-bold text-gray-900">Property Profile</div>
+                      <div className="text-lg font-bold text-gray-900">Property Profile</div>
                     </div>
                   </button>
                   
@@ -1362,7 +1393,7 @@ function CreateSubmissionContent() {
                     className="bg-white rounded-lg p-6 shadow-sm border border-gray-200 hover:shadow-md transition-shadow text-left"
                   >
                     <div className="border-l-4 border-green-500 pl-4">
-                      <div className="text-xl font-bold text-gray-900">10-Year Cash Flow</div>
+                      <div className="text-lg font-bold text-gray-900">Cash Flow</div>
                     </div>
                   </button>
                   
@@ -1371,7 +1402,7 @@ function CreateSubmissionContent() {
                     className="bg-white rounded-lg p-6 shadow-sm border border-gray-200 hover:shadow-md transition-shadow text-left"
                   >
                     <div className="border-l-4 border-orange-500 pl-4">
-                      <div className="text-xl font-bold text-gray-900">Pricing Scenario</div>
+                      <div className="text-lg font-bold text-gray-900">Pricing Scenario</div>
                     </div>
                   </button>
 
@@ -1384,10 +1415,22 @@ function CreateSubmissionContent() {
                       className="bg-white rounded-lg p-6 shadow-sm border border-gray-200 hover:shadow-md transition-shadow text-left"
                     >
                       <div className="border-l-4 border-blue-500 pl-4">
-                        <div className="text-xl font-bold text-gray-900">Investment Analysis</div>
+                        <div className="text-lg font-bold text-gray-900">Investment Analysis</div>
                       </div>
                     </button>
                   )}
+                  
+                  <button 
+                    onClick={() => setShowOtherDocumentsModal(true)}
+                    className="bg-white rounded-lg p-6 shadow-sm border border-gray-200 hover:shadow-md transition-shadow text-left"
+                  >
+                    <div className="border-l-4 border-teal-500 pl-4">
+                      <div className="text-lg font-bold text-gray-900">Other Files</div>
+                      {externalFileUrl && (
+                        <div className="text-sm text-green-600 mt-1">✓ Link added</div>
+                      )}
+                    </div>
+                  </button>
                 </div>
 
                 {/* Create Submission Button */}
@@ -1461,6 +1504,48 @@ function CreateSubmissionContent() {
                 </p>
               </div>
             </div>
+          </div>
+        </StandardModalWithActions>
+
+        {/* Other Documents Modal */}
+        <StandardModalWithActions
+          isOpen={showOtherDocumentsModal}
+          onClose={() => setShowOtherDocumentsModal(false)}
+          title="Other Files"
+          primaryAction={{
+            label: 'Save',
+            onClick: () => {
+              setShowOtherDocumentsModal(false);
+            },
+            disabled: false
+          }}
+          secondaryAction={{
+            label: 'Cancel',
+            onClick: () => {
+              setShowOtherDocumentsModal(false);
+            }
+          }}
+        >
+          <div className="p-6">
+            <p className="text-gray-700 mb-4">
+              Add a link to external files such as Dropbox folders, Google Drive files, or other relevant resources.
+            </p>
+            
+            <label htmlFor="external-file-url" className="block text-sm font-medium text-gray-700 mb-2">
+              Document Link (Optional)
+            </label>
+            <input
+              id="external-file-url"
+              type="url"
+              value={externalFileUrl}
+              onChange={(e) => setExternalFileUrl(e.target.value)}
+              placeholder="https://dropbox.com/... or https://drive.google.com/..."
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            />
+            
+            <p className="text-xs text-gray-500 mt-2">
+              Examples: Dropbox links, Google Drive folders, OneDrive files, etc.
+            </p>
           </div>
         </StandardModalWithActions>
 

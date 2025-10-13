@@ -485,6 +485,15 @@ function InvestmentAnalysisContent() {
                   You'll have full editing control throughout the process.
                 </p>
                 
+                {/* Patient reminder */}
+                <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6 max-w-md mx-auto">
+                  <p className="text-amber-800 text-sm font-medium text-center">
+                    ⏱️ Please be patient - analysis generation takes about 30 seconds to complete.
+                    <br />
+                    <span className="text-amber-700">Do not navigate away from this page during generation.</span>
+                  </p>
+                </div>
+                
                 
                 {/* Property Details Card */}
                 <div className="bg-white/80 backdrop-blur-sm rounded-xl p-6 border border-white/30 max-w-md mx-auto">

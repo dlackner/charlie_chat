@@ -34,6 +34,7 @@ interface Submission {
   user_id: string;
   offer_scenario_id: string;
   cash_flow_pdf_url?: string;
+  external_file_url?: string;
   investment_analysis_html?: any; // JSONB
   investment_analysis_html_updated_at?: string;
   // Financial metrics
@@ -172,6 +173,7 @@ export default function SubmissionDetailsPage() {
           user_id: data.user_id,
           offer_scenario_id: data.offer_scenario_id,
           cash_flow_pdf_url: data.cash_flow_pdf_url,
+          external_file_url: data.external_file_url,
           investment_analysis_html: data.investment_analysis_html,
           investment_analysis_html_updated_at: data.investment_analysis_html_updated_at,
           address: data.saved_properties?.address_street || data.saved_properties?.address_full,
@@ -663,11 +665,11 @@ export default function SubmissionDetailsPage() {
                     )}
                     
                     {/* Report Cards Grid */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
                       {/* Property Profile */}
                       <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
                         <div className="border-l-4 border-purple-500 pl-4 mb-4">
-                          <div className="text-lg font-bold text-gray-900">Property Profile</div>
+                          <div className="text-base font-bold text-gray-900">Property Profile</div>
                         </div>
                         <div className="flex gap-2">
                           <button 
@@ -689,7 +691,7 @@ export default function SubmissionDetailsPage() {
                       {/* 10-Year Cash Flow */}
                       <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
                         <div className="border-l-4 border-green-500 pl-4 mb-4">
-                          <div className="text-lg font-bold text-gray-900">10-Year Cash Flow</div>
+                          <div className="text-base font-bold text-gray-900">Cash Flow</div>
                         </div>
                         <div className="flex gap-2">
                           <button 
@@ -712,7 +714,7 @@ export default function SubmissionDetailsPage() {
                       {submission.offer_scenario_id && (
                         <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
                           <div className="border-l-4 border-orange-500 pl-4 mb-4">
-                            <div className="text-lg font-bold text-gray-900">Pricing Scenario</div>
+                            <div className="text-base font-bold text-gray-900">Pricing Scenario</div>
                           </div>
                           <div className="flex gap-2">
                             <button 
@@ -728,7 +730,7 @@ export default function SubmissionDetailsPage() {
                       {/* Investment Analysis */}
                       <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
                         <div className="border-l-4 border-blue-500 pl-4 mb-4">
-                          <div className="text-lg font-bold text-gray-900">Investment Analysis</div>
+                          <div className="text-base font-bold text-gray-900">Investment Analysis</div>
                         </div>
                         <div className="flex gap-2">
                           <button 
@@ -754,6 +756,33 @@ export default function SubmissionDetailsPage() {
                             >
                               <Printer className="h-4 w-4" />
                             </button>
+                          )}
+                        </div>
+                      </div>
+                      
+                      {/* Other Files */}
+                      <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
+                        <div className="border-l-4 border-teal-500 pl-4 mb-4">
+                          <div className="text-base font-bold text-gray-900">Other Files</div>
+                        </div>
+                        <div className="flex gap-2">
+                          {submission.external_file_url ? (
+                            <button 
+                              onClick={() => {
+                                let url = submission.external_file_url!;
+                                if (!url.startsWith('http://') && !url.startsWith('https://')) {
+                                  url = 'https://' + url;
+                                }
+                                window.open(url, '_blank');
+                              }}
+                              className="flex-1 px-3 py-2 bg-teal-600 text-white text-sm rounded hover:bg-teal-700 transition-colors"
+                            >
+                              View
+                            </button>
+                          ) : (
+                            <div className="flex-1 px-3 py-2 bg-gray-300 text-gray-500 text-sm rounded cursor-not-allowed">
+                              No files
+                            </div>
                           )}
                         </div>
                       </div>
