@@ -16,6 +16,7 @@ export async function GET(request: NextRequest) {
     const daysAgo = parseInt(timeRange);
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - daysAgo);
+    startDate.setHours(0, 0, 0, 0); // Start of day
 
     const supabase = createSupabaseAdminClient();
     
@@ -58,29 +59,22 @@ export async function GET(request: NextRequest) {
       }
     });
 
-    // Group by week and calculate counts and total values
-    const weeklyData = new Map<string, { count: number; totalValue: number }>();
+    // Simple daily grouping first to see all the data
+    const dailyData = new Map<string, { count: number; totalValue: number }>();
     
     favoritesData.forEach((favorite) => {
-      const date = new Date(favorite.saved_at);
-      
-      // Get start of week (Sunday)
-      const startOfWeek = new Date(date);
-      const day = startOfWeek.getDay();
-      startOfWeek.setDate(startOfWeek.getDate() - day);
-      
-      const weekKey = startOfWeek.toISOString().split('T')[0];
+      const dateKey = favorite.saved_at.split('T')[0];
       const estimatedValue = propertyValueMap.get(favorite.property_id) || 0;
       
-      const existing = weeklyData.get(weekKey) || { count: 0, totalValue: 0 };
-      weeklyData.set(weekKey, {
+      const existing = dailyData.get(dateKey) || { count: 0, totalValue: 0 };
+      dailyData.set(dateKey, {
         count: existing.count + 1,
         totalValue: existing.totalValue + estimatedValue
       });
     });
 
     // Convert to array format for chart
-    const chartData = Array.from(weeklyData.entries()).map(([date, data]) => ({
+    const chartData = Array.from(dailyData.entries()).map(([date, data]) => ({
       week: date,
       propertiesFavorited: data.count,
       totalValue: data.totalValue

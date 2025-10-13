@@ -235,18 +235,22 @@ function OffersCreatedCard({ user, timeRange }: { user: any; timeRange: string }
           </div>
         ) : weeklyData.length > 0 ? (
           <>
-            <div className="h-full flex items-end space-x-2 p-4">
+            <div className="h-full flex items-end space-x-1 p-4">
               {weeklyData.map((item, index) => {
-                const maxCount = Math.max(...weeklyData.map(d => d.count));
+                const maxCount = Math.max(...weeklyData.map(d => d.count), 1); // Prevent division by zero
                 const maxHeight = 80; // Fixed max height in pixels
-                const heightPx = Math.max((item.count / maxCount) * maxHeight, 10); // Minimum 10px height
+                const heightPx = maxCount > 0 ? Math.max((item.count / maxCount) * maxHeight, 2) : 2; // Minimum 2px height
                 return (
-                  <div key={index} className="flex-1 flex flex-col items-center justify-end min-w-0 group relative">
+                  <div key={index} className="flex-1 flex flex-col items-center justify-end min-w-0 group relative" style={{ minHeight: '100px' }}>
                     <div 
-                      className="w-full bg-blue-500 rounded-t hover:bg-blue-600 transition-colors cursor-pointer"
-                      style={{ height: `${heightPx}px`, minWidth: '20px' }}
+                      className="w-full bg-blue-500 rounded-t hover:bg-blue-600 transition-colors cursor-pointer self-end"
+                      style={{ 
+                        height: `${heightPx}px`, 
+                        minWidth: '20px',
+                        marginBottom: '0px'
+                      }}
                     ></div>
-                    <div className="text-xs text-gray-600 mt-2 text-center">
+                    <div className="text-xs text-gray-600 mt-2 text-center flex-shrink-0">
                       {item.date}
                     </div>
                     

@@ -341,13 +341,24 @@ function ActivityTrendsChart({ timeRange }: { timeRange: string }) {
                     const maxValue = Math.max(...chartData.map(d => d.totalValue));
                     const width = 690; // 750 - 60
                     const height = 192; // 252 - 60
-                    const barWidth = Math.max(width / chartData.length * 0.6, 8); // 60% of available space
+                    
+                    // Calculate bar width based on data points - ensure reasonable spacing
+                    let barWidth;
+                    if (chartData.length <= 5) {
+                      barWidth = 40; // Wide bars for few data points
+                    } else if (chartData.length <= 10) {
+                      barWidth = Math.max(width / chartData.length * 0.7, 20); // 70% of available space
+                    } else {
+                      barWidth = Math.max(width / chartData.length * 0.5, 8); // 50% of available space for many points
+                    }
                     
                     return (
                       <g>
                         {/* Bars for Properties Favorited (Blue) */}
                         {chartData.map((item, index) => {
-                          const x = 60 + (index / (chartData.length - 1)) * width - barWidth / 2;
+                          // Better spacing calculation for different data point counts
+                          const spacing = chartData.length > 1 ? width / (chartData.length - 1) : 0;
+                          const x = 60 + (index * spacing) - barWidth / 2;
                           const barHeight = (item.propertiesFavorited / maxCount) * height;
                           const y = 60 + height - barHeight;
                           
@@ -368,7 +379,8 @@ function ActivityTrendsChart({ timeRange }: { timeRange: string }) {
                         {/* Line for Total Value (Green) */}
                         <polyline
                           points={chartData.map((item, index) => {
-                            const x = 60 + (index / (chartData.length - 1)) * width;
+                            const spacing = chartData.length > 1 ? width / (chartData.length - 1) : 0;
+                            const x = 60 + (index * spacing);
                             const y = 60 + height - (item.totalValue / maxValue) * height;
                             return `${x},${y}`;
                           }).join(' ')}
@@ -379,7 +391,8 @@ function ActivityTrendsChart({ timeRange }: { timeRange: string }) {
                         
                         {/* Line Points for Hover */}
                         {chartData.map((item, index) => {
-                          const x = 60 + (index / (chartData.length - 1)) * width;
+                          const spacing = chartData.length > 1 ? width / (chartData.length - 1) : 0;
+                          const x = 60 + (index * spacing);
                           const y = 60 + height - (item.totalValue / maxValue) * height;
                           
                           return (
@@ -442,10 +455,19 @@ function ActivityTrendsChart({ timeRange }: { timeRange: string }) {
               {/* X-Axis Labels */}
               <div className="flex justify-between px-4 mt-4">
                 {chartData.map((item, index) => {
-                  if (index % Math.ceil(chartData.length / 6) === 0 || index === chartData.length - 1) {
+                  const showLabel = chartData.length <= 6 ? 
+                    true : // Show all labels if 6 or fewer data points
+                    (index % Math.ceil(chartData.length / 5) === 0 || index === chartData.length - 1);
+                  
+                  if (showLabel) {
                     return (
                       <div key={index} className="text-xs text-gray-600">
-                        {new Date(item.week).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                        {new Date(item.week).toLocaleDateString('en-US', { 
+                          month: 'short', 
+                          day: 'numeric',
+                          // Show year if data spans multiple years
+                          year: chartData.length > 20 ? 'numeric' : undefined 
+                        })}
                       </div>
                     );
                   }
