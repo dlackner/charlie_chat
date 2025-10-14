@@ -50,6 +50,7 @@ interface AnalysisResult {
     marketOverview: string;
     charliesTake: string;
     strategy: string[];
+    ownerApproach?: string;
     verdict: {
       decision: 'PURSUE' | 'CONSIDER' | 'PASS';
       reasoning: string;
@@ -369,6 +370,16 @@ export function AIInvestmentAnalysis({ property, isEngageContext, userClass }: A
                     ))}
                   </ul>
                 </div>
+
+                {/* Owner Approach - Show if available */}
+                {investmentAnalysis.narrative.ownerApproach && (
+                  <div className="mb-4">
+                    <h5 className="font-medium text-gray-800 mb-2 text-sm">Owner Approach:</h5>
+                    <p className="text-gray-700 text-sm leading-relaxed whitespace-pre-wrap">
+                      {investmentAnalysis.narrative.ownerApproach}
+                    </p>
+                  </div>
+                )}
 
                 {/* Verdict */}
                 <div className="pt-3 border-t border-gray-300">

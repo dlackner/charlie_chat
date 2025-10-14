@@ -11,7 +11,6 @@ import {
   ArrowLeft,
   CheckCircle,
   AlertCircle,
-  Eye,
   Trash2
 } from 'lucide-react';
 
@@ -903,10 +902,10 @@ function CreateSubmissionContent() {
                                 <div className="flex items-center gap-2 ml-4">
                                   <button
                                     onClick={() => router.push(`/fund/browse/${submission.id}?source=manage`)}
-                                    className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                                    className="px-3 py-1.5 text-sm font-medium text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
                                     title="View Details"
                                   >
-                                    <Eye className="h-4 w-4" />
+                                    View Details
                                   </button>
                                   <button
                                     onClick={() => handleWithdrawSubmission(submission.id)}

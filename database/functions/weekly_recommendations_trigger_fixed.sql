@@ -29,20 +29,28 @@ BEGIN
         start_time
     ) RETURNING id INTO log_id;
 
-    -- Get count of eligible users for logging
+    -- Get count of eligible users for logging (only users with valid markets and proper user class)
     UPDATE weekly_recommendations_log 
     SET total_users = (
-        SELECT COUNT(*) 
-        FROM profiles 
-        WHERE weekly_recommendations_enabled = true
+        SELECT COUNT(DISTINCT p.user_id) 
+        FROM profiles p
+        INNER JOIN user_markets um ON p.user_id = um.user_id
+        WHERE p.weekly_recommendations_enabled = true
+        AND p.user_class IN ('plus', 'pro', 'cohort')
+        AND um.property_ids IS NOT NULL 
+        AND array_length(um.property_ids, 1) > 0
     )
     WHERE id = log_id;
 
-    -- Process each user with weekly recommendations enabled
+    -- Process each user with weekly recommendations enabled AND valid markets AND proper user class
     FOR user_record IN 
-        SELECT user_id 
-        FROM profiles 
-        WHERE weekly_recommendations_enabled = true
+        SELECT DISTINCT p.user_id 
+        FROM profiles p
+        INNER JOIN user_markets um ON p.user_id = um.user_id
+        WHERE p.weekly_recommendations_enabled = true
+        AND p.user_class IN ('plus', 'pro', 'cohort')
+        AND um.property_ids IS NOT NULL 
+        AND array_length(um.property_ids, 1) > 0
     LOOP
         BEGIN
             -- Add 0.5 second delay between users to avoid overwhelming the API
@@ -68,8 +76,9 @@ BEGIN
             -- Log the error but continue processing other users
             error_count := error_count + 1;
             
-            -- Optionally log specific error details
-            RAISE NOTICE 'Error processing user %: %', user_record.user_id, SQLERRM;
+            -- Log specific error details with more context
+            RAISE NOTICE 'Error processing user %: % (SQLSTATE: %)', 
+                user_record.user_id, SQLERRM, SQLSTATE;
         END;
     END LOOP;
 

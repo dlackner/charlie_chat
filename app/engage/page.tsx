@@ -20,7 +20,7 @@ import { useAlert } from '@/components/shared/AlertModal';
 
 function EngagePageContent() {
   const { user, supabase, isLoading: authLoading } = useAuth();
-  const { showError, showWarning, showSuccess, AlertComponent } = useAlert();
+  const { showError, showWarning, showSuccess, showDelete, AlertComponent } = useAlert();
   const searchParams = useSearchParams();
   const router = useRouter();
   const [viewMode, setViewMode] = useState<'cards' | 'map'>(() => {
@@ -560,9 +560,15 @@ function EngagePageContent() {
   };
 
   const handleDeleteOffer = async (offerId: string) => {
-    if (!confirm('Are you sure you want to delete this offer? This action cannot be undone.')) {
-      return;
-    }
+    showDelete(
+      'Are you sure you want to delete this offer? This action cannot be undone.',
+      async () => {
+        await deleteOffer(offerId);
+      }
+    );
+  };
+
+  const deleteOffer = async (offerId: string) => {
 
     try {
       const response = await fetch(`/api/offer-scenarios/${offerId}`, {

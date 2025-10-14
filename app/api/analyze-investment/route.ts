@@ -23,6 +23,10 @@ interface PropertyData {
   estimatedEquity?: string;
   latitude?: number;
   longitude?: number;
+  lastSaleDate?: string;
+  lastSaleAmount?: string;
+  outOfStateAbsenteeOwner?: boolean;
+  inStateAbsenteeOwner?: boolean;
 }
 
 
@@ -49,6 +53,7 @@ interface AnalysisResult {
     marketOverview: string;
     charliesTake: string;
     strategy: string[];
+    ownerApproach?: string;
     verdict: {
       decision: 'PURSUE' | 'CONSIDER' | 'PASS';
       reasoning: string;
@@ -171,7 +176,7 @@ async function performOpenAIAnalysis(prompt: string, maxTokens: number = 300): P
       messages: [
         {
           role: "system",
-          content: "You are a real estate investment expert. Provide concise, data-driven analysis. Focus on actionable insights. Keep responses brief and well-formatted. Do not use markdown formatting or ** characters."
+          content: "You are a seasoned real estate investment analyst with deep market knowledge. Vary your writing style - sometimes lead with opportunities, other times with market dynamics. Be concise but not formulaic. Focus on what makes each property unique. Avoid repetitive patterns across analyses. Do not use markdown formatting or ** characters."
         },
         {
           role: "user",
@@ -179,7 +184,7 @@ async function performOpenAIAnalysis(prompt: string, maxTokens: number = 300): P
         }
       ],
       max_tokens: maxTokens,
-      temperature: 0.5
+      temperature: 0.8 // Increased from 0.5 for more variety
     });
 
     return completion.choices[0]?.message?.content || '';
@@ -195,14 +200,17 @@ async function performMultiPromptAnalysis(property: PropertyData): Promise<Analy
   console.log('🔍 Starting multi-prompt analysis for:', property.city, property.state);
 
   // 1. Market Overview Analysis
-  const marketPrompt = `Analyze the real estate market for ${property.city}, ${property.state}. Provide 2-3 sentences about:
-- Market characteristics and investment climate  
-- Monthly rent for ONE 1-bedroom apartment unit (not total building rent)
-- Current market trends
-
-Property context: ${property.units}-unit ${property.yearBuilt < 1950 ? 'historic' : property.yearBuilt > 1990 ? 'modern' : 'established'} multifamily property.
-
-IMPORTANT: When mentioning rent, specify it as "$X per month for a 1-bedroom unit" - do NOT give total building rent.`;
+  const marketAge = property.yearBuilt < 1950 ? 'historic' : property.yearBuilt > 1990 ? 'modern' : 'established';
+  const propertySize = property.units < 20 ? 'boutique' : property.units < 50 ? 'mid-sized' : 'substantial';
+  
+  // Vary the market prompt based on property characteristics
+  const marketVariations = [
+    `Tell me what makes ${property.city}, ${property.state} unique for multifamily investors. Focus on this ${propertySize} ${marketAge} property with ${property.units} units. What's the typical rent for a 1-bedroom apartment here?`,
+    `Describe the investment climate in ${property.city}, ${property.state}. How does a ${property.units}-unit ${marketAge} property fit into this market? Include typical 1-bedroom apartment rents.`,
+    `Paint a picture of ${property.city}'s rental market. What opportunities exist for a ${propertySize} ${property.units}-unit building? What do 1-bedroom apartments rent for?`
+  ];
+  
+  const marketPrompt = marketVariations[Math.floor(Math.random() * marketVariations.length)] + '\n\nBe specific and avoid generic statements. Focus on what makes THIS market and property combination interesting.';
 
   // 2. Financial Analysis
   const financialPrompt = `Estimate financial metrics for a ${property.units}-unit multifamily property in ${property.city}, ${property.state}, built ${property.yearBuilt}, assessed at ${property.assessedValue}:
@@ -242,24 +250,60 @@ Requirements:
 - No explanations or elaboration`;
 
   // 5. Strategy and Verdict
-  const strategyPrompt = `Provide investment recommendation for this ${property.units}-unit property in ${property.city}, ${property.state}:
+  const strategyPrompt = `Provide investment strategy for this ${property.units}-unit property in ${property.city}, ${property.state}:
 
-1. List 3-4 specific action items for approaching this investment
-2. Give final recommendation: PURSUE, CONSIDER, or PASS
-3. Provide 1-sentence reasoning
+Write 3-4 strategic initiatives in complete sentences. Do NOT use "Action Items:" or any headers. For example: "The first priority should be conducting a thorough property inspection to assess..." 
+
+Then give your final recommendation: PURSUE, CONSIDER, or PASS with a brief reasoning.
 
 Property details: Built ${property.yearBuilt}, assessed ${property.assessedValue}.
-Keep response structured and actionable.`;
+Write naturally without bullet points or lists.`;
+
+  // 6. Owner Approach Analysis (if owner data available)
+  let ownerPrompt = null;
+  let ownershipYears = 0;
+  if (property.lastSaleDate) {
+    const saleDate = new Date(property.lastSaleDate);
+    ownershipYears = Math.floor((Date.now() - saleDate.getTime()) / (365.25 * 24 * 60 * 60 * 1000));
+  }
+  
+  const hasOwnerData = property.outOfStateAbsenteeOwner || property.inStateAbsenteeOwner || property.lastSaleDate || property.estimatedEquity;
+  
+  if (hasOwnerData) {
+    ownerPrompt = `Create an owner outreach strategy for this property:
+    
+Owner profile:
+- ${property.outOfStateAbsenteeOwner ? 'Out-of-state absentee owner' : property.inStateAbsenteeOwner ? 'In-state absentee owner' : 'Local owner'}
+${ownershipYears > 0 && property.lastSaleDate ? `- Owned for ${ownershipYears} years (since ${new Date(property.lastSaleDate).getFullYear()})` : ''}
+${property.estimatedEquity ? `- Estimated equity position: ${property.estimatedEquity}` : ''}
+${property.estimatedValue ? `- Estimated value: ${property.estimatedValue}` : ''}
+
+Write a 2-3 paragraph approach strategy. Consider:
+- Best initial contact method and timing
+- Key pain points or motivations based on their situation
+- Value propositions that resonate with this owner type
+- Potential objections and how to address them
+
+Be specific and tactical. This should guide how to approach THIS particular owner.`;
+  }
 
   try {
     // Execute all prompts in parallel
-    const [marketResponse, financialResponse, featuresResponse, riskResponse, strategyResponse] = await Promise.all([
+    const prompts = [
       performOpenAIAnalysis(marketPrompt, 200),
       performOpenAIAnalysis(financialPrompt, 200), 
       performOpenAIAnalysis(featuresPrompt, 200),
       performOpenAIAnalysis(riskPrompt, 200),
       performOpenAIAnalysis(strategyPrompt, 300)
-    ]);
+    ];
+    
+    if (ownerPrompt) {
+      prompts.push(performOpenAIAnalysis(ownerPrompt, 300));
+    }
+    
+    const responses = await Promise.all(prompts);
+    const [marketResponse, financialResponse, featuresResponse, riskResponse, strategyResponse] = responses;
+    const ownerResponse = responses[5] || null;
 
     console.log('✅ All OpenAI analyses completed');
     console.log('🔍 Features response:', featuresResponse);
@@ -272,6 +316,7 @@ Keep response structured and actionable.`;
       featuresResponse,
       riskResponse,
       strategyResponse,
+      ownerResponse,
       property
     });
 
@@ -330,6 +375,7 @@ async function buildAnalysisResult({
   featuresResponse,
   riskResponse,
   strategyResponse,
+  ownerResponse,
   property
 }: {
   marketResponse: string;
@@ -337,6 +383,7 @@ async function buildAnalysisResult({
   featuresResponse: string;
   riskResponse: string;
   strategyResponse: string;
+  ownerResponse: string | null;
   property: PropertyData;
 }): Promise<AnalysisResult> {
   // Parse financial metrics from financial response
@@ -428,11 +475,23 @@ async function buildAnalysisResult({
   
   console.log('🔍 Parsed risk lines:', riskLines);
 
-  // Parse strategy items
+  // Parse strategy items - now expecting complete sentences
   const strategyLines = strategyResponse
-    .split(/\n|•|-/)
-    .map(line => line.trim().replace(/^\d+\.?\s*/, '').trim())
-    .filter(line => line.length > 10 && !line.toLowerCase().includes('pursue') && !line.toLowerCase().includes('consider') && !line.toLowerCase().includes('pass'))
+    .split(/[.!?]/)
+    .map(line => line.trim())
+    .filter(line => {
+      const lower = line.toLowerCase();
+      return line.length > 20 && 
+             !lower.includes('pursue') && 
+             !lower.includes('consider') && 
+             !lower.includes('pass') &&
+             !lower.includes('recommendation') &&
+             !lower.includes('action items');
+    })
+    .map(line => {
+      // Clean up any leading words like "First," "Next," etc.
+      return line.replace(/^(First|Second|Third|Next|Then|Finally|Also),?\s*/i, '');
+    })
     .slice(0, 4);
 
   // Parse verdict from strategy response
@@ -491,6 +550,7 @@ async function buildAnalysisResult({
         'Analyze property management requirements',
         'Negotiate based on market conditions'
       ],
+      ownerApproach: ownerResponse || undefined,
       verdict: {
         decision,
         reasoning
