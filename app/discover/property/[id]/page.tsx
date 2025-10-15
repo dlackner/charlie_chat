@@ -46,6 +46,7 @@ export default function PropertyDetailsPage() {
   const [skipTraceData, setSkipTraceData] = useState<any>(null);
   const [isFavorited, setIsFavorited] = useState(false);
   const [isToggling, setIsToggling] = useState(false);
+  const [savedPropertyId, setSavedPropertyId] = useState<string | null>(null);
 
   // Fetch user class
   useEffect(() => {
@@ -120,6 +121,9 @@ export default function PropertyDetailsPage() {
 
             console.log('🔍 Database query result:', { savedProperty, savedError });
             if (!savedError && savedProperty) {
+              // Store the saved_properties UUID for use in document actions
+              setSavedPropertyId(savedProperty.id);
+              
               if (savedProperty.skip_trace_data) {
                 console.log('✅ Found existing skip trace data:', savedProperty.skip_trace_data);
                 // Parse skip trace data like the email function does
@@ -408,8 +412,10 @@ export default function PropertyDetailsPage() {
       skip_trace_data: skipTraceData
     };
     
-    // Use the final id from transformedProperty (after spread)
-    const propertyId = transformedProperty.id;
+    // Use the correct property ID based on context
+    // If we're in engage context and have a savedPropertyId, use that for offer scenarios
+    // Otherwise use the raw property ID
+    const propertyId = isEngageContext && savedPropertyId ? savedPropertyId : transformedProperty.id;
 
     switch (action) {
       case 'marketing-letter':
@@ -422,10 +428,10 @@ export default function PropertyDetailsPage() {
         // Navigate to templates page with property data for LOI generation
         const loiParams = new URLSearchParams({
           propertyAddress: `${transformedProperty.address}, ${transformedProperty.city}, ${transformedProperty.state} ${transformedProperty.zip}`,
-          ownerFirst: transformedProperty.owner_first_name || '',
-          ownerLast: transformedProperty.owner_last_name || '',
+          ownerFirst: property.owner_first_name || '',
+          ownerLast: property.owner_last_name || '',
           propertyId: propertyId.toString(),
-          returnUrl: `/discover/property/${propertyId}?context=engage`
+          returnUrl: `/discover/property/${params.id}?context=engage`
         });
         router.push(`/templates?${loiParams.toString()}`);
         break;
@@ -433,10 +439,10 @@ export default function PropertyDetailsPage() {
         // Navigate to templates page with property data for Purchase & Sale generation
         const psParams = new URLSearchParams({
           propertyAddress: `${transformedProperty.address}, ${transformedProperty.city}, ${transformedProperty.state} ${transformedProperty.zip}`,
-          ownerFirst: transformedProperty.owner_first_name || '',
-          ownerLast: transformedProperty.owner_last_name || '',
+          ownerFirst: property.owner_first_name || '',
+          ownerLast: property.owner_last_name || '',
           propertyId: propertyId.toString(),
-          returnUrl: `/discover/property/${propertyId}?context=engage`,
+          returnUrl: `/discover/property/${params.id}?context=engage`,
           type: 'purchase_sale'
         });
         router.push(`/templates?${psParams.toString()}`);
