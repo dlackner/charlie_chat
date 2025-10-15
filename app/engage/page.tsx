@@ -1508,6 +1508,62 @@ function EngagePageContent() {
           </div>
         </div>
 
+        {/* Mobile Engagement Center - Full Width */}
+        <div className="lg:hidden mb-6">
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+            {/* Header */}
+            <div className="p-4 border-b border-gray-200">
+              <h3 className="text-lg font-semibold text-gray-900">Engagement Center</h3>
+              <div className="text-sm text-gray-600 mt-1">
+                {selectedProperties.length} properties selected
+              </div>
+            </div>
+
+            {/* Mobile Actions - Two Column Layout */}
+            <div className="p-4 grid grid-cols-2 gap-3">
+              <button
+                onClick={() => handleDocumentAction('email')}
+                className="flex flex-col items-center justify-center py-4 px-3 text-sm text-gray-700 hover:bg-blue-100 disabled:text-gray-400 disabled:cursor-not-allowed rounded-lg transition-colors border border-gray-200"
+                disabled={selectedProperties.length !== 1}
+                title="Generate email template for selected property"
+              >
+                <div className="h-6 w-6 mb-2 flex items-center justify-center">
+                  <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 002 2v10a2 2 0 002 2z" />
+                  </svg>
+                </div>
+                <div className="text-center">
+                  <div className="font-medium">Marketing Email</div>
+                  <div className="text-xs text-gray-500 mt-1">Select 1 property</div>
+                </div>
+              </button>
+              
+              <button
+                onClick={() => {
+                  if (selectedProperties.length === 1) {
+                    router.push(`/roadtrip?propertyId=${selectedProperties[0]}`);
+                  }
+                }}
+                disabled={selectedProperties.length !== 1}
+                className="flex flex-col items-center justify-center py-4 px-3 text-sm text-gray-700 hover:bg-blue-100 disabled:text-gray-400 disabled:cursor-not-allowed rounded-lg transition-colors border border-gray-200"
+                title="Explore nearby properties around selected property"
+              >
+                <Route className="h-6 w-6 mb-2" />
+                <div className="text-center">
+                  <div className="font-medium">Road Trip</div>
+                  <div className="text-xs text-gray-500 mt-1">Explore nearby</div>
+                </div>
+              </button>
+            </div>
+
+            {/* Helper text when no properties selected */}
+            {selectedProperties.length === 0 && (
+              <div className="p-4 text-sm text-gray-500 text-center border-t border-gray-200">
+                Select properties to enable actions
+              </div>
+            )}
+          </div>
+        </div>
 
         {/* Main Layout - Left Sidebar + Content */}
         <div className="flex gap-6">

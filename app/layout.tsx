@@ -70,7 +70,7 @@ export default function RootLayout({
             <MobileNavigation />
             
             {/* Main Content */}
-            <main className="flex-1 overflow-hidden pt-16 lg:pt-16">
+            <main className="flex-1 overflow-hidden pt-16 lg:pt-28">
               {children}
             </main>
           </div>

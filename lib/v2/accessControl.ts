@@ -42,7 +42,7 @@ export type Feature =
 
 // Permission configuration for each user class
 const PERMISSIONS: Record<Exclude<UserClass, null>, Feature[]> = {
-  // Active trial users - full access including engage
+  // Active trial users - full access including engage but no fund_create
   trial: [
     'dashboard',
     'dashboard_headlines',
