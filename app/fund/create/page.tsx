@@ -11,7 +11,6 @@ import {
   ArrowLeft,
   CheckCircle,
   AlertCircle,
-  Eye,
   Trash2
 } from 'lucide-react';
 
@@ -903,10 +902,10 @@ function CreateSubmissionContent() {
                                 <div className="flex items-center gap-2 ml-4">
                                   <button
                                     onClick={() => router.push(`/fund/browse/${submission.id}?source=manage`)}
-                                    className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                                    className="px-3 py-1.5 text-sm font-medium text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
                                     title="View Details"
                                   >
-                                    <Eye className="h-4 w-4" />
+                                    View Details
                                   </button>
                                   <button
                                     onClick={() => handleWithdrawSubmission(submission.id)}
@@ -1001,7 +1000,7 @@ function CreateSubmissionContent() {
                     className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-y min-h-[150px]"
                   />
                   <p className="mt-2 text-sm text-gray-500">
-                    This will be used as your deal summary. The text box will expand as you type.
+                    This will be shared with the Capital Club as part of your submission. The text box will expand as you type.
                   </p>
                 </div>
               </div>

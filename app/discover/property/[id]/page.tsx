@@ -138,7 +138,16 @@ export default function PropertyDetailsPage() {
               // Store the saved_properties UUID id
               if (savedProperty.id) {
                 console.log('🔍 Found saved_properties UUID:', savedProperty.id);
-                foundProperty.id = savedProperty.id; // Override with UUID from saved_properties
+                // foundProperty.id = savedProperty.id; // COMMENTED OUT: Was causing favorites to save with wrong UUID instead of property_id
+                
+                // TODO: POTENTIAL CODE REMOVAL
+                // This entire block may be unnecessary. The UUID override was causing user_favorites 
+                // to store UUIDs instead of actual property_ids when users favorited properties 
+                // that had been previously saved by other users. After full testing of skip trace 
+                // and other functionality, consider removing this entire if block.
+                // 
+                // Original purpose unclear - possibly for skip trace data association, but that 
+                // should work fine with property_id queries without needing to override the ID.
               }
             } else {
               console.log('❌ No saved property found or error occurred');

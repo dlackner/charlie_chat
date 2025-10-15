@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { AuthGuard } from '@/components/auth/AuthGuard';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter, useParams, useSearchParams } from 'next/navigation';
+import { useAlert } from '@/components/shared/AlertModal';
 import { generate10YearCashFlowReport } from '@/app/offer-analyzer/cash-flow-report';
 import { 
   Building, 
@@ -72,6 +73,7 @@ export default function SubmissionDetailsPage() {
   const searchParams = useSearchParams();
   const submissionId = params?.id as string;
   const { user, supabase, isLoading: authLoading } = useAuth();
+  const { showDelete, AlertComponent } = useAlert();
   
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -367,7 +369,9 @@ export default function SubmissionDetailsPage() {
 
   // Delete comment
   const handleDeleteComment = async (commentId: string) => {
-    if (!confirm('Are you sure you want to delete this comment?')) return;
+    showDelete(
+      'Are you sure you want to delete this comment? This action cannot be undone.',
+      async () => {
 
     try {
       const response = await fetch(`/api/comments/${commentId}`, {
@@ -392,6 +396,8 @@ export default function SubmissionDetailsPage() {
       console.error('Error deleting comment:', error);
       alert('Failed to delete comment');
     }
+      }
+    );
   };
 
   // Format date for comments
@@ -1143,6 +1149,7 @@ export default function SubmissionDetailsPage() {
           )}
         </div>
       </div>
+      {AlertComponent}
     </AuthGuard>
   );
 }

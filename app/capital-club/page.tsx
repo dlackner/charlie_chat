@@ -219,7 +219,7 @@ export default function CapitalClubPage() {
                     <p className="text-gray-500">Cannot submit properties for funding</p>
                   </div>
                 </div>
-                <div className="mt-6">
+                <div className="mt-6 hidden">
                   <button
                     onClick={() => setShowDetailsModal(true)}
                     className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-bold text-lg py-4 px-6 rounded-lg shadow-lg transition-all duration-200 hover:shadow-xl transform hover:scale-105 flex items-center justify-center"

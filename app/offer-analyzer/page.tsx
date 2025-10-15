@@ -10,7 +10,7 @@ import { AuthGuard } from '@/components/auth/AuthGuard';
 import { UnsavedChangesModal } from './UnsavedChangesModal';
 import { CharlieTooltip } from './CharlieTooltip';
 import { SaveOfferModal } from '@/components/shared/SaveOfferModal';
-import AlertModal from '@/components/shared/AlertModal';
+import AlertModal, { useAlert } from '@/components/shared/AlertModal';
 import {
   LineChart,
   Line,
@@ -95,6 +95,7 @@ export default function OfferAnalyzerPage() {
   const { user: currentUser } = useAuth();
   const { userClass, hasAccess: hasOfferAnalyzerAccess, isLoading: isLoadingAccess } = useOfferAnalyzerAccess();
   const router = useRouter();
+  const { showDelete, showError, AlertComponent } = useAlert();
 
   // Redirect disabled users to pricing page
   useEffect(() => {
@@ -583,26 +584,27 @@ export default function OfferAnalyzerPage() {
   };
 
   const handleDeleteOffer = async (offerId: string) => {
-    if (!confirm('Are you sure you want to delete this offer? This action cannot be undone.')) {
-      return;
-    }
+    showDelete(
+      'Are you sure you want to delete this offer? This action cannot be undone.',
+      async () => {
+        try {
+          const response = await fetch(`/api/offer-scenarios/${offerId}`, {
+            method: 'DELETE'
+          });
 
-    try {
-      const response = await fetch(`/api/offer-scenarios/${offerId}`, {
-        method: 'DELETE'
-      });
+          if (!response.ok) {
+            const data = await response.json();
+            throw new Error(data.error || 'Failed to delete offer');
+          }
 
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || 'Failed to delete offer');
+          // Remove from local state
+          setSelectedPropertyOffers(prev => prev.filter(offer => offer.id !== offerId));
+        } catch (error) {
+          console.error('Error deleting offer:', error);
+          showError('Failed to delete offer. Please try again.');
+        }
       }
-
-      // Remove from local state
-      setSelectedPropertyOffers(prev => prev.filter(offer => offer.id !== offerId));
-    } catch (error) {
-      console.error('Error deleting offer:', error);
-      alert('Failed to delete offer. Please try again.');
-    }
+    );
   };
 
   // Handle saving analysis to database
