@@ -729,6 +729,13 @@ export default function SubmissionDetailsPage() {
                             >
                               View
                             </button>
+                            <button 
+                              onClick={() => window.open(`/fund/pricing-scenario-view/${submission.offer_scenario_id}?print=true`, '_blank')}
+                              className="px-3 py-2 bg-gray-200 text-gray-700 text-sm rounded hover:bg-gray-300 transition-colors"
+                              title="Print Pricing Scenario"
+                            >
+                              <Printer className="h-4 w-4" />
+                            </button>
                           </div>
                         </div>
                       )}
