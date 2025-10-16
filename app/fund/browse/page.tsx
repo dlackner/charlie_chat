@@ -10,7 +10,6 @@ import {
   Heart,
   Eye,
   Filter,
-  ArrowLeft,
   CheckCircle
 } from 'lucide-react';
 
@@ -243,14 +242,6 @@ function BrowseSubmissionsContent() {
           
           {/* Header */}
           <div className="mb-8">
-            <button
-              onClick={() => router.back()}
-              className="inline-flex items-center text-blue-600 hover:text-blue-700 mb-4"
-            >
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back
-            </button>
-            
             <div className="flex justify-between items-center">
               <div>
                 <h1 className="text-3xl font-bold text-gray-900 mb-2">Browse Investment Opportunities</h1>

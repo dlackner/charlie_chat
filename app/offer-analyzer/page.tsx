@@ -22,6 +22,7 @@ import {
   ResponsiveContainer,
   ReferenceLine
 } from 'recharts';
+import { ArrowLeft } from 'lucide-react';
 
 // Define the structure for data points in the chart
 interface ChartDataPoint {
@@ -74,7 +75,7 @@ const calculateIRR = (cashFlows: number[], guess: number = 0.1): number => {
 };
 
 // Component to handle search params
-function SearchParamsHandler({ onParamsLoaded }: { onParamsLoaded: (params: { street: string; city: string; state: string; id?: string; offerId?: string }) => void }) {
+function SearchParamsHandler({ onParamsLoaded }: { onParamsLoaded: (params: { street: string; city: string; state: string; id?: string; offerId?: string; submissionId?: string; variationId?: string; readOnly?: boolean; source?: string }) => void }) {
   const searchParams = useSearchParams();
   
   useEffect(() => {
@@ -83,7 +84,11 @@ function SearchParamsHandler({ onParamsLoaded }: { onParamsLoaded: (params: { st
       city: searchParams.get('city') || '',
       state: searchParams.get('state') || '',
       id: searchParams.get('id') || undefined,
-      offerId: searchParams.get('offerId') || undefined
+      offerId: searchParams.get('offerId') || undefined,
+      submissionId: searchParams.get('submissionId') || undefined,
+      variationId: searchParams.get('variationId') || undefined,
+      readOnly: searchParams.get('readOnly') === 'true',
+      source: searchParams.get('source') || undefined
     });
   }, [searchParams, onParamsLoaded]);
   
@@ -122,14 +127,48 @@ export default function OfferAnalyzerPage() {
   const [propertyCity, setPropertyCity] = useState<string>('');
   const [propertyId, setPropertyId] = useState<string>('');
   const [propertyState, setPropertyState] = useState<string>('');
+  const [submissionId, setSubmissionId] = useState<string>('');
+  const [isReadOnly, setIsReadOnly] = useState<boolean>(false);
+  const [source, setSource] = useState<string>('');
   
   // Callback to handle search params
-  const handleParamsLoaded = useCallback(async (params: { street: string; city: string; state: string; id?: string; offerId?: string }) => {
+  const handleParamsLoaded = useCallback(async (params: { street: string; city: string; state: string; id?: string; offerId?: string; submissionId?: string; variationId?: string; readOnly?: boolean; source?: string }) => {
     setPropertyStreet(params.street);
     setPropertyCity(params.city);
     setPropertyState(params.state);
+    if (params.submissionId) {
+      setSubmissionId(params.submissionId);
+    }
     if (params.id) {
       setPropertyId(params.id);
+    }
+    if (params.readOnly) {
+      setIsReadOnly(params.readOnly);
+    }
+
+    // Handle loading pricing variation by ID
+    if (params.variationId) {
+      try {
+        console.log('Loading pricing variation with ID:', params.variationId);
+        const response = await fetch(`/api/pricing-variations/${params.variationId}`);
+        if (response.ok) {
+          const data = await response.json();
+          const scenarioData = data.variation.scenario_data;
+          console.log('Loading scenario data:', scenarioData);
+          
+          // Load all the scenario data into the analyzer state
+          if (scenarioData.purchasePrice) setPurchasePrice(scenarioData.purchasePrice);
+          if (scenarioData.downPaymentPercentage) setDownPaymentPercentage(scenarioData.downPaymentPercentage);
+          if (scenarioData.interestRate) setInterestRate(scenarioData.interestRate);
+          // Add more field loading as needed...
+          
+          console.log('Scenario data loaded successfully');
+        } else {
+          console.error('Failed to load pricing variation');
+        }
+      } catch (error) {
+        console.error('Error loading pricing variation:', error);
+      }
     }
     
     // If offerId is provided, load the saved offer scenario
@@ -173,6 +212,11 @@ export default function OfferAnalyzerPage() {
       } catch (error) {
         console.error('Error loading saved offer:', error);
       }
+    }
+    
+    // Set the source for back navigation
+    if (params.source) {
+      setSource(params.source);
     }
   }, []);
 
@@ -638,6 +682,16 @@ export default function OfferAnalyzerPage() {
   };
 
   const handleSaveOffer = async (offerName: string, offerDescription: string) => {
+    if (submissionId) {
+      // For pricing variations, skip duplicate checking and go straight to save
+      await performSaveOffer(offerName, offerDescription);
+      setShowSaveOfferModal(false);
+      // Redirect back to the fund browse page where they started
+      router.push(`/fund/browse/${submissionId}`);
+      return;
+    }
+
+    // Original offer scenario logic - requires propertyId
     if (!propertyId) {
       throw new Error('Property ID is required to save offers');
     }
@@ -709,54 +763,76 @@ export default function OfferAnalyzerPage() {
 
   // Separate function to actually perform the save
   const performSaveOffer = async (offerName: string, offerDescription: string) => {
-    if (!propertyId) {
-      throw new Error('Property ID is required to save offers');
-    }
+    // Check if we're saving a pricing variation (from submission) or regular offer scenario
+    // submissionId is available from state if this was opened from a fund submission
+    
+    if (submissionId) {
+      // Save as pricing variation - no propertyId needed
+      const response = await fetch('/api/pricing-variations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          submissionId,
+          analysisName: offerName,
+          description: offerDescription,
+          scenarioData: getCurrentOfferData()
+        })
+      });
 
-    // Get the correct property_id from saved_properties table
-    const favoritesResponse = await fetch('/api/favorites', {
-      method: 'GET',
-      headers: { 'Content-Type': 'application/json' }
-    });
-    
-    if (!favoritesResponse.ok) {
-      throw new Error('Failed to fetch saved properties');
-    }
-    
-    const favoritesData = await favoritesResponse.json();
-    
-    console.log('Looking for UUID:', propertyId);
-    
-    // Find the saved property record where the internal UUID matches
-    const savedProperty = favoritesData.favorites?.find((f: any) => 
-      f.property_data?.id === propertyId
-    );
-    
-    console.log('Found saved property:', savedProperty);
-    
-    if (!savedProperty || !savedProperty.property_id) {
-      console.error('Available property_data IDs:', favoritesData.favorites?.map((f: any) => f.property_data?.id));
-      throw new Error(`Property UUID ${propertyId} not found in favorites. This property must be saved to your favorites before creating offer scenarios.`);
-    }
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to save pricing variation');
+      }
+    } else {
+      // Original offer scenario save logic - propertyId required
+      if (!propertyId) {
+        throw new Error('Property ID is required to save offers');
+      }
 
-    const actualPropertyId = savedProperty.property_id;
-    console.log('Using actual property_id:', actualPropertyId);
+      // Get the correct property_id from saved_properties table
+      const favoritesResponse = await fetch('/api/favorites', {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      
+      if (!favoritesResponse.ok) {
+        throw new Error('Failed to fetch saved properties');
+      }
+      
+      const favoritesData = await favoritesResponse.json();
+      
+      console.log('Looking for UUID:', propertyId);
+      
+      // Find the saved property record where the internal UUID matches
+      const savedProperty = favoritesData.favorites?.find((f: any) => 
+        f.property_data?.id === propertyId
+      );
+      
+      console.log('Found saved property:', savedProperty);
+      
+      if (!savedProperty || !savedProperty.property_id) {
+        console.error('Available property_data IDs:', favoritesData.favorites?.map((f: any) => f.property_data?.id));
+        throw new Error(`Property UUID ${propertyId} not found in favorites. This property must be saved to your favorites before creating offer scenarios.`);
+      }
 
-    const response = await fetch('/api/offer-scenarios', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        propertyId: actualPropertyId, // Use the property_id field from saved_properties
-        offerName,
-        offerDescription,
-        offerData: getCurrentOfferData()
-      })
-    });
+      const actualPropertyId = savedProperty.property_id;
+      console.log('Using actual property_id:', actualPropertyId);
 
-    const data = await response.json();
+      const response = await fetch('/api/offer-scenarios', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          propertyId: actualPropertyId, // Use the property_id field from saved_properties
+          offerName,
+          offerDescription,
+          offerData: getCurrentOfferData()
+        })
+      });
 
-    if (!response.ok) {
-      throw new Error(data.error || 'Failed to save offer');
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to save offer');
+      }
     }
 
     // Reset the unsaved changes tracking since we're saving the scenario
@@ -1594,9 +1670,33 @@ export default function OfferAnalyzerPage() {
       <Suspense fallback={null}>
         <SearchParamsHandler onParamsLoaded={handleParamsLoaded} />
       </Suspense>
+      
     <div className="flex flex-col lg:flex-row p-6 bg-gray-50 text-gray-800 min-h-screen">
       {/* Hidden file input for loading settings */}
       <div className="lg:w-2/3 pr-0 lg:pr-8 mb-8 lg:mb-0">
+
+        {/* Back Button - show when coming from specific pages */}
+        {(submissionId || source) && (
+          <button
+            onClick={() => {
+              if (submissionId) {
+                router.push(`/fund/browse/${submissionId}`);
+              } else if (source === 'engage') {
+                router.push('/engage');
+              } else if (source === 'discover' && propertyId) {
+                router.push(`/discover/property/${propertyId}`);
+              } else if (source === 'create') {
+                router.push('/fund/create');
+              } else {
+                router.back();
+              }
+            }}
+            className="flex items-center text-blue-600 hover:text-blue-700 font-medium mb-6"
+          >
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back
+          </button>
+        )}
 
         <div className="flex justify-between items-end mb-6">
           {/* Investment Grade Card - Modern Charlie2 Style */}
@@ -1842,7 +1942,12 @@ export default function OfferAnalyzerPage() {
             </button>
             <button
               onClick={() => setShowMoreMenu(!showMoreMenu)}
-              className="flex-1 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transform transition-all duration-150 text-sm hover:scale-105 active:scale-95 active:bg-blue-700"
+              disabled={isReadOnly}
+              className={`flex-1 px-4 py-2 rounded-lg transform transition-all duration-150 text-sm hover:scale-105 active:scale-95 ${
+                isReadOnly 
+                  ? 'bg-gray-400 text-gray-200 cursor-not-allowed' 
+                  : 'bg-blue-500 text-white hover:bg-blue-600 active:bg-blue-700'
+              }`}
             >
               Actions
             </button>

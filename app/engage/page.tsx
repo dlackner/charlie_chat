@@ -536,7 +536,8 @@ function EngagePageContent() {
       // If property not found in current saved properties, still navigate with minimal data
       const params = new URLSearchParams({
         offerId: offerId.toString(),
-        id: propertyId
+        id: propertyId,
+        source: 'engage'
       });
       router.push(`/offer-analyzer?${params.toString()}`);
       setShowOffersModal(false);
@@ -553,7 +554,8 @@ function EngagePageContent() {
       assessed: property.assessed,
       built: property.built.toString(),
       id: property.id.toString(), // This should be the UUID
-      offerId: offerId.toString()
+      offerId: offerId.toString(),
+      source: 'engage'
     });
     router.push(`/offer-analyzer?${params.toString()}`);
     setShowOffersModal(false);
@@ -1411,7 +1413,8 @@ function EngagePageContent() {
               units: property.units.toString(),
               assessed: property.assessed,
               built: property.built.toString(),
-              id: property.id.toString()
+              id: property.id.toString(),
+              source: 'engage'
             });
             router.push(`/offer-analyzer?${params.toString()}`);
 

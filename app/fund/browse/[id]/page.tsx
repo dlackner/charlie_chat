@@ -89,6 +89,8 @@ export default function SubmissionDetailsPage() {
   const [showInvestmentAnalysis, setShowInvestmentAnalysis] = useState(false);
   const [interestedInvestors, setInterestedInvestors] = useState<InterestedInvestor[]>([]);
   const [showTooltip, setShowTooltip] = useState(false);
+  const [pricingVariations, setPricingVariations] = useState<any[]>([]);
+  const [expandedScenario, setExpandedScenario] = useState<string | null>(null);
   
   // Comment state
   const [comments, setComments] = useState<Comment[]>([]);
@@ -231,6 +233,27 @@ export default function SubmissionDetailsPage() {
 
     fetchSubmission();
   }, [submissionId, supabase, user]);
+
+  // Fetch pricing variations
+  const fetchPricingVariations = async () => {
+    if (!submissionId) return;
+
+    try {
+      console.log('Fetching pricing variations for submissionId:', submissionId);
+      const response = await fetch(`/api/pricing-variations?submissionId=${submissionId}`);
+      if (response.ok) {
+        const data = await response.json();
+        console.log('Pricing variations data:', data);
+        setPricingVariations(data.variations || []);
+      } else {
+        console.error('Failed to fetch pricing variations, status:', response.status);
+        setPricingVariations([]); // Set empty array on error
+      }
+    } catch (error) {
+      console.error('Error fetching pricing variations:', error);
+      setPricingVariations([]); // Set empty array on error
+    }
+  };
 
   // Fetch interested users for tooltip
   const fetchInterestedInvestors = async () => {
@@ -564,6 +587,11 @@ export default function SubmissionDetailsPage() {
     return new Date(dateString).toLocaleDateString();
   };
 
+  // Fetch pricing variations when component loads
+  useEffect(() => {
+    fetchPricingVariations();
+  }, [submissionId]);
+
   if (loading || authLoading) {
     return (
       <AuthGuard>
@@ -749,10 +777,10 @@ export default function SubmissionDetailsPage() {
                     )}
                     
                     {/* Report Cards Grid */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
                       {/* Property Profile */}
-                      <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
-                        <div className="border-l-4 border-purple-500 pl-4 mb-4">
+                      <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
+                        <div className="border-l-4 border-purple-500 pl-2 mb-4">
                           <div className="text-base font-bold text-gray-900">Property Profile</div>
                         </div>
                         <div className="flex gap-2">
@@ -773,9 +801,9 @@ export default function SubmissionDetailsPage() {
                       </div>
 
                       {/* 10-Year Cash Flow */}
-                      <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
-                        <div className="border-l-4 border-green-500 pl-4 mb-4">
-                          <div className="text-base font-bold text-gray-900">Cash Flow</div>
+                      <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
+                        <div className="border-l-4 border-green-500 pl-2 mb-4">
+                          <div className="text-base font-bold text-gray-900">Cash<br />Flow</div>
                         </div>
                         <div className="flex gap-2">
                           <button 
@@ -796,8 +824,8 @@ export default function SubmissionDetailsPage() {
 
                       {/* Pricing Scenario */}
                       {submission.offer_scenario_id && (
-                        <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
-                          <div className="border-l-4 border-orange-500 pl-4 mb-4">
+                        <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
+                          <div className="border-l-4 border-orange-500 pl-2 mb-4">
                             <div className="text-base font-bold text-gray-900">Pricing Scenario</div>
                           </div>
                           <div className="flex gap-2">
@@ -819,8 +847,8 @@ export default function SubmissionDetailsPage() {
                       )}
 
                       {/* Investment Analysis */}
-                      <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
-                        <div className="border-l-4 border-blue-500 pl-4 mb-4">
+                      <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
+                        <div className="border-l-4 border-blue-500 pl-2 mb-4">
                           <div className="text-base font-bold text-gray-900">Investment Analysis</div>
                         </div>
                         <div className="flex gap-2">
@@ -852,8 +880,8 @@ export default function SubmissionDetailsPage() {
                       </div>
                       
                       {/* Other Files */}
-                      <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
-                        <div className="border-l-4 border-teal-500 pl-4 mb-4">
+                      <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
+                        <div className="border-l-4 border-teal-500 pl-2 mb-4">
                           <div className="text-base font-bold text-gray-900">Other Files</div>
                         </div>
                         <div className="flex gap-2">
@@ -875,6 +903,140 @@ export default function SubmissionDetailsPage() {
                               No files
                             </div>
                           )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Pricing Sandbox Row */}
+                    <div className="border-t border-gray-200 pt-6">
+                      <div className="flex items-center justify-between mb-4">
+                        <div>
+                          <h4 className="text-md font-medium text-gray-800">Pricing Sandbox</h4>
+                          <p className="text-xs text-gray-500 mt-1">Community scenarios and experiments</p>
+                        </div>
+                        <span className="text-xs text-amber-700 bg-amber-100 px-2 py-1 rounded-full">{pricingVariations.length} Scenarios</span>
+                      </div>
+                      
+                      {/* Scrollable Scenarios Gallery */}
+                      <div className="relative">
+                        <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
+                          
+                          {/* Create New Scenario */}
+                          <div className="flex-shrink-0 w-64 bg-gradient-to-br from-amber-50 to-yellow-50 rounded-lg p-4 shadow-sm border-2 border-dashed border-amber-200 hover:border-amber-300 transition-colors">
+                            <div className="border-l-4 border-amber-500 pl-2 mb-4">
+                              <div className="text-sm font-bold text-gray-900">Create Scenario</div>
+                              <div className="text-xs text-gray-500">Modify the original assumptions to reflect your recommendations</div>
+                            </div>
+                            <div className="flex gap-2">
+                              <button 
+                                onClick={() => router.push(`/offer-analyzer?offerId=813639eb-8b21-445e-8501-0d24cea62ebb&submissionId=${submissionId}`)}
+                                className="flex-1 px-3 py-2 bg-amber-500 text-white text-sm rounded hover:bg-amber-600 transition-colors font-medium"
+                              >
+                                New Scenario
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* Real scenarios from database */}
+                          {pricingVariations.map((variation, index) => (
+                            <div key={variation.id} className="flex-shrink-0 w-64 bg-white rounded-lg p-4 shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
+                              <div className="relative">
+                                <div 
+                                  className={`border-l-4 pl-2 mb-4 ${
+                                    index % 8 === 0 ? 'border-indigo-500' :
+                                    index % 8 === 1 ? 'border-rose-500' :
+                                    index % 8 === 2 ? 'border-emerald-500' :
+                                    index % 8 === 3 ? 'border-purple-500' :
+                                    index % 8 === 4 ? 'border-cyan-500' :
+                                    index % 8 === 5 ? 'border-pink-500' :
+                                    index % 8 === 6 ? 'border-orange-500' : 'border-teal-500'
+                                  }`}
+                                >
+                                  <div className="flex justify-between items-center">
+                                    <div className="text-sm font-bold text-gray-900">
+                                      {variation.profiles?.first_name || 'Unknown'} {variation.profiles?.last_name || 'User'}
+                                    </div>
+                                    {user?.id === variation.user_id && (
+                                      <button
+                                        onClick={async (e) => {
+                                          e.stopPropagation();
+                                          try {
+                                            const response = await fetch(`/api/pricing-variations/${variation.id}`, {
+                                              method: 'DELETE'
+                                            });
+                                            
+                                            if (response.ok) {
+                                              // Remove from local state
+                                              setPricingVariations(prev => prev.filter(v => v.id !== variation.id));
+                                            } else {
+                                              console.error('Failed to delete scenario');
+                                            }
+                                          } catch (error) {
+                                            console.error('Error deleting scenario:', error);
+                                          }
+                                        }}
+                                        className="text-gray-400 hover:text-red-500 transition-colors p-1"
+                                        title="Delete scenario"
+                                      >
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                        </svg>
+                                      </button>
+                                    )}
+                                  </div>
+                                  <div 
+                                    className="text-xs text-gray-500 cursor-pointer hover:text-gray-700 h-8 overflow-hidden"
+                                    onClick={() => setExpandedScenario(expandedScenario === variation.id ? null : variation.id)}
+                                  >
+                                    {expandedScenario === variation.id 
+                                      ? variation.description || 'No description provided'
+                                      : `${(variation.description || 'Custom scenario analysis').substring(0, 50)}... (click to expand)`
+                                    }
+                                  </div>
+                                </div>
+                              </div>
+                              <div className="flex gap-2">
+                                <button 
+                                  onClick={() => {
+                                    // Pass the variation ID instead of the entire data
+                                    router.push(`/offer-analyzer?variationId=${variation.id}&submissionId=${submissionId}&readOnly=true`);
+                                  }}
+                                  className={`flex-1 px-3 py-2 text-white text-sm rounded transition-colors ${
+                                    index % 8 === 0 ? 'bg-indigo-600 hover:bg-indigo-700' :
+                                    index % 8 === 1 ? 'bg-rose-600 hover:bg-rose-700' :
+                                    index % 8 === 2 ? 'bg-emerald-600 hover:bg-emerald-700' :
+                                    index % 8 === 3 ? 'bg-purple-600 hover:bg-purple-700' :
+                                    index % 8 === 4 ? 'bg-cyan-600 hover:bg-cyan-700' :
+                                    index % 8 === 5 ? 'bg-pink-600 hover:bg-pink-700' :
+                                    index % 8 === 6 ? 'bg-orange-600 hover:bg-orange-700' : 'bg-teal-600 hover:bg-teal-700'
+                                  }`}
+                                >
+                                  View
+                                </button>
+                                <button className="px-3 py-2 bg-gray-200 text-gray-700 text-sm rounded hover:bg-gray-300 transition-colors">
+                                  <Printer className="h-4 w-4" />
+                                </button>
+                              </div>
+                            </div>
+                          ))}
+
+                          {/* Show placeholder only when no scenarios exist */}
+                          {pricingVariations.length === 0 && (
+                            <div className="flex-shrink-0 w-64 bg-gray-50 rounded-lg p-4 shadow-sm border border-gray-200 flex items-center justify-center">
+                              <div className="text-center text-gray-500">
+                                <div className="text-sm mb-2">No scenarios yet</div>
+                                <div className="text-xs">Be the first to create a scenario</div>
+                              </div>
+                            </div>
+                          )}
+
+                        </div>
+                      </div>
+
+                      {/* Info Footer */}
+                      <div className="mt-4 p-3 bg-gray-50 rounded-lg">
+                        <div className="text-xs text-gray-600 text-center">
+{pricingVariations.length} community scenarios • {pricingVariations.length === 0 ? 'Create the first scenario for this property' : 'Scroll horizontally to view all scenarios'}
                         </div>
                       </div>
                     </div>
