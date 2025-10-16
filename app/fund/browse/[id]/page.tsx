@@ -67,6 +67,13 @@ interface Comment {
   replies: Comment[];
 }
 
+interface InterestedInvestor {
+  id: string;
+  name: string;
+  email: string;
+  expressed_at: string;
+}
+
 export default function SubmissionDetailsPage() {
   const router = useRouter();
   const params = useParams();
@@ -80,6 +87,8 @@ export default function SubmissionDetailsPage() {
   const [submission, setSubmission] = useState<Submission | null>(null);
   const [hasExpressedInterest, setHasExpressedInterest] = useState(false);
   const [showInvestmentAnalysis, setShowInvestmentAnalysis] = useState(false);
+  const [interestedInvestors, setInterestedInvestors] = useState<InterestedInvestor[]>([]);
+  const [showTooltip, setShowTooltip] = useState(false);
   
   // Comment state
   const [comments, setComments] = useState<Comment[]>([]);
@@ -207,6 +216,9 @@ export default function SubmissionDetailsPage() {
           setHasExpressedInterest(!!interestData);
         }
 
+        // Fetch interested investors for hover tooltip
+        await fetchInterestedInvestors();
+
       } catch (err) {
         console.error('Error fetching submission:', err);
         console.error('Submission ID:', submissionId);
@@ -219,6 +231,68 @@ export default function SubmissionDetailsPage() {
 
     fetchSubmission();
   }, [submissionId, supabase, user]);
+
+  // Fetch interested users for tooltip
+  const fetchInterestedInvestors = async () => {
+    if (!submissionId || !supabase) return;
+
+    try {
+      // First get the submission interests
+      const { data: interests, error } = await supabase
+        .from('submission_interests')
+        .select('id, created_at, user_id')
+        .eq('submission_id', submissionId)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Error fetching submission interests:', error);
+        return;
+      }
+
+      if (!interests || interests.length === 0) {
+        setInterestedInvestors([]);
+        return;
+      }
+
+      // Get unique user IDs
+      const userIds = interests.map(i => i.user_id);
+
+      // Fetch all profiles at once
+      const { data: profiles, error: profileError } = await supabase
+        .from('profiles')
+        .select('user_id, first_name, last_name, full_name')
+        .in('user_id', userIds);
+
+      if (profileError) {
+        console.error('Error fetching profiles:', profileError);
+      }
+
+      // Map interests to investors with profile data
+      const investors: InterestedInvestor[] = interests.map((interest) => {
+        const profile = profiles?.find(p => p.user_id === interest.user_id);
+        let name = 'Anonymous User';
+        
+        if (profile) {
+          if (profile.full_name) {
+            name = profile.full_name.trim();
+          } else if (profile.first_name || profile.last_name) {
+            name = `${profile.first_name || ''} ${profile.last_name || ''}`.trim();
+          }
+        }
+
+        return {
+          id: interest.id,
+          name: name || 'Anonymous User',
+          email: '',
+          expressed_at: interest.created_at
+        };
+      });
+
+      setInterestedInvestors(investors);
+    } catch (err) {
+      console.error('Error fetching interested users:', err);
+    }
+  };
 
   // Fetch comments
   const fetchComments = async () => {
@@ -444,6 +518,8 @@ export default function SubmissionDetailsPage() {
 
         setHasExpressedInterest(false);
         setSubmission(prev => prev ? { ...prev, interest_count: Math.max(0, prev.interest_count - 1) } : null);
+        // Refresh the interested investors list
+        await fetchInterestedInvestors();
       } else {
         // Add interest
         await supabase
@@ -461,6 +537,8 @@ export default function SubmissionDetailsPage() {
 
         setHasExpressedInterest(true);
         setSubmission(prev => prev ? { ...prev, interest_count: prev.interest_count + 1 } : null);
+        // Refresh the interested investors list
+        await fetchInterestedInvestors();
       }
     } catch (err) {
       console.error('Error expressing interest:', err);
@@ -811,8 +889,25 @@ export default function SubmissionDetailsPage() {
                   <div className="grid grid-cols-2 gap-4">
                     <div className="text-center">
                       <h3 className="text-lg font-semibold text-gray-900 mb-2">Interest Level</h3>
-                      <div className="text-3xl font-bold text-blue-600 mb-1">{submission.interest_count}</div>
-                      <div className="text-sm text-gray-600">Investors interested</div>
+                      <div className="relative inline-block">
+                        <div 
+                          className="text-3xl font-bold text-blue-600 mb-1"
+                          onMouseEnter={() => setShowTooltip(true)}
+                          onMouseLeave={() => setShowTooltip(false)}
+                        >
+                          {submission.interest_count}
+                        </div>
+                        {showTooltip && interestedInvestors.length > 0 && (
+                          <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-white border border-gray-200 rounded-lg shadow-lg text-xs text-gray-700 whitespace-nowrap z-50">
+                            {interestedInvestors.map((investor, index) => (
+                              <div key={investor.id} className={index > 0 ? 'mt-1' : ''}>
+                                {investor.name}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                      <div className="text-sm text-gray-600">Interested</div>
                     </div>
                     <div className="text-center">
                       <h3 className="text-lg font-semibold text-gray-900 mb-2">Views</h3>
