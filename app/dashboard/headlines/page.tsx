@@ -657,6 +657,13 @@ function RemindersSection({ user }: { user: any }) {
   // Investment activity state
   const [submissionMetrics, setSubmissionMetrics] = useState({ activeCount: 0, newThisWeek: 0 });
   const [isLoadingSubmissions, setIsLoadingSubmissions] = useState(false);
+  
+  // Discussion replies state
+  const [discussionReplies, setDiscussionReplies] = useState({
+    unread_submissions: [],
+    total_count: 0
+  });
+  const [isLoadingReplies, setIsLoadingReplies] = useState(false);
 
   // Fetch reminders from API
   useEffect(() => {
@@ -686,6 +693,31 @@ function RemindersSection({ user }: { user: any }) {
 
     fetchReminders();
   }, [user]);
+
+  // Fetch discussion replies
+  useEffect(() => {
+    const fetchDiscussionReplies = async () => {
+      if (!user?.id) return;
+      
+      setIsLoadingReplies(true);
+      
+      try {
+        const response = await fetch('/api/discussion-replies');
+        if (response.ok) {
+          const data = await response.json();
+          setDiscussionReplies(data);
+        } else {
+          console.error('Failed to fetch discussion replies');
+        }
+      } catch (err) {
+        console.error('Error fetching discussion replies:', err);
+      } finally {
+        setIsLoadingReplies(false);
+      }
+    };
+
+    fetchDiscussionReplies();
+  }, [user?.id]);
 
   // Fetch pending recommendations count
   useEffect(() => {
@@ -888,20 +920,33 @@ function RemindersSection({ user }: { user: any }) {
                         Browse Opportunities →
                       </Link>
                     </div>
-                    <div className="bg-blue-50 rounded p-3 border border-blue-200">
-                      <div className="text-sm font-medium text-gray-900 mb-1">
-                        New This Week
+                    {discussionReplies.total_count > 0 && (
+                      <div className="bg-blue-50 rounded p-3 border border-blue-200">
+                        <div className="text-sm font-medium text-gray-900 mb-1">
+                          You have replies in these discussions:
+                        </div>
+                        <div className="space-y-1 mb-2 max-h-20 overflow-y-auto">
+                          {discussionReplies.unread_submissions.map((submission: any) => (
+                            <div 
+                              key={submission.submission_id}
+                              className="text-xs text-gray-700 hover:text-blue-700 cursor-pointer"
+                              onClick={async () => {
+                                // Mark as clicked
+                                try {
+                                  await fetch('/api/discussion-replies', { method: 'POST' });
+                                } catch (err) {
+                                  console.error('Error marking notification as clicked:', err);
+                                }
+                                // Navigate to browse page
+                                window.location.href = '/fund/browse';
+                              }}
+                            >
+                              {submission.submission_name}
+                            </div>
+                          ))}
+                        </div>
                       </div>
-                      <div className="text-xs text-gray-600 mb-2">
-                        {submissionMetrics.newThisWeek} new propert{submissionMetrics.newThisWeek !== 1 ? 'ies' : 'y'} added in the past 7 days.
-                      </div>
-                      <Link 
-                        href="/fund/browse"
-                        className="text-xs text-blue-600 hover:text-blue-700 font-medium"
-                      >
-                        View Latest →
-                      </Link>
-                    </div>
+                    )}
                 </div>
               )}
             </div>

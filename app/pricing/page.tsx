@@ -392,7 +392,7 @@ export default function PricingPage() {
             <li className="flex items-start"><span className="w-2 h-2 bg-indigo-600 rounded-full mt-2 mr-3 flex-shrink-0"></span>Membership in the MultifamilyOS Capital Club</li>
             <li className="flex items-start"><span className="w-2 h-2 bg-indigo-600 rounded-full mt-2 mr-3 flex-shrink-0"></span>Weekly Coaching Calls with Charles Dobens</li>
             <li className="flex items-start"><span className="w-2 h-2 bg-indigo-600 rounded-full mt-2 mr-3 flex-shrink-0"></span>Master Class Training Program</li>
-            <li className="flex items-start"><span className="w-2 h-2 bg-indigo-600 rounded-full mt-2 mr-3 flex-shrink-0"></span>Community Access</li>
+            <li className="flex items-start"><span className="w-2 h-2 bg-indigo-600 rounded-full mt-2 mr-3 flex-shrink-0"></span>Community Access and Networking</li>
           </ul>
           <div className="flex-grow"></div>
           <div className="text-lg font-semibold text-green-600 mb-4 text-center">
@@ -1188,7 +1188,7 @@ export default function PricingPage() {
             </div>
 
             <div className="grid grid-cols-5 gap-0 hover:bg-gray-50/50 transition-colors">
-              <div className="px-6 py-4 text-sm font-medium text-gray-900">Community Access</div>
+              <div className="px-6 py-4 text-sm font-medium text-gray-900">Community Access and Networking</div>
               <div className="px-6 py-4 text-center border-l border-gray-100">
                 <div className="w-5 h-5 rounded-full bg-gray-200 mx-auto flex items-center justify-center">
                   <div className="w-2 h-0.5 bg-gray-400"></div>
