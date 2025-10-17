@@ -61,17 +61,8 @@ function categorizeReminder(reminderDate: string): { type: 'today' | 'upcoming' 
   const reminder = new Date(year, month - 1, day); // month is 0-based in Date constructor
   reminder.setHours(0, 0, 0, 0);
   
-  // Debug logging
-  console.log('🔍 Debug reminder categorization:');
-  console.log('  - Today:', today.toISOString().split('T')[0]);
-  console.log('  - Reminder date:', reminderDate);
-  console.log('  - Reminder parsed:', reminder.toISOString().split('T')[0]);
-  
   const diffTime = reminder.getTime() - today.getTime();
   const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-  
-  console.log('  - Diff time:', diffTime);
-  console.log('  - Diff days:', diffDays);
   
   // Get the date 7 days from today
   const sevenDaysFromToday = new Date(today);
@@ -87,8 +78,6 @@ function categorizeReminder(reminderDate: string): { type: 'today' | 'upcoming' 
     type = 'overdue'; // Past dates or dates beyond 7 days
   }
   
-  console.log('  - Final type:', type);
-  
   // Determine priority based on how overdue or close it is
   let priority: 'high' | 'medium' | 'low';
   if (type === 'overdue') {
@@ -98,8 +87,6 @@ function categorizeReminder(reminderDate: string): { type: 'today' | 'upcoming' 
   } else {
     priority = diffDays <= 7 ? 'medium' : 'low';
   }
-  
-  console.log('  - Final priority:', priority);
   
   return { type, priority };
 }

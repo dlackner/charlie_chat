@@ -8,7 +8,6 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { generate10YearCashFlowReport } from '@/app/offer-analyzer/cash-flow-report';
 import { 
   Plus,
-  ArrowLeft,
   CheckCircle,
   AlertCircle,
   Trash2
@@ -823,14 +822,6 @@ function CreateSubmissionContent() {
           
           {/* Header */}
           <div className="mb-8">
-            <button
-              onClick={() => router.back()}
-              className="inline-flex items-center text-blue-600 hover:text-blue-700 mb-4"
-            >
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back
-            </button>
-            
             <h1 className="text-3xl font-bold text-gray-900 mb-2">Manage Submissions</h1>
             <p className="text-gray-600">
               Manage your existing submissions and create new investment opportunities

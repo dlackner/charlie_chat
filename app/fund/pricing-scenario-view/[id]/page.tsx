@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { AuthGuard } from '@/components/auth/AuthGuard';
 import { ArrowLeft } from 'lucide-react';
@@ -40,8 +40,10 @@ interface OfferScenario {
 export default function PricingScenarioViewPage() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const scenarioId = params?.id as string;
   const { supabase } = useAuth();
+  const isPrintMode = searchParams?.get('print') === 'true';
   
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -129,28 +131,54 @@ export default function PricingScenarioViewPage() {
 
   const { offer_data } = scenario;
 
+
   return (
     <AuthGuard>
-      <div className="min-h-screen bg-gray-50">
-        {/* Back Button */}
-        <div className="bg-white border-b">
-          <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-            <button
-              onClick={() => router.back()}
-              className="flex items-center text-blue-600 hover:text-blue-700 font-medium"
-            >
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back
-            </button>
+      <div className={`min-h-screen ${isPrintMode ? 'bg-white' : 'bg-gray-50'}`}>
+        {/* Print Mode Header */}
+        {isPrintMode && (
+          <div className="no-print bg-white shadow-sm border-b p-4">
+            <div className="max-w-4xl mx-auto flex items-center justify-between">
+              <h1 className="text-xl font-semibold text-gray-900">Pricing Scenario - Print View</h1>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => window.print()}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                >
+                  Print
+                </button>
+                <button
+                  onClick={() => window.close()}
+                  className="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
           </div>
-        </div>
+        )}
+
+        {/* Back Button - hide in print mode */}
+        {!isPrintMode && (
+          <div className="bg-white border-b print:hidden">
+            <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+              <button
+                onClick={() => router.back()}
+                className="flex items-center text-blue-600 hover:text-blue-700 font-medium"
+              >
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Back
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Header */}
-        <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white">
+        <div className={`${isPrintMode ? 'bg-white text-black border-b-2 border-gray-800' : 'bg-gradient-to-r from-blue-600 to-blue-700 text-white'}`}>
           <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
             <div>
               <h1 className="text-3xl font-bold">Pricing Scenario</h1>
-              <p className="text-xl text-white/90 mt-2">{scenario.offer_name}</p>
+              <p className={`text-xl ${isPrintMode ? 'text-gray-700' : 'text-white/90'} mt-2`}>{scenario.offer_name}</p>
             </div>
           </div>
         </div>

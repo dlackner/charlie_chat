@@ -229,9 +229,6 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, on
   };
 
   const getUserClassDisplayInfo = () => {
-    // Add debug logging to see what we're getting from DB
-    console.log('Debug - user_class from DB:', userClass);
-    
     if (!userClass) return null;
     
     switch (userClass) {

@@ -36,11 +36,10 @@ interface OfferScenario {
   offer_name: string;
   offer_data: {
     purchasePrice?: number;
-    downPayment?: number;
-    renovationBudget?: number;
+    down_payment_amount?: number;
     projected_irr?: string;
-    projected_cash_on_cash?: string;
-    projected_cap_rate?: string;
+    cash_on_cash_return?: string;
+    cap_rate_year_1?: string;
     projected_equity_at_horizon?: number;
     [key: string]: any;
   };
@@ -280,25 +279,21 @@ function PropertyProfilePrintContent() {
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">Down Payment:</span>
-                    <span className="font-medium">{formatCurrency(offerScenario.offer_data.downPayment)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Renovation Budget:</span>
-                    <span className="font-medium">{formatCurrency(offerScenario.offer_data.renovationBudget)}</span>
+                    <span className="font-medium">{formatCurrency(offerScenario.offer_data.down_payment_amount)}</span>
                   </div>
                 </div>
                 <div className="space-y-2">
                   <div className="flex justify-between">
                     <span className="text-gray-600">Projected IRR:</span>
-                    <span className="font-medium">{offerScenario.offer_data.projected_irr || 'N/A'}</span>
+                    <span className="font-medium">{offerScenario.offer_data.projected_irr ? `${offerScenario.offer_data.projected_irr}%` : 'N/A'}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">Cash-on-Cash Return:</span>
-                    <span className="font-medium">{offerScenario.offer_data.projected_cash_on_cash || 'N/A'}</span>
+                    <span className="font-medium">{offerScenario.offer_data.cash_on_cash_return ? `${offerScenario.offer_data.cash_on_cash_return}%` : 'N/A'}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">Cap Rate:</span>
-                    <span className="font-medium">{offerScenario.offer_data.projected_cap_rate || 'N/A'}</span>
+                    <span className="font-medium">{offerScenario.offer_data.cap_rate_year_1 ? `${offerScenario.offer_data.cap_rate_year_1}%` : 'N/A'}</span>
                   </div>
                 </div>
               </div>

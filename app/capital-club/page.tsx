@@ -9,7 +9,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { StandardModalWithActions } from '@/components/shared/StandardModal';
 import CapitalClubDetailsModal from '@/components/shared/CapitalClubDetailsModal';
-import { Crown, Users, TrendingUp, Star, Shield, Zap, ExternalLink } from 'lucide-react';
+import { Crown, Users, Star, Shield, Zap, ExternalLink } from 'lucide-react';
 
 export default function CapitalClubPage() {
   const { user, supabase } = useAuth();
@@ -176,14 +176,9 @@ export default function CapitalClubPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-16">
               {/* Core/Plus Members */}
               <div className="bg-white rounded-2xl shadow-lg p-8">
-                <div className="flex items-center mb-6">
-                  <div className="inline-flex items-center justify-center w-12 h-12 bg-blue-100 rounded-lg mr-4">
-                    <TrendingUp className="h-6 w-6 text-blue-600" />
-                  </div>
-                  <div>
-                    <h3 className="text-xl font-bold text-gray-900">Core & Plus Members</h3>
-                    <p className="text-sm text-gray-600">Investment Access</p>
-                  </div>
+                <div className="mb-6">
+                  <h3 className="text-xl font-bold text-gray-900">Core & Plus Members</h3>
+                  <p className="text-sm text-gray-600">Investment Access</p>
                 </div>
                 <div className="space-y-3">
                   <div className="flex items-start">
@@ -232,14 +227,9 @@ export default function CapitalClubPage() {
 
               {/* Pro/Cohort Members */}
               <div className="bg-gradient-to-br from-blue-50 to-purple-50 rounded-2xl shadow-lg p-8 border-2 border-purple-200">
-                <div className="flex items-center mb-6">
-                  <div className="inline-flex items-center justify-center w-12 h-12 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg mr-4">
-                    <Crown className="h-6 w-6 text-white" />
-                  </div>
-                  <div>
-                    <h3 className="text-xl font-bold text-gray-900">Professional & Cohort Members</h3>
-                    <p className="text-sm text-gray-600">Full Access</p>
-                  </div>
+                <div className="mb-6">
+                  <h3 className="text-xl font-bold text-gray-900">Professional & Cohort Members</h3>
+                  <p className="text-sm text-gray-600">Full Access</p>
                 </div>
                 <div className="space-y-3">
                   <div className="flex items-start">
