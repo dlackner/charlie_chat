@@ -708,7 +708,7 @@ function CapitalClub({ submissionMetrics, isLoadingSubmissions }: {
 }) {
   return (
     <div className="relative p-1 rounded-xl shadow-lg overflow-visible" style={{background: 'linear-gradient(135deg, #3b82f6, #9333ea)'}}>
-      <div className="bg-white rounded-lg p-4 h-full">
+      <div className="bg-white rounded-lg p-8">
         {/* Slanted Banner */}
         <div className="absolute -top-2 -right-6 transform rotate-12 z-10">
           <Link 
@@ -761,24 +761,18 @@ function CapitalClub({ submissionMetrics, isLoadingSubmissions }: {
               </Link>
             </div>
             
-            <div className="bg-blue-50 p-2.5 border border-blue-200">
+            <div className="bg-green-50 p-2.5 border border-green-200">
               <div className="text-center mb-2">
-                <div className="text-xl font-bold text-gray-900 mb-1">
-                  {submissionMetrics.newThisWeek}
+                <div className="text-xl font-bold text-gray-500 mb-1">
+                  Coming Soon!
                 </div>
-                <div className="text-sm font-medium text-gray-900">
-                  New This Week
+                <div className="text-sm font-medium text-gray-500">
+                  Properties Funded
                 </div>
               </div>
-              <div className="text-xs text-gray-600 text-center mb-2">
-                Fresh opportunities added in the past 7 days.
+              <div className="text-xs text-gray-600 text-center">
+                Capital Club properties that have been successfully funded.
               </div>
-              <Link 
-                href="/fund/browse"
-                className="block w-full text-center bg-blue-600 hover:bg-blue-700 text-white font-medium py-1.5 px-3 rounded-lg transition-colors text-xs"
-              >
-                View Latest →
-              </Link>
             </div>
           </div>
         )}
