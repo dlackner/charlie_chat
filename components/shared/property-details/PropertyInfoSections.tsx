@@ -66,6 +66,12 @@ export const PropertyInfoSections: React.FC<PropertyInfoSectionsProps> = ({ prop
               </span>
             </div>
             <div className="flex justify-between">
+              <span className="text-gray-600">Square Feet:</span>
+              <span className="font-medium">
+                {property.square_feet ? `${property.square_feet.toLocaleString()} sq ft` : 'N/A'}
+              </span>
+            </div>
+            <div className="flex justify-between">
               <span className="text-gray-600">Years Owned:</span>
               <span className="font-medium">{property.years_owned || 'N/A'}</span>
             </div>
