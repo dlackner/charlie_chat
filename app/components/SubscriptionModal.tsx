@@ -456,10 +456,6 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, on
                                 You're using MultifamilyOS.ai Core (Free)
                               </h2>
                               
-                              <div className="flex items-center justify-center space-x-2 mb-6">
-                                <CheckCircle className="w-5 h-5 text-blue-500" />
-                                <span className="text-sm font-medium text-blue-600">Core Plan Active</span>
-                              </div>
 
                               <div className="bg-gradient-to-r from-blue-50 to-gray-50 rounded-lg p-6 mb-6">
                                 <h3 className="text-xl font-semibold text-gray-900 mb-4">
@@ -481,6 +477,9 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, on
                                   </div>
                                   <div className="flex items-start space-x-3">
                                     <span className="text-gray-700"><strong>File Uploads in AI Coach</strong> - Analyze your own deals</span>
+                                  </div>
+                                  <div className="flex items-start space-x-3">
+                                    <span className="text-gray-700"><strong>Access to Capital Club</strong> - Submit your properties for funding (Pro subscription only)</span>
                                   </div>
                                 </div>
                               </div>

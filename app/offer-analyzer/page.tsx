@@ -128,6 +128,7 @@ export default function OfferAnalyzerPage() {
   const [propertyId, setPropertyId] = useState<string>('');
   const [propertyState, setPropertyState] = useState<string>('');
   const [submissionId, setSubmissionId] = useState<string>('');
+  const [variationId, setVariationId] = useState<string>('');
   const [isReadOnly, setIsReadOnly] = useState<boolean>(false);
   const [source, setSource] = useState<string>('');
   
@@ -138,6 +139,9 @@ export default function OfferAnalyzerPage() {
     setPropertyState(params.state);
     if (params.submissionId) {
       setSubmissionId(params.submissionId);
+    }
+    if (params.variationId) {
+      setVariationId(params.variationId);
     }
     if (params.id) {
       setPropertyId(params.id);
@@ -156,11 +160,8 @@ export default function OfferAnalyzerPage() {
           const scenarioData = data.variation.scenario_data;
           console.log('Loading scenario data:', scenarioData);
           
-          // Load all the scenario data into the analyzer state
-          if (scenarioData.purchasePrice) setPurchasePrice(scenarioData.purchasePrice);
-          if (scenarioData.downPaymentPercentage) setDownPaymentPercentage(scenarioData.downPaymentPercentage);
-          if (scenarioData.interestRate) setInterestRate(scenarioData.interestRate);
-          // Add more field loading as needed...
+          // Load all the scenario data into the analyzer state using the complete loader
+          loadOfferData(scenarioData);
           
           console.log('Scenario data loaded successfully');
         } else {
@@ -221,44 +222,44 @@ export default function OfferAnalyzerPage() {
   }, []);
 
   // --- Input States: FINANCING ---
-  const [purchasePrice, setPurchasePrice] = useState<number>(7000000);
-  const [downPaymentPercentage, setDownPaymentPercentage] = useState<number>(20); // Percentage
-  const [interestRate, setInterestRate] = useState<number>(7.0); // Percentage
+  const [purchasePrice, setPurchasePrice] = useState<number>(0);
+  const [downPaymentPercentage, setDownPaymentPercentage] = useState<number>(0); // Percentage
+  const [interestRate, setInterestRate] = useState<number>(0); // Percentage
   const [loanStructure, setLoanStructure] = useState<'amortizing' | 'interest-only'>('amortizing'); // New loan structure selection
-  const [amortizationPeriodYears, setAmortizationPeriodYears] = useState<number>(30); // Years (updated from 24 to 30)
-  const [interestOnlyPeriodYears, setInterestOnlyPeriodYears] = useState<number>(10); // Years for IO period
-  const [refinanceTermYears, setRefinanceTermYears] = useState<number>(25); // Years (0 means sale)
-  const [closingCostsPercentage, setClosingCostsPercentage] = useState<number>(3); // Percentage of Purchase Price
-  const [dispositionCapRate, setDispositionCapRate] = useState<number>(6); // Target cap rate at sale
+  const [amortizationPeriodYears, setAmortizationPeriodYears] = useState<number>(0); // Years (updated from 24 to 30)
+  const [interestOnlyPeriodYears, setInterestOnlyPeriodYears] = useState<number>(0); // Years for IO period
+  const [refinanceTermYears, setRefinanceTermYears] = useState<number>(0); // Years (0 means sale)
+  const [closingCostsPercentage, setClosingCostsPercentage] = useState<number>(0); // Percentage of Purchase Price
+  const [dispositionCapRate, setDispositionCapRate] = useState<number>(0); // Target cap rate at sale
 
   // --- Input States: RENTS ---
-  const [numUnits, setNumUnits] = useState<number>(47);
-  const [avgMonthlyRentPerUnit, setAvgMonthlyRentPerUnit] = useState<number>(2500);
-  const [vacancyRate, setVacancyRate] = useState<number>(10); // Percentage
-  const [annualRentalGrowthRate, setAnnualRentalGrowthRate] = useState<number>(2); // Percentage
+  const [numUnits, setNumUnits] = useState<number>(0);
+  const [avgMonthlyRentPerUnit, setAvgMonthlyRentPerUnit] = useState<number>(0);
+  const [vacancyRate, setVacancyRate] = useState<number>(0); // Percentage
+  const [annualRentalGrowthRate, setAnnualRentalGrowthRate] = useState<number>(0); // Percentage
   const [otherIncomeAnnual, setOtherIncomeAnnual] = useState<number>(0); // New State for Other Income
   const [incomeReductionsAnnual, setIncomeReductionsAnnual] = useState<number>(0); // New State for Income Reductions
 
   // --- Input States: OPERATING EXPENSES (ANNUAL) ---
-  const [propertyTaxes, setPropertyTaxes] = useState<number>(12000);
-  const [insurance, setInsurance] = useState<number>(10000);
-  const [propertyManagementFeePercentage, setPropertyManagementFeePercentage] = useState<number>(6); // Percentage of EGI
-  const [maintenanceRepairsAnnual, setMaintenanceRepairsAnnual] = useState<number>(12000); // Total annual
-  const [utilitiesAnnual, setUtilitiesAnnual] = useState<number>(6000); // Total annual
-  const [contractServicesAnnual, setContractServicesAnnual] = useState<number>(6000); // New expense
-  const [payrollAnnual, setPayrollAnnual] = useState<number>(15000); // New expense
-  const [marketingAnnual, setMarketingAnnual] = useState<number>(2400); // New expense
-  const [gAndAAnnual, setGAndAAnnual] = useState<number>(1200); // New expense
-  const [otherExpensesAnnual, setOtherExpensesAnnual] = useState<number>(5000); // Total annual
-  const [expenseGrowthRate, setExpenseGrowthRate] = useState<number>(2); // Percentage
+  const [propertyTaxes, setPropertyTaxes] = useState<number>(0);
+  const [insurance, setInsurance] = useState<number>(0);
+  const [propertyManagementFeePercentage, setPropertyManagementFeePercentage] = useState<number>(0); // Percentage of EGI
+  const [maintenanceRepairsAnnual, setMaintenanceRepairsAnnual] = useState<number>(0); // Total annual
+  const [utilitiesAnnual, setUtilitiesAnnual] = useState<number>(0); // Total annual
+  const [contractServicesAnnual, setContractServicesAnnual] = useState<number>(0); // New expense
+  const [payrollAnnual, setPayrollAnnual] = useState<number>(0); // New expense
+  const [marketingAnnual, setMarketingAnnual] = useState<number>(0); // New expense
+  const [gAndAAnnual, setGAndAAnnual] = useState<number>(0); // New expense
+  const [otherExpensesAnnual, setOtherExpensesAnnual] = useState<number>(0); // Total annual
+  const [expenseGrowthRate, setExpenseGrowthRate] = useState<number>(0); // Percentage
 
   // --- Operating Expenses Toggle States ---
   const [usePercentageMode, setUsePercentageMode] = useState<boolean>(false);
-  const [operatingExpensePercentage, setOperatingExpensePercentage] = useState<number>(45);
+  const [operatingExpensePercentage, setOperatingExpensePercentage] = useState<number>(0);
 
   // --- Input States: CAPITAL EXPENDITURES (ANNUAL) ---
-  const [capitalReservePerUnitAnnual, setCapitalReservePerUnitAnnual] = useState<number>(500); // Per unit, annual
-  const [holdingPeriodYears, setHoldingPeriodYears] = useState<number>(10); // Years
+  const [capitalReservePerUnitAnnual, setCapitalReservePerUnitAnnual] = useState<number>(0); // Per unit, annual
+  const [holdingPeriodYears, setHoldingPeriodYears] = useState<number>(0); // Years
   const [deferredCapitalReservePerUnit, setDeferredCapitalReservePerUnit] = useState<number>(0);
   // --- Helper function for formatting and parsing numerical inputs with commas ---
   const formatAndParseNumberInput = (
@@ -767,21 +768,40 @@ export default function OfferAnalyzerPage() {
     // submissionId is available from state if this was opened from a fund submission
     
     if (submissionId) {
-      // Save as pricing variation - no propertyId needed
-      const response = await fetch('/api/pricing-variations', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          submissionId,
-          analysisName: offerName,
-          description: offerDescription,
-          scenarioData: getCurrentOfferData()
-        })
-      });
+      // Check if we're updating an existing variation or creating a new one
+      if (variationId) {
+        // Update existing pricing variation
+        const response = await fetch(`/api/pricing-variations/${variationId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            analysisName: offerName,
+            description: offerDescription,
+            scenarioData: getCurrentOfferData()
+          })
+        });
 
-      const data = await response.json();
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to save pricing variation');
+        const data = await response.json();
+        if (!response.ok) {
+          throw new Error(data.error || 'Failed to update pricing variation');
+        }
+      } else {
+        // Create new pricing variation - no propertyId needed
+        const response = await fetch('/api/pricing-variations', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            submissionId,
+            analysisName: offerName,
+            description: offerDescription,
+            scenarioData: getCurrentOfferData()
+          })
+        });
+
+        const data = await response.json();
+        if (!response.ok) {
+          throw new Error(data.error || 'Failed to save pricing variation');
+        }
       }
     } else {
       // Original offer scenario save logic - propertyId required

@@ -52,6 +52,8 @@ interface Submission {
   // Submitter details will be joined
   submitter_name?: string;
   submitter_email?: string;
+  // Offer scenario data
+  offer_data?: any;
 }
 
 interface Comment {
@@ -200,7 +202,8 @@ export default function SubmissionDetailsPage() {
           dcr: offerData?.debt_service_coverage_ratio || undefined,
           cash_on_cash_return: offerData?.cash_on_cash_return || undefined,
           irr: offerData?.projected_irr || undefined,
-          purchase_price: offerData?.purchasePrice || undefined
+          purchase_price: offerData?.purchasePrice || undefined,
+          offer_data: offerData
         };
 
 
@@ -929,7 +932,34 @@ export default function SubmissionDetailsPage() {
                             </div>
                             <div className="flex gap-2">
                               <button 
-                                onClick={() => router.push(`/offer-analyzer?offerId=813639eb-8b21-445e-8501-0d24cea62ebb&submissionId=${submissionId}`)}
+                                onClick={async () => {
+                                  try {
+                                    // Create new pricing variation with copied data from original submission
+                                    const response = await fetch('/api/pricing-variations', {
+                                      method: 'POST',
+                                      headers: { 'Content-Type': 'application/json' },
+                                      body: JSON.stringify({
+                                        submissionId,
+                                        analysisName: `Scenario - ${new Date().toLocaleDateString()}`,
+                                        description: 'Alternative pricing scenario based on original submission',
+                                        scenarioData: submission.offer_data,
+                                        copyFromOriginal: true
+                                      })
+                                    });
+
+                                    const data = await response.json();
+                                    if (response.ok) {
+                                      // Redirect to offer analyzer with the new variation ID
+                                      router.push(`/offer-analyzer?variationId=${data.variation.id}&submissionId=${submissionId}`);
+                                    } else {
+                                      console.error('Failed to create pricing variation:', data.error);
+                                      alert('Failed to create scenario. Please try again.');
+                                    }
+                                  } catch (error) {
+                                    console.error('Error creating pricing variation:', error);
+                                    alert('Failed to create scenario. Please try again.');
+                                  }
+                                }}
                                 className="flex-1 px-3 py-2 bg-amber-500 text-white text-sm rounded hover:bg-amber-600 transition-colors font-medium"
                               >
                                 New Scenario
