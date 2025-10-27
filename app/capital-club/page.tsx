@@ -1,418 +1,336 @@
-/*
- * CHARLIE2 V2 - Capital Club Page
- * Exclusive investment club for multifamily real estate investors
- * Features enrollment modal and community metrics
- */
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
-import { StandardModalWithActions } from '@/components/shared/StandardModal';
-import CapitalClubDetailsModal from '@/components/shared/CapitalClubDetailsModal';
-import { Crown, Users, Star, Shield, Zap, ExternalLink } from 'lucide-react';
+import { Crown, CheckCircle } from 'lucide-react';
+import { useState } from 'react';
 
-export default function CapitalClubPage() {
-  const { user, supabase } = useAuth();
-  const [isEnrolled, setIsEnrolled] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [showEnrollModal, setShowEnrollModal] = useState(false);
-  const [showSuccessModal, setShowSuccessModal] = useState(false);
-  const [showSignInRequiredModal, setShowSignInRequiredModal] = useState(false);
-  const [isEnrolling, setIsEnrolling] = useState(false);
-  const [showDetailsModal, setShowDetailsModal] = useState(false);
+export default function CapitalClub() {
+  const [formData, setFormData] = useState({
+    firstName: '',
+    lastName: '',
+    email: '',
+    phone: ''
+  });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
-  // Fetch user enrollment status and club metrics
-  useEffect(() => {
-    const fetchData = async () => {
-      if (!user?.id || !supabase) return;
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
 
-      try {
-        // Get user's enrollment status
-        const { data: profile, error: profileError } = await supabase
-          .from('profiles')
-          .select('capital_club_enrolled')
-          .eq('user_id', user.id)
-          .single();
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    setSubmitError(null);
 
-        if (!profileError && profile) {
-          setIsEnrolled(profile.capital_club_enrolled || false);
-        }
-
-      } catch (error) {
-        console.error('Error fetching Capital Club data:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchData();
-  }, [user?.id, supabase]);
-
-  const handleEnroll = async () => {
-    if (!user?.id || !supabase) return;
-
-    setIsEnrolling(true);
     try {
-      const { error } = await supabase
-        .from('profiles')
-        .update({ 
-          capital_club_enrolled: true,
-          capital_club_enrolled_at: new Date().toISOString()
-        })
-        .eq('user_id', user.id);
+      const response = await fetch('/api/capital-club-signup', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          first_name: formData.firstName,
+          last_name: formData.lastName,
+          email: formData.email,
+          phone: formData.phone,
+          source: 'Capital Club',
+          lead_type: 'capital_club_investor',
+          page_url: '/capital-club',
+          timestamp: new Date().toISOString()
+        }),
+      });
 
-      if (error) {
-        throw error;
+      const data = await response.json();
+
+      if (response.ok) {
+        // Open external URL in new tab/window
+        if (data.redirectUrl) {
+          window.open(data.redirectUrl, '_blank');
+        }
+      } else {
+        setSubmitError(data.error || 'Something went wrong. Please try again.');
       }
-
-      setIsEnrolled(true);
-      setShowEnrollModal(false);
-      
-      // Show success modal
-      setShowSuccessModal(true);
-
     } catch (error) {
-      console.error('Error enrolling in Capital Club:', error);
-      if (typeof window !== 'undefined' && (window as any).toast) {
-        (window as any).toast.error('Failed to enroll. Please try again.');
-      }
+      console.error('Form submission error:', error);
+      setSubmitError('Network error. Please check your connection and try again.');
     } finally {
-      setIsEnrolling(false);
+      setIsSubmitting(false);
     }
   };
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-      </div>
-    );
-  }
-
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-          {/* Hero Section */}
-          <div className="text-center mb-16">
-            <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full mb-6">
-              <Crown className="h-8 w-8 text-white" />
+    <div className="min-h-screen bg-white">
+      {/* Hero Section */}
+      <div className="bg-gradient-to-br from-blue-50 to-purple-50 py-16">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center">
+            <div className="flex flex-col items-center mb-6">
+              <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full mb-4">
+                <Crown className="h-8 w-8 text-white" />
+              </div>
+              <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
+                Capital Club
+              </h1>
+              <p className="text-2xl text-blue-600 font-semibold">
+                Invest in professionally sourced multifamily opportunities.
+              </p>
             </div>
-            <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
-              Capital Club
-            </h1>
-            <p className="text-xl text-gray-600 max-w-3xl mx-auto mb-8">
-              An exclusive community of multifamily real estate investors connecting capital with opportunity.
+          </div>
+        </div>
+      </div>
+
+      {/* Main Content */}
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+        
+        {/* Access to Real Deals Section */}
+        <div className="mb-16">
+          <h2 className="text-3xl font-bold text-gray-900 mb-6">Access to Real Deals, Not Listings</h2>
+          <div className="text-lg text-gray-700 space-y-4">
+            <p>
+              As a Capital Club investor, you gain access to professionally sourced, pre-analyzed multifamily deals that originate from experienced operators using the MultifamilyOS™.
+            </p>
+            <p>
+              Each property is identified and vetted using standardized criteria before it ever reaches the Club — giving you a consistent, data-driven foundation for every opportunity you review.
             </p>
           </div>
-
-          {/* Metrics Cards - Hidden for now */}
-          {/* <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-16">
-            <div className="bg-white rounded-xl shadow-lg p-8 border border-gray-100">
-              <div className="flex items-center justify-between mb-4">
-                <div className="p-3 bg-blue-100 rounded-lg">
-                  <Users className="h-6 w-6 text-blue-600" />
-                </div>
-                <div className="text-right">
-                  <div className="text-3xl font-bold text-gray-900">{clubMembersCount}</div>
-                  <div className="text-sm text-gray-500">Total Members</div>
-                </div>
-              </div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">Club Members</h3>
-              <p className="text-gray-600 text-sm">
-                Exclusive members actively participating in capital partnerships and deal flow.
-              </p>
-            </div>
-
-            <div className="bg-white rounded-xl shadow-lg p-8 border border-gray-100">
-              <div className="flex items-center justify-between mb-4">
-                <div className="p-3 bg-purple-100 rounded-lg">
-                  <TrendingUp className="h-6 w-6 text-purple-600" />
-                </div>
-                <div className="text-right">
-                  <div className="text-3xl font-bold text-gray-900">-</div>
-                  <div className="text-sm text-gray-500">Community</div>
-                </div>
-              </div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">Community Members</h3>
-              <p className="text-gray-600 text-sm">
-                Extended network of investors and industry professionals.
-              </p>
-              <div className="mt-4">
-                <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
-                  Coming Soon
-                </span>
-              </div>
-            </div>
-
-            <div className="bg-white rounded-xl shadow-lg p-8 border border-gray-100">
-              <div className="flex items-center justify-between mb-4">
-                <div className="p-3 bg-green-100 rounded-lg">
-                  <Building className="h-6 w-6 text-green-600" />
-                </div>
-                <div className="text-right">
-                  <div className="text-3xl font-bold text-gray-900">-</div>
-                  <div className="text-sm text-gray-500">Properties</div>
-                </div>
-              </div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">Candidate Properties</h3>
-              <p className="text-gray-600 text-sm">
-                Pre-screened investment opportunities available to club members.
-              </p>
-              <div className="mt-4">
-                <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
-                  Coming Soon
-                </span>
-              </div>
-            </div>
-          </div> */}
-
-          {/* Benefits Section */}
-          <div className="mb-16 mt-16">
-            {/* Access Level Cards */}
-            <h2 className="text-3xl font-bold text-gray-900 text-center mb-12">
-              Capital Club Access Levels
-            </h2>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-16">
-              {/* Core/Plus Members */}
-              <div className="bg-white rounded-2xl shadow-lg p-8">
-                <div className="mb-6">
-                  <h3 className="text-xl font-bold text-gray-900">Core & Plus Members</h3>
-                  <p className="text-sm text-gray-600">Investment Access</p>
-                </div>
-                <div className="space-y-3">
-                  <div className="flex items-start">
-                    <div className="w-5 h-5 mt-0.5 mr-3 flex-shrink-0">
-                      <svg className="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                      </svg>
-                    </div>
-                    <p className="text-gray-700">Invest in deals originated by Professional & Cohort members</p>
-                  </div>
-                  <div className="flex items-start">
-                    <div className="w-5 h-5 mt-0.5 mr-3 flex-shrink-0">
-                      <svg className="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                      </svg>
-                    </div>
-                    <p className="text-gray-700">Network with other investors</p>
-                  </div>
-                  <div className="flex items-start">
-                    <div className="w-5 h-5 mt-0.5 mr-3 flex-shrink-0">
-                      <svg className="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                      </svg>
-                    </div>
-                    <p className="text-gray-700">Professional deal analysis and underwriting</p>
-                  </div>
-                  <div className="flex items-start">
-                    <div className="w-5 h-5 mt-0.5 mr-3 flex-shrink-0">
-                      <svg className="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                      </svg>
-                    </div>
-                    <p className="text-gray-500">Cannot submit properties for funding</p>
-                  </div>
-                </div>
-                <div className="mt-6 hidden">
-                  <button
-                    onClick={() => setShowDetailsModal(true)}
-                    className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-bold text-lg py-4 px-6 rounded-lg shadow-lg transition-all duration-200 hover:shadow-xl transform hover:scale-105 flex items-center justify-center"
-                  >
-                    How does it work?
-                    <ExternalLink className="h-5 w-5 ml-2" />
-                  </button>
-                </div>
-              </div>
-
-              {/* Pro/Cohort Members */}
-              <div className="bg-gradient-to-br from-blue-50 to-purple-50 rounded-2xl shadow-lg p-8 border-2 border-purple-200">
-                <div className="mb-6">
-                  <h3 className="text-xl font-bold text-gray-900">Professional & Cohort Members</h3>
-                  <p className="text-sm text-gray-600">Full Access</p>
-                </div>
-                <div className="space-y-3">
-                  <div className="flex items-start">
-                    <div className="w-5 h-5 mt-0.5 mr-3 flex-shrink-0">
-                      <svg className="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                      </svg>
-                    </div>
-                    <p className="text-gray-700 font-semibold">Submit properties for Capital Club funding</p>
-                  </div>
-                  <div className="flex items-start">
-                    <div className="w-5 h-5 mt-0.5 mr-3 flex-shrink-0">
-                      <svg className="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                      </svg>
-                    </div>
-                    <p className="text-gray-700">Act as Program Manager for your transactions</p>
-                  </div>
-                  <div className="flex items-start">
-                    <div className="w-5 h-5 mt-0.5 mr-3 flex-shrink-0">
-                      <svg className="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                      </svg>
-                    </div>
-                    <p className="text-gray-700">Access investor database for capital raising</p>
-                  </div>
-                  <div className="flex items-start">
-                    <div className="w-5 h-5 mt-0.5 mr-3 flex-shrink-0">
-                      <svg className="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                      </svg>
-                    </div>
-                    <p className="text-gray-700">Priority deal promotion to network</p>
-                  </div>
-                </div>
-                <div className="mt-6">
-                  <button
-                    onClick={() => setShowDetailsModal(true)}
-                    className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-bold text-lg py-4 px-6 rounded-lg shadow-lg transition-all duration-200 hover:shadow-xl transform hover:scale-105 flex items-center justify-center"
-                  >
-                    How does it work?
-                    <ExternalLink className="h-5 w-5 ml-2" />
-                  </button>
-                </div>
-              </div>
-            </div>
-
-          </div>
-
-          {/* CTA Section */}
-          {!(user && isEnrolled) && (
-            <div className="text-center">
-              <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl p-12 text-white">
-                <h2 className="text-3xl font-bold mb-4">Ready to Join?</h2>
-                <p className="text-xl mb-8 opacity-90">
-                  Become part of an exclusive community driving multifamily investment success.
-                </p>
-                <button
-                  onClick={() => {
-                    if (!user) {
-                      // Show sign-in required modal
-                      setShowSignInRequiredModal(true);
-                    } else {
-                      // Everyone can join - show enrollment modal
-                      setShowEnrollModal(true);
-                    }
-                  }}
-                  className="inline-flex items-center px-8 py-4 bg-white text-blue-600 font-medium rounded-lg hover:bg-gray-50 transition-colors shadow-lg"
-                >
-                  <Crown className="h-5 w-5 mr-2" />
-                  Join the Capital Club
-                </button>
-              </div>
-            </div>
-          )}
         </div>
 
-        {/* Enrollment Modal */}
-        <StandardModalWithActions
-          isOpen={showEnrollModal}
-          onClose={() => setShowEnrollModal(false)}
-          title="Join the Capital Club"
-          primaryAction={{
-            label: isEnrolling ? 'Joining...' : 'Join Now',
-            onClick: handleEnroll,
-            disabled: isEnrolling
-          }}
-          secondaryAction={{
-            label: 'Cancel',
-            onClick: () => setShowEnrollModal(false)
-          }}
-        >
-          <div className="p-6">
-            <div className="flex items-center gap-4 mb-6">
-              <div className="w-12 h-12 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full flex items-center justify-center">
-                <Crown className="w-6 h-6 text-white" />
+        {/* How It Works Section */}
+        <div className="mb-16">
+          <h2 className="text-3xl font-bold text-gray-900 mb-8">How It Works</h2>
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+            
+            <div className="bg-white rounded-lg shadow-md overflow-hidden">
+              <div className="h-2 bg-blue-500"></div>
+              <div className="p-6">
+                <h3 className="text-xl font-semibold text-gray-900 mb-3">Join the Capital Club</h3>
+                <p className="text-gray-600 text-sm">
+                  Become part of an exclusive private investor community built on collaboration, transparency, and shared success.
+                </p>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-lg shadow-md overflow-hidden">
+              <div className="h-2 bg-green-500"></div>
+              <div className="p-6">
+                <h3 className="text-xl font-semibold text-gray-900 mb-3">Review Vetted Opportunities</h3>
+                <p className="text-gray-600 text-sm">
+                  Each deal presented to you has been analyzed in MultifamilyOS and reviewed by the Club's evaluation team. You'll receive clear pro forma summaries, assumptions, and financial forecasts.
+                </p>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-lg shadow-md overflow-hidden">
+              <div className="h-2 bg-purple-500"></div>
+              <div className="p-6">
+                <h3 className="text-xl font-semibold text-gray-900 mb-3">Vote and Invest</h3>
+                <p className="text-gray-600 text-sm">
+                  When a deal is presented, members vote whether to fund it. If approved, investors commit capital to complete the equity stack.
+                </p>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-lg shadow-md overflow-hidden">
+              <div className="h-2 bg-orange-500"></div>
+              <div className="p-6">
+                <h3 className="text-xl font-semibold text-gray-900 mb-3">Participate in Ownership</h3>
+                <p className="text-gray-600 text-sm">
+                  Once funded, you become part of the ownership group. Unlike a passive LP model, Capital Club members are actively involved in oversight, strategy, and performance decisions.
+                </p>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        {/* Investment Parameters Section */}
+        <div className="mb-16">
+          <h2 className="text-3xl font-bold text-gray-900 mb-8">Typical Investment Parameters</h2>
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            
+            {/* Top Row - Blue */}
+            <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-6">
+              <div className="w-3 h-3 bg-blue-500 rounded-full mb-4"></div>
+              <div className="text-3xl font-bold text-blue-600 mb-2">$20,000</div>
+              <div className="text-gray-600 font-medium">Minimum Investment</div>
+            </div>
+
+            <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-6">
+              <div className="w-3 h-3 bg-blue-500 rounded-full mb-4"></div>
+              <div className="text-3xl font-bold text-blue-600 mb-2">5–7 years</div>
+              <div className="text-gray-600 font-medium">Hold Period</div>
+            </div>
+
+            <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-6">
+              <div className="w-3 h-3 bg-blue-500 rounded-full mb-4"></div>
+              <div className="text-3xl font-bold text-blue-600 mb-2">3%</div>
+              <div className="text-gray-600 font-medium">Deposit Fee</div>
+            </div>
+
+            {/* Second Row - Green */}
+            <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-6">
+              <div className="w-3 h-3 bg-green-500 rounded-full mb-4"></div>
+              <div className="text-3xl font-bold text-green-600 mb-2">14–18%</div>
+              <div className="text-gray-600 font-medium">Target IRR</div>
+            </div>
+
+            <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-6">
+              <div className="w-3 h-3 bg-green-500 rounded-full mb-4"></div>
+              <div className="text-3xl font-bold text-green-600 mb-2">7–9%</div>
+              <div className="text-gray-600 font-medium">Cash-on-Cash Return</div>
+            </div>
+
+            <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-6">
+              <div className="w-3 h-3 bg-green-500 rounded-full mb-4"></div>
+              <div className="text-3xl font-bold text-green-600 mb-2">8%</div>
+              <div className="text-gray-600 font-medium">Preferred Return (quarterly)</div>
+            </div>
+
+          </div>
+        </div>
+
+        {/* What You Gain Section */}
+        <div className="mb-16">
+          <h2 className="text-3xl font-bold text-gray-900 mb-8">What You Gain as an Investor</h2>
+          <div className="space-y-4">
+            <div className="flex items-start">
+              <CheckCircle className="h-6 w-6 text-green-500 mt-1 mr-3 flex-shrink-0" />
+              <div>
+                <span className="font-semibold">Access to Curated Opportunities</span> — sourced and analyzed by experienced professionals
+              </div>
+            </div>
+            <div className="flex items-start">
+              <CheckCircle className="h-6 w-6 text-green-500 mt-1 mr-3 flex-shrink-0" />
+              <div>
+                <span className="font-semibold">Transparency</span> — every deal is presented with consistent data and structure
+              </div>
+            </div>
+            <div className="flex items-start">
+              <CheckCircle className="h-6 w-6 text-green-500 mt-1 mr-3 flex-shrink-0" />
+              <div>
+                <span className="font-semibold">Active Ownership</span> — contribute to decisions, not just distributions
+              </div>
+            </div>
+            <div className="flex items-start">
+              <CheckCircle className="h-6 w-6 text-green-500 mt-1 mr-3 flex-shrink-0" />
+              <div>
+                <span className="font-semibold">Diversified Deal Flow</span> — access multiple markets through one community
+              </div>
+            </div>
+            <div className="flex items-start">
+              <CheckCircle className="h-6 w-6 text-green-500 mt-1 mr-3 flex-shrink-0" />
+              <div>
+                <span className="font-semibold">Network of Experts</span> — learn from operators, lenders, and peers
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Join the Club Form Section */}
+        <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl p-12 text-white">
+          <div className="text-center mb-8">
+            <h2 className="text-4xl md:text-5xl font-bold mb-4">You bring the capital.</h2>
+            <h2 className="text-4xl md:text-5xl font-bold mb-6">We bring the opportunities.</h2>
+            <p className="text-lg text-blue-100">Fill out this form and you will be redirected to the MultifamilyOS Club page<br />where you can review details about the club and investment options.</p>
+          </div>
+          
+          <form onSubmit={handleSubmit} className="max-w-md mx-auto space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label htmlFor="firstName" className="block text-sm font-medium text-blue-100 mb-2">
+                  First Name
+                </label>
+                <input
+                  type="text"
+                  id="firstName"
+                  name="firstName"
+                  value={formData.firstName}
+                  onChange={handleInputChange}
+                  required
+                  className="w-full px-4 py-3 rounded-lg bg-white text-gray-900 placeholder-gray-500 focus:ring-2 focus:ring-blue-300 focus:outline-none"
+                  placeholder="John"
+                />
               </div>
               <div>
-                <h3 className="text-lg font-semibold text-gray-900">Capital Club Membership</h3>
-                <p className="text-gray-600">Exclusive access to multifamily investment opportunities</p>
+                <label htmlFor="lastName" className="block text-sm font-medium text-blue-100 mb-2">
+                  Last Name
+                </label>
+                <input
+                  type="text"
+                  id="lastName"
+                  name="lastName"
+                  value={formData.lastName}
+                  onChange={handleInputChange}
+                  required
+                  className="w-full px-4 py-3 rounded-lg bg-white text-gray-900 placeholder-gray-500 focus:ring-2 focus:ring-blue-300 focus:outline-none"
+                  placeholder="Smith"
+                />
               </div>
             </div>
             
-            <p className="text-gray-600 mb-6">
-              Join our exclusive community of multifamily real estate investors and gain access to capital networks, 
-              deal promotion, and expert resources to accelerate your investment success.
-            </p>
+            <div>
+              <label htmlFor="email" className="block text-sm font-medium text-blue-100 mb-2">
+                Email Address
+              </label>
+              <input
+                type="email"
+                id="email"
+                name="email"
+                value={formData.email}
+                onChange={handleInputChange}
+                required
+                className="w-full px-4 py-3 rounded-lg bg-white text-gray-900 placeholder-gray-500 focus:ring-2 focus:ring-blue-300 focus:outline-none"
+                placeholder="john@example.com"
+              />
+            </div>
             
-            <p className="text-sm text-gray-600">
-              By enrolling, you confirm that you are an active multifamily real estate investor and agree to 
-              participate in the Capital Club community.
-            </p>
-          </div>
-        </StandardModalWithActions>
-
-        {/* Success Modal */}
-        <StandardModalWithActions
-          isOpen={showSuccessModal}
-          onClose={() => setShowSuccessModal(false)}
-          title="Welcome to the Capital Club!"
-          primaryAction={{
-            label: 'Got it',
-            onClick: () => setShowSuccessModal(false),
-          }}
-        >
-          <div className="p-6">
-            <div className="flex flex-col items-center text-center">
-              <div className="w-16 h-16 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full flex items-center justify-center mb-6">
-                <Crown className="w-8 h-8 text-white" />
-              </div>
-              
-              <h3 className="text-xl font-semibold text-gray-900 mb-4">
-                Congratulations on Joining the Capital Club!
-              </h3>
-              
-              <p className="text-gray-600">
-                You're now part of an exclusive community of multifamily real estate investors. 
-                We'll be contacting you soon with more details about the Capital Club, including 
-                how to access our investor database, submit properties, and connect with other members.
-              </p>
+            <div>
+              <label htmlFor="phone" className="block text-sm font-medium text-blue-100 mb-2">
+                Phone Number
+              </label>
+              <input
+                type="tel"
+                id="phone"
+                name="phone"
+                value={formData.phone}
+                onChange={handleInputChange}
+                required
+                className="w-full px-4 py-3 rounded-lg bg-white text-gray-900 placeholder-gray-500 focus:ring-2 focus:ring-blue-300 focus:outline-none"
+                placeholder="(555) 123-4567"
+              />
             </div>
-          </div>
-        </StandardModalWithActions>
-
-
-        {/* Sign-In Required Modal */}
-        <StandardModalWithActions
-          isOpen={showSignInRequiredModal}
-          onClose={() => setShowSignInRequiredModal(false)}
-          title="Sign In Required"
-          primaryAction={{
-            label: 'Go to Home Page',
-            onClick: () => {
-              window.location.href = '/';
-            },
-          }}
-          secondaryAction={{
-            label: 'Cancel',
-            onClick: () => setShowSignInRequiredModal(false)
-          }}
-        >
-          <div className="p-6">
-            <div className="flex flex-col items-center text-center">
-              <div className="w-16 h-16 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full flex items-center justify-center mb-6">
-                <Crown className="w-8 h-8 text-white" />
+            
+            {submitError && (
+              <div className="text-red-200 text-sm text-center bg-red-500/20 p-3 rounded-lg">
+                {submitError}
               </div>
-              
-              <h3 className="text-xl font-semibold text-gray-900 mb-4">
-                Please Sign In to Join
-              </h3>
-              
-              <p className="text-gray-600">
-                To join the Capital Club, please return to the home page, sign in to your account, and then return here to complete your enrollment.
-              </p>
-            </div>
-          </div>
-        </StandardModalWithActions>
+            )}
+            
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="w-full px-8 py-4 bg-white text-blue-600 font-semibold text-lg rounded-xl hover:bg-gray-100 transition-all duration-200 transform hover:scale-105 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center"
+            >
+              {isSubmitting ? (
+                <>
+                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600 mr-2"></div>
+                  Submitting...
+                </>
+              ) : (
+                <>
+                  <Crown className="h-5 w-5 mr-2" />
+                  Join the Capital Club
+                </>
+              )}
+            </button>
+          </form>
+        </div>
 
-        {/* Capital Club Details Modal */}
-        <CapitalClubDetailsModal 
-          isOpen={showDetailsModal} 
-          onClose={() => setShowDetailsModal(false)} 
-        />
       </div>
+    </div>
   );
 }

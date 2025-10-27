@@ -38,7 +38,7 @@ interface NavigationItem {
   href: string;
   icon: any;
   disabled?: boolean;
-  submenu?: { name: string; href?: string; action?: () => void; disabled?: boolean; }[];
+  submenu?: { name: string; href?: string; action?: () => void; disabled?: boolean; description?: string; }[];
 }
 
 // Note: We'll define navigation inside the component to access handleSignOut
@@ -225,6 +225,33 @@ export default function MobileNavigation() {
         disabled: isNotLoggedIn || (isLoadingUserClass ? false : !canAccessEngage(currentUserClass))
       },
 
+      // Fund
+      {
+        name: 'FUND',
+        href: '/fund',
+        icon: TrendingUp,
+        disabled: isNotLoggedIn,
+        submenu: [
+          // Hide Create Submission on mobile
+          ...(isMobile ? [] : [{ 
+            name: 'Create Submission', 
+            href: hasAccess(currentUserClass, 'fund_create') ? '/fund/create' : undefined,
+            disabled: !hasAccess(currentUserClass, 'fund_create')
+          }]),
+          { 
+            name: 'Browse Submissions', 
+            href: hasAccess(currentUserClass, 'fund_browse') ? '/fund/browse' : undefined,
+            disabled: !hasAccess(currentUserClass, 'fund_browse')
+          },
+          { 
+            name: 'About', 
+            href: '/fund/about',
+            disabled: false,
+            description: 'Capital Club requirements'
+          }
+        ]
+      },
+
       // Manage
       {
         name: 'MANAGE',
@@ -248,27 +275,6 @@ export default function MobileNavigation() {
             disabled: !hasAccess(currentUserClass, 'dashboard_community')
           }
           // Note: Pipeline is hidden on mobile as requested
-        ]
-      },
-
-      // Fund
-      {
-        name: 'FUND',
-        href: '/fund',
-        icon: TrendingUp,
-        disabled: isNotLoggedIn,
-        submenu: [
-          // Hide Create Submission on mobile
-          ...(isMobile ? [] : [{ 
-            name: 'Create Submission', 
-            href: hasAccess(currentUserClass, 'fund_create') ? '/fund/create' : undefined,
-            disabled: !hasAccess(currentUserClass, 'fund_create')
-          }]),
-          { 
-            name: 'Browse Submissions', 
-            href: hasAccess(currentUserClass, 'fund_browse') ? '/fund/browse' : undefined,
-            disabled: !hasAccess(currentUserClass, 'fund_browse')
-          }
         ]
       },
 
@@ -362,6 +368,30 @@ export default function MobileNavigation() {
         disabled: isNotLoggedIn || (isLoadingUserClass ? false : !canAccessEngage(currentUserClass))
       },
       {
+        name: 'FUND',
+        submenu: [
+          { 
+            name: 'Create Submission', 
+            href: hasAccess(currentUserClass, 'fund_create') ? '/fund/create' : undefined,
+            disabled: !hasAccess(currentUserClass, 'fund_create'),
+            description: 'Submit your deal for funding'
+          },
+          { 
+            name: 'Browse Submissions', 
+            href: hasAccess(currentUserClass, 'fund_browse') ? '/fund/browse' : undefined,
+            disabled: !hasAccess(currentUserClass, 'fund_browse'),
+            description: 'View investment opportunities'
+          },
+          { 
+            name: 'About', 
+            href: '/fund/about',
+            disabled: false,
+            description: 'Capital Club requirements'
+          }
+        ],
+        disabled: isNotLoggedIn
+      },
+      {
         name: 'MANAGE',
         submenu: [
           { 
@@ -390,24 +420,6 @@ export default function MobileNavigation() {
           }
         ],
         disabled: isNotLoggedIn || (isLoadingUserClass ? false : !canAccessDashboard(currentUserClass))
-      },
-      {
-        name: 'FUND',
-        submenu: [
-          { 
-            name: 'Create Submission', 
-            href: hasAccess(currentUserClass, 'fund_create') ? '/fund/create' : undefined,
-            disabled: !hasAccess(currentUserClass, 'fund_create'),
-            description: 'Submit your deal for funding'
-          },
-          { 
-            name: 'Browse Submissions', 
-            href: hasAccess(currentUserClass, 'fund_browse') ? '/fund/browse' : undefined,
-            disabled: !hasAccess(currentUserClass, 'fund_browse'),
-            description: 'View investment opportunities'
-          }
-        ],
-        disabled: isNotLoggedIn
       },
       {
         name: 'COACH',
@@ -488,13 +500,15 @@ export default function MobileNavigation() {
         <div className="flex flex-col h-full">
           {/* Header */}
           <div className="p-6 border-b border-gray-200">
-            <Image 
-              src="/MFOS AI Logo.png" 
-              alt="Charlie Chat AI" 
-              width={160} 
-              height={40}
-              className="h-10 w-auto"
-            />
+            <Link href="/">
+              <Image 
+                src="/MFOS AI Logo.png" 
+                alt="MultifamilyOS" 
+                width={160} 
+                height={40}
+                className="h-10 w-auto cursor-pointer"
+              />
+            </Link>
           </div>
 
           {/* Navigation Items */}
@@ -649,14 +663,16 @@ export default function MobileNavigation() {
             <div className="flex justify-between items-center h-14">
               {/* Left side - Logo */}
               <div className="flex items-center">
-                <Image 
-                  src="/MFOS AI Logo.png" 
-                  alt="MultifamilyOS" 
-                  width={160} 
-                  height={40}
-                  className="h-8 w-auto mr-3"
-                />
-                <span className="text-xl font-bold text-blue-600">MultifamilyOS</span>
+                <Link href="/" className="flex items-center">
+                  <Image 
+                    src="/MFOS AI Logo.png" 
+                    alt="MultifamilyOS" 
+                    width={160} 
+                    height={40}
+                    className="h-8 w-auto mr-3 cursor-pointer"
+                  />
+                  <span className="text-xl font-bold text-blue-600">MultifamilyOS</span>
+                </Link>
               </div>
 
               {/* Right side - Top Menu Items */}
