@@ -5,13 +5,18 @@
  */
 'use client';
 
+import { useState } from 'react';
 import { Listing } from '@/components/ui/listingTypes';
+import PropertyDeepDiveModal from '@/components/property/PropertyDeepDiveModal';
 
 interface PropertyInfoSectionsProps {
   property: Listing;
 }
 
 export const PropertyInfoSections: React.FC<PropertyInfoSectionsProps> = ({ property }) => {
+  const [isDeepDiveOpen, setIsDeepDiveOpen] = useState(false);
+  const [deepDiveData, setDeepDiveData] = useState(null);
+
   // Helper function to format currency
   const formatCurrency = (value: number | null | undefined) => {
     if (!value) return 'N/A';
@@ -27,6 +32,40 @@ export const PropertyInfoSections: React.FC<PropertyInfoSectionsProps> = ({ prop
   const formatYesNo = (value: boolean | null | undefined) => {
     if (value === null || value === undefined) return 'N/A';
     return value ? 'Yes' : 'No';
+  };
+
+  // Function to fetch property deep dive data
+  const handleDeepDive = async () => {
+    console.log('Deep dive button clicked, property ID:', property.id);
+    
+    try {
+      console.log('Making API call to /api/property-detail');
+      const response = await fetch('/api/property-detail', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          property_id: property.id
+        }),
+      });
+
+      console.log('API response status:', response.status);
+      const data = await response.json();
+      console.log('API response data:', data);
+      
+      if (response.ok) {
+        setDeepDiveData(data);
+        setIsDeepDiveOpen(true);
+        console.log('Modal should now be open');
+      } else {
+        console.error('API error:', data.error);
+        alert('Error loading property details: ' + (data.error || 'Unknown error'));
+      }
+    } catch (error) {
+      console.error('Error fetching property details:', error);
+      alert('Network error loading property details');
+    }
   };
 
   // Helper function to format dates
@@ -218,7 +257,31 @@ export const PropertyInfoSections: React.FC<PropertyInfoSectionsProps> = ({ prop
             </div>
           </div>
         </div>
+
+        {/* Property Deep Dive */}
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+          <h2 className="text-xl font-bold text-gray-900 mb-4">PROPERTY DEEP DIVE</h2>
+          <p className="text-gray-600 mb-4">
+            Comprehensive property details including financial analysis, owner information, mortgage history, and more.
+          </p>
+          <button
+            onClick={(e) => {
+              e.preventDefault();
+              handleDeepDive();
+            }}
+            className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium"
+          >
+            Deep Dive
+          </button>
+        </div>
       </div>
+      
+      {/* Property Deep Dive Modal */}
+      <PropertyDeepDiveModal
+        isOpen={isDeepDiveOpen}
+        onClose={() => setIsDeepDiveOpen(false)}
+        propertyData={deepDiveData}
+      />
     </div>
   );
 };
