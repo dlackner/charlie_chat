@@ -30,9 +30,24 @@ export default function PropertyDeepDiveModal({
   const formatValue = (value: any, key?: string): string => {
     if (value === null || value === undefined) return 'N/A';
     if (typeof value === 'boolean') return value ? 'Yes' : 'No';
+    
+    // Format FMR fields, median income, suggested rent, and tax amount as currency (handle both numbers and numeric strings)
+    // Exclude year fields from currency formatting
+    if (key && (key.toLowerCase().includes('fmr') || key === 'medianIncome' || key.toLowerCase().includes('suggestedrent') || key.toLowerCase().includes('taxamount')) && !key.toLowerCase().includes('year')) {
+      const numValue = typeof value === 'string' ? parseFloat(value) : value;
+      if (!isNaN(numValue)) {
+        return new Intl.NumberFormat('en-US', {
+          style: 'currency',
+          currency: 'USD',
+          minimumFractionDigits: 0,
+          maximumFractionDigits: 0,
+        }).format(numValue);
+      }
+    }
+    
     if (typeof value === 'number') {
-      // Don't format years with commas
-      if (key && (key.toLowerCase().includes('year') || key === 'yearBuilt')) {
+      // Don't format years or property IDs with commas
+      if (key && (key.toLowerCase().includes('year') || key === 'yearBuilt' || key.toLowerCase().includes('propertyid') || key === 'propertyId')) {
         return String(value);
       }
       return value.toLocaleString();
@@ -64,7 +79,7 @@ export default function PropertyDeepDiveModal({
         
         {isOpen && (
           <div className="px-4 pb-4 bg-gray-100">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-2">
               {Object.entries(data).map(([key, value]) => {
                 if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
                   return (
@@ -72,7 +87,7 @@ export default function PropertyDeepDiveModal({
                       <h4 className="font-medium text-gray-800 mb-2 capitalize">
                         {key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}
                       </h4>
-                      <div className="ml-4 grid grid-cols-1 md:grid-cols-2 gap-2">
+                      <div className="ml-4 grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-1">
                         {Object.entries(value).map(([subKey, subValue]) => (
                           <div key={subKey} className="flex justify-between py-1">
                             <span className="text-gray-600 capitalize">
@@ -89,7 +104,7 @@ export default function PropertyDeepDiveModal({
                 }
                 
                 return (
-                  <div key={key} className="flex justify-between py-2">
+                  <div key={key} className="flex justify-between py-1">
                     <span className="text-gray-600 capitalize">
                       {key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}:
                     </span>
@@ -110,6 +125,7 @@ export default function PropertyDeepDiveModal({
     { title: 'Property Overview', data: {
       address: data.propertyInfo?.address,
       yearBuilt: data.propertyInfo?.yearBuilt,
+      propertyId: data.taxInfo?.propertyId,
       medianIncome: data.demographics?.medianIncome
     }, key: 'propertyInfo' },
     { title: 'Property Attributes', data: {
@@ -179,7 +195,19 @@ export default function PropertyDeepDiveModal({
       highEquity: data.highEquity,
       freeClear: data.freeClear
     }, key: 'financial' },
-    { title: 'Tax Information', data: data.taxInfo, key: 'taxInfo' },
+    { title: 'Tax Information', data: {
+      assessedImprovementValue: data.taxInfo?.assessedImprovementValue,
+      assessedLandValue: data.taxInfo?.assessedLandValue,
+      assessedValue: data.taxInfo?.assessedValue,
+      assessmentYear: data.taxInfo?.assessmentYear,
+      estimatedValue: data.taxInfo?.estimatedValue,
+      marketImprovementValue: data.taxInfo?.marketImprovementValue,
+      marketLandValue: data.taxInfo?.marketLandValue,
+      marketValue: data.taxInfo?.marketValue,
+      taxAmount: data.taxInfo?.taxAmount,
+      taxDelinquentYear: data.taxInfo?.taxDelinquentYear,
+      year: data.taxInfo?.year
+    }, key: 'taxInfo' },
     { title: 'Owner Information', data: {
       ...data.ownerInfo,
       bankOwned: data.bankOwned,
@@ -192,7 +220,7 @@ export default function PropertyDeepDiveModal({
     }, key: 'lotInfo' },
     { title: 'Current Mortgages', data: data.currentMortgages?.[0], key: 'currentMortgages' },
     { title: 'Mortgage History', data: data.mortgageHistory?.[0], key: 'mortgageHistory' },
-    { title: 'Apartment Details', data: {
+    { title: 'Apartment Rents', data: {
       MFH2to4: data.MFH2to4,
       MFH5plus: data.MFH5plus,
       fmrEfficiency: data.demographics?.fmrEfficiency,
