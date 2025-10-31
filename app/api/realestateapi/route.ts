@@ -1,7 +1,7 @@
 //PART OF THE NEW V2 VERSION
 
 import { NextRequest, NextResponse } from "next/server";
-import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 
 // Transform external API camelCase response to snake_case for consistent frontend usage
 function transformListingToSnakeCase(listing: any) {
@@ -120,7 +120,7 @@ export async function POST(req: NextRequest) {
     console.log("📝 Raw body from client ➡️", body);
 
     // Get authenticated user for search tracking
-    const supabase = createSupabaseServerClient();
+    const supabase = createSupabaseAdminClient();
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     
     if (authError) {
