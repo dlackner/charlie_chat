@@ -1283,9 +1283,9 @@ function PricingPageContent() {
             </div>
           </div>
 
-          {/* Coaching & Community Section */}
+          {/* Capital & Coaching Section */}
           <div className="bg-blue-50 px-6 py-3 border-b border-gray-100">
-            <h4 className="text-sm font-semibold text-blue-800">Coaching & Community</h4>
+            <h4 className="text-sm font-semibold text-blue-800">Capital & Coaching</h4>
           </div>
           
           <div className="divide-y divide-gray-100">
@@ -1608,7 +1608,7 @@ function PricingPageContent() {
             <div className="text-sm text-gray-700">
               <p className="mb-3">The Professional plan adds depth through:</p>
               <ul className="list-disc pl-6 space-y-1">
-                <li><strong>Equity Syndication Club</strong> – Engage with a network of qualified equity investors who can help underwrite deals and participate in funding. Accelerate capital raising and enjoy the confidence of having a network of backers behind your offers.</li>
+                <li><strong>Capital Club</strong> – Engage with a network of multifamily property investors who can help underwrite deals and participate in funding. Accelerate capital raising and enjoy the confidence of having a network of backers behind your offers.</li>
                 <li><strong>Master Class Training</strong> – 90+ lessons led by Charles Dobens, the Multifamily Attorney, covering markets, deal structuring, capital raising, due diligence, and scaling. With $50M+ in personal investing experience and $3B+ in client transactions, Charles brings practical, field-tested strategies to every lesson.</li>
                 <li><strong>Weekly Coaching</strong> – Live calls with Charles Dobens that combine deal analysis, market updates, and expert Q&A. These sessions provide direct access to one of the most respected educators in multifamily investing.</li>
                 <li><strong>Community Access</strong> – Direct connection to experienced peers and mentors for accountability, support, and networking opportunities.</li>
