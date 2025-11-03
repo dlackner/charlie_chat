@@ -417,14 +417,13 @@ function ActivityTrendsChart({ timeRange }: { timeRange: string }) {
                   <div 
                     className="absolute pointer-events-none z-50"
                     style={{ 
-                      left: mousePosition.x + 10, 
-                      top: mousePosition.y - 10,
-                      transform: mousePosition.x > 400 ? 'translateX(-100%)' : 'none'
+                      left: mousePosition.x > 400 ? mousePosition.x - 220 : mousePosition.x + 10, 
+                      top: mousePosition.y - 10
                     }}
                   >
                     <div className="bg-white p-4 border border-gray-200 rounded-lg shadow-lg">
                       <p className="font-medium text-gray-900 mb-2">
-                        Week of {new Date(hoveredData.week).toLocaleDateString('en-US', { 
+{new Date(hoveredData.week).toLocaleDateString('en-US', { 
                           month: 'short', 
                           day: 'numeric',
                           year: 'numeric'

@@ -1234,7 +1234,7 @@ function EngagePageContent() {
         title: profileData.job_title || '',
         logoBase64: profileData.logo_base64 || null
       };
-
+      
       // Validate required profile information
       if (!senderInfo.name || !senderInfo.phone || !senderInfo.email) {
         showWarning('Please complete your profile with name, phone, and email to generate marketing letters.', 'Profile Incomplete');
@@ -1243,7 +1243,8 @@ function EngagePageContent() {
 
       // Generate letters for selected properties
       for (const propertyId of propertyIds) {
-        const property = savedProperties.find(p => p.id === propertyId);
+        const property = savedProperties.find(p => p.property_id === propertyId);
+        
         if (property) {
           // Process property data for marketing letter generation
           
@@ -1267,7 +1268,7 @@ function EngagePageContent() {
             address_state: property.state,
             owner_first_name: property.owner_first_name || null,
             owner_last_name: property.owner_last_name || null,
-            property_id: property.id.toString()
+            property_id: property.property_id
           };
           
           // Generate marketing letter with property data
