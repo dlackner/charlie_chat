@@ -71,8 +71,23 @@ export default function LoadPropertyPage() {
           <div className="px-6 py-4 border-b border-gray-200">
             <h1 className="text-2xl font-bold text-gray-900">Load Other Properties</h1>
             <p className="mt-2 text-sm text-gray-600">
-              Load property data from external API into saved_properties and add to user favorites
+              Admin tool to manually add properties to user favorites from external API data
             </p>
+            
+            {/* Program Summary */}
+            <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-md">
+              <h2 className="text-sm font-semibold text-blue-900 mb-2">How to Use This Tool:</h2>
+              <ol className="text-xs text-blue-800 space-y-1 list-decimal list-inside">
+                <li><strong>Get Property ID:</strong> Find the property ID you want to load</li>
+                <li><strong>Fetch from RealEstateAPI:</strong> Use the property ID to call the RealEstateAPI and get the complete JSON response</li>
+                <li><strong>Paste JSON:</strong> Copy the entire JSON response and paste it into the form below</li>
+                <li><strong>Enter User UUID:</strong> Specify which user should receive this property in their favorites</li>
+                <li><strong>Submit:</strong> The property will be saved and automatically favorited for that user</li>
+              </ol>
+              <p className="mt-2 text-xs text-blue-700">
+                <strong>Access:</strong> This tool is available at <code>/admin/load-property</code> and requires admin privileges.
+              </p>
+            </div>
           </div>
 
           <form onSubmit={handleSubmit} className="p-6 space-y-6">

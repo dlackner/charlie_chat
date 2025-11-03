@@ -91,7 +91,8 @@ export default function PropertyDetailsPage() {
             propertyType: "MFR", // Only multifamily properties
             size: 1,
             obfuscate: false,
-            summary: false
+            summary: false,
+            userId: user?.id || null // Add user ID for search tracking
           })
         });
 

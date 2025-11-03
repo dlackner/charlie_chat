@@ -119,17 +119,14 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     console.log("📝 Raw body from client ➡️", body);
 
-    // Get authenticated user for search tracking
-    const supabase = createSupabaseAdminClient();
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    // Get user ID from request body for search tracking (optional)
+    const userId = body.userId; // Frontend can pass this
+    let user = userId ? { id: userId } : null;
     
-    if (authError) {
-      console.error("❌ Auth error:", authError);
-      return NextResponse.json({ error: "Authentication required" }, { status: 401 });
-    }
-
-    if (!user) {
-      return NextResponse.json({ error: "User not found" }, { status: 401 });
+    if (userId) {
+      console.log("📊 User ID provided for search tracking:", userId);
+    } else {
+      console.log("⚠️ No user ID provided, skipping search tracking");
     }
 
     if (body.clearResults) {
@@ -309,7 +306,7 @@ export async function POST(req: NextRequest) {
 
     // Track property search activity for all users (especially important for core users)
     // Only track actual searches, not ids_only requests or count requests
-    if (!ids_only && !count && user.id) {
+    if (!ids_only && !count && user && user.id) {
       try {
         await fetch(`${req.nextUrl.origin}/api/activity-count`, {
           method: 'POST',

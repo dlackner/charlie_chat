@@ -131,6 +131,11 @@ export default function OfferAnalyzerPage() {
   const [variationId, setVariationId] = useState<string>('');
   const [isReadOnly, setIsReadOnly] = useState<boolean>(false);
   const [source, setSource] = useState<string>('');
+  const [scenarioOwnerId, setScenarioOwnerId] = useState<string>('');
+  
+  // Determine if current user owns the scenario (for read-only logic)
+  const isOwner = !scenarioOwnerId || scenarioOwnerId === currentUser?.id;
+  const shouldDisableInputs = !!(variationId && scenarioOwnerId && scenarioOwnerId !== currentUser?.id);
   
   // Callback to handle search params
   const handleParamsLoaded = useCallback(async (params: { street: string; city: string; state: string; id?: string; offerId?: string; submissionId?: string; variationId?: string; readOnly?: boolean; source?: string }) => {
@@ -158,7 +163,15 @@ export default function OfferAnalyzerPage() {
         if (response.ok) {
           const data = await response.json();
           const scenarioData = data.variation.scenario_data;
+          const ownerId = data.variation.user_id;
           console.log('Loading scenario data:', scenarioData);
+          console.log('Scenario owner ID:', ownerId);
+          
+          // Store the scenario owner ID
+          setScenarioOwnerId(ownerId);
+          
+          // Set read-only mode based on ownership (allow editing if user owns the scenario)
+          setIsReadOnly(ownerId !== currentUser?.id);
           
           // Load all the scenario data into the analyzer state using the complete loader
           loadOfferData(scenarioData);
@@ -1985,10 +1998,18 @@ export default function OfferAnalyzerPage() {
                 <div className="py-2">
                   <button
                     onClick={() => {
-                      setShowSaveOfferModal(true);
-                      setShowMoreMenu(false);
+                      if (!shouldDisableInputs) {
+                        setShowSaveOfferModal(true);
+                        setShowMoreMenu(false);
+                      }
                     }}
-                    className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 hover:text-gray-900 transition-colors cursor-pointer"
+                    disabled={shouldDisableInputs}
+                    className={`w-full text-left px-4 py-3 text-sm transition-colors ${
+                      shouldDisableInputs 
+                        ? 'text-gray-400 cursor-not-allowed' 
+                        : 'text-gray-700 hover:bg-gray-50 hover:text-gray-900 cursor-pointer'
+                    }`}
+                    title={shouldDisableInputs ? "You can only edit your own scenarios" : "Save Analysis"}
                   >
                     Save Analysis
                   </button>
@@ -2029,7 +2050,8 @@ export default function OfferAnalyzerPage() {
               id="purchasePrice"
               value={(purchasePrice ?? 0).toLocaleString('en-US')}
               onChange={formatAndParseNumberInput(setPurchasePrice)}
-              className="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow duration-150 ease-in-out shadow-sm"
+              disabled={shouldDisableInputs}
+              className={`w-full p-2.5 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow duration-150 ease-in-out shadow-sm ${shouldDisableInputs ? 'bg-gray-100 cursor-not-allowed' : 'bg-white'}`}
               step="10000"
               suppressHydrationWarning={true}
             />
@@ -2044,7 +2066,8 @@ export default function OfferAnalyzerPage() {
               id="downPaymentPercentage"
               value={downPaymentPercentage || ''}
               onChange={(e) => setDownPaymentPercentage(Math.max(0, Math.min(100, parseFloat(e.target.value) || 0)))}
-              className="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow duration-150 ease-in-out shadow-sm"
+              disabled={shouldDisableInputs}
+              className={`w-full p-2.5 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow duration-150 ease-in-out shadow-sm ${shouldDisableInputs ? 'bg-gray-100 cursor-not-allowed' : 'bg-white'}`}
               step="0.1"
               min="0"
               max="100"
@@ -2060,7 +2083,8 @@ export default function OfferAnalyzerPage() {
               id="interestRate"
               value={interestRate || ''}
               onChange={(e) => setInterestRate(Math.max(0, parseFloat(e.target.value) || 0))}
-              className="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow duration-150 ease-in-out shadow-sm"
+              disabled={shouldDisableInputs}
+              className={`w-full p-2.5 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow duration-150 ease-in-out shadow-sm ${shouldDisableInputs ? 'bg-gray-100 cursor-not-allowed' : 'bg-white'}`}
               step="0.1"
             />
           </CharlieTooltip>
@@ -2107,7 +2131,8 @@ export default function OfferAnalyzerPage() {
                 id="amortizationPeriodYears"
                 value={amortizationPeriodYears ?? 0}
                 onChange={(e) => setAmortizationPeriodYears(Math.max(1, parseInt(e.target.value) || 1))}
-                className="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow duration-150 ease-in-out shadow-sm"
+                disabled={shouldDisableInputs}
+              className={`w-full p-2.5 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow duration-150 ease-in-out shadow-sm ${shouldDisableInputs ? 'bg-gray-100 cursor-not-allowed' : 'bg-white'}`}
                 step="1"
                 min="1"
               />
@@ -2123,7 +2148,8 @@ export default function OfferAnalyzerPage() {
                   id="interestOnlyPeriodYears"
                   value={interestOnlyPeriodYears ?? 0}
                   onChange={(e) => setInterestOnlyPeriodYears(Math.max(1, parseInt(e.target.value) || 1))}
-                  className="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow duration-150 ease-in-out shadow-sm"
+                  disabled={shouldDisableInputs}
+              className={`w-full p-2.5 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow duration-150 ease-in-out shadow-sm ${shouldDisableInputs ? 'bg-gray-100 cursor-not-allowed' : 'bg-white'}`}
                   step="1"
                   min="1"
                 />
@@ -2137,7 +2163,8 @@ export default function OfferAnalyzerPage() {
                   id="refinanceTermYears"
                   value={refinanceTermYears ?? 0}
                   onChange={(e) => setRefinanceTermYears(Math.max(0, parseInt(e.target.value) || 0))}
-                  className="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow duration-150 ease-in-out shadow-sm"
+                  disabled={shouldDisableInputs}
+              className={`w-full p-2.5 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow duration-150 ease-in-out shadow-sm ${shouldDisableInputs ? 'bg-gray-100 cursor-not-allowed' : 'bg-white'}`}
                   step="1"
                   min="0"
                 />
@@ -2155,7 +2182,8 @@ export default function OfferAnalyzerPage() {
               id="closingCostsPercentage"
               value={closingCostsPercentage || ''}
               onChange={(e) => setClosingCostsPercentage(Math.max(0, parseFloat(e.target.value) || 0))}
-              className="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow duration-150 ease-in-out shadow-sm"
+              disabled={shouldDisableInputs}
+              className={`w-full p-2.5 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow duration-150 ease-in-out shadow-sm ${shouldDisableInputs ? 'bg-gray-100 cursor-not-allowed' : 'bg-white'}`}
               step="0.1"
               min="0"
             />
@@ -2171,7 +2199,8 @@ export default function OfferAnalyzerPage() {
               id="dispositionCapRate"
               value={dispositionCapRate || ''}
               onChange={(e) => setDispositionCapRate(Math.max(0, parseFloat(e.target.value) || 0))}
-              className="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow duration-150 ease-in-out shadow-sm"
+              disabled={shouldDisableInputs}
+              className={`w-full p-2.5 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow duration-150 ease-in-out shadow-sm ${shouldDisableInputs ? 'bg-gray-100 cursor-not-allowed' : 'bg-white'}`}
               step="0.1"
               min="0"
             />
@@ -2189,7 +2218,8 @@ export default function OfferAnalyzerPage() {
               id="numUnits"
               value={(numUnits ?? 0).toLocaleString('en-US')}
               onChange={formatAndParseNumberInput(setNumUnits)}
-              className="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow duration-150 ease-in-out shadow-sm"
+              disabled={shouldDisableInputs}
+              className={`w-full p-2.5 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow duration-150 ease-in-out shadow-sm ${shouldDisableInputs ? 'bg-gray-100 cursor-not-allowed' : 'bg-white'}`}
               suppressHydrationWarning={true}
             />
           </CharlieTooltip>
@@ -2203,7 +2233,8 @@ export default function OfferAnalyzerPage() {
               id="avgMonthlyRentPerUnit"
               value={(avgMonthlyRentPerUnit ?? 0).toLocaleString('en-US')}
               onChange={formatAndParseNumberInput(setAvgMonthlyRentPerUnit)}
-              className="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow duration-150 ease-in-out shadow-sm"
+              disabled={shouldDisableInputs}
+              className={`w-full p-2.5 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow duration-150 ease-in-out shadow-sm ${shouldDisableInputs ? 'bg-gray-100 cursor-not-allowed' : 'bg-white'}`}
               step="100"
               suppressHydrationWarning={true}
             />
@@ -2218,7 +2249,8 @@ export default function OfferAnalyzerPage() {
               id="vacancyRate"
               value={vacancyRate || ''}
               onChange={(e) => setVacancyRate(Math.max(0, Math.min(100, parseFloat(e.target.value) || 0)))}
-              className="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow duration-150 ease-in-out shadow-sm"
+              disabled={shouldDisableInputs}
+              className={`w-full p-2.5 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow duration-150 ease-in-out shadow-sm ${shouldDisableInputs ? 'bg-gray-100 cursor-not-allowed' : 'bg-white'}`}
               step="0.1"
               min="0"
               max="100"
@@ -2234,7 +2266,8 @@ export default function OfferAnalyzerPage() {
               id="annualRentalGrowthRate"
               value={annualRentalGrowthRate || ''}
               onChange={(e) => setAnnualRentalGrowthRate(Math.max(0, parseFloat(e.target.value) || 0))}
-              className="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow duration-150 ease-in-out shadow-sm"
+              disabled={shouldDisableInputs}
+              className={`w-full p-2.5 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow duration-150 ease-in-out shadow-sm ${shouldDisableInputs ? 'bg-gray-100 cursor-not-allowed' : 'bg-white'}`}
               step="0.1"
               min="0"
             />
@@ -2249,7 +2282,8 @@ export default function OfferAnalyzerPage() {
               id="otherIncomeAnnual"
               value={(otherIncomeAnnual ?? 0).toLocaleString('en-US')}
               onChange={formatAndParseNumberInput(setOtherIncomeAnnual)}
-              className="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow duration-150 ease-in-out shadow-sm"
+              disabled={shouldDisableInputs}
+              className={`w-full p-2.5 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow duration-150 ease-in-out shadow-sm ${shouldDisableInputs ? 'bg-gray-100 cursor-not-allowed' : 'bg-white'}`}
               step="100"
               suppressHydrationWarning={true}
             />
@@ -2264,7 +2298,8 @@ export default function OfferAnalyzerPage() {
               id="incomeReductionsAnnual"
               value={(incomeReductionsAnnual ?? 0).toLocaleString('en-US')}
               onChange={formatAndParseNumberInput(setIncomeReductionsAnnual)}
-              className="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow duration-150 ease-in-out shadow-sm"
+              disabled={shouldDisableInputs}
+              className={`w-full p-2.5 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow duration-150 ease-in-out shadow-sm ${shouldDisableInputs ? 'bg-gray-100 cursor-not-allowed' : 'bg-white'}`}
               step="100"
               suppressHydrationWarning={true}
             />
@@ -2321,7 +2356,8 @@ export default function OfferAnalyzerPage() {
                   id="expenseGrowthRate"
                   value={expenseGrowthRate ?? 0}
                   onChange={(e) => setExpenseGrowthRate(Math.max(0, parseFloat(e.target.value) || 0))}
-                  className="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow duration-150 ease-in-out shadow-sm"
+                  disabled={shouldDisableInputs}
+              className={`w-full p-2.5 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow duration-150 ease-in-out shadow-sm ${shouldDisableInputs ? 'bg-gray-100 cursor-not-allowed' : 'bg-white'}`}
                   step="0.1"
                   min="0"
                 />
@@ -2338,7 +2374,8 @@ export default function OfferAnalyzerPage() {
               id="propertyTaxes"
               value={(propertyTaxes ?? 0).toLocaleString('en-US')}
               onChange={formatAndParseNumberInput(setPropertyTaxes)}
-              className="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow duration-150 ease-in-out shadow-sm"
+              disabled={shouldDisableInputs}
+              className={`w-full p-2.5 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow duration-150 ease-in-out shadow-sm ${shouldDisableInputs ? 'bg-gray-100 cursor-not-allowed' : 'bg-white'}`}
               step="100"
               suppressHydrationWarning={true}
             />
@@ -2353,7 +2390,8 @@ export default function OfferAnalyzerPage() {
               id="insurance"
               value={(insurance ?? 0).toLocaleString('en-US')}
               onChange={formatAndParseNumberInput(setInsurance)}
-              className="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow duration-150 ease-in-out shadow-sm"
+              disabled={shouldDisableInputs}
+              className={`w-full p-2.5 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow duration-150 ease-in-out shadow-sm ${shouldDisableInputs ? 'bg-gray-100 cursor-not-allowed' : 'bg-white'}`}
               step="100"
               suppressHydrationWarning={true}
             />
@@ -2368,7 +2406,8 @@ export default function OfferAnalyzerPage() {
               id="propertyManagementFeePercentage"
               value={propertyManagementFeePercentage || ''}
               onChange={(e) => setPropertyManagementFeePercentage(Math.max(0, parseFloat(e.target.value) || 0))}
-              className="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow duration-150 ease-in-out shadow-sm"
+              disabled={shouldDisableInputs}
+              className={`w-full p-2.5 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow duration-150 ease-in-out shadow-sm ${shouldDisableInputs ? 'bg-gray-100 cursor-not-allowed' : 'bg-white'}`}
               step="0.1"
               min="0"
             />
@@ -2383,7 +2422,8 @@ export default function OfferAnalyzerPage() {
               id="maintenanceRepairsAnnual"
               value={(maintenanceRepairsAnnual ?? 0).toLocaleString('en-US')}
               onChange={formatAndParseNumberInput(setMaintenanceRepairsAnnual)}
-              className="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow duration-150 ease-in-out shadow-sm"
+              disabled={shouldDisableInputs}
+              className={`w-full p-2.5 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow duration-150 ease-in-out shadow-sm ${shouldDisableInputs ? 'bg-gray-100 cursor-not-allowed' : 'bg-white'}`}
               step="100"
               suppressHydrationWarning={true}
             />
@@ -2398,7 +2438,8 @@ export default function OfferAnalyzerPage() {
               id="utilitiesAnnual"
               value={(utilitiesAnnual ?? 0).toLocaleString('en-US')}
               onChange={formatAndParseNumberInput(setUtilitiesAnnual)}
-              className="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow duration-150 ease-in-out shadow-sm"
+              disabled={shouldDisableInputs}
+              className={`w-full p-2.5 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow duration-150 ease-in-out shadow-sm ${shouldDisableInputs ? 'bg-gray-100 cursor-not-allowed' : 'bg-white'}`}
               step="100"
               suppressHydrationWarning={true}
             />
@@ -2413,7 +2454,8 @@ export default function OfferAnalyzerPage() {
               id="contractServicesAnnual"
               value={(contractServicesAnnual ?? 0).toLocaleString('en-US')}
               onChange={formatAndParseNumberInput(setContractServicesAnnual)}
-              className="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow duration-150 ease-in-out shadow-sm"
+              disabled={shouldDisableInputs}
+              className={`w-full p-2.5 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow duration-150 ease-in-out shadow-sm ${shouldDisableInputs ? 'bg-gray-100 cursor-not-allowed' : 'bg-white'}`}
               step="100"
               suppressHydrationWarning={true}
             />
@@ -2428,7 +2470,8 @@ export default function OfferAnalyzerPage() {
               id="payrollAnnual"
               value={(payrollAnnual ?? 0).toLocaleString('en-US')}
               onChange={formatAndParseNumberInput(setPayrollAnnual)}
-              className="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow duration-150 ease-in-out shadow-sm"
+              disabled={shouldDisableInputs}
+              className={`w-full p-2.5 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow duration-150 ease-in-out shadow-sm ${shouldDisableInputs ? 'bg-gray-100 cursor-not-allowed' : 'bg-white'}`}
               step="100"
               suppressHydrationWarning={true}
             />
@@ -2443,7 +2486,8 @@ export default function OfferAnalyzerPage() {
               id="marketingAnnual"
               value={(marketingAnnual ?? 0).toLocaleString('en-US')}
               onChange={formatAndParseNumberInput(setMarketingAnnual)}
-              className="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow duration-150 ease-in-out shadow-sm"
+              disabled={shouldDisableInputs}
+              className={`w-full p-2.5 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow duration-150 ease-in-out shadow-sm ${shouldDisableInputs ? 'bg-gray-100 cursor-not-allowed' : 'bg-white'}`}
               step="100"
               suppressHydrationWarning={true}
             />
@@ -2458,7 +2502,8 @@ export default function OfferAnalyzerPage() {
               id="gAndAAnnual"
               value={(gAndAAnnual ?? 0).toLocaleString('en-US')}
               onChange={formatAndParseNumberInput(setGAndAAnnual)}
-              className="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow duration-150 ease-in-out shadow-sm"
+              disabled={shouldDisableInputs}
+              className={`w-full p-2.5 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow duration-150 ease-in-out shadow-sm ${shouldDisableInputs ? 'bg-gray-100 cursor-not-allowed' : 'bg-white'}`}
               step="100"
               suppressHydrationWarning={true}
             />
@@ -2473,7 +2518,8 @@ export default function OfferAnalyzerPage() {
               id="otherExpensesAnnual"
               value={(otherExpensesAnnual ?? 0).toLocaleString('en-US')}
               onChange={formatAndParseNumberInput(setOtherExpensesAnnual)}
-              className="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow duration-150 ease-in-out shadow-sm"
+              disabled={shouldDisableInputs}
+              className={`w-full p-2.5 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow duration-150 ease-in-out shadow-sm ${shouldDisableInputs ? 'bg-gray-100 cursor-not-allowed' : 'bg-white'}`}
               step="100"
               suppressHydrationWarning={true}
             />
@@ -2488,7 +2534,8 @@ export default function OfferAnalyzerPage() {
               id="expenseGrowthRate"
               value={expenseGrowthRate ?? 0}
               onChange={(e) => setExpenseGrowthRate(Math.max(0, parseFloat(e.target.value) || 0))}
-              className="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow duration-150 ease-in-out shadow-sm"
+              disabled={shouldDisableInputs}
+              className={`w-full p-2.5 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow duration-150 ease-in-out shadow-sm ${shouldDisableInputs ? 'bg-gray-100 cursor-not-allowed' : 'bg-white'}`}
               step="0.1"
               min="0"
             />
@@ -2508,7 +2555,8 @@ export default function OfferAnalyzerPage() {
               id="capitalReservePerUnitAnnual"
               value={(capitalReservePerUnitAnnual ?? 0).toLocaleString('en-US')}
               onChange={formatAndParseNumberInput(setCapitalReservePerUnitAnnual)}
-              className="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow duration-150 ease-in-out shadow-sm"
+              disabled={shouldDisableInputs}
+              className={`w-full p-2.5 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow duration-150 ease-in-out shadow-sm ${shouldDisableInputs ? 'bg-gray-100 cursor-not-allowed' : 'bg-white'}`}
               step="10"
               suppressHydrationWarning={true}
             />
@@ -2522,7 +2570,8 @@ export default function OfferAnalyzerPage() {
               id="deferredCapitalReservePerUnit"
               value={(deferredCapitalReservePerUnit ?? 0).toLocaleString('en-US')}
               onChange={formatAndParseNumberInput(setDeferredCapitalReservePerUnit)}
-              className="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow duration-150 ease-in-out shadow-sm"
+              disabled={shouldDisableInputs}
+              className={`w-full p-2.5 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow duration-150 ease-in-out shadow-sm ${shouldDisableInputs ? 'bg-gray-100 cursor-not-allowed' : 'bg-white'}`}
               step="10"
               suppressHydrationWarning={true}
             />
@@ -2539,7 +2588,8 @@ export default function OfferAnalyzerPage() {
                 max="50"
                 value={holdingPeriodYears ?? 0}
                 onChange={(e) => setHoldingPeriodYears(parseInt(e.target.value))}
-                className="w-full h-2 bg-gray-300 rounded-lg appearance-none cursor-pointer accent-orange-500"
+                disabled={shouldDisableInputs}
+                className={`w-full h-2 rounded-lg appearance-none ${shouldDisableInputs ? 'bg-gray-200 cursor-not-allowed' : 'bg-gray-300 cursor-pointer accent-orange-500'}`}
               />
               <span className="ml-3 text-gray-700 font-medium w-10 text-right">{holdingPeriodYears}</span>
             </div>

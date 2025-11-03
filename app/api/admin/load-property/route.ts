@@ -142,10 +142,24 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Handle RealEstateAPI response format - extract property from data array
+    let actualPropertyData = propertyData;
+    
+    // Check if this is a RealEstateAPI wrapper response
+    if ((propertyData as any).data && Array.isArray((propertyData as any).data) && (propertyData as any).data.length > 0) {
+      actualPropertyData = (propertyData as any).data[0]; // Extract first property from data array
+      console.log('Extracted property from data array');
+    }
+    
+    // Debug: Log what we're working with
+    console.log('Property data keys:', Object.keys(actualPropertyData));
+    console.log('actualPropertyData.id:', actualPropertyData.id);
+    console.log('actualPropertyData.propertyId:', actualPropertyData.propertyId);
+    
     // Validate property has required fields
-    if (!propertyData.id && !propertyData.propertyId) {
+    if (!actualPropertyData.id && !actualPropertyData.propertyId) {
       return NextResponse.json(
-        { error: 'Property must have an ID' },
+        { error: `Property must have an ID. Received keys: ${Object.keys(actualPropertyData).join(', ')}. id: ${actualPropertyData.id}, propertyId: ${actualPropertyData.propertyId}` },
         { status: 400 }
       );
     }
@@ -175,7 +189,7 @@ export async function POST(request: NextRequest) {
       }
     );
 
-    const propertyId = propertyData.id || propertyData.propertyId;
+    const propertyId = actualPropertyData.id || actualPropertyData.propertyId;
 
     // Check if property already exists
     const { data: existingProperty } = await supabase
@@ -196,51 +210,51 @@ export async function POST(request: NextRequest) {
       .from('saved_properties')
       .insert({
         property_id: propertyId,
-        address_street: propertyData.address?.street || null,
-        address_full: propertyData.address?.address || null,
-        address_city: propertyData.address?.city || null,
-        address_state: propertyData.address?.state || null,
-        address_zip: propertyData.address?.zip || null,
-        latitude: propertyData.latitude || null,
-        longitude: propertyData.longitude || null,
-        mail_address_full: propertyData.mailAddress?.address || null,
-        mail_address_street: propertyData.mailAddress?.street || null,
-        mail_address_city: propertyData.mailAddress?.city || null,
-        mail_address_state: propertyData.mailAddress?.state || null,
-        mail_address_zip: propertyData.mailAddress?.zip || null,
-        property_type: propertyData.propertyType || null,
-        units_count: propertyData.unitsCount || null,
-        year_built: propertyData.yearBuilt || null,
-        square_feet: propertyData.squareFeet || null,
-        lot_square_feet: propertyData.lotSquareFeet || null,
-        flood_zone: propertyData.floodZone || null,
-        flood_zone_description: propertyData.floodZoneDescription || null,
-        assessed_value: propertyData.assessedValue || null,
-        assessed_land_value: propertyData.assessedLandValue || null,
-        estimated_value: propertyData.estimatedValue || null,
-        estimated_equity: propertyData.estimatedEquity || null,
-        last_sale_amount: propertyData.lastSaleAmount ? parseFloat(propertyData.lastSaleAmount) : null,
-        mls_active: propertyData.mlsActive || null,
-        for_sale: propertyData.forSale || null,
-        assumable: propertyData.assumable || null,
-        auction: propertyData.auction || null,
-        reo: propertyData.reo || null,
-        pre_foreclosure: propertyData.preForeclosure || null,
-        foreclosure: propertyData.foreclosure || null,
-        private_lender: propertyData.privateLender || null,
-        owner_last_name: propertyData.owner1LastName || propertyData.companyName || null,
-        out_of_state_absentee_owner: propertyData.outOfStateAbsenteeOwner || null,
-        in_state_absentee_owner: propertyData.inStateAbsenteeOwner || null,
-        owner_occupied: propertyData.ownerOccupied || null,
-        corporate_owned: propertyData.corporateOwned || null,
-        investor_buyer: propertyData.investorBuyer || null,
-        total_portfolio_equity: propertyData.totalPortfolioEquity ? parseFloat(propertyData.totalPortfolioEquity) : null,
-        total_portfolio_mortgage_balance: propertyData.totalPortfolioMortgageBalance ? parseFloat(propertyData.totalPortfolioMortgageBalance) : null,
-        total_properties_owned: propertyData.totalPropertiesOwned ? parseInt(propertyData.totalPropertiesOwned) : null,
-        equity_percent: propertyData.equityPercent || null,
-        total_open_mortgage_balance: propertyData.openMortgageBalance || null,
-        median_household_income: propertyData.medianIncome ? parseFloat(propertyData.medianIncome) : null,
-        county: propertyData.address?.county || null,
+        address_street: actualPropertyData.address?.street || null,
+        address_full: actualPropertyData.address?.address || null,
+        address_city: actualPropertyData.address?.city || null,
+        address_state: actualPropertyData.address?.state || null,
+        address_zip: actualPropertyData.address?.zip || null,
+        latitude: actualPropertyData.latitude || null,
+        longitude: actualPropertyData.longitude || null,
+        mail_address_full: actualPropertyData.mailAddress?.address || null,
+        mail_address_street: actualPropertyData.mailAddress?.street || null,
+        mail_address_city: actualPropertyData.mailAddress?.city || null,
+        mail_address_state: actualPropertyData.mailAddress?.state || null,
+        mail_address_zip: actualPropertyData.mailAddress?.zip || null,
+        property_type: actualPropertyData.propertyType || null,
+        units_count: actualPropertyData.unitsCount || null,
+        year_built: actualPropertyData.yearBuilt || null,
+        square_feet: actualPropertyData.squareFeet || null,
+        lot_square_feet: actualPropertyData.lotSquareFeet || null,
+        flood_zone: actualPropertyData.floodZone || null,
+        flood_zone_description: actualPropertyData.floodZoneDescription || null,
+        assessed_value: actualPropertyData.assessedValue || null,
+        assessed_land_value: actualPropertyData.assessedLandValue || null,
+        estimated_value: actualPropertyData.estimatedValue || null,
+        estimated_equity: actualPropertyData.estimatedEquity || null,
+        last_sale_amount: actualPropertyData.lastSaleAmount ? parseFloat(actualPropertyData.lastSaleAmount) : null,
+        mls_active: actualPropertyData.mlsActive || null,
+        for_sale: actualPropertyData.forSale || null,
+        assumable: actualPropertyData.assumable || null,
+        auction: actualPropertyData.auction || null,
+        reo: actualPropertyData.reo || null,
+        pre_foreclosure: actualPropertyData.preForeclosure || null,
+        foreclosure: actualPropertyData.foreclosure || null,
+        private_lender: actualPropertyData.privateLender || null,
+        owner_last_name: actualPropertyData.owner1LastName || actualPropertyData.companyName || null,
+        out_of_state_absentee_owner: actualPropertyData.outOfStateAbsenteeOwner || null,
+        in_state_absentee_owner: actualPropertyData.inStateAbsenteeOwner || null,
+        owner_occupied: actualPropertyData.ownerOccupied || null,
+        corporate_owned: actualPropertyData.corporateOwned || null,
+        investor_buyer: actualPropertyData.investorBuyer || null,
+        total_portfolio_equity: actualPropertyData.totalPortfolioEquity ? parseFloat(actualPropertyData.totalPortfolioEquity) : null,
+        total_portfolio_mortgage_balance: actualPropertyData.totalPortfolioMortgageBalance ? parseFloat(actualPropertyData.totalPortfolioMortgageBalance) : null,
+        total_properties_owned: actualPropertyData.totalPropertiesOwned ? parseInt(actualPropertyData.totalPropertiesOwned) : null,
+        equity_percent: actualPropertyData.equityPercent || null,
+        total_open_mortgage_balance: actualPropertyData.openMortgageBalance || null,
+        median_household_income: actualPropertyData.medianIncome ? parseFloat(actualPropertyData.medianIncome) : null,
+        county: actualPropertyData.address?.county || null,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
         saved_at: new Date().toISOString()

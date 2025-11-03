@@ -302,7 +302,7 @@ export const BuyBoxModal: React.FC<BuyBoxModalProps> = ({ isOpen, onClose, focus
     const [savingMarkets, setSavingMarkets] = useState<Set<string>>(new Set());
     const [successMessage, setSuccessMessage] = useState("");
     const [showLearningPhasesModal, setShowLearningPhasesModal] = useState(false);
-    const [maxMarkets, setMaxMarkets] = useState(5); // Default for Pro users
+    const [maxMarkets, setMaxMarkets] = useState(5); // Maximum 5 markets for all users
     // Location input states (separate from parsed location data, like discover page)
     const [locationInputs, setLocationInputs] = useState<{ [marketId: string]: string }>({});
     const [showAddressSuggestions, setShowAddressSuggestions] = useState<{ [marketId: string]: boolean }>({});
@@ -506,13 +506,19 @@ export const BuyBoxModal: React.FC<BuyBoxModalProps> = ({ isOpen, onClose, focus
         return isNaN(parsed) ? 0 : parsed;
     };
 
-    // Allow unlimited markets for all users
+    // Enforce 5-market limit for all users with access
     const checkUserMarketLimit = async () => {
-        setMaxMarkets(999); // Unlimited markets for all users
+        setMaxMarkets(5); // Maximum 5 markets for all users
     };
 
     const addMarket = async () => {
         if (user) {
+            // Check if user has reached the 5-market limit
+            if (buyBoxData.markets.length >= maxMarkets) {
+                setErrorMessage(`Maximum ${maxMarkets} markets allowed. Please delete an existing market first.`);
+                return;
+            }
+            
             // Query database to get all existing market keys for this user
             const { data: existingMarkets } = await supabase
                 .from("user_markets")

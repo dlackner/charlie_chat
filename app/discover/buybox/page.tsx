@@ -675,11 +675,20 @@ export default function BuyBoxPage() {
               {/* Add Market Tab */}
               <button
                 onClick={() => {
-                  // Allow unlimited markets for all users
+                  // Check if user has reached the 5-market limit
+                  if (userMarkets.length >= 5) {
+                    showWarning('Maximum 5 markets allowed. Please delete an existing market first.', 'Market Limit Reached');
+                    return;
+                  }
                   setFocusedMarket(null); // null means add new market mode
                   setShowBuyBoxModal(true);
                 }}
-                className="whitespace-nowrap py-2 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 font-medium text-sm transition-colors flex items-center"
+                disabled={userMarkets.length >= 5}
+                className={`whitespace-nowrap py-2 px-1 border-b-2 border-transparent font-medium text-sm transition-colors flex items-center ${
+                  userMarkets.length >= 5 
+                    ? 'text-gray-300 cursor-not-allowed' 
+                    : 'text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
               >
                 <span className="text-lg mr-1">+</span>
                 Add Market
