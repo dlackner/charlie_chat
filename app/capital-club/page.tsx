@@ -235,9 +235,20 @@ export default function CapitalClub() {
           <div className="text-center mb-8">
             <h2 className="text-4xl md:text-5xl font-bold mb-4">You bring the capital.</h2>
             <h2 className="text-4xl md:text-5xl font-bold mb-6">We bring the opportunities.</h2>
-            <p className="text-lg text-blue-100">Fill out this form and you will be redirected to the MultifamilyOS Club page<br />where you can review details about the club and investment options.</p>
+            <p className="text-lg text-blue-100">Click the button below and you will be redirected to the MultifamilyOS Club page<br />where you can review details about the club and investment options.</p>
           </div>
           
+          <div className="max-w-md mx-auto">
+            <button
+              onClick={() => window.open('https://www.fractional.app/p/MultifamilyOSclub', '_blank')}
+              className="w-full px-8 py-4 bg-white text-blue-600 font-semibold text-lg rounded-xl hover:bg-gray-100 transition-all duration-200 transform hover:scale-105 shadow-lg flex items-center justify-center"
+            >
+              <Crown className="h-5 w-5 mr-2" />
+              Join the Capital Club
+            </button>
+          </div>
+
+          {/* COMMENTED OUT - Original form in case we want to revert back later
           <form onSubmit={handleSubmit} className="max-w-md mx-auto space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
@@ -328,6 +339,7 @@ export default function CapitalClub() {
               )}
             </button>
           </form>
+          */}
         </div>
 
       </div>

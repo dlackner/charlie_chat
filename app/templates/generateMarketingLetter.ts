@@ -41,19 +41,6 @@ export async function generateMarketingLetter(
   outputType: 'print' | 'email' | 'csv' = 'print'
 ): Promise<MarketingLetterResult> {
   try {
-    // DEBUG: Log the property data to see what we're receiving
-    console.log('=== MARKETING LETTER DEBUG ===');
-    console.log('Property data received:', {
-      address_full: property.address_full,
-      address_state: property.address_state,
-      owner_first_name: property.owner_first_name,
-      owner_last_name: property.owner_last_name,
-      property_id: property.property_id,
-      hasFirstName: !!property.owner_first_name,
-      hasLastName: !!property.owner_last_name,
-      firstNameType: typeof property.owner_first_name,
-      lastNameType: typeof property.owner_last_name
-    });
     // Validate required sender information
     if (!senderInfo.name || !senderInfo.phone || !senderInfo.email) {
       return {
@@ -447,9 +434,8 @@ async function generatePrintableDocument(
 
     const blob = await Packer.toBlob(doc);
     const fileName = `Marketing_Letter_${property.address_full?.replace(/[^a-zA-Z0-9]/g, '_')}_${new Date().toISOString().split('T')[0]}.docx`;
-    saveAs(blob, fileName);
     
-    console.log('Marketing letter document generated:', fileName);
+    saveAs(blob, fileName);
   } catch (error) {
     console.error('Error generating printable document:', error);
     throw error;

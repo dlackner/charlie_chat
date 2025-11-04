@@ -193,7 +193,8 @@ function DiscoverPageContent() {
                 ...lastSearchFilters,
                 property_type: "MFR",
                 size: 12 * (currentPage - Math.floor(searchResults.length / PROPERTIES_PER_PAGE)),
-                resultIndex: nextResultIndex
+                resultIndex: nextResultIndex,
+                userId: user?.id || null // Add user ID for search tracking
               })
             });
             
@@ -872,7 +873,8 @@ function DiscoverPageContent() {
         ...searchFilters,
         property_type: "MFR", // Only multifamily properties  
         size: 12, // Load 12 at a time for pagination
-        resultIndex: 0
+        resultIndex: 0,
+        userId: user?.id || null // Add user ID for search tracking
       };
       
       const response = await fetch('/api/realestateapi', {
@@ -1039,7 +1041,8 @@ function DiscoverPageContent() {
           size: 12,
           resultIndex: 0,
           obfuscate: false,
-          summary: false
+          summary: false,
+          userId: user?.id || null // Add user ID for search tracking
         };
         
         // Add location if available
@@ -1707,6 +1710,7 @@ function DiscoverPageContent() {
             resultIndex: 0,
             obfuscate: false,
             summary: false,
+            userId: user?.id || null, // Add user ID for search tracking
             ...search.filters // Include all saved filters
           };
           

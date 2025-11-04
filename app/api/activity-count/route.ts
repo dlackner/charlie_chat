@@ -16,7 +16,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Validate activity type
-    const validActivityTypes = ['offers_created', 'lois_created', 'marketing_letters_created', 'emails_sent'];
+    const validActivityTypes = ['offers_created', 'lois_created', 'marketing_letters_created', 'emails_sent', 'property_searches'];
     if (!validActivityTypes.includes(activityType)) {
       return NextResponse.json({ error: 'Invalid activity type' }, { status: 400 });
     }

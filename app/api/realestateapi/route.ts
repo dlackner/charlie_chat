@@ -1,6 +1,7 @@
 //PART OF THE NEW V2 VERSION
 
 import { NextRequest, NextResponse } from "next/server";
+import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 
 // Transform external API camelCase response to snake_case for consistent frontend usage
 function transformListingToSnakeCase(listing: any) {
@@ -117,6 +118,16 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     console.log("📝 Raw body from client ➡️", body);
+
+    // Get user ID from request body for search tracking (optional)
+    const userId = body.userId; // Frontend can pass this
+    let user = userId ? { id: userId } : null;
+    
+    if (userId) {
+      console.log("📊 User ID provided for search tracking:", userId);
+    } else {
+      console.log("⚠️ No user ID provided, skipping search tracking");
+    }
 
     if (body.clearResults) {
       console.log("🧹 Clearing results as requested.");
@@ -291,6 +302,27 @@ export async function POST(req: NextRequest) {
     if (data.data && Array.isArray(data.data)) {
       data.data = data.data.map(transformListingToSnakeCase);
       console.log("📍 Sample listing (after transformation):", data.data?.[0]);
+    }
+
+    // Track property search activity for all users (especially important for core users)
+    // Only track actual searches, not ids_only requests or count requests
+    if (!ids_only && !count && user && user.id) {
+      try {
+        await fetch(`${req.nextUrl.origin}/api/activity-count`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            userId: user.id,
+            activityType: 'property_searches'
+          }),
+        });
+        console.log("📊 Property search tracked for user:", user.id);
+      } catch (trackingError) {
+        // Don't fail the search if tracking fails
+        console.error("⚠️ Failed to track search activity:", trackingError);
+      }
     }
 
     return NextResponse.json(data);
