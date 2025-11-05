@@ -407,10 +407,10 @@ export default function MobileNavigation() {
             description: 'Performance dashboard'
           },
           { 
-            name: 'Community Metrics', 
+            name: 'Community', 
             href: hasAccess(currentUserClass, 'dashboard_community') ? '/dashboard/community' : undefined,
             disabled: !hasAccess(currentUserClass, 'dashboard_community'),
-            description: 'Platform activity & insights'
+            description: 'News & Trends'
           },
           { 
             name: 'Pipeline', 

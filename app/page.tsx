@@ -472,7 +472,7 @@ export default function Home() {
               <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full mb-3">
                 <Crown className="h-8 w-8 text-white" />
               </div>
-              <h2 className="text-3xl md:text-4xl font-bold text-gray-900">Capital Club</h2>
+              <h2 className="text-3xl md:text-4xl font-bold text-gray-900">Join the Capital Club</h2>
             </div>
             
             <div className="max-w-4xl mx-auto mb-8">

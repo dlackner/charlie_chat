@@ -69,9 +69,7 @@ interface MarketInsights {
     avgCapRate: string;
   };
   aiTrends: {
-    hotTrend: string;
-    priceMovement: string;
-    recommendation: string;
+    marketBriefing: string;
   };
 }
 
@@ -277,9 +275,7 @@ export default function HomePage() {
             avgCapRate: '0%'
           },
           aiTrends: cachedCacheableData.aiTrends || {
-            hotTrend: 'Insufficient data for analysis',
-            priceMovement: 'Market data unavailable',
-            recommendation: 'Add more properties to your buy box for insights'
+            marketBriefing: 'Market analysis unavailable. Add more properties to your buy box to generate insights for this market.'
           }
         });
       }
@@ -312,9 +308,7 @@ export default function HomePage() {
             avgCapRate: '0%'
           },
           aiTrends: cachedCacheableData?.aiTrends || data.cacheable?.aiTrends || {
-            hotTrend: 'Insufficient data for analysis',
-            priceMovement: 'Market data unavailable',
-            recommendation: 'Add more properties to your buy box for insights'
+            marketBriefing: 'Market analysis unavailable. Add more properties to your buy box to generate insights for this market.'
           }
         };
         
@@ -339,9 +333,7 @@ export default function HomePage() {
             avgCapRate: '0%'
           },
           aiTrends: cachedCacheableData?.aiTrends || {
-            hotTrend: 'Insufficient data for analysis',
-            priceMovement: 'Market data unavailable',
-            recommendation: 'Add more properties to your buy box for insights'
+            marketBriefing: 'Market analysis unavailable. Add more properties to your buy box to generate insights for this market.'
           }
         };
         setMarketInsights(fallbackData);
@@ -381,18 +373,53 @@ export default function HomePage() {
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Home</h1>
-          <p className="text-gray-600">Welcome back! Here's what's happening with your multifamily business.</p>
           {error && (
             <p className="text-red-600 text-sm mt-2">{error}</p>
           )}
         </div>
 
-        {/* Reminders Section */}
-        <RemindersSection user={user} />
+        {/* Announcements Section */}
+        <div className="mb-8">
+          <h2 className="text-3xl font-bold text-gray-900 mb-6">Announcements</h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 border-l-4 border-l-blue-500 p-6">
+              <h3 className="font-semibold text-gray-900 mb-2">8 Properties Looking for Funding</h3>
+              <p className="text-gray-600 text-sm mb-4">Active investment opportunities available to Capital Club members.</p>
+              <Link 
+                href="/fund/browse"
+                className="inline-block bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors text-sm"
+              >
+                Browse Opportunities →
+              </Link>
+              <div className="text-xs text-gray-400 mt-3">November 5, 2025</div>
+            </div>
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 border-l-4 border-l-yellow-500 p-6">
+              <h3 className="font-semibold text-gray-900 mb-2">Join the Capital Club</h3>
+              <p className="text-gray-600 text-sm mb-4">The Capital Club is now accepting new members</p>
+              <Link 
+                href="/capital-club"
+                className="inline-block bg-yellow-600 hover:bg-yellow-700 text-white font-medium py-2 px-4 rounded-lg transition-colors text-sm"
+              >
+                Join the Capital Club →
+              </Link>
+              <div className="text-xs text-gray-400 mt-3">November 3, 2025</div>
+            </div>
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 border-l-4 border-l-green-500 p-6">
+              
+            </div>
+          </div>
+        </div>
 
-        {/* Key Metrics */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        {/* Reminders Section */}
+        <div className="mb-8">
+          <h2 className="text-3xl font-bold text-gray-900 mb-6">Reminders</h2>
+          <RemindersSection user={user} />
+        </div>
+
+        {/* Activity Section */}
+        <div className="mb-8">
+          <h2 className="text-3xl font-bold text-gray-900 mb-6">Activity</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <MetricCard
             title="Total Pipeline Value"
             value={metrics?.totalPipelineValue.value || "$0"}
@@ -425,113 +452,11 @@ export default function HomePage() {
             icon={<Users className="h-6 w-6" />}
             color="orange"
           />
-        </div>
-
-        {/* Market Insights Section */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-8">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-xl font-semibold text-gray-900">Buy Box Market Insights</h2>
-            <select 
-              className="text-sm border border-gray-300 rounded-md px-3 py-1"
-              value={selectedMarket}
-              onChange={(e) => setSelectedMarket(e.target.value)}
-              disabled={buyBoxMarkets.length === 0}
-            >
-              <option value="">Select a market...</option>
-              {buyBoxMarkets.map((market) => (
-                <option key={market.key} value={market.key}>
-                  {market.name}
-                </option>
-              ))}
-            </select>
           </div>
           
-          {!selectedMarket ? (
-            <div className="text-center py-8 text-gray-500">
-              <Building className="h-12 w-12 mx-auto mb-3 text-gray-300" />
-              <p className="font-medium mb-1">Select a Buy Box Market</p>
-              <p className="text-sm">Choose from your configured markets to see insights</p>
-            </div>
-          ) : isLoadingMarketInsights ? (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {[1, 2, 3].map((i) => (
-                <div key={i} className="bg-gray-50 rounded-lg p-4 border border-gray-100 animate-pulse">
-                  <div className="h-6 bg-gray-200 rounded w-3/4 mb-3"></div>
-                  <div className="space-y-2">
-                    <div className="h-4 bg-gray-200 rounded"></div>
-                    <div className="h-4 bg-gray-200 rounded"></div>
-                    <div className="h-4 bg-gray-200 rounded"></div>
-                    <div className="h-4 bg-gray-200 rounded"></div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {/* Market Pulse */}
-              <div className="bg-blue-50 rounded-lg p-4 border border-blue-100">
-                <h3 className="text-lg font-semibold text-blue-900 mb-3">Market Pulse</h3>
-                <div className="space-y-2">
-                  <div className="flex justify-between">
-                    <span className="text-blue-700 text-sm">Active Listings:</span>
-                    <span className="font-medium text-blue-900">{marketInsights?.marketPulse.activeListings || 0} properties</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-blue-700 text-sm">Avg. Estimated Value:</span>
-                    <span className="font-medium text-blue-900">{marketInsights?.marketPulse.avgEstimatedValue || '$0'}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-blue-700 text-sm">Avg. Assessed Value:</span>
-                    <span className="font-medium text-blue-900">{marketInsights?.marketPulse.avgAssessedValue || '$0'}</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Portfolio Insights */}
-              <div className="bg-green-50 rounded-lg p-4 border border-green-100">
-                <h3 className="text-lg font-semibold text-green-900 mb-3">Your Portfolio</h3>
-                <div className="space-y-2">
-                  <div className="flex justify-between">
-                    <span className="text-green-700 text-sm">Properties Tracked:</span>
-                    <span className="font-medium text-green-900">{marketInsights?.portfolioInsights.propertiesTracked || 0}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-green-700 text-sm">Total Investment:</span>
-                    <span className="font-medium text-green-900">{marketInsights?.portfolioInsights.totalInvestment || '$0'}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-green-700 text-sm">Avg. Cap Rate Target:</span>
-                    <span className="font-medium text-green-900">{marketInsights?.portfolioInsights.avgCapRate || '0%'}</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* AI Market Trends */}
-              <div className="bg-purple-50 rounded-lg p-4 border border-purple-100">
-                <h3 className="text-lg font-semibold text-purple-900 mb-3">AI Market Trends</h3>
-                <div className="space-y-3">
-                  <div className="text-sm text-purple-800">
-                    <div className="font-medium mb-1">Hot Trend</div>
-                    <div>{marketInsights?.aiTrends.hotTrend || 'Analyzing market patterns...'}</div>
-                  </div>
-                  <div className="text-sm text-purple-800">
-                    <div className="font-medium mb-1">Price Movement</div>
-                    <div>{marketInsights?.aiTrends.priceMovement || 'Processing price data...'}</div>
-                  </div>
-                  <div className="text-sm text-purple-800">
-                    <div className="font-medium mb-1">Recommendation</div>
-                    <div>{marketInsights?.aiTrends.recommendation || 'Generating insights...'}</div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Recent Activity Summary */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-2xl font-semibold text-gray-900">Recent Activity (Past 7 Days)</h2>
+          {/* Recent Activity Summary */}
+          <div className="flex items-center gap-4 mb-6 mt-8">
+            <h3 className="text-xl font-semibold text-gray-900">Past 7 Days</h3>
             <Link href="/dashboard/metrics" className="text-blue-600 hover:text-blue-700 text-sm font-medium">
               View Details
             </Link>
@@ -567,6 +492,102 @@ export default function HomePage() {
             />
           </div>
         </div>
+
+        {/* Buy Box Market Insights */}
+        {buyBoxMarkets.length > 0 && (
+          <div className="mb-8">
+            <h2 className="text-3xl font-bold text-gray-900 mb-4">Buy Box</h2>
+            <div className="mb-6">
+              <select
+                value={selectedMarket}
+                onChange={(e) => setSelectedMarket(e.target.value)}
+                className="px-4 py-3 bg-white border-2 border-gray-300 rounded-lg text-base font-medium text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 min-w-[200px] shadow-sm"
+              >
+                {buyBoxMarkets.map((market) => (
+                  <option key={market.key} value={market.key}>
+                    {market.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            
+            {/* Unified Buy Box Container */}
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+
+              {/* Content Cards */}
+              <div className="p-6">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+                  {/* Market Pulse */}
+                  <div className="bg-blue-50 rounded-lg p-6 border border-blue-200">
+                    <h3 className="text-lg font-semibold text-blue-900 mb-4">Market Pulse</h3>
+                    <div className="space-y-3">
+                      <div className="flex justify-between items-center">
+                        <span className="text-blue-700">Active Listings:</span>
+                        <span className="font-semibold text-blue-900">
+                          {isLoadingMarketInsights ? '...' : marketInsights?.marketPulse.activeListings || 0} properties
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-blue-700">Avg. Estimated Value:</span>
+                        <span className="font-semibold text-blue-900">
+                          {isLoadingMarketInsights ? '...' : marketInsights?.marketPulse.avgEstimatedValue || '$0'}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-blue-700">Avg. Assessed Value:</span>
+                        <span className="font-semibold text-blue-900">
+                          {isLoadingMarketInsights ? '...' : marketInsights?.marketPulse.avgAssessedValue || '$0'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Your Portfolio */}
+                  <div className="bg-green-50 rounded-lg p-6 border border-green-200">
+                    <h3 className="text-lg font-semibold text-green-900 mb-4">Your Portfolio</h3>
+                    <div className="space-y-3">
+                      <div className="flex justify-between items-center">
+                        <span className="text-green-700">Properties Tracked:</span>
+                        <span className="font-semibold text-green-900">
+                          {isLoadingPortfolio ? '...' : marketInsights?.portfolioInsights.propertiesTracked || 0}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-green-700">Total Investment:</span>
+                        <span className="font-semibold text-green-900">
+                          {isLoadingPortfolio ? '...' : marketInsights?.portfolioInsights.totalInvestment || '$0'}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-green-700">Avg. Cap Rate Target:</span>
+                        <span className="font-semibold text-green-900">
+                          {isLoadingPortfolio ? '...' : marketInsights?.portfolioInsights.avgCapRate || '0%'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* AI Market Analysis - Full Width within Buy Box */}
+                <div className="border-t border-gray-200 pt-6">
+                  <div className="flex items-center justify-between mb-6">
+                    <h3 className="text-lg font-semibold text-gray-900">Market Analysis</h3>
+                  </div>
+                  
+                  <div className="bg-purple-50 rounded-lg p-6 border border-purple-200">
+                    <div className="prose prose-purple max-w-none">
+                      <p className="text-purple-700 leading-relaxed text-base">
+                        {isLoadingMarketInsights ? 'Generating market analysis...' : marketInsights?.aiTrends.marketBriefing || 'Market analysis will appear here once data is loaded.'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+
       </div>
     </div>
   );
@@ -788,7 +809,7 @@ function RemindersSection({ user }: { user: any }) {
     <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-8">
       <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center">
         <AlertCircle className="h-5 w-5 mr-2 text-blue-600" />
-        Reminders - {new Date().toLocaleDateString('en-US', { 
+{new Date().toLocaleDateString('en-US', { 
           weekday: 'long', 
           year: 'numeric', 
           month: 'long', 
@@ -813,7 +834,7 @@ function RemindersSection({ user }: { user: any }) {
           <p className="text-sm text-gray-500 mt-1">Add reminders to your property notes using @MM/DD/YYYY format</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {/* Today's Reminders */}
           <div className="bg-red-50 border border-red-200 rounded-lg p-4">
             <h3 className="font-semibold text-red-800 mb-2 flex items-center">
@@ -881,77 +902,6 @@ function RemindersSection({ user }: { user: any }) {
             </div>
           </div>
 
-          {/* Capital Club */}
-          <div className="relative p-1 rounded-xl shadow-lg overflow-visible" style={{background: 'linear-gradient(135deg, #3b82f6, #9333ea)'}}>
-            <div className="bg-white rounded-lg p-4 h-full">
-              {/* Slanted Banner */}
-              <div className="absolute -top-2 -right-6 transform rotate-12 z-10">
-                <Link 
-                  href="/capital-club"
-                  className="block bg-gradient-to-r from-blue-600 to-purple-600 text-white text-sm font-bold px-6 py-2 shadow-xl hover:from-blue-700 hover:to-purple-700 transition-all whitespace-nowrap rounded-md"
-                >
-                  Join the Capital Club
-                </Link>
-              </div>
-              
-              <h3 className="font-semibold text-gray-900 mb-2 flex items-center">
-                <Crown className="h-4 w-4 mr-2 text-blue-600" />
-                Capital Club
-              </h3>
-              <div>
-                {isLoadingSubmissions ? (
-                  <div className="flex items-center justify-center py-4">
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
-                    <span className="ml-2 text-sm text-gray-600">Loading...</span>
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    <div className="bg-blue-50 rounded p-3 border border-blue-200">
-                      <div className="text-sm font-medium text-gray-900 mb-1">
-                        Looking for Funding
-                      </div>
-                      <div className="text-xs text-gray-600 mb-2">
-                        {submissionMetrics.activeCount} propert{submissionMetrics.activeCount !== 1 ? 'ies' : 'y'} looking for funding.
-                      </div>
-                      <Link 
-                        href="/fund/browse"
-                        className="text-xs text-blue-600 hover:text-blue-700 font-medium"
-                      >
-                        Browse Opportunities →
-                      </Link>
-                    </div>
-                    {discussionReplies.total_count > 0 && (
-                      <div className="bg-blue-50 rounded p-3 border border-blue-200">
-                        <div className="text-sm font-medium text-gray-900 mb-1">
-                          You have replies in these discussions:
-                        </div>
-                        <div className="space-y-1 mb-2 max-h-20 overflow-y-auto">
-                          {discussionReplies.unread_submissions.map((submission: any) => (
-                            <div 
-                              key={submission.submission_id}
-                              className="text-xs text-gray-700 hover:text-blue-700 cursor-pointer"
-                              onClick={async () => {
-                                // Mark as clicked
-                                try {
-                                  await fetch('/api/discussion-replies', { method: 'POST' });
-                                } catch (err) {
-                                  console.error('Error marking notification as clicked:', err);
-                                }
-                                // Navigate to browse page
-                                window.location.href = '/fund/browse';
-                              }}
-                            >
-                              {submission.submission_name}
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                </div>
-              )}
-            </div>
-            </div>
-          </div>
         </div>
       )}
     </div>
@@ -986,6 +936,99 @@ function ReminderCard({ reminder }: { reminder: any }) {
           <div className="text-xs text-gray-500 mt-1">{formatDate(reminder.reminder_date)}</div>
         </div>
       </div>
+    </div>
+  );
+}
+
+// Market Insights Component
+function MarketInsights() {
+  const [insights, setInsights] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchInsights = async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const response = await fetch('/api/national-market-insights');
+      if (response.ok) {
+        const data = await response.json();
+        setInsights(data);
+      } else {
+        throw new Error('Failed to fetch insights');
+      }
+    } catch (error) {
+      setError('Failed to load insights');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchInsights();
+  }, []);
+
+  return (
+    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-lg font-semibold text-gray-900">National Market Insights</h3>
+        <button
+          onClick={fetchInsights}
+          disabled={isLoading}
+          className="text-blue-600 hover:text-blue-700 text-sm font-medium disabled:opacity-50"
+        >
+          {isLoading ? 'Loading...' : 'Refresh'}
+        </button>
+      </div>
+      
+      {error ? (
+        <div className="flex items-center justify-center py-12">
+          <div className="text-center">
+            <AlertCircle className="h-12 w-12 mx-auto mb-4 text-red-400" />
+            <h4 className="text-lg font-medium text-gray-900 mb-2">Error Loading Insights</h4>
+            <p className="text-gray-500 text-sm mb-4">{error}</p>
+            <button
+              onClick={fetchInsights}
+              className="text-blue-600 hover:text-blue-700 text-sm font-medium"
+            >
+              Try Again
+            </button>
+          </div>
+        </div>
+      ) : isLoading && insights.length === 0 ? (
+        <div className="flex items-center justify-center py-12">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <h4 className="text-lg font-medium text-gray-900 mb-2">Generating Insights</h4>
+            <p className="text-gray-500 text-sm">
+              AI is analyzing current market conditions...
+            </p>
+          </div>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {insights.map((insight, index) => (
+            <div key={index} className="flex items-start space-x-3 p-3 bg-gray-50 rounded-lg">
+              <div className={`p-1 rounded-full ${
+                insight.type === 'success' ? 'bg-green-100 text-green-600' :
+                insight.type === 'warning' ? 'bg-yellow-100 text-yellow-600' :
+                'bg-blue-100 text-blue-600'
+              }`}>
+                <AlertCircle className="h-4 w-4" />
+              </div>
+              <div className="flex-1">
+                <div className="font-medium text-gray-900 text-sm">{insight.title}</div>
+                <div className="text-gray-600 text-sm">{insight.description}</div>
+                {insight.timestamp && (
+                  <div className="text-xs text-gray-400 mt-1">
+                    Updated {new Date(insight.timestamp).toLocaleDateString()}
+                  </div>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

@@ -137,91 +137,119 @@ export default function CommunityPage() {
     <AuthGuard>
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="mb-6">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Community Insights</h1>
-          <p className="text-gray-600">Discover market trends and connect with resources in the multifamily investment community</p>
-        </div>
 
-        {/* Time Range Selector */}
-        <div className="mb-6">
-          <div className="flex items-center space-x-4">
-            <label className="text-sm font-medium text-gray-700">Time Range:</label>
-            <select
-              value={selectedTimeRange}
-              onChange={(e) => setSelectedTimeRange(e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            >
-              <option value="7">Last 7 days</option>
-              <option value="30">Last 30 days</option>
-              <option value="90">Last 90 days</option>
-              <option value="365">Last year</option>
-            </select>
+        {/* Announcements Section */}
+        <div className="mb-8">
+          <h2 className="text-3xl font-bold text-gray-900 mb-6">Announcements</h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 border-l-4 border-l-blue-500 p-6">
+              <h3 className="font-semibold text-gray-900 mb-2">8 Properties Looking for Funding</h3>
+              <p className="text-gray-600 text-sm mb-4">Active investment opportunities available to Capital Club members.</p>
+              <Link 
+                href="/fund/browse"
+                className="inline-block bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors text-sm"
+              >
+                Browse Opportunities →
+              </Link>
+              <div className="text-xs text-gray-400 mt-3">November 5, 2025</div>
+            </div>
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 border-l-4 border-l-yellow-500 p-6">
+              <h3 className="font-semibold text-gray-900 mb-2">Join the Capital Club</h3>
+              <p className="text-gray-600 text-sm mb-4">The Capital Club is now accepting new members</p>
+              <Link 
+                href="/capital-club"
+                className="inline-block bg-yellow-600 hover:bg-yellow-700 text-white font-medium py-2 px-4 rounded-lg transition-colors text-sm"
+              >
+                Join the Capital Club →
+              </Link>
+              <div className="text-xs text-gray-400 mt-3">November 3, 2025</div>
+            </div>
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 border-l-4 border-l-green-500 p-6">
+              
+            </div>
           </div>
         </div>
 
-        {/* Community Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          <CommunityStatCard
-            title="Total Users"
-            value={isLoading ? "..." : communityData.totalUsers.toLocaleString()}
-            change=""
-            trend="up"
-            icon={<Users className="h-6 w-6" />}
-            subtitle="Registered community members"
-            color="blue"
-          />
-          <CommunityStatCard
-            title="Properties Searched"
-            value={isLoading ? "..." : communityData.propertiesSearched.toLocaleString()}
-            change=""
-            trend="up"
-            icon={<MapPin className="h-6 w-6" />}
-            subtitle="Total properties analyzed"
-            color="purple"
-          />
-          <CommunityStatCard
-            title="Properties Favorited"
-            value={isLoading ? "..." : communityData.totalFavorited.toLocaleString()}
-            change=""
-            trend="up"
-            icon={<Building className="h-6 w-6" />}
-            subtitle="Total saved across all users"
-            color="green"
-          />
-          <CommunityStatCard
-            title="Avg Property Value"
-            value={isLoading ? "..." : `$${(communityData.averageEstimatedValue / 1000000).toFixed(1)}M`}
-            change=""
-            trend="up"
-            icon={<DollarSign className="h-6 w-6" />}
-            subtitle="Average estimated value"
-            color="orange"
-          />
-        </div>
+        {/* Activity Section */}
+        <div className="mb-8">
+          <h2 className="text-3xl font-bold text-gray-900 mb-6">Activity</h2>
+          
+          {/* Community Stats Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+            <CommunityStatCard
+              title="Total Users"
+              value={isLoading ? "..." : communityData.totalUsers.toLocaleString()}
+              change=""
+              trend="up"
+              icon={<Users className="h-6 w-6" />}
+              subtitle="Registered community members"
+              color="blue"
+            />
+            <CommunityStatCard
+              title="Properties Searched"
+              value={isLoading ? "..." : communityData.propertiesSearched.toLocaleString()}
+              change=""
+              trend="up"
+              icon={<MapPin className="h-6 w-6" />}
+              subtitle="Total properties analyzed"
+              color="purple"
+            />
+            <CommunityStatCard
+              title="Properties Favorited"
+              value={isLoading ? "..." : communityData.totalFavorited.toLocaleString()}
+              change=""
+              trend="up"
+              icon={<Building className="h-6 w-6" />}
+              subtitle="Total saved across all users"
+              color="green"
+            />
+            <CommunityStatCard
+              title="Avg Property Value"
+              value={isLoading ? "..." : `$${(communityData.averageEstimatedValue / 1000000).toFixed(1)}M`}
+              change=""
+              trend="up"
+              icon={<DollarSign className="h-6 w-6" />}
+              subtitle="Average estimated value"
+              color="orange"
+            />
+          </div>
 
-        {/* Main Content Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
-          {/* Left Column - Charts */}
-          <div className="lg:col-span-2 space-y-8">
+          {/* Time Range Selector */}
+          <div className="mb-6">
+            <div className="flex items-center space-x-4">
+              <label className="text-sm font-medium text-gray-700">Time Range:</label>
+              <select
+                value={selectedTimeRange}
+                onChange={(e) => setSelectedTimeRange(e.target.value)}
+                className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              >
+                <option value="7">Last 7 days</option>
+                <option value="30">Last 30 days</option>
+                <option value="90">Last 90 days</option>
+                <option value="365">Last year</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Charts Grid - Graph on left, Map on right */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             {/* Activity Trends Chart */}
             <ActivityTrendsChart timeRange={selectedTimeRange} />
 
             {/* Regional Heat Map */}
             <RegionalHeatMap timeRange={selectedTimeRange} />
           </div>
+        </div>
 
-          {/* Right Column - Capital Club and Market Insights */}
-          <div className="space-y-8">
-            {/* Capital Club */}
-            <CapitalClub 
-              submissionMetrics={submissionMetrics}
-              isLoadingSubmissions={isLoadingSubmissions}
-            />
-            
-            {/* Market Insights */}
+        {/* Trends Section */}
+        <div className="mb-8">
+          <h2 className="text-3xl font-bold text-gray-900 mb-6">Trends</h2>
+          
+          {/* National Market Insights - Full Width */}
+          <div className="mb-8">
             <MarketInsights />
           </div>
+          
         </div>
 
       </div>
