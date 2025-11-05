@@ -419,77 +419,84 @@ export default function HomePage() {
         {/* Activity Section */}
         <div className="mb-8">
           <h2 className="text-3xl font-bold text-gray-900 mb-6">Activity</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <MetricCard
-            title="Total Pipeline Value"
-            value={metrics?.totalPipelineValue.value || "$0"}
-            change={metrics?.totalPipelineValue.change || "0%"}
-            trend={metrics?.totalPipelineValue.trend || "up"}
-            icon={<DollarSign className="h-6 w-6" />}
-            color="green"
-          />
-          <MetricCard
-            title="Buy Box Markets"
-            value={metrics?.buyBoxMarkets.value || "0"}
-            change={metrics?.buyBoxMarkets.change || "+0"}
-            trend={metrics?.buyBoxMarkets.trend || "up"}
-            icon={<Building className="h-6 w-6" />}
-            color="blue"
-          />
-          <MetricCard
-            title="Properties Favorited"
-            value={metrics?.propertiesFavorited.value || "0"}
-            change={metrics?.propertiesFavorited.change || "+0"}
-            trend={metrics?.propertiesFavorited.trend || "up"}
-            icon={<Building className="h-6 w-6" />}
-            color="purple"
-          />
-          <MetricCard
-            title="Total Units"
-            value={metrics?.totalUnits.value || "0"}
-            change={metrics?.totalUnits.change || "+0"}
-            trend={metrics?.totalUnits.trend || "up"}
-            icon={<Users className="h-6 w-6" />}
-            color="orange"
-          />
-          </div>
           
-          {/* Recent Activity Summary */}
-          <div className="flex items-center gap-4 mb-6 mt-8">
-            <h3 className="text-xl font-semibold text-gray-900">Past 7 Days</h3>
-            <Link href="/dashboard/metrics" className="text-blue-600 hover:text-blue-700 text-sm font-medium">
-              View Details
-            </Link>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            <ActivityCard
-              title="Marketing Letters"
-              value={recentActivity.filter(activity => activity.type === 'marketing').length.toString()}
-              description="Letters sent"
-              icon={<Users className="h-6 w-6" />}
-              color="blue"
-            />
-            <ActivityCard
-              title="Emails Sent"
-              value={recentActivity.filter(activity => activity.type === 'engagement' && activity.title.includes('Email')).length.toString()}
-              description="Email campaigns"
-              icon={<Users className="h-6 w-6" />}
-              color="green"
-            />
-            <ActivityCard
-              title="LOI/P&S Created"
-              value={recentActivity.filter(activity => activity.type === 'engagement' && activity.title.includes('LOI')).length.toString()}
-              description="LOIs and Purchase & Sale Agreements"
-              icon={<Building className="h-6 w-6" />}
-              color="purple"
-            />
-            <ActivityCard
-              title="Offers Made"
-              value={recentActivity.filter(activity => activity.type === 'analysis' && activity.title.includes('offer')).length.toString()}
-              description="Property offers"
-              icon={<DollarSign className="h-6 w-6" />}
-              color="orange"
-            />
+          {/* Unified White Container */}
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+            {/* Main Activity Metrics */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+              <MetricCard
+                title="Total Pipeline Value"
+                value={metrics?.totalPipelineValue.value || "$0"}
+                change={metrics?.totalPipelineValue.change || "0%"}
+                trend={metrics?.totalPipelineValue.trend || "up"}
+                icon={<DollarSign className="h-6 w-6" />}
+                color="green"
+              />
+              <MetricCard
+                title="Buy Box Markets"
+                value={metrics?.buyBoxMarkets.value || "0"}
+                change={metrics?.buyBoxMarkets.change || "+0"}
+                trend={metrics?.buyBoxMarkets.trend || "up"}
+                icon={<Building className="h-6 w-6" />}
+                color="blue"
+              />
+              <MetricCard
+                title="Properties Favorited"
+                value={metrics?.propertiesFavorited.value || "0"}
+                change={metrics?.propertiesFavorited.change || "+0"}
+                trend={metrics?.propertiesFavorited.trend || "up"}
+                icon={<Building className="h-6 w-6" />}
+                color="purple"
+              />
+              <MetricCard
+                title="Total Units"
+                value={metrics?.totalUnits.value || "0"}
+                change={metrics?.totalUnits.change || "+0"}
+                trend={metrics?.totalUnits.trend || "up"}
+                icon={<Users className="h-6 w-6" />}
+                color="orange"
+              />
+            </div>
+            
+            {/* Recent Activity Summary */}
+            <div className="border-t border-gray-200 pt-6">
+              <div className="flex items-center gap-4 mb-6">
+                <h3 className="text-xl font-semibold text-gray-900">Past 7 Days</h3>
+                <Link href="/dashboard/metrics" className="text-blue-600 hover:text-blue-700 text-sm font-medium">
+                  View Details
+                </Link>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <ActivityCard
+                  title="Marketing Letters"
+                  value={recentActivity.filter(activity => activity.type === 'marketing').length.toString()}
+                  description="Letters sent"
+                  icon={<Users className="h-6 w-6" />}
+                  color="blue"
+                />
+                <ActivityCard
+                  title="Emails Sent"
+                  value={recentActivity.filter(activity => activity.type === 'engagement' && activity.title.includes('Email')).length.toString()}
+                  description="Email campaigns"
+                  icon={<Users className="h-6 w-6" />}
+                  color="green"
+                />
+                <ActivityCard
+                  title="LOI/P&S Created"
+                  value={recentActivity.filter(activity => activity.type === 'engagement' && activity.title.includes('LOI')).length.toString()}
+                  description="LOIs and Purchase & Sale Agreements"
+                  icon={<Building className="h-6 w-6" />}
+                  color="purple"
+                />
+                <ActivityCard
+                  title="Offers Made"
+                  value={recentActivity.filter(activity => activity.type === 'analysis' && activity.title.includes('offer')).length.toString()}
+                  description="Property offers"
+                  icon={<DollarSign className="h-6 w-6" />}
+                  color="orange"
+                />
+              </div>
+            </div>
           </div>
         </div>
 
