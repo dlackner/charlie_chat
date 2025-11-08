@@ -10,11 +10,8 @@ export default function AboutPage() {
         <div className="max-w-7xl mx-auto px-6 py-12 lg:py-16">
           <div className="text-center max-w-4xl mx-auto mb-8">
             <h1 className="text-5xl md:text-6xl font-bold text-gray-900 mb-6 leading-tight">
-              About Us
-            </h1>
-            <div className="text-2xl md:text-3xl font-semibold text-blue-600 mb-8">
               MultifamilyOS.ai
-            </div>
+            </h1>
             <p className="text-xl md:text-2xl text-gray-600 leading-relaxed">
               Built by Real Estate Operators and AI Technology Innovators
             </p>
@@ -30,7 +27,7 @@ export default function AboutPage() {
               We're not theorists. We're builders—of businesses, systems, and portfolios.
             </p>
             <p className="text-2xl md:text-3xl text-white leading-relaxed max-w-6xl mx-auto mt-6">
-              MultifamilyOS.ai fuses decades of real estate know-how with cutting-edge AI and machine learning software to create the first intelligent operating system built for investors, by people who've actually been in the trenches.
+              MultifamilyOS.ai fuses decades of real estate know-how with cutting-edge AI and machine learning software to create the first intelligent operating system.
             </p>
           </div>
         </div>
