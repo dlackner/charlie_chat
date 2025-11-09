@@ -20,14 +20,11 @@ export default function AboutPage() {
       </div>
 
       {/* Mission Section */}
-      <div className="bg-gray-900 py-16">
+      <div className="bg-blue-600 py-16">
         <div className="max-w-7xl mx-auto px-6">
           <div className="text-center mb-12">
-            <p className="text-2xl md:text-3xl text-white leading-relaxed max-w-6xl mx-auto">
-              We're not theorists. We're builders—of businesses, systems, and portfolios.
-            </p>
-            <p className="text-2xl md:text-3xl text-white leading-relaxed max-w-6xl mx-auto mt-6">
-              MultifamilyOS.ai fuses decades of real estate know-how with cutting-edge AI and machine learning software to create the first intelligent operating system.
+            <p className="text-3xl md:text-4xl text-white leading-relaxed max-w-6xl mx-auto">
+              MultifamilyOS.ai fuses decades of real estate know-how with cutting-edge AI and machine learning software to create the first intelligent operating system for multi-family investors.
             </p>
           </div>
         </div>
@@ -136,8 +133,8 @@ export default function AboutPage() {
       </div>
 
       {/* Together Section */}
-      <div className="bg-gray-900 py-20">
-        <div className="max-w-4xl mx-auto px-6 text-center">
+      <div className="bg-blue-600 py-20">
+        <div className="max-w-4xl mx-auto px-8 md:px-12 text-center">
           <h2 className="text-4xl md:text-5xl font-bold text-white mb-8">
             Together
           </h2>
