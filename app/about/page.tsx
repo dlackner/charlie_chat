@@ -113,13 +113,13 @@ export default function AboutPage() {
                   
                   <div className="text-lg text-gray-700 leading-relaxed space-y-6">
                     <p>
-                      Daniel spent 30+ years helping global software companies grow faster, smarter, and stronger—building the sales and marketing engines that power household-name brands.
+                      For more than three decades, Daniel has been at the intersection of technology and growth—helping global software companies scale faster, smarter, and stronger. He built the sales and marketing engines that power some of the world's most recognizable brands and guided teams that turned big ideas into repeatable success.
                     </p>
                     <p>
-                      After decades of leading teams at scale, he turned his focus to AI and emerging technologies, helping early-stage companies punch above their weight by adopting and implementing cutting-edge technology.
+                      After years of leading at enterprise scale, Daniel turned his focus to AI and emerging technologies, helping early-stage companies punch above their weight by using automation and data intelligence to compete like giants.
                     </p>
                     <p>
-                      Now, he's bringing that expertise to MultifamilyOS.ai—leveraging advanced AI, machine learning, and intelligent automation to give individual investors the same cutting-edge technology that Fortune 500 companies use to make data-driven decisions.
+                      At MultifamilyOS.ai, Daniel brings that same playbook to real estate investors—applying advanced AI, machine learning, and intelligent automation to give individual operators the kind of tools once reserved for Fortune 500 companies.
                     </p>
                   </div>
                   
