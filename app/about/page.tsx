@@ -43,24 +43,27 @@ export default function AboutPage() {
                     Charles Dobens
                   </h2>
                   <p className="text-xl text-blue-600 font-semibold mb-8">
-                    Co-Founder | Investor, Educator, Deal Architect
+                    Co-Founder | Investor, Attorney, Deal Architect
                   </p>
                   
                   <div className="text-lg text-gray-700 leading-relaxed space-y-6">
                     <p>
-                      Charles is a force in multifamily real estate. Over $50 million in personal transactions. $3 billion in deals guided by his clients. And 45 years of experience bridging law, entrepreneurship, and investing.
+                      For more than two decades, Charles Dobens has lived and breathed multifamily real estate. What began as a simple goal—to build lasting wealth through apartment investing—has become a lifelong mission: helping others do the same, faster and smarter than he did.
                     </p>
                     <p>
-                      He's seen every market turn—and he's turned each one into a playbook. As the creator of the original MultifamilyOS training and mentorship program, Charles built a roadmap for thousands of investors to scale with clarity and discipline.
+                      Charles has seen every side of the deal—buyer, seller, syndicator, lender, and advisor. He's raised capital, built partnerships, closed on thousands of units, and coached thousands of aspiring investors from their first deal to thriving portfolios. Through it all, he learned that success in this business isn't about luck or timing—it's about systems, strategy, and surrounding yourself with the right people.
                     </p>
                     <p>
-                      In 2023, he launched the groundbreaking Hotel-to-Apartment Conversion Program, helping investors seize one of the most transformative opportunities in today's market.
+                      As a practicing attorney, Charles brings a precision few investors possess. His legal background became the blueprint for the Multifamily Operating System—grounded in structure, discipline, and protection. By understanding contracts, risk, and deal structure from the inside out, he helps investors protect their interests, avoid costly mistakes, and negotiate from a position of strength.
+                    </p>
+                    <p>
+                      Real estate deals live and die by the details. Charles ensures that MultifamilyOS members don't just build wealth—they build a business the right way.
                     </p>
                   </div>
                   
                   <blockquote className="mt-8 p-6 bg-white rounded-lg shadow-sm border-l-4 border-blue-600">
                     <p className="text-lg italic text-gray-800">
-                      "MultifamilyOS.ai is the culmination of everything I've learned—decades of experience, distilled into one system that helps investors build faster, smarter, and with confidence."
+                      "There's no better business in the world than owning apartments. And there's no better time to start than right now."
                     </p>
                   </blockquote>
                 </div>
