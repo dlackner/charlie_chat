@@ -13,8 +13,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
 
-export const dynamic = 'force-dynamic';
-
 // ---------- Config ----------
 
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY!;
