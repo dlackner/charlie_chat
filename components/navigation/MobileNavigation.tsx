@@ -323,6 +323,7 @@ export default function MobileNavigation() {
     // Top bar items
     const topBarItems = {
       home: { name: 'HOME', href: '/', disabled: false },
+      about: { name: 'ABOUT', href: '/about', disabled: false },
       pricing: { name: 'PRICING', href: '/pricing', disabled: false },
       help: { name: 'HELP', action: () => {/* Will add help modal */}, disabled: false },
       account: {
@@ -407,10 +408,10 @@ export default function MobileNavigation() {
             description: 'Performance dashboard'
           },
           { 
-            name: 'Community Metrics', 
+            name: 'Community', 
             href: hasAccess(currentUserClass, 'dashboard_community') ? '/dashboard/community' : undefined,
             disabled: !hasAccess(currentUserClass, 'dashboard_community'),
-            description: 'Platform activity & insights'
+            description: 'News & Trends'
           },
           { 
             name: 'Pipeline', 
@@ -679,6 +680,9 @@ export default function MobileNavigation() {
               <div className="flex items-center space-x-6">
                 <Link href={desktopNav.topBarItems.home.href} className="text-gray-600 hover:text-blue-600 font-medium text-sm">
                   {desktopNav.topBarItems.home.name}
+                </Link>
+                <Link href={desktopNav.topBarItems.about.href} className="text-gray-600 hover:text-blue-600 font-medium text-sm">
+                  {desktopNav.topBarItems.about.name}
                 </Link>
                 <Link href={desktopNav.topBarItems.pricing.href} className="text-gray-600 hover:text-blue-600 font-medium text-sm">
                   {desktopNav.topBarItems.pricing.name}

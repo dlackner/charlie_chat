@@ -147,6 +147,17 @@ export default function CapitalClub() {
           </div>
         </div>
 
+        {/* Early CTA Button */}
+        <div className="mb-16 text-center">
+          <button
+            onClick={() => window.open('https://www.fractional.app/p/MultifamilyOSclub', '_blank')}
+            className="inline-flex items-center justify-center px-16 py-4 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-bold text-2xl rounded-xl hover:from-blue-700 hover:to-purple-700 transition-all duration-200 transform hover:scale-105 shadow-lg"
+          >
+            <Crown className="h-8 w-8 mr-4" />
+            Join the Capital Club
+          </button>
+        </div>
+
         {/* Investment Parameters Section */}
         <div className="mb-16">
           <h2 className="text-3xl font-bold text-gray-900 mb-8">Typical Investment Parameters</h2>

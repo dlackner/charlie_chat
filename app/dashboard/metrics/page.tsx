@@ -40,7 +40,6 @@ export default function MetricsPage() {
 
         {/* Time Range Selector */}
         <div className="mb-6 flex items-center space-x-4">
-          <label className="text-sm font-medium text-gray-700">Time Range:</label>
           <select
             value={timeRange}
             onChange={(e) => setTimeRange(e.target.value)}

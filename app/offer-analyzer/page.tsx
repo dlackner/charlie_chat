@@ -1708,28 +1708,20 @@ export default function OfferAnalyzerPage() {
       {/* Hidden file input for loading settings */}
       <div className="lg:w-2/3 pr-0 lg:pr-8 mb-8 lg:mb-0">
 
-        {/* Back Button - show when coming from specific pages */}
-        {(submissionId || source) && (
-          <button
-            onClick={() => {
-              if (submissionId) {
-                router.push(`/fund/browse/${submissionId}`);
-              } else if (source === 'engage') {
-                router.push('/engage');
-              } else if (source === 'discover' && propertyId) {
-                router.push(`/discover/property/${propertyId}`);
-              } else if (source === 'create') {
-                router.push('/fund/create');
-              } else {
-                router.back();
-              }
-            }}
-            className="flex items-center text-blue-600 hover:text-blue-700 font-medium mb-6"
-          >
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back
-          </button>
-        )}
+        {/* Back Button - always show and return to engage page */}
+        <button
+          onClick={() => {
+            if (submissionId) {
+              router.push(`/fund/browse/${submissionId}`);
+            } else {
+              router.push('/engage');
+            }
+          }}
+          className="flex items-center text-blue-600 hover:text-blue-700 font-medium mb-6"
+        >
+          <ArrowLeft className="h-4 w-4 mr-2" />
+          Back
+        </button>
 
         <div className="flex justify-between items-end mb-6">
           {/* Investment Grade Card - Modern Charlie2 Style */}

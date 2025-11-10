@@ -87,7 +87,7 @@ function BrowseSubmissionsContent() {
             // Get property details
             const { data: propertyData } = await supabase
               .from('saved_properties')
-              .select('address_street, address_city, address_state, units_count')
+              .select('address_street, address_full, address_city, address_state, units_count')
               .eq('property_id', item.property_id)
               .single();
 
@@ -120,7 +120,7 @@ function BrowseSubmissionsContent() {
               interest_count: item.interest_count,
               user_id: item.user_id,
               offer_scenario_id: item.offer_scenario_id,
-              address: propertyData?.address_street,
+              address: propertyData?.address_street || propertyData?.address_full,
               city: propertyData?.address_city,
               state: propertyData?.address_state,
               units_count: propertyData?.units_count,

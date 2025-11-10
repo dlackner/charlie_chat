@@ -8,7 +8,7 @@
 
 import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { ChevronLeft, ChevronRight, TrendingUp, FileText, Mail, DollarSign, Building, Users, Target, Zap, Globe, Brain, BarChart3, MessageSquare, Calendar, CheckCircle, X, Crown } from 'lucide-react';
+import { ChevronLeft, ChevronRight, TrendingUp, FileText, Mail, DollarSign, Building, Users, Target, Zap, Globe, Brain, BarChart3, MessageSquare, Calendar, CheckCircle, X, Crown, Play } from 'lucide-react';
 import Image from 'next/image';
 import { Dialog } from '@headlessui/react';
 import TypewriterChatDemo from '@/components/ui/TypewriterChatDemo';
@@ -34,6 +34,10 @@ export default function Home() {
   const [signinError, setSigninError] = useState<string | null>(null);
   const [signinOtpSent, setSigninOtpSent] = useState(false);
   const [isSigningIn, setIsSigningIn] = useState(false);
+
+  // Video modal states
+  const [showVideoModal, setShowVideoModal] = useState(false);
+  const [currentVideoUrl, setCurrentVideoUrl] = useState('');
 
   const supabaseClient = createSupabaseBrowserClient();
 
@@ -204,7 +208,8 @@ export default function Home() {
       title: "Attorney",
       subtitle: "Draft LOIs and P&S agreements to accelerate negotiations",
       icon: <FileText className="w-16 h-16 text-blue-600" />,
-      image: "/feature-images/Attorney.png"
+      image: "/feature-images/Attorney.png",
+      videoUrl: "https://www.loom.com/embed/658c5fe49a6b4592aafce25aa770c819"
     },
     {
       title: "Financing Advisor",
@@ -370,7 +375,7 @@ export default function Home() {
               <div className="rounded-2xl overflow-hidden transition-all duration-500">
                 <div className="flex justify-center">
                   {carouselSlides[currentSlide].image ? (
-                    <div className="relative w-full h-[300px] sm:h-[400px] md:h-[500px] lg:h-[600px]">
+                    <div className="relative w-full h-[300px] sm:h-[400px] md:h-[500px] lg:h-[600px] group">
                       <Image
                         src={carouselSlides[currentSlide].image}
                         alt={carouselSlides[currentSlide].title}
@@ -378,12 +383,27 @@ export default function Home() {
                         className="object-contain"
                         sizes="(max-width: 640px) 100vw, (max-width: 1024px) 90vw, 1200px"
                       />
+                      {carouselSlides[currentSlide].videoUrl && (
+                        <div className="absolute bottom-24 right-4 left-1/2 transform translate-x-4 text-center">
+                          <button 
+                            onClick={() => {
+                              setCurrentVideoUrl(carouselSlides[currentSlide].videoUrl || '');
+                              setShowVideoModal(true);
+                            }}
+                            className="inline-flex items-center space-x-2 text-white font-bold text-lg hover:text-gray-200 hover:scale-110 transition-all duration-200 transform"
+                          >
+                            <Play className="w-6 h-6" />
+                            <span>View Demo</span>
+                          </button>
+                        </div>
+                      )}
                     </div>
                   ) : (
                     carouselSlides[currentSlide].icon
                   )}
                 </div>
               </div>
+
               
               {/* Carousel Controls - Hidden on mobile, positioned outside on desktop */}
               <button
@@ -472,7 +492,7 @@ export default function Home() {
               <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full mb-3">
                 <Crown className="h-8 w-8 text-white" />
               </div>
-              <h2 className="text-3xl md:text-4xl font-bold text-gray-900">Capital Club</h2>
+              <h2 className="text-3xl md:text-4xl font-bold text-gray-900">Join the Capital Club</h2>
             </div>
             
             <div className="max-w-4xl mx-auto mb-8">
@@ -760,6 +780,29 @@ export default function Home() {
                 </button>
               )}
             </form>
+          </Dialog.Panel>
+        </div>
+      </Dialog>
+
+      {/* Video Modal */}
+      <Dialog open={showVideoModal} onClose={() => setShowVideoModal(false)} className="relative z-50">
+        <div className="fixed inset-0 bg-black/75" aria-hidden="true" />
+        <div className="fixed inset-0 flex items-center justify-center p-4">
+          <Dialog.Panel className="relative bg-white rounded-lg shadow-xl max-w-5xl w-full aspect-video">
+            <button
+              onClick={() => setShowVideoModal(false)}
+              className="absolute -top-4 -right-4 bg-white rounded-full p-2 shadow-lg hover:bg-gray-100 transition-colors z-10"
+            >
+              <X className="w-6 h-6 text-gray-600" />
+            </button>
+            {currentVideoUrl && (
+              <iframe
+                src={currentVideoUrl}
+                className="w-full h-full rounded-lg"
+                allowFullScreen
+                allow="autoplay; fullscreen; picture-in-picture"
+              />
+            )}
           </Dialog.Panel>
         </div>
       </Dialog>
