@@ -7,7 +7,6 @@ import OpenAI from "openai";
 import { createClient } from '@supabase/supabase-js';
 import { cookies } from 'next/headers';
 
-export const dynamic = 'force-dynamic';
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 // Initialize Supabase client

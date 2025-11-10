@@ -7,7 +7,6 @@ import OpenAI from "openai";
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 
-export const dynamic = 'force-dynamic';
 export const maxDuration = 30;
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
