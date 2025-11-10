@@ -1,4 +1,4 @@
-// Charlie Chat AI - Refined Color Palette
+// MultifamilyOS - Refined Color Palette
 // Based on company logo with Carvana-inspired professional approach
 
 export const colors = {

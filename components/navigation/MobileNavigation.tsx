@@ -19,7 +19,6 @@ import { useTrialStatus } from '@/lib/v2/useTrialStatus';
 import TrialEndModal from '@/app/components/TrialEndModal';
 import MultiFamilyChatWidget from '@/app/components/help/MultiFamilyChatWidget';
 import { 
-  Home, 
   Search, 
   Users, 
   MessageCircle, 
@@ -39,7 +38,7 @@ interface NavigationItem {
   href: string;
   icon: any;
   disabled?: boolean;
-  submenu?: { name: string; href?: string; action?: () => void; disabled?: boolean; }[];
+  submenu?: { name: string; href?: string; action?: () => void; disabled?: boolean; description?: string; }[];
 }
 
 // Note: We'll define navigation inside the component to access handleSignOut
@@ -190,40 +189,24 @@ export default function MobileNavigation() {
         disabled: false
       },
 
-      // Dashboard - always show, but control submenu access
+      // Onboard - new section for onboarding and buy box
       {
-        name: 'DASHBOARD',
-        href: '/dashboard',
+        name: 'ONBOARD',
+        href: '/dashboard/onboarding',
         icon: BarChart3,
-        disabled: isNotLoggedIn || (isLoadingUserClass ? false : !canAccessDashboard(currentUserClass)),
+        disabled: isNotLoggedIn,
         submenu: [
           { 
-            name: 'Headlines', 
-            href: hasAccess(currentUserClass, 'dashboard_headlines') ? '/dashboard/headlines' : undefined,
-            disabled: !hasAccess(currentUserClass, 'dashboard_headlines')
-          },
-          { 
-            name: 'Activity Metrics', 
-            href: hasAccess(currentUserClass, 'dashboard_metrics') ? '/dashboard/metrics' : undefined,
-            disabled: !hasAccess(currentUserClass, 'dashboard_metrics')
-          },
-          // Hide Pipeline on mobile
-          ...(isMobile ? [] : [{ 
-            name: 'Pipeline', 
-            href: hasAccess(currentUserClass, 'dashboard_pipeline') ? '/dashboard/pipeline' : undefined,
-            disabled: !hasAccess(currentUserClass, 'dashboard_pipeline')
-          }]),
-          { 
-            name: 'Community', 
-            href: hasAccess(currentUserClass, 'dashboard_community') ? '/dashboard/community' : undefined,
-            disabled: !hasAccess(currentUserClass, 'dashboard_community')
-          },
-          { 
-            name: 'Onboarding & Resources', 
+            name: 'Onboarding Lessons', 
             href: hasAccess(currentUserClass, 'dashboard_onboarding') ? '/dashboard/onboarding' : undefined,
             disabled: !hasAccess(currentUserClass, 'dashboard_onboarding')
+          },
+          { 
+            name: 'Buy Box', 
+            href: hasAccess(currentUserClass, 'discover_buybox') ? '/discover/buybox' : undefined,
+            disabled: !hasAccess(currentUserClass, 'discover_buybox')
           }
-        ] // Show all submenu items, disabled ones will be greyed out
+        ]
       },
 
       // Discover
@@ -231,19 +214,7 @@ export default function MobileNavigation() {
         name: 'DISCOVER',
         href: '/discover',
         icon: Search,
-        disabled: isNotLoggedIn || (isLoadingUserClass ? false : !canAccessDiscover(currentUserClass)),
-        submenu: [
-          { 
-            name: 'Property Search', 
-            href: hasAccess(currentUserClass, 'discover') ? '/discover' : undefined,
-            disabled: !hasAccess(currentUserClass, 'discover')
-          },
-          { 
-            name: 'Buy Box', 
-            href: hasAccess(currentUserClass, 'discover_buybox') ? '/discover/buybox' : undefined,
-            disabled: !hasAccess(currentUserClass, 'discover_buybox')
-          }
-        ] // Show all submenu items, disabled ones will be greyed out
+        disabled: isNotLoggedIn || (isLoadingUserClass ? false : !canAccessDiscover(currentUserClass))
       },
 
       // Engage
@@ -271,7 +242,39 @@ export default function MobileNavigation() {
             name: 'Browse Submissions', 
             href: hasAccess(currentUserClass, 'fund_browse') ? '/fund/browse' : undefined,
             disabled: !hasAccess(currentUserClass, 'fund_browse')
+          },
+          { 
+            name: 'About', 
+            href: '/fund/about',
+            disabled: false,
+            description: 'Capital Club requirements'
           }
+        ]
+      },
+
+      // Manage
+      {
+        name: 'MANAGE',
+        href: '/dashboard',
+        icon: BarChart3,
+        disabled: isNotLoggedIn || (isLoadingUserClass ? false : !canAccessDashboard(currentUserClass)),
+        submenu: [
+          { 
+            name: 'Headlines', 
+            href: hasAccess(currentUserClass, 'dashboard_headlines') ? '/dashboard/headlines' : undefined,
+            disabled: !hasAccess(currentUserClass, 'dashboard_headlines')
+          },
+          { 
+            name: 'Activity Metrics', 
+            href: hasAccess(currentUserClass, 'dashboard_metrics') ? '/dashboard/metrics' : undefined,
+            disabled: !hasAccess(currentUserClass, 'dashboard_metrics')
+          },
+          { 
+            name: 'Community', 
+            href: hasAccess(currentUserClass, 'dashboard_community') ? '/dashboard/community' : undefined,
+            disabled: !hasAccess(currentUserClass, 'dashboard_community')
+          }
+          // Note: Pipeline is hidden on mobile as requested
         ]
       },
 
@@ -310,6 +313,126 @@ export default function MobileNavigation() {
   };
 
   const navigation = buildNavigation();
+
+  // Build desktop two-tier navigation structure
+  const buildDesktopNavigation = () => {
+    const currentUserClass = (localUserClass || userClass) as UserClass;
+    const isLoadingUserClass = !currentUserClass && user?.id;
+    const isNotLoggedIn = !user;
+
+    // Top bar items
+    const topBarItems = {
+      home: { name: 'HOME', href: '/', disabled: false },
+      about: { name: 'ABOUT', href: '/about', disabled: false },
+      pricing: { name: 'PRICING', href: '/pricing', disabled: false },
+      help: { name: 'HELP', action: () => {/* Will add help modal */}, disabled: false },
+      account: {
+        name: 'ACCOUNT',
+        icon: User,
+        disabled: isNotLoggedIn,
+        submenu: [
+          { name: 'Profile', href: '/account/profile' },
+          { name: 'Subscription', action: () => setShowSubscriptionModal(true) },
+          { name: 'Sign Out', action: handleSignOut }
+        ]
+      }
+    };
+
+    // Main menu bar items (navy bar)
+    const mainMenuItems = [
+      {
+        name: 'ONBOARD',
+        submenu: [
+          { 
+            name: 'Onboarding Lessons', 
+            href: hasAccess(currentUserClass, 'dashboard_onboarding') ? '/dashboard/onboarding' : undefined,
+            disabled: !hasAccess(currentUserClass, 'dashboard_onboarding'),
+            description: 'Learn the platform'
+          },
+          { 
+            name: 'Buy Box', 
+            href: hasAccess(currentUserClass, 'discover_buybox') ? '/discover/buybox' : undefined,
+            disabled: !hasAccess(currentUserClass, 'discover_buybox'),
+            description: 'Set investment criteria'
+          }
+        ],
+        disabled: isNotLoggedIn
+      },
+      {
+        name: 'DISCOVER',
+        href: '/discover',
+        disabled: isNotLoggedIn || (isLoadingUserClass ? false : !canAccessDiscover(currentUserClass))
+      },
+      {
+        name: 'ENGAGE',
+        href: '/engage',
+        disabled: isNotLoggedIn || (isLoadingUserClass ? false : !canAccessEngage(currentUserClass))
+      },
+      {
+        name: 'FUND',
+        submenu: [
+          { 
+            name: 'Create Submission', 
+            href: hasAccess(currentUserClass, 'fund_create') ? '/fund/create' : undefined,
+            disabled: !hasAccess(currentUserClass, 'fund_create'),
+            description: 'Submit your deal for funding'
+          },
+          { 
+            name: 'Browse Submissions', 
+            href: hasAccess(currentUserClass, 'fund_browse') ? '/fund/browse' : undefined,
+            disabled: !hasAccess(currentUserClass, 'fund_browse'),
+            description: 'View investment opportunities'
+          },
+          { 
+            name: 'About', 
+            href: '/fund/about',
+            disabled: false,
+            description: 'Capital Club requirements'
+          }
+        ],
+        disabled: isNotLoggedIn
+      },
+      {
+        name: 'MANAGE',
+        submenu: [
+          { 
+            name: 'Headlines', 
+            href: hasAccess(currentUserClass, 'dashboard_headlines') ? '/dashboard/headlines' : undefined,
+            disabled: !hasAccess(currentUserClass, 'dashboard_headlines'),
+            description: 'Latest news & insights'
+          },
+          { 
+            name: 'Activity Metrics', 
+            href: hasAccess(currentUserClass, 'dashboard_metrics') ? '/dashboard/metrics' : undefined,
+            disabled: !hasAccess(currentUserClass, 'dashboard_metrics'),
+            description: 'Performance dashboard'
+          },
+          { 
+            name: 'Community', 
+            href: hasAccess(currentUserClass, 'dashboard_community') ? '/dashboard/community' : undefined,
+            disabled: !hasAccess(currentUserClass, 'dashboard_community'),
+            description: 'News & Trends'
+          },
+          { 
+            name: 'Pipeline', 
+            href: hasAccess(currentUserClass, 'dashboard_pipeline') ? '/dashboard/pipeline' : undefined,
+            disabled: !hasAccess(currentUserClass, 'dashboard_pipeline'),
+            description: 'Track your deals'
+          }
+        ],
+        disabled: isNotLoggedIn || (isLoadingUserClass ? false : !canAccessDashboard(currentUserClass))
+      },
+      {
+        name: 'COACH',
+        href: '/ai-coach',
+        disabled: isNotLoggedIn || (isLoadingUserClass ? false : !hasAccess(currentUserClass, 'ai_coach'))
+      }
+    ];
+
+    return { topBarItems, mainMenuItems };
+  };
+
+  const desktopNav = buildDesktopNavigation();
 
   const toggleSubmenu = (itemName: string) => {
     setOpenSubmenus(prev => ({
@@ -378,13 +501,15 @@ export default function MobileNavigation() {
         <div className="flex flex-col h-full">
           {/* Header */}
           <div className="p-6 border-b border-gray-200">
-            <Image 
-              src="/MFOS AI Logo.png" 
-              alt="Charlie Chat AI" 
-              width={160} 
-              height={40}
-              className="h-10 w-auto"
-            />
+            <Link href="/">
+              <Image 
+                src="/MFOS AI Logo.png" 
+                alt="MultifamilyOS" 
+                width={160} 
+                height={40}
+                className="h-10 w-auto cursor-pointer"
+              />
+            </Link>
           </div>
 
           {/* Navigation Items */}
@@ -519,7 +644,7 @@ export default function MobileNavigation() {
 
           {/* Mobile Help Section */}
           <div className="p-4 border-t border-gray-200">
-            <MultiFamilyChatWidget />
+            {user && <MultiFamilyChatWidget />}
             
             <div className="text-xs text-gray-500 text-center mt-4">
               Mobile-First Real Estate Platform
@@ -531,31 +656,99 @@ export default function MobileNavigation() {
         </div>
       </div>
 
-      {/* Desktop Navigation - Horizontal Bar */}
-      <div className="hidden lg:block fixed top-0 left-0 right-0 z-50 bg-white border-b border-gray-200 shadow-sm">
-        <div className="px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center h-16">
-            {/* Logo */}
-            <div className="flex-shrink-0 w-48">
-              <Image 
-                src="/MFOS AI Logo.png" 
-                alt="Charlie Chat AI" 
-                width={160} 
-                height={40}
-                className="h-8 w-auto"
-              />
-              <div className="text-xs text-red-500 mt-1">
-             {/* Debug: userClass = {localUserClass || userClass || 'null'}*/}
+      {/* Desktop Navigation - Two Tier Structure */}
+      <div className="hidden lg:block">
+        {/* Top Menu Bar */}
+        <div className="fixed top-0 left-0 right-0 z-40 bg-white border-b border-gray-200">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex justify-between items-center h-14">
+              {/* Left side - Logo */}
+              <div className="flex items-center">
+                <Link href="/" className="flex items-center">
+                  <Image 
+                    src="/MFOS AI Logo.png" 
+                    alt="MultifamilyOS" 
+                    width={160} 
+                    height={40}
+                    className="h-8 w-auto mr-3 cursor-pointer"
+                  />
+                  <span className="text-xl font-bold text-blue-600">MultifamilyOS</span>
+                </Link>
+              </div>
+
+              {/* Right side - Top Menu Items */}
+              <div className="flex items-center space-x-6">
+                <Link href={desktopNav.topBarItems.home.href} className="text-gray-600 hover:text-blue-600 font-medium text-sm">
+                  {desktopNav.topBarItems.home.name}
+                </Link>
+                <Link href={desktopNav.topBarItems.about.href} className="text-gray-600 hover:text-blue-600 font-medium text-sm">
+                  {desktopNav.topBarItems.about.name}
+                </Link>
+                <Link href={desktopNav.topBarItems.pricing.href} className="text-gray-600 hover:text-blue-600 font-medium text-sm">
+                  {desktopNav.topBarItems.pricing.name}
+                </Link>
+                {user && <MultiFamilyChatWidget />}
+                
+                {/* Account Dropdown */}
+                <div className="relative" onMouseLeave={handleMouseLeave} onMouseEnter={handleMouseEnter}>
+                  <button
+                    onClick={() => !desktopNav.topBarItems.account.disabled && toggleSubmenu('ACCOUNT')}
+                    disabled={desktopNav.topBarItems.account.disabled}
+                    className={`
+                      flex items-center text-sm font-medium
+                      ${desktopNav.topBarItems.account.disabled
+                        ? 'text-gray-400 cursor-not-allowed'
+                        : 'text-gray-600 hover:text-blue-600'
+                      }
+                    `}
+                  >
+                    {desktopNav.topBarItems.account.name}
+                    <ChevronDown className={`ml-1 h-4 w-4 transition-transform ${openSubmenus['ACCOUNT'] ? 'rotate-180' : ''}`} />
+                  </button>
+                  
+                  {openSubmenus['ACCOUNT'] && !desktopNav.topBarItems.account.disabled && (
+                    <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg border border-blue-600 z-50">
+                      {desktopNav.topBarItems.account.submenu?.map((subItem) => {
+                        if (subItem.action) {
+                          return (
+                            <button
+                              key={subItem.name}
+                              onClick={() => {
+                                subItem.action!();
+                                closeAllSubmenus();
+                              }}
+                              className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600"
+                            >
+                              {subItem.name}
+                            </button>
+                          );
+                        }
+                        return (
+                          <Link
+                            key={subItem.name}
+                            href={subItem.href!}
+                            onClick={closeAllSubmenus}
+                            className="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600"
+                          >
+                            {subItem.name}
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
+          </div>
+        </div>
 
-            {/* Centered Navigation */}
-            <nav className="flex-1 flex justify-center items-center">
-              <div className="flex space-x-6">
-              {navigation.filter(item => item.name !== 'ACCOUNT' && item.name !== 'PRICING').map((item) => {
-                const isActive = isNavItemActive(item);
+        {/* Main Menu Bar (Navy) */}
+        <div className="fixed top-14 left-0 right-0 z-30 bg-[#1e2532] shadow-sm">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex justify-center items-center space-x-0">
+              {desktopNav.mainMenuItems.map((item) => {
+                const isActive = item.href && (item.href === '/' ? pathname === '/' : pathname.startsWith(item.href));
                 const isSubmenuOpen = openSubmenus[item.name];
-                const Icon = item.icon;
                 
                 return (
                   <div 
@@ -571,59 +764,34 @@ export default function MobileNavigation() {
                           onClick={() => !item.disabled && toggleSubmenu(item.name)}
                           disabled={item.disabled}
                           className={`
-                            flex items-center px-3 py-2 rounded-md text-sm font-medium transition-colors
+                            text-white hover:bg-blue-600 px-6 py-4 font-medium text-sm flex items-center transition-colors
                             ${item.disabled
                               ? 'text-gray-400 cursor-not-allowed opacity-50'
                               : isActive 
-                                ? 'text-blue-700 bg-blue-50' 
-                                : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                                ? 'bg-blue-600' 
+                                : ''
                             }
                           `}
                         >
-                          <Icon className="h-4 w-4 mr-2" />
                           {item.name}
-                          <ChevronDown className={`h-3 w-3 ml-1 transition-transform ${isSubmenuOpen ? 'rotate-180' : ''}`} />
+                          <ChevronDown className={`ml-1 h-4 w-4 transition-transform ${isSubmenuOpen ? 'rotate-180' : ''}`} />
                         </button>
                         
-                        {/* Desktop Dropdown */}
+                        {/* Main Menu Dropdown */}
                         {isSubmenuOpen && !item.disabled && (
-                          <div className="absolute top-full left-0 mt-1 w-56 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50">
-                            {item.submenu.map((subItem) => {
-                              const isSubActive = subItem.href && pathname === subItem.href;
+                          <div className="absolute left-0 mt-0 w-56 bg-white rounded-md shadow-lg border border-blue-600 z-50">
+                            {item.submenu?.map((subItem) => {
                               
-                              if (subItem.action) {
-                                // Action button (like Sign Out)
-                                return (
-                                  <button
-                                    key={subItem.name}
-                                    onClick={() => {
-                                      if (!subItem.disabled) {
-                                        subItem.action!();
-                                        closeAllSubmenus();
-                                      }
-                                    }}
-                                    disabled={subItem.disabled}
-                                    className={`
-                                      block w-full text-left px-4 py-2 text-sm transition-colors
-                                      ${subItem.disabled
-                                        ? 'text-gray-400 cursor-not-allowed opacity-50'
-                                        : 'text-blue-600 hover:bg-blue-50'
-                                      }
-                                    `}
-                                  >
-                                    {subItem.name}
-                                  </button>
-                                );
-                              }
-                              
-                              // Regular link or disabled item
                               if (subItem.disabled || !subItem.href) {
                                 return (
                                   <div
                                     key={subItem.name}
-                                    className="block px-4 py-2 text-sm text-gray-400 cursor-not-allowed opacity-50"
+                                    className="block px-4 py-3 text-sm text-gray-400 hover:bg-gray-50 cursor-not-allowed border-b border-gray-100"
                                   >
-                                    {subItem.name}
+                                    <div className="font-medium text-gray-400">{subItem.name}</div>
+                                    {subItem.description && (
+                                      <div className="text-xs text-gray-400">{subItem.description}</div>
+                                    )}
                                   </div>
                                 );
                               }
@@ -633,15 +801,12 @@ export default function MobileNavigation() {
                                   key={subItem.name}
                                   href={subItem.href}
                                   onClick={closeAllSubmenus}
-                                  className={`
-                                    block px-4 py-2 text-sm transition-colors
-                                    ${isSubActive 
-                                      ? 'bg-blue-50 text-blue-700 font-medium' 
-                                      : 'text-gray-700 hover:bg-gray-50'
-                                    }
-                                  `}
+                                  className="block px-4 py-3 text-sm text-gray-700 hover:bg-blue-50 border-b border-gray-100"
                                 >
-                                  {subItem.name}
+                                  <div className="font-medium text-blue-600">{subItem.name}</div>
+                                  {subItem.description && (
+                                    <div className="text-xs text-gray-500">{subItem.description}</div>
+                                  )}
                                 </Link>
                               );
                             })}
@@ -652,9 +817,8 @@ export default function MobileNavigation() {
                       // Items without submenu - direct link or disabled
                       item.disabled ? (
                         <div
-                          className="flex items-center px-3 py-2 rounded-md text-sm font-medium text-gray-400 cursor-not-allowed opacity-50"
+                          className="text-white px-6 py-4 font-medium text-sm text-gray-400 cursor-not-allowed opacity-50 transition-colors"
                         >
-                          <Icon className="h-4 w-4 mr-2" />
                           {item.name}
                         </div>
                       ) : (
@@ -662,14 +826,13 @@ export default function MobileNavigation() {
                           href={item.href}
                           onClick={closeAllSubmenus}
                           className={`
-                            flex items-center px-3 py-2 rounded-md text-sm font-medium transition-colors
+                            text-white hover:bg-blue-600 px-6 py-4 font-medium text-sm transition-colors
                             ${isActive 
-                              ? 'text-blue-700 bg-blue-50' 
-                              : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                              ? 'bg-blue-600' 
+                              : ''
                             }
                           `}
                         >
-                          <Icon className="h-4 w-4 mr-2" />
                           {item.name}
                         </Link>
                       )
@@ -677,136 +840,6 @@ export default function MobileNavigation() {
                   </div>
                 );
               })}
-              </div>
-            </nav>
-
-            {/* Right-aligned Pricing and Account */}
-            <div className="flex-shrink-0 flex space-x-3 items-center justify-end w-48">
-              {/* Pricing Button */}
-              {(() => {
-                const pricingItem = navigation.find(item => item.name === 'PRICING');
-                if (!pricingItem) return null;
-                
-                const isActive = pricingItem.href === '/' ? pathname === '/' : pathname.startsWith(pricingItem.href);
-                const Icon = pricingItem.icon;
-                
-                return (
-                  <Link
-                    href={pricingItem.href}
-                    onClick={closeAllSubmenus}
-                    className={`
-                      flex items-center px-3 py-2 rounded-md text-sm font-medium transition-colors
-                      ${isActive 
-                        ? 'text-blue-700 bg-blue-50' 
-                        : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-                      }
-                    `}
-                  >
-                    <Icon className="h-4 w-4 mr-2" />
-                    {pricingItem.name}
-                  </Link>
-                );
-              })()}
-
-              {/* Account Button */}
-              {(() => {
-                const accountItem = navigation.find(item => item.name === 'ACCOUNT');
-                if (!accountItem) return null;
-                
-                const isActive = accountItem.href === '/' ? pathname === '/' : pathname.startsWith(accountItem.href);
-                const isSubmenuOpen = openSubmenus[accountItem.name];
-                const Icon = accountItem.icon;
-                
-                return (
-                  <div 
-                    className="relative"
-                    onMouseLeave={handleMouseLeave}
-                    onMouseEnter={handleMouseEnter}
-                  >
-                    {accountItem.submenu ? (
-                      <>
-                        <button
-                          onClick={() => !accountItem.disabled && toggleSubmenu(accountItem.name)}
-                          disabled={accountItem.disabled}
-                          className={`
-                            flex items-center px-3 py-2 rounded-md text-sm font-medium transition-colors
-                            ${accountItem.disabled
-                              ? 'text-gray-400 cursor-not-allowed opacity-50'
-                              : isActive 
-                                ? 'text-blue-700 bg-blue-50' 
-                                : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-                            }
-                          `}
-                        >
-                          <Icon className="h-4 w-4 mr-2" />
-                          {accountItem.name}
-                          <ChevronDown className={`h-3 w-3 ml-1 transition-transform ${isSubmenuOpen ? 'rotate-180' : ''}`} />
-                        </button>
-                        
-                        {isSubmenuOpen && !accountItem.disabled && (
-                          <div className="absolute top-full right-0 mt-1 w-56 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50">
-                            {accountItem.submenu.map((subItem) => {
-                              const isSubActive = subItem.href && pathname === subItem.href;
-                              
-                              if (subItem.action) {
-                                // Action button (like Sign Out)
-                                return (
-                                  <button
-                                    key={subItem.name}
-                                    onClick={() => {
-                                      subItem.action!();
-                                      closeAllSubmenus();
-                                    }}
-                                    className="block w-full text-left px-4 py-2 text-sm transition-colors text-blue-600 hover:bg-blue-50"
-                                  >
-                                    {subItem.name}
-                                  </button>
-                                );
-                              }
-                              
-                              // Regular link
-                              return (
-                                <Link
-                                  key={subItem.name}
-                                  href={subItem.href!}
-                                  onClick={closeAllSubmenus}
-                                  className={`
-                                    block px-4 py-2 text-sm transition-colors
-                                    ${isSubActive 
-                                      ? 'bg-blue-50 text-blue-700 font-medium' 
-                                      : 'text-gray-700 hover:bg-gray-50'
-                                    }
-                                  `}
-                                >
-                                  {subItem.name}
-                                </Link>
-                              );
-                            })}
-                          </div>
-                        )}
-                      </>
-                    ) : (
-                      <Link
-                        href={accountItem.href}
-                        onClick={closeAllSubmenus}
-                        className={`
-                          flex items-center px-3 py-2 rounded-md text-sm font-medium transition-colors
-                          ${isActive 
-                            ? 'text-blue-700 bg-blue-50' 
-                            : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-                          }
-                        `}
-                      >
-                        <Icon className="h-4 w-4 mr-2" />
-                        {accountItem.name}
-                      </Link>
-                    )}
-                  </div>
-                );
-              })()}
-              
-              {/* Help Widget */}
-              <MultiFamilyChatWidget />
             </div>
           </div>
         </div>

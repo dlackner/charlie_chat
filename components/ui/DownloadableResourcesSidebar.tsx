@@ -78,9 +78,7 @@ export function DownloadableResourcesSidebar() {
   };
 
   const groupedResources = {
-    'Getting Started': resources.filter(r => r.category === 'Getting Started'),
-    'Resources': resources.filter(r => r.category === 'Resources'),
-    'Upcoming Events': resources.filter(r => r.category === 'Upcoming Events')
+    'Getting Started': resources.filter(r => r.category === 'Getting Started')
   };
 
   if (loading) {

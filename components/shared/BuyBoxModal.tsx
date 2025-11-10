@@ -54,6 +54,20 @@ const validateAndSuggestAddress = async (input: string, marketId: string, setSho
     }
 };
 
+// US states for recognition (full names and abbreviations)
+const US_STATES = {
+    'ALABAMA': 'AL', 'ALASKA': 'AK', 'ARIZONA': 'AZ', 'ARKANSAS': 'AR', 'CALIFORNIA': 'CA',
+    'COLORADO': 'CO', 'CONNECTICUT': 'CT', 'DELAWARE': 'DE', 'FLORIDA': 'FL', 'GEORGIA': 'GA',
+    'HAWAII': 'HI', 'IDAHO': 'ID', 'ILLINOIS': 'IL', 'INDIANA': 'IN', 'IOWA': 'IA',
+    'KANSAS': 'KS', 'KENTUCKY': 'KY', 'LOUISIANA': 'LA', 'MAINE': 'ME', 'MARYLAND': 'MD',
+    'MASSACHUSETTS': 'MA', 'MICHIGAN': 'MI', 'MINNESOTA': 'MN', 'MISSISSIPPI': 'MS', 'MISSOURI': 'MO',
+    'MONTANA': 'MT', 'NEBRASKA': 'NE', 'NEVADA': 'NV', 'NEW HAMPSHIRE': 'NH', 'NEW JERSEY': 'NJ',
+    'NEW MEXICO': 'NM', 'NEW YORK': 'NY', 'NORTH CAROLINA': 'NC', 'NORTH DAKOTA': 'ND', 'OHIO': 'OH',
+    'OKLAHOMA': 'OK', 'OREGON': 'OR', 'PENNSYLVANIA': 'PA', 'RHODE ISLAND': 'RI', 'SOUTH CAROLINA': 'SC',
+    'SOUTH DAKOTA': 'SD', 'TENNESSEE': 'TN', 'TEXAS': 'TX', 'UTAH': 'UT', 'VERMONT': 'VT',
+    'VIRGINIA': 'VA', 'WASHINGTON': 'WA', 'WEST VIRGINIA': 'WV', 'WISCONSIN': 'WI', 'WYOMING': 'WY'
+};
+
 // Parse location input and extract location components (same logic as discover page)
 const parseLocationInput = (locationInput: string): { type: 'city' | 'zip' | 'county', city: string, state: string, zip: string, county: string } => {
     if (!locationInput.trim()) {
@@ -69,6 +83,23 @@ const parseLocationInput = (locationInput: string): { type: 'city' | 'zip' | 'co
     } else if (locationParts.length >= 2) {
         const firstPart = locationParts[0];
         const lastPart = locationParts[1].trim();
+        
+        // Check if first part is a US state name (e.g., "New Hampshire, USA")
+        const firstPartUpper = firstPart.toUpperCase();
+        const isStateFirst = US_STATES.hasOwnProperty(firstPartUpper) || 
+                           Object.values(US_STATES).includes(firstPartUpper as any);
+                           
+        if (isStateFirst && (lastPart.toUpperCase() === 'USA' || lastPart.toUpperCase() === 'US')) {
+            // Handle "State, USA" format - treat first part as state
+            return { 
+                type: 'city', 
+                city: '', 
+                state: US_STATES[firstPartUpper as keyof typeof US_STATES] || firstPartUpper, 
+                zip: zipMatch ? zipMatch[0] : '', 
+                county: '' 
+            };
+        }
+        
         const stateZipMatch = lastPart.match(/^([a-zA-Z]{2})\s*(\d{5}(?:-\d{4})?)?$/);
         
         let parsedData: { type: 'city' | 'zip' | 'county', city: string, state: string, zip: string, county: string } = {
@@ -91,6 +122,9 @@ const parseLocationInput = (locationInput: string): { type: 'city' | 'zip' | 'co
         if (stateZipMatch) {
             parsedData.state = stateZipMatch[1].toUpperCase();
             if (stateZipMatch[2]) parsedData.zip = stateZipMatch[2];
+        } else {
+            // Assume whole part is state and uppercase it
+            parsedData.state = lastPart.toUpperCase();
         }
         
         return parsedData;
@@ -268,7 +302,7 @@ export const BuyBoxModal: React.FC<BuyBoxModalProps> = ({ isOpen, onClose, focus
     const [savingMarkets, setSavingMarkets] = useState<Set<string>>(new Set());
     const [successMessage, setSuccessMessage] = useState("");
     const [showLearningPhasesModal, setShowLearningPhasesModal] = useState(false);
-    const [maxMarkets, setMaxMarkets] = useState(5); // Default for Pro users
+    const [maxMarkets, setMaxMarkets] = useState(5); // Maximum 5 markets for all users
     // Location input states (separate from parsed location data, like discover page)
     const [locationInputs, setLocationInputs] = useState<{ [marketId: string]: string }>({});
     const [showAddressSuggestions, setShowAddressSuggestions] = useState<{ [marketId: string]: boolean }>({});
@@ -472,13 +506,19 @@ export const BuyBoxModal: React.FC<BuyBoxModalProps> = ({ isOpen, onClose, focus
         return isNaN(parsed) ? 0 : parsed;
     };
 
-    // Allow unlimited markets for all users
+    // Enforce 5-market limit for all users with access
     const checkUserMarketLimit = async () => {
-        setMaxMarkets(999); // Unlimited markets for all users
+        setMaxMarkets(5); // Maximum 5 markets for all users
     };
 
     const addMarket = async () => {
         if (user) {
+            // Check if user has reached the 5-market limit
+            if (buyBoxData.markets.length >= maxMarkets) {
+                setErrorMessage(`Maximum ${maxMarkets} markets allowed. Please delete an existing market first.`);
+                return;
+            }
+            
             // Query database to get all existing market keys for this user
             const { data: existingMarkets } = await supabase
                 .from("user_markets")
@@ -723,6 +763,9 @@ export const BuyBoxModal: React.FC<BuyBoxModalProps> = ({ isOpen, onClose, focus
                     locationCondition.city = market.city;
                     locationCondition.state = market.state;
                 }
+            } else if (market.type === 'city' && !market.city && market.state) {
+                // Handle state-only searches (e.g., "New Hampshire, USA" -> state: 'NH', city: '')
+                locationCondition.state = market.state;
             } else if (market.type === 'county' && market.county && market.state) {
                 locationCondition.county = market.county;
                 locationCondition.state = market.state;

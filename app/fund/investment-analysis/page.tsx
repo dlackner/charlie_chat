@@ -209,6 +209,9 @@ function InvestmentAnalysisContent() {
           investment_sentiment: sentimentToUse,
           deal_summary: submission?.deal_summary || '',
         }),
+      }).catch(err => {
+        console.error('Failed to generate investment analysis:', err);
+        throw err;
       });
 
       if (!response.ok) throw new Error('Failed to generate analysis');
@@ -476,12 +479,12 @@ function InvestmentAnalysisContent() {
                 {/* Main heading */}
                 <h3 className="text-3xl font-bold text-gray-900 mb-4">
                   Ready to Generate Your
-                  <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent"> Investment Analysis?</span>
+                  <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent"> Investment Analysis</span>
                 </h3>
                 
                 {/* Description */}
                 <p className="text-lg text-gray-700 mb-8 max-w-2xl mx-auto leading-relaxed">
-                  Create a comprehensive investment report tailored to your property and investment goals. 
+                  This will create a comprehensive investment report tailored to your property and investment goals. 
                   You'll have full editing control throughout the process.
                 </p>
                 
@@ -599,6 +602,26 @@ function InvestmentAnalysisContent() {
             />
             <p className="text-sm text-gray-500 mt-2">
               Use line breaks to separate paragraphs. Keep content concise and professional.
+            </p>
+          </div>
+        </StandardModalWithActions>
+
+        {/* Loading Modal */}
+        <StandardModalWithActions
+          isOpen={generating}
+          onClose={() => {}} // Prevent closing while generating
+          title=""
+          showCloseButton={false}
+        >
+          <div className="text-center py-8">
+            <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full mb-4">
+              <Loader2 className="h-8 w-8 text-white animate-spin" />
+            </div>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">
+              Generating Your Investment Analysis
+            </h3>
+            <p className="text-gray-600">
+              Be patient. This analysis may take up to 60 seconds to complete.
             </p>
           </div>
         </StandardModalWithActions>

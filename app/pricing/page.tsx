@@ -7,12 +7,13 @@
  */
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useAuth } from "@/contexts/AuthContext"; // Add this import
 import { useModal } from "@/contexts/ModalContext"; // Add this import
-import { useRouter } from "next/navigation"; // Add this import
+import { useRouter, useSearchParams } from "next/navigation"; // Add this import
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import DirectCheckoutModal from "@/components/pricing/DirectCheckoutModal";
 
 // ✅ Import product IDs from env
 const PLUS_MONTHLY = process.env.NEXT_PUBLIC_MULTIFAMILYOS_PLUS_MONTHLY_PRODUCT!;
@@ -52,7 +53,7 @@ function hasPremiumAccess(userClass: string | null): boolean {
   return normalized === 'plus' || normalized === 'pro' || normalized === 'cohort';
 }
 
-export default function PricingPage() {
+function PricingPageContent() {
   const [isAnnual, setIsAnnual] = useState(true);
   const [userClass, setUserClass] = useState<string | null>(null);
   const [showTrialAlert, setShowTrialAlert] = useState(false);
@@ -60,11 +61,52 @@ export default function PricingPage() {
   const [showDowngradeModal, setShowDowngradeModal] = useState(false);
   const [showDowngradeInstructions, setShowDowngradeInstructions] = useState(false);
   const [showExpiredTrialModal, setShowExpiredTrialModal] = useState(false);
+  const [showDirectCheckoutModal, setShowDirectCheckoutModal] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState<{productId: string, plan: 'monthly' | 'annual', userClass: 'plus' | 'pro'} | null>(null);
+  const [directCheckoutLoading, setDirectCheckoutLoading] = useState(false);
   
   // ✅ Add auth context, modal context, and router
   const { user: currentUser, supabase, session } = useAuth();
   const { } = useModal();
+
+  // Suppress NetworkError dialogs during checkout
+  useEffect(() => {
+    const handleError = (event: ErrorEvent) => {
+      if (event.error?.message?.includes('NetworkError when attempting to fetch resource') ||
+          event.error?.message?.includes('network error')) {
+        console.log('Suppressed network error during checkout:', event.error?.message);
+        event.preventDefault();
+        return false;
+      }
+    };
+
+    window.addEventListener('error', handleError);
+    return () => window.removeEventListener('error', handleError);
+  }, []);
   const router = useRouter();
+  const searchParams = useSearchParams();
+
+  // Handle checkout after login
+  useEffect(() => {
+    if (currentUser) {
+      // Check for pending checkout from sessionStorage
+      const pendingCheckout = sessionStorage.getItem('pendingCheckout');
+      if (pendingCheckout) {
+        try {
+          const { productId, planType } = JSON.parse(pendingCheckout);
+          
+          // Clear the pending checkout
+          sessionStorage.removeItem('pendingCheckout');
+          
+          // Proceed with checkout
+          proceedWithCheckout(productId, planType);
+        } catch (error) {
+          console.error('Error parsing pending checkout:', error);
+          sessionStorage.removeItem('pendingCheckout');
+        }
+      }
+    }
+  }, [currentUser]);
 
   // Fetch user class
   useEffect(() => {
@@ -135,6 +177,11 @@ export default function PricingPage() {
     }
 
     try {
+      
+      // Add abort controller for timeout handling
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+      
       const res = await fetch("/api/stripe/checkout", {
         method: "POST",
         headers: { 
@@ -142,21 +189,42 @@ export default function PricingPage() {
           Authorization: `Bearer ${sessionToUse.access_token}`,
         },
         body: JSON.stringify({ productId, plan, mode: "subscription" }),
+        signal: controller.signal
       });
+      
+      clearTimeout(timeoutId);
+      
+      if (!res.ok) {
+        const errorText = await res.text();
+        console.error('HTTP error response:', errorText);
+        throw new Error(`HTTP ${res.status}: ${errorText}`);
+      }
       
       const data = await res.json();
       
       if (data.url) {
-        window.location.href = data.url;
+        // Add small delay and use replace for more reliable redirect
+        setTimeout(() => {
+          window.location.replace(data.url);
+        }, 500);
+        // Return immediately to avoid any further execution
+        return;
       } else {
         // Checkout failed
         console.error('Checkout failed:', data);
-        alert('Checkout failed. Please try again or contact support.');
+        throw new Error(`Checkout failed: ${data.error || 'Unknown error'}`);
       }
     } catch (error) {
-      // Network error during checkout
+      // Only catch actual network/fetch errors, not redirect issues
       console.error('Network error during checkout:', error);
-      alert('Network error during checkout. Please check your connection and try again.');
+      
+      if (error instanceof Error && error.name === 'AbortError') {
+        throw new Error('Request timeout - please check your connection and try again');
+      }
+      
+      // Re-throw the error so the calling function can handle it
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      throw new Error(`Network error during checkout: ${errorMessage}`);
     }
   };
 
@@ -226,19 +294,163 @@ export default function PricingPage() {
     setShowDowngradeInstructions(true);
   };
 
+  // Handle direct checkout for unauthenticated users from pricing page
+  const handleDirectCheckout = async (productId: string, plan: "monthly" | "annual") => {
+    // Determine user class from product ID
+    const userClass = (productId === PLUS_MONTHLY || productId === PLUS_ANNUAL) ? 'plus' : 'pro';
+    
+    setSelectedProduct({ productId, plan, userClass });
+    setShowDirectCheckoutModal(true);
+  };
+
+  // Handle direct signup submission
+  const handleDirectSignup = async (email: string, planType: 'monthly' | 'annual') => {
+    if (!selectedProduct) return;
+    
+    // Prevent duplicate calls
+    if (directCheckoutLoading) return;
+
+    setDirectCheckoutLoading(true);
+    
+    try {
+      // Determine correct product ID based on plan type selection
+      const finalProductId = selectedProduct.userClass === 'plus' 
+        ? (planType === 'monthly' ? PLUS_MONTHLY : PLUS_ANNUAL)
+        : (planType === 'monthly' ? PRO_MONTHLY : PRO_ANNUAL);
+
+      const response = await fetch('/api/auth/direct-signup', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email,
+          userClass: selectedProduct.userClass
+        }),
+      });
+
+      const result = await response.json();
+
+      if (response.ok && result.success) {
+        // User created successfully - now sign them in
+        
+        // Store checkout params in sessionStorage
+        sessionStorage.setItem('pendingCheckout', JSON.stringify({
+          productId: finalProductId,
+          planType: planType
+        }));
+        
+        // If we have a hashed token, use it to authenticate immediately
+        if (result.hashedToken) {
+          // Close modal but keep loading state to show progress
+          setShowDirectCheckoutModal(false);
+          
+          // Create full-page loading overlay
+          const loadingOverlay = document.createElement('div');
+          loadingOverlay.className = 'fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50';
+          loadingOverlay.innerHTML = `
+            <div class="bg-white rounded-lg p-8 max-w-md mx-4 text-center shadow-2xl">
+              <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+              <h3 class="text-lg font-semibold text-gray-900 mb-2">Redirecting you to checkout</h3>
+              <p class="text-gray-600">Please wait a moment...</p>
+            </div>
+          `;
+          document.body.appendChild(loadingOverlay);
+          
+          try {
+            // Use the magic link token to authenticate
+            const { error: verifyError } = await supabase.auth.verifyOtp({
+              token_hash: result.hashedToken,
+              type: 'magiclink'
+            });
+            
+            if (!verifyError) {
+              // Wait for session to be available
+              await new Promise(resolve => setTimeout(resolve, 500));
+              
+              // Session should now be established, proceed to checkout
+              const { data: { session } } = await supabase.auth.getSession();
+              if (session) {
+                // Now authenticated, proceed with checkout
+                try {
+                  // Don't await - just start the checkout process and let redirect happen
+                  proceedWithCheckout(finalProductId, planType).catch((checkoutError) => {
+                    // Only handle error if we haven't redirected yet
+                    console.error('Checkout error:', checkoutError);
+                    if (loadingOverlay.parentNode) {
+                      loadingOverlay.remove();
+                      alert('Error proceeding to checkout. Please try again.');
+                      setDirectCheckoutLoading(false);
+                    }
+                  });
+                  // Don't remove overlay here - let it stay until Stripe redirects
+                  return;
+                } catch (error) {
+                  console.error('Unexpected error:', error);
+                  loadingOverlay.remove();
+                  setDirectCheckoutLoading(false);
+                  return;
+                }
+              }
+            } else {
+              console.error('Error verifying token:', verifyError);
+              // Remove loading overlay on error
+              loadingOverlay.remove();
+              setDirectCheckoutLoading(false);
+              alert('Authentication failed. Please try again.');
+              return;
+            }
+          } catch (authError) {
+            console.error('Authentication error:', authError);
+            loadingOverlay.remove();
+            setDirectCheckoutLoading(false);
+            alert('Authentication failed. Please try again.');
+            return;
+          }
+        }
+        
+        // Fallback: Send OTP if immediate auth didn't work
+        const { error: signInError } = await supabase.auth.signInWithOtp({
+          email: email,
+          options: {
+            shouldCreateUser: false, // User already created
+            emailRedirectTo: `${window.location.origin}/pricing`
+          }
+        });
+        
+        if (signInError) {
+          console.error('Error sending sign in email:', signInError);
+          setShowDirectCheckoutModal(false);
+          alert('Error sending sign-in email. Please try again.');
+        } else {
+          // Show success message
+          setShowDirectCheckoutModal(false);
+          alert('Account created! Please check your email to sign in and complete checkout.');
+        }
+      } else {
+        console.error('Direct signup failed:', result.error);
+        setShowDirectCheckoutModal(false);
+        alert('Account creation failed. Please try again.');
+      }
+    } catch (error) {
+      console.error('Direct signup error:', error);
+      setShowDirectCheckoutModal(false);
+      alert('An unexpected error occurred. Please try again.');
+    } finally {
+      setDirectCheckoutLoading(false);
+    }
+  };
+
   // Unified checkout handler - checks for affiliate users first
   const handleCheckout = async (productId: string, plan: "monthly" | "annual") => {
-    console.log('handleCheckout called with:', { productId, plan });
-    console.log('Environment variables:', {
-      PLUS_MONTHLY: process.env.NEXT_PUBLIC_MULTIFAMILYOS_PLUS_MONTHLY_PRODUCT,
-      PLUS_ANNUAL: process.env.NEXT_PUBLIC_MULTIFAMILYOS_PLUS_ANNUAL_PRODUCT,
-      PRO_MONTHLY: process.env.NEXT_PUBLIC_MULTIFAMILYOS_PRO_MONTHLY_PRODUCT,
-      PRO_ANNUAL: process.env.NEXT_PUBLIC_MULTIFAMILYOS_PRO_ANNUAL_PRODUCT
-    });
     
-    // Check if user is logged in
+    // NEW: Check if unauthenticated user from pricing page
+    if (!currentUser && window.location.pathname === '/pricing') {
+      return handleDirectCheckout(productId, plan);
+    }
+    
+    // EXISTING: Check if user is logged in
     if (!currentUser) {
-      console.log('User not logged in, redirecting to home page for signup');
       router.push('/#signup-form');
       return;
     }
@@ -276,7 +488,11 @@ export default function PricingPage() {
     }
 
     // For all users (affiliate and regular), proceed with traditional checkout
-    await proceedWithCheckout(productId, plan);
+    // Don't await - let the redirect happen without waiting for completion
+    proceedWithCheckout(productId, plan).catch((error) => {
+      console.error('Checkout error:', error);
+      // Could show error notification here if needed
+    });
   };
 
   return (
@@ -392,7 +608,7 @@ export default function PricingPage() {
             <li className="flex items-start"><span className="w-2 h-2 bg-indigo-600 rounded-full mt-2 mr-3 flex-shrink-0"></span>Membership in the MultifamilyOS Capital Club</li>
             <li className="flex items-start"><span className="w-2 h-2 bg-indigo-600 rounded-full mt-2 mr-3 flex-shrink-0"></span>Weekly Coaching Calls with Charles Dobens</li>
             <li className="flex items-start"><span className="w-2 h-2 bg-indigo-600 rounded-full mt-2 mr-3 flex-shrink-0"></span>Master Class Training Program</li>
-            <li className="flex items-start"><span className="w-2 h-2 bg-indigo-600 rounded-full mt-2 mr-3 flex-shrink-0"></span>Community Access</li>
+            <li className="flex items-start"><span className="w-2 h-2 bg-indigo-600 rounded-full mt-2 mr-3 flex-shrink-0"></span>Community Access and Networking</li>
           </ul>
           <div className="flex-grow"></div>
           <div className="text-lg font-semibold text-green-600 mb-4 text-center">
@@ -1067,9 +1283,9 @@ export default function PricingPage() {
             </div>
           </div>
 
-          {/* Coaching & Community Section */}
+          {/* Capital & Coaching Section */}
           <div className="bg-blue-50 px-6 py-3 border-b border-gray-100">
-            <h4 className="text-sm font-semibold text-blue-800">Coaching & Community</h4>
+            <h4 className="text-sm font-semibold text-blue-800">Capital & Coaching</h4>
           </div>
           
           <div className="divide-y divide-gray-100">
@@ -1188,7 +1404,7 @@ export default function PricingPage() {
             </div>
 
             <div className="grid grid-cols-5 gap-0 hover:bg-gray-50/50 transition-colors">
-              <div className="px-6 py-4 text-sm font-medium text-gray-900">Community Access</div>
+              <div className="px-6 py-4 text-sm font-medium text-gray-900">Community Access and Networking</div>
               <div className="px-6 py-4 text-center border-l border-gray-100">
                 <div className="w-5 h-5 rounded-full bg-gray-200 mx-auto flex items-center justify-center">
                   <div className="w-2 h-0.5 bg-gray-400"></div>
@@ -1392,7 +1608,7 @@ export default function PricingPage() {
             <div className="text-sm text-gray-700">
               <p className="mb-3">The Professional plan adds depth through:</p>
               <ul className="list-disc pl-6 space-y-1">
-                <li><strong>Equity Syndication Club</strong> – Engage with a network of qualified equity investors who can help underwrite deals and participate in funding. Accelerate capital raising and enjoy the confidence of having a network of backers behind your offers.</li>
+                <li><strong>Capital Club</strong> – Engage with a network of multifamily property investors who can help underwrite deals and participate in funding. Accelerate capital raising and enjoy the confidence of having a network of backers behind your offers.</li>
                 <li><strong>Master Class Training</strong> – 90+ lessons led by Charles Dobens, the Multifamily Attorney, covering markets, deal structuring, capital raising, due diligence, and scaling. With $50M+ in personal investing experience and $3B+ in client transactions, Charles brings practical, field-tested strategies to every lesson.</li>
                 <li><strong>Weekly Coaching</strong> – Live calls with Charles Dobens that combine deal analysis, market updates, and expert Q&A. These sessions provide direct access to one of the most respected educators in multifamily investing.</li>
                 <li><strong>Community Access</strong> – Direct connection to experienced peers and mentors for accountability, support, and networking opportunities.</li>
@@ -1641,6 +1857,33 @@ export default function PricingPage() {
         </DialogContent>
       </Dialog>
 
+      {/* Direct Checkout Modal */}
+      <DirectCheckoutModal
+        isOpen={showDirectCheckoutModal}
+        onClose={() => setShowDirectCheckoutModal(false)}
+        onSubmit={handleDirectSignup}
+        selectedPlan={selectedProduct?.userClass || 'plus'}
+        initialPlanType={selectedProduct?.plan || 'monthly'}
+        isLoading={directCheckoutLoading}
+      />
+
     </div>
+  );
+}
+
+export default function PricingPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-white text-black px-6 py-12">
+        <h1 className="text-3xl sm:text-5xl font-semibold mb-6 text-blue-600 text-center">Pricing</h1>
+        <div className="flex justify-center">
+          <div className="animate-pulse">
+            <div className="h-12 w-64 bg-gray-200 rounded-lg mx-auto"></div>
+          </div>
+        </div>
+      </div>
+    }>
+      <PricingPageContent />
+    </Suspense>
   );
 }

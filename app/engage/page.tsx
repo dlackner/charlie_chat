@@ -20,7 +20,7 @@ import { useAlert } from '@/components/shared/AlertModal';
 
 function EngagePageContent() {
   const { user, supabase, isLoading: authLoading } = useAuth();
-  const { showError, showWarning, showSuccess, AlertComponent } = useAlert();
+  const { showError, showWarning, showSuccess, showDelete, AlertComponent } = useAlert();
   const searchParams = useSearchParams();
   const router = useRouter();
   const [viewMode, setViewMode] = useState<'cards' | 'map'>(() => {
@@ -536,7 +536,8 @@ function EngagePageContent() {
       // If property not found in current saved properties, still navigate with minimal data
       const params = new URLSearchParams({
         offerId: offerId.toString(),
-        id: propertyId
+        id: propertyId,
+        source: 'engage'
       });
       router.push(`/offer-analyzer?${params.toString()}`);
       setShowOffersModal(false);
@@ -553,16 +554,23 @@ function EngagePageContent() {
       assessed: property.assessed,
       built: property.built.toString(),
       id: property.id.toString(), // This should be the UUID
-      offerId: offerId.toString()
+      offerId: offerId.toString(),
+      source: 'engage'
     });
     router.push(`/offer-analyzer?${params.toString()}`);
     setShowOffersModal(false);
   };
 
   const handleDeleteOffer = async (offerId: string) => {
-    if (!confirm('Are you sure you want to delete this offer? This action cannot be undone.')) {
-      return;
-    }
+    showDelete(
+      'Are you sure you want to delete this offer? This action cannot be undone.',
+      async () => {
+        await deleteOffer(offerId);
+      }
+    );
+  };
+
+  const deleteOffer = async (offerId: string) => {
 
     try {
       const response = await fetch(`/api/offer-scenarios/${offerId}`, {
@@ -1226,7 +1234,7 @@ function EngagePageContent() {
         title: profileData.job_title || '',
         logoBase64: profileData.logo_base64 || null
       };
-
+      
       // Validate required profile information
       if (!senderInfo.name || !senderInfo.phone || !senderInfo.email) {
         showWarning('Please complete your profile with name, phone, and email to generate marketing letters.', 'Profile Incomplete');
@@ -1235,7 +1243,8 @@ function EngagePageContent() {
 
       // Generate letters for selected properties
       for (const propertyId of propertyIds) {
-        const property = savedProperties.find(p => p.id === propertyId);
+        const property = savedProperties.find(p => p.property_id === propertyId);
+        
         if (property) {
           // Process property data for marketing letter generation
           
@@ -1259,7 +1268,7 @@ function EngagePageContent() {
             address_state: property.state,
             owner_first_name: property.owner_first_name || null,
             owner_last_name: property.owner_last_name || null,
-            property_id: property.id.toString()
+            property_id: property.property_id
           };
           
           // Generate marketing letter with property data
@@ -1405,7 +1414,8 @@ function EngagePageContent() {
               units: property.units.toString(),
               assessed: property.assessed,
               built: property.built.toString(),
-              id: property.id.toString()
+              id: property.id.toString(),
+              source: 'engage'
             });
             router.push(`/offer-analyzer?${params.toString()}`);
 
@@ -1502,6 +1512,62 @@ function EngagePageContent() {
           </div>
         </div>
 
+        {/* Mobile Engagement Center - Full Width */}
+        <div className="lg:hidden mb-6">
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+            {/* Header */}
+            <div className="p-4 border-b border-gray-200">
+              <h3 className="text-lg font-semibold text-gray-900">Engagement Center</h3>
+              <div className="text-sm text-gray-600 mt-1">
+                {selectedProperties.length} properties selected
+              </div>
+            </div>
+
+            {/* Mobile Actions - Two Column Layout */}
+            <div className="p-4 grid grid-cols-2 gap-3">
+              <button
+                onClick={() => handleDocumentAction('email')}
+                className="flex flex-col items-center justify-center py-4 px-3 text-sm text-gray-700 hover:bg-blue-100 disabled:text-gray-400 disabled:cursor-not-allowed rounded-lg transition-colors border border-gray-200"
+                disabled={selectedProperties.length !== 1}
+                title="Generate email template for selected property"
+              >
+                <div className="h-6 w-6 mb-2 flex items-center justify-center">
+                  <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 002 2v10a2 2 0 002 2z" />
+                  </svg>
+                </div>
+                <div className="text-center">
+                  <div className="font-medium">Marketing Email</div>
+                  <div className="text-xs text-gray-500 mt-1">Select 1 property</div>
+                </div>
+              </button>
+              
+              <button
+                onClick={() => {
+                  if (selectedProperties.length === 1) {
+                    router.push(`/roadtrip?propertyId=${selectedProperties[0]}`);
+                  }
+                }}
+                disabled={selectedProperties.length !== 1}
+                className="flex flex-col items-center justify-center py-4 px-3 text-sm text-gray-700 hover:bg-blue-100 disabled:text-gray-400 disabled:cursor-not-allowed rounded-lg transition-colors border border-gray-200"
+                title="Explore nearby properties around selected property"
+              >
+                <Route className="h-6 w-6 mb-2" />
+                <div className="text-center">
+                  <div className="font-medium">Road Trip</div>
+                  <div className="text-xs text-gray-500 mt-1">Explore nearby</div>
+                </div>
+              </button>
+            </div>
+
+            {/* Helper text when no properties selected */}
+            {selectedProperties.length === 0 && (
+              <div className="p-4 text-sm text-gray-500 text-center border-t border-gray-200">
+                Select properties to enable actions
+              </div>
+            )}
+          </div>
+        </div>
 
         {/* Main Layout - Left Sidebar + Content */}
         <div className="flex gap-6">

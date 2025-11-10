@@ -33,6 +33,20 @@ function DiscoverPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   
+  // US states for recognition (full names and abbreviations)
+  const US_STATES = {
+    'ALABAMA': 'AL', 'ALASKA': 'AK', 'ARIZONA': 'AZ', 'ARKANSAS': 'AR', 'CALIFORNIA': 'CA',
+    'COLORADO': 'CO', 'CONNECTICUT': 'CT', 'DELAWARE': 'DE', 'FLORIDA': 'FL', 'GEORGIA': 'GA',
+    'HAWAII': 'HI', 'IDAHO': 'ID', 'ILLINOIS': 'IL', 'INDIANA': 'IN', 'IOWA': 'IA',
+    'KANSAS': 'KS', 'KENTUCKY': 'KY', 'LOUISIANA': 'LA', 'MAINE': 'ME', 'MARYLAND': 'MD',
+    'MASSACHUSETTS': 'MA', 'MICHIGAN': 'MI', 'MINNESOTA': 'MN', 'MISSISSIPPI': 'MS', 'MISSOURI': 'MO',
+    'MONTANA': 'MT', 'NEBRASKA': 'NE', 'NEVADA': 'NV', 'NEW HAMPSHIRE': 'NH', 'NEW JERSEY': 'NJ',
+    'NEW MEXICO': 'NM', 'NEW YORK': 'NY', 'NORTH CAROLINA': 'NC', 'NORTH DAKOTA': 'ND', 'OHIO': 'OH',
+    'OKLAHOMA': 'OK', 'OREGON': 'OR', 'PENNSYLVANIA': 'PA', 'RHODE ISLAND': 'RI', 'SOUTH CAROLINA': 'SC',
+    'SOUTH DAKOTA': 'SD', 'TENNESSEE': 'TN', 'TEXAS': 'TX', 'UTAH': 'UT', 'VERMONT': 'VT',
+    'VIRGINIA': 'VA', 'WASHINGTON': 'WA', 'WEST VIRGINIA': 'WV', 'WISCONSIN': 'WI', 'WYOMING': 'WY'
+  };
+  
   // User class for access control
   const [userClass, setUserClass] = useState<string | null>(null);
   
@@ -179,7 +193,8 @@ function DiscoverPageContent() {
                 ...lastSearchFilters,
                 property_type: "MFR",
                 size: 12 * (currentPage - Math.floor(searchResults.length / PROPERTIES_PER_PAGE)),
-                resultIndex: nextResultIndex
+                resultIndex: nextResultIndex,
+                userId: user?.id || null // Add user ID for search tracking
               })
             });
             
@@ -786,24 +801,45 @@ function DiscoverPageContent() {
         }
       } else if (locationParts.length >= 2) {
         // City, State format: "newport, ri" or "denver, co 80202"
-        // Check if first part contains "County" - if so, use county parameter instead of city
+        // But also handle "State, USA" format: "New Hampshire, USA"
         const firstPart = locationParts[0];
-        if (firstPart.toLowerCase().includes('county')) {
-          searchFilters.county = capitalizeWords(firstPart);
-        } else {
-          searchFilters.city = capitalizeWords(firstPart);
-        }
-        
         const lastPart = locationParts[1].trim();
-        const stateZipMatch = lastPart.match(/^([a-zA-Z]{2})\s*(\d{5}(?:-\d{4})?)?$/);
         
-        if (stateZipMatch) {
-          searchFilters.state = stateZipMatch[1].toUpperCase();
-          searchFilters.zip = stateZipMatch[2] || (hasZip ? zipMatch[0] : '');
-        } else {
-          // Assume whole part is state and uppercase it
-          searchFilters.state = lastPart.toUpperCase();
+        // Check if first part is a US state name (e.g., "New Hampshire, USA")
+        const firstPartUpper = firstPart.toUpperCase();
+        const isStateFirst = US_STATES.hasOwnProperty(firstPartUpper) || 
+                           Object.values(US_STATES).includes(firstPartUpper as any);
+                           
+        if (isStateFirst && (lastPart.toUpperCase() === 'USA' || lastPart.toUpperCase() === 'US')) {
+          // Handle "State, USA" format - treat first part as state
+          searchFilters.state = US_STATES[firstPartUpper as keyof typeof US_STATES] || firstPartUpper;
+          searchFilters.city = '';
           searchFilters.zip = hasZip ? zipMatch[0] : '';
+        } else if (firstPart.toLowerCase().includes('county')) {
+          // Handle county format
+          searchFilters.county = capitalizeWords(firstPart);
+          const stateZipMatch = lastPart.match(/^([a-zA-Z]{2})\s*(\d{5}(?:-\d{4})?)?$/);
+          
+          if (stateZipMatch) {
+            searchFilters.state = stateZipMatch[1].toUpperCase();
+            searchFilters.zip = stateZipMatch[2] || (hasZip ? zipMatch[0] : '');
+          } else {
+            searchFilters.state = lastPart.toUpperCase();
+            searchFilters.zip = hasZip ? zipMatch[0] : '';
+          }
+        } else {
+          // Standard "City, State" format
+          searchFilters.city = capitalizeWords(firstPart);
+          const stateZipMatch = lastPart.match(/^([a-zA-Z]{2})\s*(\d{5}(?:-\d{4})?)?$/);
+          
+          if (stateZipMatch) {
+            searchFilters.state = stateZipMatch[1].toUpperCase();
+            searchFilters.zip = stateZipMatch[2] || (hasZip ? zipMatch[0] : '');
+          } else {
+            // Assume whole part is state and uppercase it
+            searchFilters.state = lastPart.toUpperCase();
+            searchFilters.zip = hasZip ? zipMatch[0] : '';
+          }
         }
       } else {
         // Single input - could be city name, zip, or street
@@ -837,7 +873,8 @@ function DiscoverPageContent() {
         ...searchFilters,
         property_type: "MFR", // Only multifamily properties  
         size: 12, // Load 12 at a time for pagination
-        resultIndex: 0
+        resultIndex: 0,
+        userId: user?.id || null // Add user ID for search tracking
       };
       
       const response = await fetch('/api/realestateapi', {
@@ -1004,7 +1041,8 @@ function DiscoverPageContent() {
           size: 12,
           resultIndex: 0,
           obfuscate: false,
-          summary: false
+          summary: false,
+          userId: user?.id || null // Add user ID for search tracking
         };
         
         // Add location if available
@@ -1017,18 +1055,31 @@ function DiscoverPageContent() {
             apiParams.zip = zipMatch[0];
           } else if (locationParts.length >= 2) {
             const firstPart = locationParts[0];
-            // Check if first part contains "County" - if so, use county parameter instead of city
-            if (firstPart.toLowerCase().includes('county')) {
+            const lastPart = locationParts[1].trim();
+            
+            // Check if first part is a US state name (e.g., "New Hampshire, USA")
+            const firstPartUpper = firstPart.toUpperCase();
+            const isStateFirst = US_STATES.hasOwnProperty(firstPartUpper) || 
+                               Object.values(US_STATES).includes(firstPartUpper as any);
+                               
+            if (isStateFirst && (lastPart.toUpperCase() === 'USA' || lastPart.toUpperCase() === 'US')) {
+              // Handle "State, USA" format - treat first part as state
+              apiParams.state = US_STATES[firstPartUpper as keyof typeof US_STATES] || firstPartUpper;
+            } else if (firstPart.toLowerCase().includes('county')) {
+              // Check if first part contains "County" - if so, use county parameter instead of city
               apiParams.county = firstPart;
+              const stateZipMatch = lastPart.match(/^([a-zA-Z]{2})\s*(\d{5}(?:-\d{4})?)?$/);
+              if (stateZipMatch) {
+                apiParams.state = stateZipMatch[1].toUpperCase();
+                if (stateZipMatch[2]) apiParams.zip = stateZipMatch[2];
+              }
             } else {
               apiParams.city = firstPart;
-            }
-            
-            const lastPart = locationParts[1].trim();
-            const stateZipMatch = lastPart.match(/^([a-zA-Z]{2})\s*(\d{5}(?:-\d{4})?)?$/);
-            if (stateZipMatch) {
-              apiParams.state = stateZipMatch[1].toUpperCase();
-              if (stateZipMatch[2]) apiParams.zip = stateZipMatch[2];
+              const stateZipMatch = lastPart.match(/^([a-zA-Z]{2})\s*(\d{5}(?:-\d{4})?)?$/);
+              if (stateZipMatch) {
+                apiParams.state = stateZipMatch[1].toUpperCase();
+                if (stateZipMatch[2]) apiParams.zip = stateZipMatch[2];
+              }
             }
           }
         }
@@ -1659,6 +1710,7 @@ function DiscoverPageContent() {
             resultIndex: 0,
             obfuscate: false,
             summary: false,
+            userId: user?.id || null, // Add user ID for search tracking
             ...search.filters // Include all saved filters
           };
           
@@ -1673,20 +1725,38 @@ function DiscoverPageContent() {
               apiParams.zip = zipMatch[0];
             } else if (locationParts.length >= 2) {
               const firstPart = locationParts[0];
-              if (firstPart.toLowerCase().includes('county')) {
-                apiParams.county = firstPart;
-              } else {
-                apiParams.city = firstPart;
-              }
               const lastPart = locationParts[1].trim();
-              const stateZipMatch = lastPart.match(/^([a-zA-Z]{2})\s*(\d{5}(?:-\d{4})?)?$/);
-              if (stateZipMatch) {
-                apiParams.state = stateZipMatch[1].toUpperCase();
-                if (stateZipMatch[2]) {
-                  apiParams.zip = stateZipMatch[2];
+              
+              // Check if first part is a US state name (e.g., "New Hampshire, USA")
+              const firstPartUpper = firstPart.toUpperCase();
+              const isStateFirst = US_STATES.hasOwnProperty(firstPartUpper) || 
+                                 Object.values(US_STATES).includes(firstPartUpper as any);
+                                 
+              if (isStateFirst && (lastPart.toUpperCase() === 'USA' || lastPart.toUpperCase() === 'US')) {
+                // Handle "State, USA" format - treat first part as state
+                apiParams.state = US_STATES[firstPartUpper as keyof typeof US_STATES] || firstPartUpper;
+              } else if (firstPart.toLowerCase().includes('county')) {
+                apiParams.county = firstPart;
+                const stateZipMatch = lastPart.match(/^([a-zA-Z]{2})\s*(\d{5}(?:-\d{4})?)?$/);
+                if (stateZipMatch) {
+                  apiParams.state = stateZipMatch[1].toUpperCase();
+                  if (stateZipMatch[2]) {
+                    apiParams.zip = stateZipMatch[2];
+                  }
+                } else {
+                  apiParams.state = lastPart.toUpperCase();
                 }
               } else {
-                apiParams.state = lastPart.toUpperCase();
+                apiParams.city = firstPart;
+                const stateZipMatch = lastPart.match(/^([a-zA-Z]{2})\s*(\d{5}(?:-\d{4})?)?$/);
+                if (stateZipMatch) {
+                  apiParams.state = stateZipMatch[1].toUpperCase();
+                  if (stateZipMatch[2]) {
+                    apiParams.zip = stateZipMatch[2];
+                  }
+                } else {
+                  apiParams.state = lastPart.toUpperCase();
+                }
               }
             } else {
               // Single input - could be city, state, or zip

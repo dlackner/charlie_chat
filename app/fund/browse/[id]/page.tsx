@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { AuthGuard } from '@/components/auth/AuthGuard';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter, useParams, useSearchParams } from 'next/navigation';
+import { useAlert } from '@/components/shared/AlertModal';
 import { generate10YearCashFlowReport } from '@/app/offer-analyzer/cash-flow-report';
 import { 
   Building, 
@@ -20,7 +21,8 @@ import {
   Send,
   Reply,
   Edit2,
-  Trash2
+  Trash2,
+  Copy
 } from 'lucide-react';
 
 interface Submission {
@@ -34,6 +36,7 @@ interface Submission {
   user_id: string;
   offer_scenario_id: string;
   cash_flow_pdf_url?: string;
+  external_file_url?: string;
   investment_analysis_html?: any; // JSONB
   investment_analysis_html_updated_at?: string;
   // Financial metrics
@@ -50,6 +53,8 @@ interface Submission {
   // Submitter details will be joined
   submitter_name?: string;
   submitter_email?: string;
+  // Offer scenario data
+  offer_data?: any;
 }
 
 interface Comment {
@@ -65,18 +70,30 @@ interface Comment {
   replies: Comment[];
 }
 
+interface InterestedInvestor {
+  id: string;
+  name: string;
+  email: string;
+  expressed_at: string;
+}
+
 export default function SubmissionDetailsPage() {
   const router = useRouter();
   const params = useParams();
   const searchParams = useSearchParams();
   const submissionId = params?.id as string;
   const { user, supabase, isLoading: authLoading } = useAuth();
+  const { showDelete, AlertComponent } = useAlert();
   
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [submission, setSubmission] = useState<Submission | null>(null);
   const [hasExpressedInterest, setHasExpressedInterest] = useState(false);
   const [showInvestmentAnalysis, setShowInvestmentAnalysis] = useState(false);
+  const [interestedInvestors, setInterestedInvestors] = useState<InterestedInvestor[]>([]);
+  const [showTooltip, setShowTooltip] = useState(false);
+  const [pricingVariations, setPricingVariations] = useState<any[]>([]);
+  const [expandedScenario, setExpandedScenario] = useState<string | null>(null);
   
   // Comment state
   const [comments, setComments] = useState<Comment[]>([]);
@@ -172,6 +189,7 @@ export default function SubmissionDetailsPage() {
           user_id: data.user_id,
           offer_scenario_id: data.offer_scenario_id,
           cash_flow_pdf_url: data.cash_flow_pdf_url,
+          external_file_url: data.external_file_url,
           investment_analysis_html: data.investment_analysis_html,
           investment_analysis_html_updated_at: data.investment_analysis_html_updated_at,
           address: data.saved_properties?.address_street || data.saved_properties?.address_full,
@@ -185,7 +203,8 @@ export default function SubmissionDetailsPage() {
           dcr: offerData?.debt_service_coverage_ratio || undefined,
           cash_on_cash_return: offerData?.cash_on_cash_return || undefined,
           irr: offerData?.projected_irr || undefined,
-          purchase_price: offerData?.purchasePrice || undefined
+          purchase_price: offerData?.purchasePrice || undefined,
+          offer_data: offerData
         };
 
 
@@ -203,6 +222,9 @@ export default function SubmissionDetailsPage() {
           setHasExpressedInterest(!!interestData);
         }
 
+        // Fetch interested investors for hover tooltip
+        await fetchInterestedInvestors();
+
       } catch (err) {
         console.error('Error fetching submission:', err);
         console.error('Submission ID:', submissionId);
@@ -215,6 +237,89 @@ export default function SubmissionDetailsPage() {
 
     fetchSubmission();
   }, [submissionId, supabase, user]);
+
+  // Fetch pricing variations
+  const fetchPricingVariations = async () => {
+    if (!submissionId) return;
+
+    try {
+      console.log('Fetching pricing variations for submissionId:', submissionId);
+      const response = await fetch(`/api/pricing-variations?submissionId=${submissionId}`);
+      if (response.ok) {
+        const data = await response.json();
+        console.log('Pricing variations data:', data);
+        setPricingVariations(data.variations || []);
+      } else {
+        console.error('Failed to fetch pricing variations, status:', response.status);
+        setPricingVariations([]); // Set empty array on error
+      }
+    } catch (error) {
+      console.error('Error fetching pricing variations:', error);
+      setPricingVariations([]); // Set empty array on error
+    }
+  };
+
+  // Fetch interested users for tooltip
+  const fetchInterestedInvestors = async () => {
+    if (!submissionId || !supabase) return;
+
+    try {
+      // First get the submission interests
+      const { data: interests, error } = await supabase
+        .from('submission_interests')
+        .select('id, created_at, user_id')
+        .eq('submission_id', submissionId)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Error fetching submission interests:', error);
+        return;
+      }
+
+      if (!interests || interests.length === 0) {
+        setInterestedInvestors([]);
+        return;
+      }
+
+      // Get unique user IDs
+      const userIds = interests.map(i => i.user_id);
+
+      // Fetch all profiles at once
+      const { data: profiles, error: profileError } = await supabase
+        .from('profiles')
+        .select('user_id, first_name, last_name, full_name')
+        .in('user_id', userIds);
+
+      if (profileError) {
+        console.error('Error fetching profiles:', profileError);
+      }
+
+      // Map interests to investors with profile data
+      const investors: InterestedInvestor[] = interests.map((interest) => {
+        const profile = profiles?.find(p => p.user_id === interest.user_id);
+        let name = 'Anonymous User';
+        
+        if (profile) {
+          if (profile.full_name) {
+            name = profile.full_name.trim();
+          } else if (profile.first_name || profile.last_name) {
+            name = `${profile.first_name || ''} ${profile.last_name || ''}`.trim();
+          }
+        }
+
+        return {
+          id: interest.id,
+          name: name || 'Anonymous User',
+          email: '',
+          expressed_at: interest.created_at
+        };
+      });
+
+      setInterestedInvestors(investors);
+    } catch (err) {
+      console.error('Error fetching interested users:', err);
+    }
+  };
 
   // Fetch comments
   const fetchComments = async () => {
@@ -365,7 +470,9 @@ export default function SubmissionDetailsPage() {
 
   // Delete comment
   const handleDeleteComment = async (commentId: string) => {
-    if (!confirm('Are you sure you want to delete this comment?')) return;
+    showDelete(
+      'Are you sure you want to delete this comment? This action cannot be undone.',
+      async () => {
 
     try {
       const response = await fetch(`/api/comments/${commentId}`, {
@@ -390,6 +497,8 @@ export default function SubmissionDetailsPage() {
       console.error('Error deleting comment:', error);
       alert('Failed to delete comment');
     }
+      }
+    );
   };
 
   // Format date for comments
@@ -436,6 +545,8 @@ export default function SubmissionDetailsPage() {
 
         setHasExpressedInterest(false);
         setSubmission(prev => prev ? { ...prev, interest_count: Math.max(0, prev.interest_count - 1) } : null);
+        // Refresh the interested investors list
+        await fetchInterestedInvestors();
       } else {
         // Add interest
         await supabase
@@ -453,6 +564,8 @@ export default function SubmissionDetailsPage() {
 
         setHasExpressedInterest(true);
         setSubmission(prev => prev ? { ...prev, interest_count: prev.interest_count + 1 } : null);
+        // Refresh the interested investors list
+        await fetchInterestedInvestors();
       }
     } catch (err) {
       console.error('Error expressing interest:', err);
@@ -477,6 +590,11 @@ export default function SubmissionDetailsPage() {
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString();
   };
+
+  // Fetch pricing variations when component loads
+  useEffect(() => {
+    fetchPricingVariations();
+  }, [submissionId]);
 
   if (loading || authLoading) {
     return (
@@ -663,11 +781,11 @@ export default function SubmissionDetailsPage() {
                     )}
                     
                     {/* Report Cards Grid */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
                       {/* Property Profile */}
-                      <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
-                        <div className="border-l-4 border-purple-500 pl-4 mb-4">
-                          <div className="text-lg font-bold text-gray-900">Property Profile</div>
+                      <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
+                        <div className="border-l-4 border-purple-500 pl-2 mb-4">
+                          <div className="text-base font-bold text-gray-900">Property Profile</div>
                         </div>
                         <div className="flex gap-2">
                           <button 
@@ -687,9 +805,9 @@ export default function SubmissionDetailsPage() {
                       </div>
 
                       {/* 10-Year Cash Flow */}
-                      <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
-                        <div className="border-l-4 border-green-500 pl-4 mb-4">
-                          <div className="text-lg font-bold text-gray-900">10-Year Cash Flow</div>
+                      <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
+                        <div className="border-l-4 border-green-500 pl-2 mb-4">
+                          <div className="text-base font-bold text-gray-900">Cash<br />Flow</div>
                         </div>
                         <div className="flex gap-2">
                           <button 
@@ -710,9 +828,9 @@ export default function SubmissionDetailsPage() {
 
                       {/* Pricing Scenario */}
                       {submission.offer_scenario_id && (
-                        <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
-                          <div className="border-l-4 border-orange-500 pl-4 mb-4">
-                            <div className="text-lg font-bold text-gray-900">Pricing Scenario</div>
+                        <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
+                          <div className="border-l-4 border-orange-500 pl-2 mb-4">
+                            <div className="text-base font-bold text-gray-900">Pricing Scenario</div>
                           </div>
                           <div className="flex gap-2">
                             <button 
@@ -721,14 +839,21 @@ export default function SubmissionDetailsPage() {
                             >
                               View
                             </button>
+                            <button 
+                              onClick={() => window.open(`/fund/pricing-scenario-view/${submission.offer_scenario_id}?print=true`, '_blank')}
+                              className="px-3 py-2 bg-gray-200 text-gray-700 text-sm rounded hover:bg-gray-300 transition-colors"
+                              title="Print Pricing Scenario"
+                            >
+                              <Printer className="h-4 w-4" />
+                            </button>
                           </div>
                         </div>
                       )}
 
                       {/* Investment Analysis */}
-                      <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
-                        <div className="border-l-4 border-blue-500 pl-4 mb-4">
-                          <div className="text-lg font-bold text-gray-900">Investment Analysis</div>
+                      <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
+                        <div className="border-l-4 border-blue-500 pl-2 mb-4">
+                          <div className="text-base font-bold text-gray-900">Investment Analysis</div>
                         </div>
                         <div className="flex gap-2">
                           <button 
@@ -757,6 +882,229 @@ export default function SubmissionDetailsPage() {
                           )}
                         </div>
                       </div>
+                      
+                      {/* Other Files */}
+                      <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
+                        <div className="border-l-4 border-teal-500 pl-2 mb-4">
+                          <div className="text-base font-bold text-gray-900">Other Files</div>
+                        </div>
+                        <div className="flex gap-2">
+                          {submission.external_file_url ? (
+                            <button 
+                              onClick={() => {
+                                let url = submission.external_file_url!;
+                                if (!url.startsWith('http://') && !url.startsWith('https://')) {
+                                  url = 'https://' + url;
+                                }
+                                window.open(url, '_blank');
+                              }}
+                              className="flex-1 px-3 py-2 bg-teal-600 text-white text-sm rounded hover:bg-teal-700 transition-colors"
+                            >
+                              View
+                            </button>
+                          ) : (
+                            <div className="flex-1 px-3 py-2 bg-gray-300 text-gray-500 text-sm rounded cursor-not-allowed">
+                              No files
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Pricing Sandbox Row */}
+                    <div className="border-t border-gray-200 pt-6">
+                      <div className="flex items-center justify-between mb-4">
+                        <div>
+                          <h4 className="text-md font-medium text-gray-800">Pricing Sandbox</h4>
+                          <p className="text-xs text-gray-500 mt-1">Community scenarios and experiments</p>
+                        </div>
+                        <span className="text-xs text-amber-700 bg-amber-100 px-2 py-1 rounded-full">{pricingVariations.length} Scenarios</span>
+                      </div>
+                      
+                      {/* Scrollable Scenarios Gallery */}
+                      <div className="relative">
+                        <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
+                          
+                          {/* Create New Scenario */}
+                          <div className="flex-shrink-0 w-64 bg-gradient-to-br from-amber-50 to-yellow-50 rounded-lg p-4 shadow-sm border-2 border-dashed border-amber-200 hover:border-amber-300 transition-colors">
+                            <div className="border-l-4 border-amber-500 pl-2 mb-4">
+                              <div className="text-sm font-bold text-gray-900">Create Scenario</div>
+                              <div className="text-xs text-gray-500">Modify the original assumptions to reflect your recommendations</div>
+                            </div>
+                            <div className="flex gap-2">
+                              <button 
+                                onClick={async () => {
+                                  try {
+                                    // Create new pricing variation with copied data from original submission
+                                    const response = await fetch('/api/pricing-variations', {
+                                      method: 'POST',
+                                      headers: { 'Content-Type': 'application/json' },
+                                      body: JSON.stringify({
+                                        submissionId,
+                                        analysisName: `Scenario - ${new Date().toLocaleDateString()}`,
+                                        description: 'Alternative pricing scenario based on original submission',
+                                        scenarioData: submission.offer_data,
+                                        copyFromOriginal: true
+                                      })
+                                    });
+
+                                    const data = await response.json();
+                                    if (response.ok) {
+                                      // Redirect to offer analyzer with the new variation ID
+                                      router.push(`/offer-analyzer?variationId=${data.variation.id}&submissionId=${submissionId}`);
+                                    } else {
+                                      console.error('Failed to create pricing variation:', data.error);
+                                      alert('Failed to create scenario. Please try again.');
+                                    }
+                                  } catch (error) {
+                                    console.error('Error creating pricing variation:', error);
+                                    alert('Failed to create scenario. Please try again.');
+                                  }
+                                }}
+                                className="flex-1 px-3 py-2 bg-amber-500 text-white text-sm rounded hover:bg-amber-600 transition-colors font-medium"
+                              >
+                                New Scenario
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* Real scenarios from database */}
+                          {pricingVariations.map((variation, index) => (
+                            <div key={variation.id} className="flex-shrink-0 w-64 bg-white rounded-lg p-4 shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
+                              <div className="relative">
+                                <div 
+                                  className={`border-l-4 pl-2 mb-4 ${
+                                    index % 8 === 0 ? 'border-indigo-500' :
+                                    index % 8 === 1 ? 'border-rose-500' :
+                                    index % 8 === 2 ? 'border-emerald-500' :
+                                    index % 8 === 3 ? 'border-purple-500' :
+                                    index % 8 === 4 ? 'border-cyan-500' :
+                                    index % 8 === 5 ? 'border-pink-500' :
+                                    index % 8 === 6 ? 'border-orange-500' : 'border-teal-500'
+                                  }`}
+                                >
+                                  <div className="flex justify-between items-center">
+                                    <div className="text-sm font-bold text-gray-900">
+                                      {variation.profiles?.first_name || 'Unknown'} {variation.profiles?.last_name || 'User'}
+                                    </div>
+                                    <div className="flex items-center gap-1">
+                                      {/* Copy button - visible to all users */}
+                                      <button
+                                        onClick={async (e) => {
+                                          e.stopPropagation();
+                                          try {
+                                            const response = await fetch(`/api/pricing-variations`, {
+                                              method: 'POST',
+                                              headers: { 'Content-Type': 'application/json' },
+                                              body: JSON.stringify({
+                                                submissionId: submissionId,
+                                                analysisName: `Copy of ${variation.analysis_name}`,
+                                                description: `Copy of ${variation.description || 'scenario'}`,
+                                                scenarioData: variation.scenario_data,
+                                                copyFromOriginal: true
+                                              })
+                                            });
+                                            
+                                            if (response.ok) {
+                                              // Refresh pricing variations to show the new copy
+                                              fetchPricingVariations();
+                                            } else {
+                                              console.error('Failed to copy scenario');
+                                              alert('Failed to copy scenario. Please try again.');
+                                            }
+                                          } catch (error) {
+                                            console.error('Error copying scenario:', error);
+                                            alert('Failed to copy scenario. Please try again.');
+                                          }
+                                        }}
+                                        className="text-gray-400 hover:text-blue-500 transition-colors p-1"
+                                        title="Copy scenario"
+                                      >
+                                        <Copy className="w-4 h-4" />
+                                      </button>
+                                      
+                                      {/* Delete button - only for owners */}
+                                      {user?.id === variation.user_id && (
+                                        <button
+                                          onClick={async (e) => {
+                                            e.stopPropagation();
+                                            try {
+                                              const response = await fetch(`/api/pricing-variations/${variation.id}`, {
+                                                method: 'DELETE'
+                                              });
+                                              
+                                              if (response.ok) {
+                                                // Remove from local state
+                                                setPricingVariations(prev => prev.filter(v => v.id !== variation.id));
+                                              } else {
+                                                console.error('Failed to delete scenario');
+                                              }
+                                            } catch (error) {
+                                              console.error('Error deleting scenario:', error);
+                                            }
+                                          }}
+                                          className="text-gray-400 hover:text-red-500 transition-colors p-1"
+                                          title="Delete scenario"
+                                        >
+                                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                          </svg>
+                                        </button>
+                                      )}
+                                    </div>
+                                  </div>
+                                  <div 
+                                    className="text-xs text-gray-500 cursor-pointer hover:text-gray-700 h-8 overflow-hidden"
+                                    onClick={() => setExpandedScenario(expandedScenario === variation.id ? null : variation.id)}
+                                  >
+                                    {expandedScenario === variation.id 
+                                      ? variation.description || 'No description provided'
+                                      : `${(variation.description || 'Custom scenario analysis').substring(0, 50)}... (click to expand)`
+                                    }
+                                  </div>
+                                </div>
+                              </div>
+                              <div className="flex gap-2">
+                                <button 
+                                  onClick={() => {
+                                    // Pass the variation ID instead of the entire data
+                                    router.push(`/offer-analyzer?variationId=${variation.id}&submissionId=${submissionId}&readOnly=true`);
+                                  }}
+                                  className={`flex-1 px-3 py-2 text-white text-sm rounded transition-colors ${
+                                    index % 8 === 0 ? 'bg-indigo-600 hover:bg-indigo-700' :
+                                    index % 8 === 1 ? 'bg-rose-600 hover:bg-rose-700' :
+                                    index % 8 === 2 ? 'bg-emerald-600 hover:bg-emerald-700' :
+                                    index % 8 === 3 ? 'bg-purple-600 hover:bg-purple-700' :
+                                    index % 8 === 4 ? 'bg-cyan-600 hover:bg-cyan-700' :
+                                    index % 8 === 5 ? 'bg-pink-600 hover:bg-pink-700' :
+                                    index % 8 === 6 ? 'bg-orange-600 hover:bg-orange-700' : 'bg-teal-600 hover:bg-teal-700'
+                                  }`}
+                                >
+                                  View
+                                </button>
+                              </div>
+                            </div>
+                          ))}
+
+                          {/* Show placeholder only when no scenarios exist */}
+                          {pricingVariations.length === 0 && (
+                            <div className="flex-shrink-0 w-64 bg-gray-50 rounded-lg p-4 shadow-sm border border-gray-200 flex items-center justify-center">
+                              <div className="text-center text-gray-500">
+                                <div className="text-sm mb-2">No scenarios yet</div>
+                                <div className="text-xs">Be the first to create a scenario</div>
+                              </div>
+                            </div>
+                          )}
+
+                        </div>
+                      </div>
+
+                      {/* Info Footer */}
+                      <div className="mt-4 p-3 bg-gray-50 rounded-lg">
+                        <div className="text-xs text-gray-600 text-center">
+{pricingVariations.length} community scenarios • {pricingVariations.length === 0 ? 'Create the first scenario for this property' : 'Scroll horizontally to view all scenarios'}
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -769,8 +1117,25 @@ export default function SubmissionDetailsPage() {
                   <div className="grid grid-cols-2 gap-4">
                     <div className="text-center">
                       <h3 className="text-lg font-semibold text-gray-900 mb-2">Interest Level</h3>
-                      <div className="text-3xl font-bold text-blue-600 mb-1">{submission.interest_count}</div>
-                      <div className="text-sm text-gray-600">Investors interested</div>
+                      <div className="relative inline-block">
+                        <div 
+                          className="text-3xl font-bold text-blue-600 mb-1"
+                          onMouseEnter={() => setShowTooltip(true)}
+                          onMouseLeave={() => setShowTooltip(false)}
+                        >
+                          {submission.interest_count}
+                        </div>
+                        {showTooltip && interestedInvestors.length > 0 && (
+                          <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-white border border-gray-200 rounded-lg shadow-lg text-xs text-gray-700 whitespace-nowrap z-50">
+                            {interestedInvestors.map((investor, index) => (
+                              <div key={investor.id} className={index > 0 ? 'mt-1' : ''}>
+                                {investor.name}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                      <div className="text-sm text-gray-600">Interested</div>
                     </div>
                     <div className="text-center">
                       <h3 className="text-lg font-semibold text-gray-900 mb-2">Views</h3>
@@ -1114,6 +1479,7 @@ export default function SubmissionDetailsPage() {
           )}
         </div>
       </div>
+      {AlertComponent}
     </AuthGuard>
   );
 }

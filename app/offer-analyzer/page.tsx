@@ -10,7 +10,7 @@ import { AuthGuard } from '@/components/auth/AuthGuard';
 import { UnsavedChangesModal } from './UnsavedChangesModal';
 import { CharlieTooltip } from './CharlieTooltip';
 import { SaveOfferModal } from '@/components/shared/SaveOfferModal';
-import AlertModal from '@/components/shared/AlertModal';
+import AlertModal, { useAlert } from '@/components/shared/AlertModal';
 import {
   LineChart,
   Line,
@@ -22,6 +22,7 @@ import {
   ResponsiveContainer,
   ReferenceLine
 } from 'recharts';
+import { ArrowLeft } from 'lucide-react';
 
 // Define the structure for data points in the chart
 interface ChartDataPoint {
@@ -74,7 +75,7 @@ const calculateIRR = (cashFlows: number[], guess: number = 0.1): number => {
 };
 
 // Component to handle search params
-function SearchParamsHandler({ onParamsLoaded }: { onParamsLoaded: (params: { street: string; city: string; state: string; id?: string; offerId?: string }) => void }) {
+function SearchParamsHandler({ onParamsLoaded }: { onParamsLoaded: (params: { street: string; city: string; state: string; id?: string; offerId?: string; submissionId?: string; variationId?: string; readOnly?: boolean; source?: string }) => void }) {
   const searchParams = useSearchParams();
   
   useEffect(() => {
@@ -83,7 +84,11 @@ function SearchParamsHandler({ onParamsLoaded }: { onParamsLoaded: (params: { st
       city: searchParams.get('city') || '',
       state: searchParams.get('state') || '',
       id: searchParams.get('id') || undefined,
-      offerId: searchParams.get('offerId') || undefined
+      offerId: searchParams.get('offerId') || undefined,
+      submissionId: searchParams.get('submissionId') || undefined,
+      variationId: searchParams.get('variationId') || undefined,
+      readOnly: searchParams.get('readOnly') === 'true',
+      source: searchParams.get('source') || undefined
     });
   }, [searchParams, onParamsLoaded]);
   
@@ -95,6 +100,7 @@ export default function OfferAnalyzerPage() {
   const { user: currentUser } = useAuth();
   const { userClass, hasAccess: hasOfferAnalyzerAccess, isLoading: isLoadingAccess } = useOfferAnalyzerAccess();
   const router = useRouter();
+  const { showDelete, showError, AlertComponent } = useAlert();
 
   // Redirect disabled users to pricing page
   useEffect(() => {
@@ -121,14 +127,62 @@ export default function OfferAnalyzerPage() {
   const [propertyCity, setPropertyCity] = useState<string>('');
   const [propertyId, setPropertyId] = useState<string>('');
   const [propertyState, setPropertyState] = useState<string>('');
+  const [submissionId, setSubmissionId] = useState<string>('');
+  const [variationId, setVariationId] = useState<string>('');
+  const [isReadOnly, setIsReadOnly] = useState<boolean>(false);
+  const [source, setSource] = useState<string>('');
+  const [scenarioOwnerId, setScenarioOwnerId] = useState<string>('');
+  
+  // Determine if current user owns the scenario (for read-only logic)
+  const isOwner = !scenarioOwnerId || scenarioOwnerId === currentUser?.id;
+  const shouldDisableInputs = !!(variationId && scenarioOwnerId && scenarioOwnerId !== currentUser?.id);
   
   // Callback to handle search params
-  const handleParamsLoaded = useCallback(async (params: { street: string; city: string; state: string; id?: string; offerId?: string }) => {
+  const handleParamsLoaded = useCallback(async (params: { street: string; city: string; state: string; id?: string; offerId?: string; submissionId?: string; variationId?: string; readOnly?: boolean; source?: string }) => {
     setPropertyStreet(params.street);
     setPropertyCity(params.city);
     setPropertyState(params.state);
+    if (params.submissionId) {
+      setSubmissionId(params.submissionId);
+    }
+    if (params.variationId) {
+      setVariationId(params.variationId);
+    }
     if (params.id) {
       setPropertyId(params.id);
+    }
+    if (params.readOnly) {
+      setIsReadOnly(params.readOnly);
+    }
+
+    // Handle loading pricing variation by ID
+    if (params.variationId) {
+      try {
+        console.log('Loading pricing variation with ID:', params.variationId);
+        const response = await fetch(`/api/pricing-variations/${params.variationId}`);
+        if (response.ok) {
+          const data = await response.json();
+          const scenarioData = data.variation.scenario_data;
+          const ownerId = data.variation.user_id;
+          console.log('Loading scenario data:', scenarioData);
+          console.log('Scenario owner ID:', ownerId);
+          
+          // Store the scenario owner ID
+          setScenarioOwnerId(ownerId);
+          
+          // Set read-only mode based on ownership (allow editing if user owns the scenario)
+          setIsReadOnly(ownerId !== currentUser?.id);
+          
+          // Load all the scenario data into the analyzer state using the complete loader
+          loadOfferData(scenarioData);
+          
+          console.log('Scenario data loaded successfully');
+        } else {
+          console.error('Failed to load pricing variation');
+        }
+      } catch (error) {
+        console.error('Error loading pricing variation:', error);
+      }
     }
     
     // If offerId is provided, load the saved offer scenario
@@ -173,47 +227,52 @@ export default function OfferAnalyzerPage() {
         console.error('Error loading saved offer:', error);
       }
     }
+    
+    // Set the source for back navigation
+    if (params.source) {
+      setSource(params.source);
+    }
   }, []);
 
   // --- Input States: FINANCING ---
-  const [purchasePrice, setPurchasePrice] = useState<number>(7000000);
-  const [downPaymentPercentage, setDownPaymentPercentage] = useState<number>(20); // Percentage
-  const [interestRate, setInterestRate] = useState<number>(7.0); // Percentage
+  const [purchasePrice, setPurchasePrice] = useState<number>(0);
+  const [downPaymentPercentage, setDownPaymentPercentage] = useState<number>(0); // Percentage
+  const [interestRate, setInterestRate] = useState<number>(0); // Percentage
   const [loanStructure, setLoanStructure] = useState<'amortizing' | 'interest-only'>('amortizing'); // New loan structure selection
-  const [amortizationPeriodYears, setAmortizationPeriodYears] = useState<number>(30); // Years (updated from 24 to 30)
-  const [interestOnlyPeriodYears, setInterestOnlyPeriodYears] = useState<number>(10); // Years for IO period
-  const [refinanceTermYears, setRefinanceTermYears] = useState<number>(25); // Years (0 means sale)
-  const [closingCostsPercentage, setClosingCostsPercentage] = useState<number>(3); // Percentage of Purchase Price
-  const [dispositionCapRate, setDispositionCapRate] = useState<number>(6); // Target cap rate at sale
+  const [amortizationPeriodYears, setAmortizationPeriodYears] = useState<number>(0); // Years (updated from 24 to 30)
+  const [interestOnlyPeriodYears, setInterestOnlyPeriodYears] = useState<number>(0); // Years for IO period
+  const [refinanceTermYears, setRefinanceTermYears] = useState<number>(0); // Years (0 means sale)
+  const [closingCostsPercentage, setClosingCostsPercentage] = useState<number>(0); // Percentage of Purchase Price
+  const [dispositionCapRate, setDispositionCapRate] = useState<number>(0); // Target cap rate at sale
 
   // --- Input States: RENTS ---
-  const [numUnits, setNumUnits] = useState<number>(47);
-  const [avgMonthlyRentPerUnit, setAvgMonthlyRentPerUnit] = useState<number>(2500);
-  const [vacancyRate, setVacancyRate] = useState<number>(10); // Percentage
-  const [annualRentalGrowthRate, setAnnualRentalGrowthRate] = useState<number>(2); // Percentage
+  const [numUnits, setNumUnits] = useState<number>(0);
+  const [avgMonthlyRentPerUnit, setAvgMonthlyRentPerUnit] = useState<number>(0);
+  const [vacancyRate, setVacancyRate] = useState<number>(0); // Percentage
+  const [annualRentalGrowthRate, setAnnualRentalGrowthRate] = useState<number>(0); // Percentage
   const [otherIncomeAnnual, setOtherIncomeAnnual] = useState<number>(0); // New State for Other Income
   const [incomeReductionsAnnual, setIncomeReductionsAnnual] = useState<number>(0); // New State for Income Reductions
 
   // --- Input States: OPERATING EXPENSES (ANNUAL) ---
-  const [propertyTaxes, setPropertyTaxes] = useState<number>(12000);
-  const [insurance, setInsurance] = useState<number>(10000);
-  const [propertyManagementFeePercentage, setPropertyManagementFeePercentage] = useState<number>(6); // Percentage of EGI
-  const [maintenanceRepairsAnnual, setMaintenanceRepairsAnnual] = useState<number>(12000); // Total annual
-  const [utilitiesAnnual, setUtilitiesAnnual] = useState<number>(6000); // Total annual
-  const [contractServicesAnnual, setContractServicesAnnual] = useState<number>(6000); // New expense
-  const [payrollAnnual, setPayrollAnnual] = useState<number>(15000); // New expense
-  const [marketingAnnual, setMarketingAnnual] = useState<number>(2400); // New expense
-  const [gAndAAnnual, setGAndAAnnual] = useState<number>(1200); // New expense
-  const [otherExpensesAnnual, setOtherExpensesAnnual] = useState<number>(5000); // Total annual
-  const [expenseGrowthRate, setExpenseGrowthRate] = useState<number>(2); // Percentage
+  const [propertyTaxes, setPropertyTaxes] = useState<number>(0);
+  const [insurance, setInsurance] = useState<number>(0);
+  const [propertyManagementFeePercentage, setPropertyManagementFeePercentage] = useState<number>(0); // Percentage of EGI
+  const [maintenanceRepairsAnnual, setMaintenanceRepairsAnnual] = useState<number>(0); // Total annual
+  const [utilitiesAnnual, setUtilitiesAnnual] = useState<number>(0); // Total annual
+  const [contractServicesAnnual, setContractServicesAnnual] = useState<number>(0); // New expense
+  const [payrollAnnual, setPayrollAnnual] = useState<number>(0); // New expense
+  const [marketingAnnual, setMarketingAnnual] = useState<number>(0); // New expense
+  const [gAndAAnnual, setGAndAAnnual] = useState<number>(0); // New expense
+  const [otherExpensesAnnual, setOtherExpensesAnnual] = useState<number>(0); // Total annual
+  const [expenseGrowthRate, setExpenseGrowthRate] = useState<number>(0); // Percentage
 
   // --- Operating Expenses Toggle States ---
   const [usePercentageMode, setUsePercentageMode] = useState<boolean>(false);
-  const [operatingExpensePercentage, setOperatingExpensePercentage] = useState<number>(45);
+  const [operatingExpensePercentage, setOperatingExpensePercentage] = useState<number>(0);
 
   // --- Input States: CAPITAL EXPENDITURES (ANNUAL) ---
-  const [capitalReservePerUnitAnnual, setCapitalReservePerUnitAnnual] = useState<number>(500); // Per unit, annual
-  const [holdingPeriodYears, setHoldingPeriodYears] = useState<number>(10); // Years
+  const [capitalReservePerUnitAnnual, setCapitalReservePerUnitAnnual] = useState<number>(0); // Per unit, annual
+  const [holdingPeriodYears, setHoldingPeriodYears] = useState<number>(0); // Years
   const [deferredCapitalReservePerUnit, setDeferredCapitalReservePerUnit] = useState<number>(0);
   // --- Helper function for formatting and parsing numerical inputs with commas ---
   const formatAndParseNumberInput = (
@@ -583,26 +642,27 @@ export default function OfferAnalyzerPage() {
   };
 
   const handleDeleteOffer = async (offerId: string) => {
-    if (!confirm('Are you sure you want to delete this offer? This action cannot be undone.')) {
-      return;
-    }
+    showDelete(
+      'Are you sure you want to delete this offer? This action cannot be undone.',
+      async () => {
+        try {
+          const response = await fetch(`/api/offer-scenarios/${offerId}`, {
+            method: 'DELETE'
+          });
 
-    try {
-      const response = await fetch(`/api/offer-scenarios/${offerId}`, {
-        method: 'DELETE'
-      });
+          if (!response.ok) {
+            const data = await response.json();
+            throw new Error(data.error || 'Failed to delete offer');
+          }
 
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || 'Failed to delete offer');
+          // Remove from local state
+          setSelectedPropertyOffers(prev => prev.filter(offer => offer.id !== offerId));
+        } catch (error) {
+          console.error('Error deleting offer:', error);
+          showError('Failed to delete offer. Please try again.');
+        }
       }
-
-      // Remove from local state
-      setSelectedPropertyOffers(prev => prev.filter(offer => offer.id !== offerId));
-    } catch (error) {
-      console.error('Error deleting offer:', error);
-      alert('Failed to delete offer. Please try again.');
-    }
+    );
   };
 
   // Handle saving analysis to database
@@ -636,6 +696,16 @@ export default function OfferAnalyzerPage() {
   };
 
   const handleSaveOffer = async (offerName: string, offerDescription: string) => {
+    if (submissionId) {
+      // For pricing variations, skip duplicate checking and go straight to save
+      await performSaveOffer(offerName, offerDescription);
+      setShowSaveOfferModal(false);
+      // Redirect back to the fund browse page where they started
+      router.push(`/fund/browse/${submissionId}`);
+      return;
+    }
+
+    // Original offer scenario logic - requires propertyId
     if (!propertyId) {
       throw new Error('Property ID is required to save offers');
     }
@@ -707,54 +777,95 @@ export default function OfferAnalyzerPage() {
 
   // Separate function to actually perform the save
   const performSaveOffer = async (offerName: string, offerDescription: string) => {
-    if (!propertyId) {
-      throw new Error('Property ID is required to save offers');
-    }
+    // Check if we're saving a pricing variation (from submission) or regular offer scenario
+    // submissionId is available from state if this was opened from a fund submission
+    
+    if (submissionId) {
+      // Check if we're updating an existing variation or creating a new one
+      if (variationId) {
+        // Update existing pricing variation
+        const response = await fetch(`/api/pricing-variations/${variationId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            analysisName: offerName,
+            description: offerDescription,
+            scenarioData: getCurrentOfferData()
+          })
+        });
 
-    // Get the correct property_id from saved_properties table
-    const favoritesResponse = await fetch('/api/favorites', {
-      method: 'GET',
-      headers: { 'Content-Type': 'application/json' }
-    });
-    
-    if (!favoritesResponse.ok) {
-      throw new Error('Failed to fetch saved properties');
-    }
-    
-    const favoritesData = await favoritesResponse.json();
-    
-    console.log('Looking for UUID:', propertyId);
-    
-    // Find the saved property record where the internal UUID matches
-    const savedProperty = favoritesData.favorites?.find((f: any) => 
-      f.property_data?.id === propertyId
-    );
-    
-    console.log('Found saved property:', savedProperty);
-    
-    if (!savedProperty || !savedProperty.property_id) {
-      console.error('Available property_data IDs:', favoritesData.favorites?.map((f: any) => f.property_data?.id));
-      throw new Error(`Property UUID ${propertyId} not found in favorites. This property must be saved to your favorites before creating offer scenarios.`);
-    }
+        const data = await response.json();
+        if (!response.ok) {
+          throw new Error(data.error || 'Failed to update pricing variation');
+        }
+      } else {
+        // Create new pricing variation - no propertyId needed
+        const response = await fetch('/api/pricing-variations', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            submissionId,
+            analysisName: offerName,
+            description: offerDescription,
+            scenarioData: getCurrentOfferData()
+          })
+        });
 
-    const actualPropertyId = savedProperty.property_id;
-    console.log('Using actual property_id:', actualPropertyId);
+        const data = await response.json();
+        if (!response.ok) {
+          throw new Error(data.error || 'Failed to save pricing variation');
+        }
+      }
+    } else {
+      // Original offer scenario save logic - propertyId required
+      if (!propertyId) {
+        throw new Error('Property ID is required to save offers');
+      }
 
-    const response = await fetch('/api/offer-scenarios', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        propertyId: actualPropertyId, // Use the property_id field from saved_properties
-        offerName,
-        offerDescription,
-        offerData: getCurrentOfferData()
-      })
-    });
+      // Get the correct property_id from saved_properties table
+      const favoritesResponse = await fetch('/api/favorites', {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      
+      if (!favoritesResponse.ok) {
+        throw new Error('Failed to fetch saved properties');
+      }
+      
+      const favoritesData = await favoritesResponse.json();
+      
+      console.log('Looking for UUID:', propertyId);
+      
+      // Find the saved property record where the internal UUID matches
+      const savedProperty = favoritesData.favorites?.find((f: any) => 
+        f.property_data?.id === propertyId
+      );
+      
+      console.log('Found saved property:', savedProperty);
+      
+      if (!savedProperty || !savedProperty.property_id) {
+        console.error('Available property_data IDs:', favoritesData.favorites?.map((f: any) => f.property_data?.id));
+        throw new Error(`Property UUID ${propertyId} not found in favorites. This property must be saved to your favorites before creating offer scenarios.`);
+      }
 
-    const data = await response.json();
+      const actualPropertyId = savedProperty.property_id;
+      console.log('Using actual property_id:', actualPropertyId);
 
-    if (!response.ok) {
-      throw new Error(data.error || 'Failed to save offer');
+      const response = await fetch('/api/offer-scenarios', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          propertyId: actualPropertyId, // Use the property_id field from saved_properties
+          offerName,
+          offerDescription,
+          offerData: getCurrentOfferData()
+        })
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to save offer');
+      }
     }
 
     // Reset the unsaved changes tracking since we're saving the scenario
@@ -1592,9 +1703,25 @@ export default function OfferAnalyzerPage() {
       <Suspense fallback={null}>
         <SearchParamsHandler onParamsLoaded={handleParamsLoaded} />
       </Suspense>
+      
     <div className="flex flex-col lg:flex-row p-6 bg-gray-50 text-gray-800 min-h-screen">
       {/* Hidden file input for loading settings */}
       <div className="lg:w-2/3 pr-0 lg:pr-8 mb-8 lg:mb-0">
+
+        {/* Back Button - always show and return to engage page */}
+        <button
+          onClick={() => {
+            if (submissionId) {
+              router.push(`/fund/browse/${submissionId}`);
+            } else {
+              router.push('/engage');
+            }
+          }}
+          className="flex items-center text-blue-600 hover:text-blue-700 font-medium mb-6"
+        >
+          <ArrowLeft className="h-4 w-4 mr-2" />
+          Back
+        </button>
 
         <div className="flex justify-between items-end mb-6">
           {/* Investment Grade Card - Modern Charlie2 Style */}
@@ -1840,7 +1967,12 @@ export default function OfferAnalyzerPage() {
             </button>
             <button
               onClick={() => setShowMoreMenu(!showMoreMenu)}
-              className="flex-1 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transform transition-all duration-150 text-sm hover:scale-105 active:scale-95 active:bg-blue-700"
+              disabled={isReadOnly}
+              className={`flex-1 px-4 py-2 rounded-lg transform transition-all duration-150 text-sm hover:scale-105 active:scale-95 ${
+                isReadOnly 
+                  ? 'bg-gray-400 text-gray-200 cursor-not-allowed' 
+                  : 'bg-blue-500 text-white hover:bg-blue-600 active:bg-blue-700'
+              }`}
             >
               Actions
             </button>
@@ -1858,10 +1990,18 @@ export default function OfferAnalyzerPage() {
                 <div className="py-2">
                   <button
                     onClick={() => {
-                      setShowSaveOfferModal(true);
-                      setShowMoreMenu(false);
+                      if (!shouldDisableInputs) {
+                        setShowSaveOfferModal(true);
+                        setShowMoreMenu(false);
+                      }
                     }}
-                    className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 hover:text-gray-900 transition-colors cursor-pointer"
+                    disabled={shouldDisableInputs}
+                    className={`w-full text-left px-4 py-3 text-sm transition-colors ${
+                      shouldDisableInputs 
+                        ? 'text-gray-400 cursor-not-allowed' 
+                        : 'text-gray-700 hover:bg-gray-50 hover:text-gray-900 cursor-pointer'
+                    }`}
+                    title={shouldDisableInputs ? "You can only edit your own scenarios" : "Save Analysis"}
                   >
                     Save Analysis
                   </button>
@@ -1902,7 +2042,8 @@ export default function OfferAnalyzerPage() {
               id="purchasePrice"
               value={(purchasePrice ?? 0).toLocaleString('en-US')}
               onChange={formatAndParseNumberInput(setPurchasePrice)}
-              className="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow duration-150 ease-in-out shadow-sm"
+              disabled={shouldDisableInputs}
+              className={`w-full p-2.5 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow duration-150 ease-in-out shadow-sm ${shouldDisableInputs ? 'bg-gray-100 cursor-not-allowed' : 'bg-white'}`}
               step="10000"
               suppressHydrationWarning={true}
             />
@@ -1917,7 +2058,8 @@ export default function OfferAnalyzerPage() {
               id="downPaymentPercentage"
               value={downPaymentPercentage || ''}
               onChange={(e) => setDownPaymentPercentage(Math.max(0, Math.min(100, parseFloat(e.target.value) || 0)))}
-              className="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow duration-150 ease-in-out shadow-sm"
+              disabled={shouldDisableInputs}
+              className={`w-full p-2.5 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow duration-150 ease-in-out shadow-sm ${shouldDisableInputs ? 'bg-gray-100 cursor-not-allowed' : 'bg-white'}`}
               step="0.1"
               min="0"
               max="100"
@@ -1933,7 +2075,8 @@ export default function OfferAnalyzerPage() {
               id="interestRate"
               value={interestRate || ''}
               onChange={(e) => setInterestRate(Math.max(0, parseFloat(e.target.value) || 0))}
-              className="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow duration-150 ease-in-out shadow-sm"
+              disabled={shouldDisableInputs}
+              className={`w-full p-2.5 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow duration-150 ease-in-out shadow-sm ${shouldDisableInputs ? 'bg-gray-100 cursor-not-allowed' : 'bg-white'}`}
               step="0.1"
             />
           </CharlieTooltip>
@@ -1980,7 +2123,8 @@ export default function OfferAnalyzerPage() {
                 id="amortizationPeriodYears"
                 value={amortizationPeriodYears ?? 0}
                 onChange={(e) => setAmortizationPeriodYears(Math.max(1, parseInt(e.target.value) || 1))}
-                className="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow duration-150 ease-in-out shadow-sm"
+                disabled={shouldDisableInputs}
+              className={`w-full p-2.5 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow duration-150 ease-in-out shadow-sm ${shouldDisableInputs ? 'bg-gray-100 cursor-not-allowed' : 'bg-white'}`}
                 step="1"
                 min="1"
               />
@@ -1996,7 +2140,8 @@ export default function OfferAnalyzerPage() {
                   id="interestOnlyPeriodYears"
                   value={interestOnlyPeriodYears ?? 0}
                   onChange={(e) => setInterestOnlyPeriodYears(Math.max(1, parseInt(e.target.value) || 1))}
-                  className="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow duration-150 ease-in-out shadow-sm"
+                  disabled={shouldDisableInputs}
+              className={`w-full p-2.5 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow duration-150 ease-in-out shadow-sm ${shouldDisableInputs ? 'bg-gray-100 cursor-not-allowed' : 'bg-white'}`}
                   step="1"
                   min="1"
                 />
@@ -2010,7 +2155,8 @@ export default function OfferAnalyzerPage() {
                   id="refinanceTermYears"
                   value={refinanceTermYears ?? 0}
                   onChange={(e) => setRefinanceTermYears(Math.max(0, parseInt(e.target.value) || 0))}
-                  className="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow duration-150 ease-in-out shadow-sm"
+                  disabled={shouldDisableInputs}
+              className={`w-full p-2.5 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow duration-150 ease-in-out shadow-sm ${shouldDisableInputs ? 'bg-gray-100 cursor-not-allowed' : 'bg-white'}`}
                   step="1"
                   min="0"
                 />
@@ -2028,7 +2174,8 @@ export default function OfferAnalyzerPage() {
               id="closingCostsPercentage"
               value={closingCostsPercentage || ''}
               onChange={(e) => setClosingCostsPercentage(Math.max(0, parseFloat(e.target.value) || 0))}
-              className="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow duration-150 ease-in-out shadow-sm"
+              disabled={shouldDisableInputs}
+              className={`w-full p-2.5 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow duration-150 ease-in-out shadow-sm ${shouldDisableInputs ? 'bg-gray-100 cursor-not-allowed' : 'bg-white'}`}
               step="0.1"
               min="0"
             />
@@ -2044,7 +2191,8 @@ export default function OfferAnalyzerPage() {
               id="dispositionCapRate"
               value={dispositionCapRate || ''}
               onChange={(e) => setDispositionCapRate(Math.max(0, parseFloat(e.target.value) || 0))}
-              className="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow duration-150 ease-in-out shadow-sm"
+              disabled={shouldDisableInputs}
+              className={`w-full p-2.5 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow duration-150 ease-in-out shadow-sm ${shouldDisableInputs ? 'bg-gray-100 cursor-not-allowed' : 'bg-white'}`}
               step="0.1"
               min="0"
             />
@@ -2062,7 +2210,8 @@ export default function OfferAnalyzerPage() {
               id="numUnits"
               value={(numUnits ?? 0).toLocaleString('en-US')}
               onChange={formatAndParseNumberInput(setNumUnits)}
-              className="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow duration-150 ease-in-out shadow-sm"
+              disabled={shouldDisableInputs}
+              className={`w-full p-2.5 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow duration-150 ease-in-out shadow-sm ${shouldDisableInputs ? 'bg-gray-100 cursor-not-allowed' : 'bg-white'}`}
               suppressHydrationWarning={true}
             />
           </CharlieTooltip>
@@ -2076,7 +2225,8 @@ export default function OfferAnalyzerPage() {
               id="avgMonthlyRentPerUnit"
               value={(avgMonthlyRentPerUnit ?? 0).toLocaleString('en-US')}
               onChange={formatAndParseNumberInput(setAvgMonthlyRentPerUnit)}
-              className="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow duration-150 ease-in-out shadow-sm"
+              disabled={shouldDisableInputs}
+              className={`w-full p-2.5 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow duration-150 ease-in-out shadow-sm ${shouldDisableInputs ? 'bg-gray-100 cursor-not-allowed' : 'bg-white'}`}
               step="100"
               suppressHydrationWarning={true}
             />
@@ -2091,7 +2241,8 @@ export default function OfferAnalyzerPage() {
               id="vacancyRate"
               value={vacancyRate || ''}
               onChange={(e) => setVacancyRate(Math.max(0, Math.min(100, parseFloat(e.target.value) || 0)))}
-              className="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow duration-150 ease-in-out shadow-sm"
+              disabled={shouldDisableInputs}
+              className={`w-full p-2.5 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow duration-150 ease-in-out shadow-sm ${shouldDisableInputs ? 'bg-gray-100 cursor-not-allowed' : 'bg-white'}`}
               step="0.1"
               min="0"
               max="100"
@@ -2107,7 +2258,8 @@ export default function OfferAnalyzerPage() {
               id="annualRentalGrowthRate"
               value={annualRentalGrowthRate || ''}
               onChange={(e) => setAnnualRentalGrowthRate(Math.max(0, parseFloat(e.target.value) || 0))}
-              className="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow duration-150 ease-in-out shadow-sm"
+              disabled={shouldDisableInputs}
+              className={`w-full p-2.5 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow duration-150 ease-in-out shadow-sm ${shouldDisableInputs ? 'bg-gray-100 cursor-not-allowed' : 'bg-white'}`}
               step="0.1"
               min="0"
             />
@@ -2122,7 +2274,8 @@ export default function OfferAnalyzerPage() {
               id="otherIncomeAnnual"
               value={(otherIncomeAnnual ?? 0).toLocaleString('en-US')}
               onChange={formatAndParseNumberInput(setOtherIncomeAnnual)}
-              className="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow duration-150 ease-in-out shadow-sm"
+              disabled={shouldDisableInputs}
+              className={`w-full p-2.5 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow duration-150 ease-in-out shadow-sm ${shouldDisableInputs ? 'bg-gray-100 cursor-not-allowed' : 'bg-white'}`}
               step="100"
               suppressHydrationWarning={true}
             />
@@ -2137,7 +2290,8 @@ export default function OfferAnalyzerPage() {
               id="incomeReductionsAnnual"
               value={(incomeReductionsAnnual ?? 0).toLocaleString('en-US')}
               onChange={formatAndParseNumberInput(setIncomeReductionsAnnual)}
-              className="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow duration-150 ease-in-out shadow-sm"
+              disabled={shouldDisableInputs}
+              className={`w-full p-2.5 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow duration-150 ease-in-out shadow-sm ${shouldDisableInputs ? 'bg-gray-100 cursor-not-allowed' : 'bg-white'}`}
               step="100"
               suppressHydrationWarning={true}
             />
@@ -2194,7 +2348,8 @@ export default function OfferAnalyzerPage() {
                   id="expenseGrowthRate"
                   value={expenseGrowthRate ?? 0}
                   onChange={(e) => setExpenseGrowthRate(Math.max(0, parseFloat(e.target.value) || 0))}
-                  className="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow duration-150 ease-in-out shadow-sm"
+                  disabled={shouldDisableInputs}
+              className={`w-full p-2.5 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow duration-150 ease-in-out shadow-sm ${shouldDisableInputs ? 'bg-gray-100 cursor-not-allowed' : 'bg-white'}`}
                   step="0.1"
                   min="0"
                 />
@@ -2211,7 +2366,8 @@ export default function OfferAnalyzerPage() {
               id="propertyTaxes"
               value={(propertyTaxes ?? 0).toLocaleString('en-US')}
               onChange={formatAndParseNumberInput(setPropertyTaxes)}
-              className="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow duration-150 ease-in-out shadow-sm"
+              disabled={shouldDisableInputs}
+              className={`w-full p-2.5 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow duration-150 ease-in-out shadow-sm ${shouldDisableInputs ? 'bg-gray-100 cursor-not-allowed' : 'bg-white'}`}
               step="100"
               suppressHydrationWarning={true}
             />
@@ -2226,7 +2382,8 @@ export default function OfferAnalyzerPage() {
               id="insurance"
               value={(insurance ?? 0).toLocaleString('en-US')}
               onChange={formatAndParseNumberInput(setInsurance)}
-              className="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow duration-150 ease-in-out shadow-sm"
+              disabled={shouldDisableInputs}
+              className={`w-full p-2.5 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow duration-150 ease-in-out shadow-sm ${shouldDisableInputs ? 'bg-gray-100 cursor-not-allowed' : 'bg-white'}`}
               step="100"
               suppressHydrationWarning={true}
             />
@@ -2241,7 +2398,8 @@ export default function OfferAnalyzerPage() {
               id="propertyManagementFeePercentage"
               value={propertyManagementFeePercentage || ''}
               onChange={(e) => setPropertyManagementFeePercentage(Math.max(0, parseFloat(e.target.value) || 0))}
-              className="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow duration-150 ease-in-out shadow-sm"
+              disabled={shouldDisableInputs}
+              className={`w-full p-2.5 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow duration-150 ease-in-out shadow-sm ${shouldDisableInputs ? 'bg-gray-100 cursor-not-allowed' : 'bg-white'}`}
               step="0.1"
               min="0"
             />
@@ -2256,7 +2414,8 @@ export default function OfferAnalyzerPage() {
               id="maintenanceRepairsAnnual"
               value={(maintenanceRepairsAnnual ?? 0).toLocaleString('en-US')}
               onChange={formatAndParseNumberInput(setMaintenanceRepairsAnnual)}
-              className="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow duration-150 ease-in-out shadow-sm"
+              disabled={shouldDisableInputs}
+              className={`w-full p-2.5 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow duration-150 ease-in-out shadow-sm ${shouldDisableInputs ? 'bg-gray-100 cursor-not-allowed' : 'bg-white'}`}
               step="100"
               suppressHydrationWarning={true}
             />
@@ -2271,7 +2430,8 @@ export default function OfferAnalyzerPage() {
               id="utilitiesAnnual"
               value={(utilitiesAnnual ?? 0).toLocaleString('en-US')}
               onChange={formatAndParseNumberInput(setUtilitiesAnnual)}
-              className="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow duration-150 ease-in-out shadow-sm"
+              disabled={shouldDisableInputs}
+              className={`w-full p-2.5 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow duration-150 ease-in-out shadow-sm ${shouldDisableInputs ? 'bg-gray-100 cursor-not-allowed' : 'bg-white'}`}
               step="100"
               suppressHydrationWarning={true}
             />
@@ -2286,7 +2446,8 @@ export default function OfferAnalyzerPage() {
               id="contractServicesAnnual"
               value={(contractServicesAnnual ?? 0).toLocaleString('en-US')}
               onChange={formatAndParseNumberInput(setContractServicesAnnual)}
-              className="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow duration-150 ease-in-out shadow-sm"
+              disabled={shouldDisableInputs}
+              className={`w-full p-2.5 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow duration-150 ease-in-out shadow-sm ${shouldDisableInputs ? 'bg-gray-100 cursor-not-allowed' : 'bg-white'}`}
               step="100"
               suppressHydrationWarning={true}
             />
@@ -2301,7 +2462,8 @@ export default function OfferAnalyzerPage() {
               id="payrollAnnual"
               value={(payrollAnnual ?? 0).toLocaleString('en-US')}
               onChange={formatAndParseNumberInput(setPayrollAnnual)}
-              className="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow duration-150 ease-in-out shadow-sm"
+              disabled={shouldDisableInputs}
+              className={`w-full p-2.5 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow duration-150 ease-in-out shadow-sm ${shouldDisableInputs ? 'bg-gray-100 cursor-not-allowed' : 'bg-white'}`}
               step="100"
               suppressHydrationWarning={true}
             />
@@ -2316,7 +2478,8 @@ export default function OfferAnalyzerPage() {
               id="marketingAnnual"
               value={(marketingAnnual ?? 0).toLocaleString('en-US')}
               onChange={formatAndParseNumberInput(setMarketingAnnual)}
-              className="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow duration-150 ease-in-out shadow-sm"
+              disabled={shouldDisableInputs}
+              className={`w-full p-2.5 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow duration-150 ease-in-out shadow-sm ${shouldDisableInputs ? 'bg-gray-100 cursor-not-allowed' : 'bg-white'}`}
               step="100"
               suppressHydrationWarning={true}
             />
@@ -2331,7 +2494,8 @@ export default function OfferAnalyzerPage() {
               id="gAndAAnnual"
               value={(gAndAAnnual ?? 0).toLocaleString('en-US')}
               onChange={formatAndParseNumberInput(setGAndAAnnual)}
-              className="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow duration-150 ease-in-out shadow-sm"
+              disabled={shouldDisableInputs}
+              className={`w-full p-2.5 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow duration-150 ease-in-out shadow-sm ${shouldDisableInputs ? 'bg-gray-100 cursor-not-allowed' : 'bg-white'}`}
               step="100"
               suppressHydrationWarning={true}
             />
@@ -2346,7 +2510,8 @@ export default function OfferAnalyzerPage() {
               id="otherExpensesAnnual"
               value={(otherExpensesAnnual ?? 0).toLocaleString('en-US')}
               onChange={formatAndParseNumberInput(setOtherExpensesAnnual)}
-              className="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow duration-150 ease-in-out shadow-sm"
+              disabled={shouldDisableInputs}
+              className={`w-full p-2.5 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow duration-150 ease-in-out shadow-sm ${shouldDisableInputs ? 'bg-gray-100 cursor-not-allowed' : 'bg-white'}`}
               step="100"
               suppressHydrationWarning={true}
             />
@@ -2361,7 +2526,8 @@ export default function OfferAnalyzerPage() {
               id="expenseGrowthRate"
               value={expenseGrowthRate ?? 0}
               onChange={(e) => setExpenseGrowthRate(Math.max(0, parseFloat(e.target.value) || 0))}
-              className="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow duration-150 ease-in-out shadow-sm"
+              disabled={shouldDisableInputs}
+              className={`w-full p-2.5 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow duration-150 ease-in-out shadow-sm ${shouldDisableInputs ? 'bg-gray-100 cursor-not-allowed' : 'bg-white'}`}
               step="0.1"
               min="0"
             />
@@ -2381,7 +2547,8 @@ export default function OfferAnalyzerPage() {
               id="capitalReservePerUnitAnnual"
               value={(capitalReservePerUnitAnnual ?? 0).toLocaleString('en-US')}
               onChange={formatAndParseNumberInput(setCapitalReservePerUnitAnnual)}
-              className="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow duration-150 ease-in-out shadow-sm"
+              disabled={shouldDisableInputs}
+              className={`w-full p-2.5 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow duration-150 ease-in-out shadow-sm ${shouldDisableInputs ? 'bg-gray-100 cursor-not-allowed' : 'bg-white'}`}
               step="10"
               suppressHydrationWarning={true}
             />
@@ -2395,7 +2562,8 @@ export default function OfferAnalyzerPage() {
               id="deferredCapitalReservePerUnit"
               value={(deferredCapitalReservePerUnit ?? 0).toLocaleString('en-US')}
               onChange={formatAndParseNumberInput(setDeferredCapitalReservePerUnit)}
-              className="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow duration-150 ease-in-out shadow-sm"
+              disabled={shouldDisableInputs}
+              className={`w-full p-2.5 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow duration-150 ease-in-out shadow-sm ${shouldDisableInputs ? 'bg-gray-100 cursor-not-allowed' : 'bg-white'}`}
               step="10"
               suppressHydrationWarning={true}
             />
@@ -2412,7 +2580,8 @@ export default function OfferAnalyzerPage() {
                 max="50"
                 value={holdingPeriodYears ?? 0}
                 onChange={(e) => setHoldingPeriodYears(parseInt(e.target.value))}
-                className="w-full h-2 bg-gray-300 rounded-lg appearance-none cursor-pointer accent-orange-500"
+                disabled={shouldDisableInputs}
+                className={`w-full h-2 rounded-lg appearance-none ${shouldDisableInputs ? 'bg-gray-200 cursor-not-allowed' : 'bg-gray-300 cursor-pointer accent-orange-500'}`}
               />
               <span className="ml-3 text-gray-700 font-medium w-10 text-right">{holdingPeriodYears}</span>
             </div>

@@ -48,21 +48,24 @@ export async function GET() {
 async function generateNationalInsights() {
   try {
     console.log('🤖 Starting national insights generation...');
-    const prompt = `Generate 3 specific, data-driven national multifamily real estate market insights for today's investors. Current date: ${new Date().toLocaleDateString()}.
+    const prompt = `Generate 3 detailed, data-driven national multifamily real estate market insights for today's investors. Current date: ${new Date().toLocaleDateString()}.
 
-Context: Focus on actionable intelligence for apartment building investors, including specific metrics, trends, and market opportunities.
+Context: You are providing actionable intelligence for sophisticated apartment building investors who want specific metrics, market trends, and investment opportunities they can act on immediately.
 
-Please provide exactly 3 insights in this format:
-1. MARKET TREND: [Include specific data like "Cap rates averaging X%" or "Rents up X% nationally" or "Vacancy rates at X%" - be specific with numbers and timeframes]
-2. RATE IMPACT: [How current Fed rates (mention approximate current rate) are affecting deal structures, financing costs, or investment strategies - include specific impacts]  
-3. OPPORTUNITY: [Specific geographic markets, property types, or investment strategies showing promise - mention specific markets/states if relevant]
+Please provide exactly 3 comprehensive insights in this format:
+1. MARKET TREND: [Provide specific national data like "Multifamily rents have increased X% year-over-year, with average monthly rents now at $X,XXX nationwide. Cap rates are averaging X.X% in primary markets and X.X% in secondary markets. Vacancy rates have declined to X.X% nationally, down from X.X% last year, indicating strong demand." Include specific timeframes and regional variations.]
+
+2. RATE IMPACT: [Detail how current Fed rates (mention specific current rate around 5.25-5.50%) are affecting the market: "With the Federal Funds Rate at X.X%, multifamily financing costs have risen to approximately X.X-X.X% for acquisition loans and X.X-X.X% for construction financing. This has shifted investment strategies toward value-add properties where investors can increase NOI through renovations, rather than relying solely on appreciation. Deal volume has decreased by approximately X% compared to last year as investors require higher initial yields."]
+
+3. OPPORTUNITY: [Identify specific geographic markets and strategies: "Secondary markets like [City, State] and [City, State] are showing strong fundamentals with X.X% population growth and X.X% job growth. Class B and C properties in these markets offer cap rates of X.X-X.X%, compared to X.X-X.X% in primary markets. Workforce housing targeting households earning $XX,XXX-$XX,XXX annually represents the strongest opportunity, particularly in markets with major employer expansion."]
 
 Requirements:
-- Include specific numbers, percentages, or data points where possible
-- Mention current approximate interest rates (around 7-8% range)
-- Reference specific US markets or regions when relevant
-- Focus on actionable insights investors can use immediately
-- Each insight should be 1-2 sentences maximum`;
+- Include specific numbers, percentages, cap rates, and dollar amounts
+- Mention current Fed funds rate (around 5.25-5.50%)
+- Reference 2-3 specific US markets or regions with actual growth data
+- Provide actionable investment strategies
+- Each insight should be 3-4 detailed sentences with specific data points
+- Focus on information sophisticated investors can immediately apply to their underwriting and market selection`;
 
     const result = await openai.chat.completions.create({
       model: process.env.OPENAI_DEFAULT_MODEL || 'gpt-4o-mini',
@@ -76,7 +79,7 @@ Requirements:
           content: prompt
         }
       ],
-      max_tokens: 200,
+      max_tokens: 800,
       temperature: 0.1
     });
 
@@ -90,10 +93,10 @@ Requirements:
     lines.forEach(line => {
       if (line.includes('MARKET TREND:') || line.includes('1.')) {
         marketTrend = line.replace(/^.*(?:MARKET TREND:|1\.)\s*/, '').trim();
-      } else if (line.includes('INTEREST RATE IMPACT:') || line.includes('2.')) {
-        interestRateImpact = line.replace(/^.*(?:INTEREST RATE IMPACT:|2\.)\s*/, '').trim();
-      } else if (line.includes('OPPORTUNITY OUTLOOK:') || line.includes('3.')) {
-        opportunityOutlook = line.replace(/^.*(?:OPPORTUNITY OUTLOOK:|3\.)\s*/, '').trim();
+      } else if (line.includes('RATE IMPACT:') || line.includes('2.')) {
+        interestRateImpact = line.replace(/^.*(?:RATE IMPACT:|2\.)\s*/, '').trim();
+      } else if (line.includes('OPPORTUNITY:') || line.includes('3.')) {
+        opportunityOutlook = line.replace(/^.*(?:OPPORTUNITY:|3\.)\s*/, '').trim();
       }
     });
 

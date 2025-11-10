@@ -10,7 +10,6 @@ import {
   Heart,
   Eye,
   Filter,
-  ArrowLeft,
   CheckCircle
 } from 'lucide-react';
 
@@ -88,7 +87,7 @@ function BrowseSubmissionsContent() {
             // Get property details
             const { data: propertyData } = await supabase
               .from('saved_properties')
-              .select('address_street, address_city, address_state, units_count')
+              .select('address_street, address_full, address_city, address_state, units_count')
               .eq('property_id', item.property_id)
               .single();
 
@@ -121,7 +120,7 @@ function BrowseSubmissionsContent() {
               interest_count: item.interest_count,
               user_id: item.user_id,
               offer_scenario_id: item.offer_scenario_id,
-              address: propertyData?.address_street,
+              address: propertyData?.address_street || propertyData?.address_full,
               city: propertyData?.address_city,
               state: propertyData?.address_state,
               units_count: propertyData?.units_count,
@@ -243,14 +242,6 @@ function BrowseSubmissionsContent() {
           
           {/* Header */}
           <div className="mb-8">
-            <button
-              onClick={() => router.back()}
-              className="inline-flex items-center text-blue-600 hover:text-blue-700 mb-4"
-            >
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back
-            </button>
-            
             <div className="flex justify-between items-center">
               <div>
                 <h1 className="text-3xl font-bold text-gray-900 mb-2">Browse Investment Opportunities</h1>

@@ -10,7 +10,7 @@ This directory contains the automated monthly rental data processing system for 
 
 ## Monthly Process
 
-### 1. Receive CSV File
+### 1. Receive CSV File - put file in public folder and give Claude the filename.  It will take it from there
 Each month, you'll receive a Zillow MSA rental data CSV file with format:
 - Columns: RegionID, SizeRank, RegionName, RegionType, StateName, 2015-01-31, 2015-02-28, ...
 - Latest column contains the current month's data (e.g., 2025-08-31)

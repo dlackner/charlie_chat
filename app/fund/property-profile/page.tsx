@@ -20,6 +20,7 @@ interface Property {
   stories?: number;
   year_built?: number;
   lot_square_feet?: number;
+  square_feet?: number;
   years_owned?: number;
   assessed_value?: number;
   estimated_value?: number;
@@ -254,6 +255,12 @@ function PropertyProfileContent() {
                     <span className="text-gray-600">Lot Size:</span>
                     <span className="font-medium">
                       {property.lot_square_feet ? `${property.lot_square_feet.toLocaleString()} sq ft` : 'N/A'}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Square Feet:</span>
+                    <span className="font-medium">
+                      {property.square_feet ? `${property.square_feet.toLocaleString()} sq ft` : 'N/A'}
                     </span>
                   </div>
                   <div className="flex justify-between">

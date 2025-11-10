@@ -47,7 +47,7 @@ const OperatingSystemDiagram = () => {
       id: 'fund',
       name: 'FUND',
       color: '#2563eb', // blue-600
-      description: 'Financing, underwriting, and investor relations.'
+      description: 'Community funding of vetted properties.'
     },
     {
       id: 'manage',

@@ -240,14 +240,14 @@ export async function GET(request: NextRequest) {
     // Section 3: AI Market Trends (real AI analysis)
     const trends = await generateRealAITrends(marketDetails, marketProperties, userMarketProperties, buyBoxData);
 
-    // Helper function to format currency
+    // Helper function to format currency - no decimals
     const formatCurrency = (value: number) => {
       if (value >= 1000000) {
-        return `$${(value / 1000000).toFixed(1)}M`;
-      } else if (value >= 1000) {
-        return `$${(value / 1000).toFixed(0)}K`;
+        return `$${Math.round(value / 1000000)}M`;
+      } else if (value >= 100000) {
+        return `$${Math.round(value / 1000)}K`;
       }
-      return `$${value.toLocaleString()}`;
+      return `$${Math.round(value).toLocaleString()}`;
     };
 
     return NextResponse.json({
@@ -273,22 +273,20 @@ export async function GET(request: NextRequest) {
     
     // Return fallback data
     return NextResponse.json({
-      marketPulse: {
-        activeListings: 0,
-        avgEstimatedValue: '$0',
-        avgUnits: 0,
-        buyBoxMatches: 0
+      cacheable: {
+        marketPulse: {
+          activeListings: 0,
+          avgEstimatedValue: '$0',
+          avgAssessedValue: '$0'
+        },
+        aiTrends: {
+          marketBriefing: 'Market analysis unavailable. Add more properties to your buy box to generate insights for this market.'
+        }
       },
       portfolioInsights: {
         propertiesTracked: 0,
         totalInvestment: '$0',
-        avgCapRate: '0%',
-        bestOpportunity: 'None tracked'
-      },
-      aiTrends: {
-        hotTrend: 'Insufficient data for analysis',
-        priceMovement: 'Market data unavailable',
-        recommendation: 'Add more properties to your buy box for insights'
+        avgCapRate: '0%'
       }
     });
   }
@@ -297,9 +295,7 @@ export async function GET(request: NextRequest) {
 // Generate real AI trends using GPT-4o mini
 async function generateRealAITrends(marketDetails: any, marketProperties: any[], userProperties: any[], buyBoxData: any) {
   const fallbackTrends = {
-    hotTrend: 'Insufficient data for analysis',
-    priceMovement: 'Market data unavailable', 
-    recommendation: 'Add more properties to your buy box for insights'
+    marketBriefing: 'Market analysis unavailable. Add more properties to your buy box to generate insights for this market.'
   };
 
   if (!marketProperties || !Array.isArray(marketProperties) || marketProperties.length === 0) {
@@ -350,65 +346,45 @@ async function generateRealAITrends(marketDetails: any, marketProperties: any[],
     }
 
     // Create AI prompt for market analysis
-    const marketAnalysisPrompt = `Analyze this multifamily real estate market and provide 3 brief insights:
-
-MARKET: ${marketDetails.city}, ${marketDetails.state}
-BUY BOX CRITERIA:
-- Value Range: $${buyBoxData.estimated_value_min?.toLocaleString() || '0'} - $${buyBoxData.estimated_value_max?.toLocaleString() || 'Any'}
-- Year Built: ${buyBoxData.year_built_min || 'Any'} - ${buyBoxData.year_built_max || 'Any'}
+    const marketAnalysisPrompt = `Write a comprehensive 150-200 word market briefing for multifamily investors in ${marketDetails.city}, ${marketDetails.state}.
 
 CURRENT MARKET DATA:
 - Active MLS Listings: ${marketProperties.length} multifamily properties
-- Average Property Value: $${avgPrice.toLocaleString()}
-- Estimated Cap Rates: ${avgCapRate ? `${avgCapRate.toFixed(2)}% average` : 'Insufficient data'}
-- Properties You're Tracking: ${userProperties.length}
+- Average Property Value: $${Math.round(avgPrice).toLocaleString()}
+- Market Cap Rates: ${avgCapRate ? `${avgCapRate.toFixed(1)}% average` : 'Analyzing current rates'}
+- Your Target Range: $${Math.round(buyBoxData.estimated_value_min || 500000).toLocaleString()} - $${Math.round(buyBoxData.estimated_value_max || 2000000).toLocaleString()}
+- Properties You Track: ${userProperties.length} in this market
 ${rentalInsights ? `- Rental Market: ${rentalInsights}` : ''}
 
-Please provide exactly 3 insights in this format:
-1. HOT TREND: [One sentence about what's trending in this market - focus on rental growth, cap rates, or investment activity]
-2. PRICE MOVEMENT: [One sentence about pricing, cap rates, or value opportunities based on the data]  
-3. RECOMMENDATION: [One actionable sentence for this investor's strategy in this specific market]
+Write a professional market briefing that includes:
+1. Current market conditions using the specific data above
+2. One key trend or opportunity in this market
+3. One specific, actionable investment recommendation
 
-Keep each insight to one sentence and be specific to this market and buy box criteria. Focus on cap rates and rental trends rather than unit counts.`;
+Use the actual numbers provided. Write in a confident, professional tone as if briefing a sophisticated investor. Focus on actionable intelligence they can use immediately. When mentioning dollar amounts, use whole numbers without decimals (e.g., $263,000 not $262,933.33).`;
 
     const result = await openai.chat.completions.create({
       model: process.env.OPENAI_DEFAULT_MODEL || 'gpt-4o-mini',
       messages: [
         {
           role: 'system',
-          content: 'You are a real estate market analyst. Provide concise, data-driven market insights. Do not use markdown formatting.'
+          content: 'You are a real estate market analyst. Provide specific, clear insights using the data provided. Write complete sentences. Do not use markdown formatting. Follow the exact format requested.'
         },
         {
           role: 'user', 
           content: marketAnalysisPrompt
         }
       ],
-      max_tokens: 200,
-      temperature: 0.1
+      max_tokens: 400,
+      temperature: 0.3
     });
 
-    // Parse AI response into the three sections
-    const response = result.choices[0]?.message?.content || '';
-    const lines = response.split('\n').filter(line => line.trim());
-    
-    let hotTrend = 'Market analysis in progress...';
-    let priceMovement = 'Processing market data...';
-    let recommendation = 'Generating strategy recommendations...';
-
-    lines.forEach(line => {
-      if (line.includes('HOT TREND:') || line.includes('1.')) {
-        hotTrend = line.replace(/^.*(?:HOT TREND:|1\.)\s*/, '').trim();
-      } else if (line.includes('PRICE MOVEMENT:') || line.includes('2.')) {
-        priceMovement = line.replace(/^.*(?:PRICE MOVEMENT:|2\.)\s*/, '').trim();
-      } else if (line.includes('RECOMMENDATION:') || line.includes('3.')) {
-        recommendation = line.replace(/^.*(?:RECOMMENDATION:|3\.)\s*/, '').trim();
-      }
-    });
+    // Get the single market briefing paragraph
+    const marketBriefing = result.choices[0]?.message?.content || 'Generating market analysis...';
+    console.log('🤖 Market briefing generated:', marketBriefing.substring(0, 100) + '...');
 
     return {
-      hotTrend,
-      priceMovement,
-      recommendation
+      marketBriefing: marketBriefing.trim()
     };
 
   } catch (error) {
