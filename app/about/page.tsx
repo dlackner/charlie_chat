@@ -1,6 +1,7 @@
 "use client";
 
 import Image from 'next/image';
+import Link from 'next/link';
 
 export default function AboutPage() {
   return (
@@ -150,6 +151,18 @@ export default function AboutPage() {
             </p>
           </div>
           
+        </div>
+      </div>
+
+      {/* Footer */}
+      <div className="bg-gray-50 py-8 border-t border-gray-200">
+        <div className="max-w-4xl mx-auto px-8 md:px-12 text-center">
+          <Link 
+            href="/terms-of-service" 
+            className="text-base text-gray-500 hover:text-blue-600 underline transition-colors"
+          >
+            Terms of Service
+          </Link>
         </div>
       </div>
     </div>
