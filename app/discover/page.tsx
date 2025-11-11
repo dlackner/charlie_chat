@@ -743,8 +743,8 @@ function DiscoverPageContent() {
         const zipMatch = query.match(/\b\d{5}(-\d{4})?\b/);
         const hasZip = zipMatch !== null;
         
-        // Check if first part looks like a street address (contains numbers + text)
-        const isStreetAddress = /^\d+\s+.+/.test(locationParts[0]);
+        // Check if first part looks like a street address (contains numbers + text, including hyphenated)
+        const isStreetAddress = /^\d+(?:-\d+)?\s+.+/.test(locationParts[0]);
       
       if (hasZip && locationParts.length === 1) {
         // Just a zip code: "80202"
@@ -761,12 +761,12 @@ function DiscoverPageContent() {
         searchFilters.street = '';
         
         const streetPart = locationParts[0];
-        const houseMatch = streetPart.match(/^(\d+)\s+(.+)$/);
+        const houseMatch = streetPart.match(/^(\d+(?:-\d+)?)\s+(.+)$/);
         
         // Extract house and street for specific property lookup
         if (houseMatch) {
-          searchFilters.house = houseMatch[1]; // "73"
-          searchFilters.street = capitalizeWords(houseMatch[2]); // "Rhode Island Ave"
+          searchFilters.house = houseMatch[1]; // "73" or "32-34"
+          searchFilters.street = capitalizeWords(houseMatch[2]); // "Rhode Island Ave" or "Grand Avenue"
         } else {
           searchFilters.street = capitalizeWords(streetPart);
         }
