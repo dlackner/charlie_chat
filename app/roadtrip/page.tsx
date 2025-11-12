@@ -96,7 +96,7 @@ function RoadtripContent() {
   const [error, setError] = useState<string | null>(null);
   const [selectedForPrint, setSelectedForPrint] = useState<string[]>([]);
   const [searchRadius, setSearchRadius] = useState(1);
-  const [valueRangePercent, setValueRangePercent] = useState(10);
+  const [valueRangePercent, setValueRangePercent] = useState<number | 'unlimited'>(10);
   const [isSearching, setIsSearching] = useState(false);
 
   // Calculate distance between two lat/lng points in miles
@@ -123,11 +123,19 @@ function RoadtripContent() {
     
     try {
       const assessedValue = centerProperty.assessed_value;
-      const rangeMultiplier = valueRangePercent / 100;
-      const valueMin = Math.round(assessedValue * (1 - rangeMultiplier)); // -Range%
-      const valueMax = Math.round(assessedValue * (1 + rangeMultiplier)); // +Range%
       
-      console.log('🔍 Manual search with radius:', searchRadius, 'miles and range:', valueRangePercent, '%');
+      let valueMin, valueMax;
+      if (valueRangePercent === 'unlimited') {
+        // Don't set min/max limits - find all properties
+        valueMin = null;
+        valueMax = null;
+        console.log('🔍 Manual search with radius:', searchRadius, 'miles and unlimited range');
+      } else {
+        const rangeMultiplier = valueRangePercent / 100;
+        valueMin = Math.round(assessedValue * (1 - rangeMultiplier)); // -Range%
+        valueMax = Math.round(assessedValue * (1 + rangeMultiplier)); // +Range%
+        console.log('🔍 Manual search with radius:', searchRadius, 'miles and range:', valueRangePercent, '%');
+      }
       
       const nearbyResponse = await fetch('/api/realestateapi', {
         method: 'POST',
@@ -139,8 +147,8 @@ function RoadtripContent() {
           latitude: centerProperty.latitude,
           longitude: centerProperty.longitude,
           radius: searchRadius,
-          assessed_value_min: valueMin,
-          assessed_value_max: valueMax,
+          ...(valueMin !== null && { assessed_value_min: valueMin }),
+          ...(valueMax !== null && { assessed_value_max: valueMax }),
           size: 50
         })
       });
@@ -328,13 +336,25 @@ function RoadtripContent() {
         // Calculate assessed value range (+/- Range%)
         if (centerProperty.latitude && centerProperty.longitude && centerProperty.assessed_value) {
           const assessedValue = centerProperty.assessed_value;
-          const rangeMultiplier = valueRangePercent / 100;
-          const valueMin = Math.round(assessedValue * (1 - rangeMultiplier)); // -Range%
-          const valueMax = Math.round(assessedValue * (1 + rangeMultiplier)); // +Range%
+          
+          let valueMin, valueMax;
+          if (valueRangePercent === 'unlimited') {
+            // Don't set min/max limits - find all properties
+            valueMin = null;
+            valueMax = null;
+          } else {
+            const rangeMultiplier = valueRangePercent / 100;
+            valueMin = Math.round(assessedValue * (1 - rangeMultiplier)); // -Range%
+            valueMax = Math.round(assessedValue * (1 + rangeMultiplier)); // +Range%
+          }
           
           console.log('🌍 Searching near lat/lng:', centerProperty.latitude, centerProperty.longitude);
           console.log('📏 Using radius:', searchRadius, 'miles');
-          console.log('💰 Assessed value range:', valueMin, 'to', valueMax);
+          if (valueRangePercent === 'unlimited') {
+            console.log('💰 Assessed value range: unlimited');
+          } else {
+            console.log('💰 Assessed value range:', valueMin, 'to', valueMax);
+          }
           
           // Make ONLY ONE API call for nearby properties
           const nearbyResponse = await fetch('/api/realestateapi', {
@@ -347,8 +367,8 @@ function RoadtripContent() {
               latitude: centerProperty.latitude,
               longitude: centerProperty.longitude,
               radius: searchRadius, // Use current radius state
-              assessed_value_min: valueMin,
-              assessed_value_max: valueMax,
+              ...(valueMin !== null && { assessed_value_min: valueMin }),
+              ...(valueMax !== null && { assessed_value_max: valueMax }),
               size: 50
             })
           });
@@ -774,12 +794,12 @@ function RoadtripContent() {
                       <select
                         id="range-select"
                         value={valueRangePercent}
-                        onChange={(e) => setValueRangePercent(Number(e.target.value))}
+                        onChange={(e) => setValueRangePercent(e.target.value === 'unlimited' ? 'unlimited' : Number(e.target.value))}
                         className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 w-20"
                       >
-                        {[5, 10, 15, 20, 25, 30, 35, 40, 45, 50].map(percent => (
-                          <option key={percent} value={percent}>
-                            {percent}%
+                        {[5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 'unlimited'].map(option => (
+                          <option key={option} value={option}>
+                            {option === 'unlimited' ? 'Unlimited' : `${option}%`}
                           </option>
                         ))}
                       </select>
