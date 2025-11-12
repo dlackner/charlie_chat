@@ -477,6 +477,7 @@ function CreateSubmissionContent() {
           interest_count,
           saved_properties (
             address_street,
+            address_full,
             address_city,
             address_state,
             units_count
@@ -499,7 +500,9 @@ function CreateSubmissionContent() {
         is_public: item.is_public,
         view_count: item.view_count,
         interest_count: item.interest_count,
-        address: Array.isArray(item.saved_properties) ? item.saved_properties[0]?.address_street : item.saved_properties?.address_street,
+        address: Array.isArray(item.saved_properties) ? 
+          (item.saved_properties[0]?.address_street || item.saved_properties[0]?.address_full) : 
+          (item.saved_properties?.address_street || item.saved_properties?.address_full),
         city: Array.isArray(item.saved_properties) ? item.saved_properties[0]?.address_city : item.saved_properties?.address_city,
         state: Array.isArray(item.saved_properties) ? item.saved_properties[0]?.address_state : item.saved_properties?.address_state,
         units_count: Array.isArray(item.saved_properties) ? item.saved_properties[0]?.units_count : item.saved_properties?.units_count

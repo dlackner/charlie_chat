@@ -4,6 +4,7 @@ import { useState, useEffect, Suspense } from 'react';
 import { AuthGuard } from '@/components/auth/AuthGuard';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { hasAccess, UserClass } from '@/lib/v2/accessControl';
 import { 
   Building, 
   MapPin, 
@@ -48,6 +49,7 @@ function BrowseSubmissionsContent() {
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [filteredSubmissions, setFilteredSubmissions] = useState<Submission[]>([]);
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
+  const [userClass, setUserClass] = useState<UserClass>(null);
   
   // Filter states
   const [showFilters, setShowFilters] = useState(false);
@@ -66,18 +68,49 @@ function BrowseSubmissionsContent() {
     }
   }, [searchParams]);
 
+  // Fetch user class
+  useEffect(() => {
+    const fetchUserClass = async () => {
+      if (!user || !supabase) return;
+      
+      try {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('user_class')
+          .eq('user_id', user.id)
+          .single();
+        
+        setUserClass(profile?.user_class || null);
+      } catch (err) {
+        console.error('Error fetching user class:', err);
+        setUserClass(null);
+      }
+    };
+
+    fetchUserClass();
+  }, [user, supabase]);
+
   // Fetch submissions
   useEffect(() => {
     const fetchSubmissions = async () => {
       try {
-        if (!supabase) return;
-        // First get submissions
-        const { data, error } = await supabase
+        if (!supabase || userClass === undefined) return;
+        
+        // Build query with conditional filtering based on user class
+        let query = supabase
           .from('submissions')
           .select('id, property_id, deal_summary, partnership_type, created_at, view_count, interest_count, user_id, offer_scenario_id')
           .eq('is_public', true)
-          .eq('status', 'active')
-          .order('created_at', { ascending: false });
+          .eq('status', 'active');
+        
+        // For non-admin users, show either:
+        // 1. All of their own submissions, OR
+        // 2. Capital Club submissions from others
+        if (!hasAccess(userClass, 'admin_tools') && user) {
+          query = query.or(`user_id.eq.${user.id},partnership_type.eq.Capital Club`);
+        }
+        
+        const { data, error } = await query.order('created_at', { ascending: false });
 
         if (error) throw error;
 
@@ -158,7 +191,7 @@ function BrowseSubmissionsContent() {
     };
 
     fetchSubmissions();
-  }, [supabase]);
+  }, [supabase, userClass, user]);
 
   // Filter submissions when filters change
   useEffect(() => {

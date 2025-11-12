@@ -295,6 +295,14 @@ export default function MobileNavigation() {
         disabled: false
       },
 
+      // About - main about page
+      {
+        name: 'ABOUT',
+        href: '/about',
+        icon: User,
+        disabled: false
+      },
+
       // Account - always available
       {
         name: 'ACCOUNT',
