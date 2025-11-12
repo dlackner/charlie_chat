@@ -12,6 +12,7 @@ export type UserClass =
   | 'plus' 
   | 'pro' 
   | 'cohort'
+  | 'admin'
   | null;
 
 // Available features/pages in V2
@@ -38,7 +39,8 @@ export type Feature =
   | 'fund_create'
   | 'pricing'
   | 'account'
-  | 'property_analyzer';
+  | 'property_analyzer'
+  | 'admin_tools';
 
 // Permission configuration for each user class
 const PERMISSIONS: Record<Exclude<UserClass, null>, Feature[]> = {
@@ -160,6 +162,34 @@ const PERMISSIONS: Record<Exclude<UserClass, null>, Feature[]> = {
     'pricing',
     'account',
     'property_analyzer'
+  ],
+
+  // Admin users - full access plus admin-specific tools
+  admin: [
+    'dashboard',
+    'dashboard_headlines',
+    'dashboard_community',
+    'dashboard_metrics',
+    'dashboard_pipeline', 
+    'dashboard_onboarding',
+    'discover',
+    'discover_buybox',
+    'discover_saved',
+    'discover_saved_searches',
+    'discover_property_details',
+    'discover_favorite_properties',
+    'discover_investment_analysis',
+    'engage',
+    'engage_templates',
+    'ai_coach',
+    'ai_coach_attachments',
+    'ai_coach_threads', 
+    'fund_browse',
+    'fund_create',
+    'pricing',
+    'account',
+    'property_analyzer',
+    'admin_tools'
   ]
 };
 
@@ -219,7 +249,14 @@ export function isTrial(userClass: UserClass): boolean {
  * Check if user has premium features (plus/pro/cohort)
  */
 export function hasPremiumAccess(userClass: UserClass): boolean {
-  return userClass === 'plus' || userClass === 'pro' || userClass === 'cohort';
+  return userClass === 'plus' || userClass === 'pro' || userClass === 'cohort' || userClass === 'admin';
+}
+
+/**
+ * Check if user is an admin
+ */
+export function isAdmin(userClass: UserClass): boolean {
+  return userClass === 'admin';
 }
 
 /**
@@ -231,7 +268,8 @@ export function getUserClassDisplayName(userClass: UserClass): string {
     core: 'Core',
     plus: 'Plus',
     pro: 'Pro',
-    cohort: 'Cohort'
+    cohort: 'Cohort',
+    admin: 'Admin'
   };
   
   return userClass ? displayNames[userClass] : 'Guest';

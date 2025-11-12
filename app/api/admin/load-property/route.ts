@@ -123,6 +123,54 @@ interface PropertyData {
 
 export async function POST(request: NextRequest) {
   try {
+    // Create Supabase client for auth verification
+    const cookieStore = await import('next/headers').then(m => m.cookies());
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll() {
+            return cookieStore.getAll()
+          },
+          setAll(cookiesToSet) {
+            try {
+              cookiesToSet.forEach(({ name, value, options }) =>
+                cookieStore.set(name, value, options)
+              )
+            } catch {
+              // The `setAll` method was called from a Server Component.
+              // This can be ignored if you have middleware refreshing
+              // user sessions.
+            }
+          },
+        },
+      }
+    );
+
+    // Verify user is authenticated
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    if (userError || !user) {
+      return NextResponse.json(
+        { error: 'Authentication required' },
+        { status: 401 }
+      );
+    }
+
+    // Verify user is admin
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('user_class')
+      .eq('user_id', user.id)
+      .single();
+
+    if (profile?.user_class !== 'admin') {
+      return NextResponse.json(
+        { error: 'Admin access required' },
+        { status: 403 }
+      );
+    }
+
     const body = await request.json();
     const { userId, propertyData }: { userId: string; propertyData: PropertyData } = body;
 
@@ -164,30 +212,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Create Supabase client
-    const cookieStore = await import('next/headers').then(m => m.cookies());
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          getAll() {
-            return cookieStore.getAll()
-          },
-          setAll(cookiesToSet) {
-            try {
-              cookiesToSet.forEach(({ name, value, options }) =>
-                cookieStore.set(name, value, options)
-              )
-            } catch {
-              // The `setAll` method was called from a Server Component.
-              // This can be ignored if you have middleware refreshing
-              // user sessions.
-            }
-          },
-        },
-      }
-    );
+    // Supabase client already created above for auth verification
 
     const propertyId = actualPropertyData.id || actualPropertyData.propertyId;
 
