@@ -1326,9 +1326,8 @@ function PricingPageContent() {
               <ul className="list-disc pl-6 space-y-1">
                 <li>Upgrades take effect immediately, unlocking new features on demand.</li>
                 <li>Downgrades apply at the next billing cycle — no penalties.</li>
-                <li>Cancellations are simple — no fees, and access continues until the end of your billing period.</li>
+                <li>Cancellations can be done anytime with no cancellation fees. Annual subscriptions are billed upfront and are non-refundable - if you cancel, you'll retain full access until the end of your paid period.</li>
               </ul>
-              <p className="mt-3">Your subscription is as flexible as your business needs.</p>
             </div>
           </div>
 
