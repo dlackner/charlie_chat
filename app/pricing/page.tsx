@@ -532,7 +532,7 @@ function PricingPageContent() {
             <p className="text-sm text-gray-500">Forever free</p>
           </div>
           <p className="text-sm text-gray-700 mb-4">
-            Essential AI-powered multifamily investing platform. Access nationwide property search, market intelligence, and AI-driven analysis tools.
+            Essential AI-powered multifamily investing system. Access nationwide property search, market intelligence, and AI-driven analysis tools.
           </p>
           <ul className="text-sm space-y-1 text-gray-800 mb-4 flex flex-col">
             <li className="flex items-start"><span className="w-2 h-2 bg-green-500 rounded-full mt-2 mr-3 flex-shrink-0"></span>Unlimited Property Search</li>
@@ -566,7 +566,7 @@ function PricingPageContent() {
             </>
           )}
           <p className="text-sm text-gray-700 mb-4">
-            Everything in Core plus a complete AI-powered real estate team — all in one integrated platform.
+            Everything in Core plus a complete AI-powered real estate team — all in one integrated system.
           </p>
           <ul className="text-sm space-y-1 text-gray-800 mb-4 flex flex-col">
             <li className="flex items-start"><span className="w-2 h-2 bg-blue-600 rounded-full mt-2 mr-3 flex-shrink-0"></span>Acquisitions Director — Scout off-market opportunities</li>
@@ -653,9 +653,9 @@ function PricingPageContent() {
             </div>
           </div>
           
-          {/* Platform Capabilities Section */}
+          {/* System Capabilities Section */}
           <div className="bg-blue-50 px-6 py-3 border-b border-gray-100">
-            <h4 className="text-sm font-semibold text-blue-800">Platform Capabilities</h4>
+            <h4 className="text-sm font-semibold text-blue-800">System Capabilities</h4>
           </div>
           
           {/* Feature Rows */}
@@ -1233,81 +1233,9 @@ function PricingPageContent() {
               </div>
             </div>
 
-            <div className="grid grid-cols-4 gap-0 hover:bg-gray-50/50 transition-colors">
-              <div className="px-6 py-4 text-sm font-medium text-gray-900">Direct Access to Charles Dobens (including cell phone)</div>
-              <div className="px-6 py-4 text-center border-l border-gray-100">
-                <div className="w-5 h-5 rounded-full bg-gray-200 mx-auto flex items-center justify-center">
-                  <div className="w-2 h-0.5 bg-gray-400"></div>
-                </div>
-              </div>
-              <div className="px-6 py-4 text-center border-l border-gray-100">
-                <div className="w-5 h-5 rounded-full bg-gray-200 mx-auto flex items-center justify-center">
-                  <div className="w-2 h-0.5 bg-gray-400"></div>
-                </div>
-              </div>
-              <div className="px-6 py-4 text-center border-l border-gray-100">
-                <div className="w-5 h-5 rounded-full bg-gray-200 mx-auto flex items-center justify-center">
-                  <div className="w-2 h-0.5 bg-gray-400"></div>
-                </div>
-              </div>
-            </div>
 
-            <div className="grid grid-cols-4 gap-0 hover:bg-gray-50/50 transition-colors">
-              <div className="px-6 py-4 text-sm font-medium text-gray-900">Legal Document Reviews</div>
-              <div className="px-6 py-4 text-center border-l border-gray-100">
-                <div className="w-5 h-5 rounded-full bg-gray-200 mx-auto flex items-center justify-center">
-                  <div className="w-2 h-0.5 bg-gray-400"></div>
-                </div>
-              </div>
-              <div className="px-6 py-4 text-center border-l border-gray-100">
-                <div className="w-5 h-5 rounded-full bg-gray-200 mx-auto flex items-center justify-center">
-                  <div className="w-2 h-0.5 bg-gray-400"></div>
-                </div>
-              </div>
-              <div className="px-6 py-4 text-center border-l border-gray-100">
-                <div className="w-5 h-5 rounded-full bg-gray-200 mx-auto flex items-center justify-center">
-                  <div className="w-2 h-0.5 bg-gray-400"></div>
-                </div>
-              </div>
-            </div>
 
-            <div className="grid grid-cols-4 gap-0 hover:bg-gray-50/50 transition-colors">
-              <div className="px-6 py-4 text-sm font-medium text-gray-900">Debt Lender Assistance</div>
-              <div className="px-6 py-4 text-center border-l border-gray-100">
-                <div className="w-5 h-5 rounded-full bg-gray-200 mx-auto flex items-center justify-center">
-                  <div className="w-2 h-0.5 bg-gray-400"></div>
-                </div>
-              </div>
-              <div className="px-6 py-4 text-center border-l border-gray-100">
-                <div className="w-5 h-5 rounded-full bg-gray-200 mx-auto flex items-center justify-center">
-                  <div className="w-2 h-0.5 bg-gray-400"></div>
-                </div>
-              </div>
-              <div className="px-6 py-4 text-center border-l border-gray-100">
-                <div className="w-5 h-5 rounded-full bg-gray-200 mx-auto flex items-center justify-center">
-                  <div className="w-2 h-0.5 bg-gray-400"></div>
-                </div>
-              </div>
-            </div>
 
-            <div className="grid grid-cols-4 gap-0 hover:bg-gray-50/50 transition-colors">
-              <div className="px-6 py-4 text-sm font-medium text-gray-900">Access to Key Principals</div>
-              <div className="px-6 py-4 text-center border-l border-gray-100">
-                <div className="w-5 h-5 rounded-full bg-gray-200 mx-auto flex items-center justify-center">
-                  <div className="w-2 h-0.5 bg-gray-400"></div>
-                </div>
-              </div>
-              <div className="px-6 py-4 text-center border-l border-gray-100">
-                <div className="w-5 h-5 rounded-full bg-gray-200 mx-auto flex items-center justify-center">
-                  <div className="w-2 h-0.5 bg-gray-400"></div>
-                </div>
-              </div>
-              <div className="px-6 py-4 text-center border-l border-gray-100">
-                <div className="w-5 h-5 rounded-full bg-gray-200 mx-auto flex items-center justify-center">
-                  <div className="w-2 h-0.5 bg-gray-400"></div>
-                </div>
-              </div>
-            </div>
           </div>
         </div>
       </div>
@@ -1350,7 +1278,7 @@ function PricingPageContent() {
           <div className="bg-white border border-gray-200 rounded-lg p-6 shadow hover:shadow-lg transition duration-200">
             <h3 className="text-xl font-bold text-blue-600 mb-3">Where does the property data come from?</h3>
             <div className="text-sm text-gray-700">
-              <p className="mb-3">MultifamilyOS unifies multiple sources into a single platform:</p>
+              <p className="mb-3">MultifamilyOS unifies multiple sources into a single system:</p>
               <ul className="list-disc pl-6 space-y-1">
                 <li>Public records, MLS feeds, and market analytics</li>
                 <li>Proprietary algorithms that surface high-potential deals</li>
@@ -1600,7 +1528,7 @@ function PricingPageContent() {
                   Trial Already Complete
                 </h2>
                 <p id="expired-trial-description" className="text-gray-700 leading-relaxed">
-                  You've already completed your 7-day free trial with MultifamilyOS. Ready to unlock the full platform with unlimited access?
+                  You've already completed your 7-day free trial with MultifamilyOS. Ready to unlock the full system with unlimited access?
                 </p>
               </div>
             </div>
