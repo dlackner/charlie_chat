@@ -680,7 +680,9 @@ export default function MobileNavigation() {
                     height={40}
                     className="h-8 w-auto mr-3 cursor-pointer"
                   />
-                  <span className="text-xl font-bold text-blue-600">MultifamilyOS</span>
+                  <span className="text-base font-bold" style={{fontFamily: 'Arial, Helvetica, sans-serif'}}>
+                    <span style={{color: '#1C599F'}}>MULTIFAMILYOS</span><span style={{color: '#1C599F'}}>.</span><span style={{color: '#C75427'}}>AI</span>
+                  </span>
                 </Link>
               </div>
 
