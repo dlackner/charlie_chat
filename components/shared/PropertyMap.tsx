@@ -21,6 +21,11 @@ interface PropertyMapProps {
   hasSearched?: boolean;
   rentData?: ProcessedRentData[];
   showRentOverlay?: boolean;
+  // Engage page filter states
+  selectedMarkets?: string[];
+  selectedStatuses?: string[];
+  selectedSource?: string;
+  selectedPipelineStage?: string;
 }
 
 const PropertyMap = dynamic(() => import('react-map-gl/mapbox').then((mod) => {
@@ -35,7 +40,11 @@ const PropertyMap = dynamic(() => import('react-map-gl/mapbox').then((mod) => {
     searchQuery, 
     hasSearched,
     rentData,
-    showRentOverlay = true
+    showRentOverlay = true,
+    selectedMarkets,
+    selectedStatuses,
+    selectedSource,
+    selectedPipelineStage
   }: PropertyMapProps) {
     const [viewState, setViewState] = useState({
       longitude: -71.3128,
@@ -77,11 +86,31 @@ const PropertyMap = dynamic(() => import('react-map-gl/mapbox').then((mod) => {
       let backUrl = '';
       
       if (context === 'engage') {
-        // For engage context, go back to engage page with current view mode
+        // For engage context, go back to engage page with current view mode and filter states
         const baseUrl = new URL('/engage', window.location.origin);
+        
+        // Preserve view mode
         if (currentViewMode && currentViewMode !== 'cards') {
           baseUrl.searchParams.set('viewMode', currentViewMode);
         }
+        
+        // Preserve filter states
+        if (selectedMarkets && selectedMarkets.length > 0) {
+          baseUrl.searchParams.set('markets', selectedMarkets.join(','));
+        }
+        if (selectedStatuses && selectedStatuses.length > 0) {
+          baseUrl.searchParams.set('statuses', selectedStatuses.join(','));
+        }
+        if (selectedSource && selectedSource !== 'All') {
+          baseUrl.searchParams.set('source', selectedSource);
+        }
+        if (selectedPipelineStage && selectedPipelineStage !== 'all') {
+          baseUrl.searchParams.set('stage', selectedPipelineStage);
+        }
+        if (searchQuery && searchQuery.trim()) {
+          baseUrl.searchParams.set('search', searchQuery);
+        }
+        
         backUrl = encodeURIComponent(baseUrl.toString());
       } else if (context === 'buybox') {
         // For buybox context, go back to buybox page

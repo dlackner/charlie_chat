@@ -18,6 +18,11 @@ interface PropertyMapWithRentsProps {
   isShowingFavorites?: boolean;
   searchQuery?: string;
   hasSearched?: boolean;
+  // Engage page filter states
+  selectedMarkets?: string[];
+  selectedStatuses?: string[];
+  selectedSource?: string;
+  selectedPipelineStage?: string;
 }
 
 export default function PropertyMapWithRents(props: PropertyMapWithRentsProps) {

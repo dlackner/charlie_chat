@@ -198,6 +198,31 @@ function EngagePageContent() {
     };
   }, []);
 
+  // Restore filter state from URL parameters when page loads
+  useEffect(() => {
+    const markets = searchParams.get('markets');
+    const statuses = searchParams.get('statuses');
+    const source = searchParams.get('source');
+    const stage = searchParams.get('stage');
+    const search = searchParams.get('search');
+
+    if (markets) {
+      setSelectedMarkets(markets.split(',').filter(Boolean));
+    }
+    if (statuses) {
+      setSelectedStatuses(statuses.split(',').filter(Boolean));
+    }
+    if (source) {
+      setSelectedSource(source);
+    }
+    if (stage) {
+      setSelectedPipelineStage(stage);
+    }
+    if (search) {
+      setSearchQuery(search);
+    }
+  }, [searchParams]);
+
   // Get unique values for filters - sort statuses in logical pipeline order
   const statusOrder = ['Reviewing', 'Communicating', 'Engaged', 'Analyzing', 'LOI Sent', 'Acquired', 'Rejected'];
   const uniqueStatuses = statusOrder.filter(status => 
@@ -2198,6 +2223,11 @@ function EngagePageContent() {
                 onMarketUpdate={handleMarketUpdate}
                 currentViewMode={viewMode}
                 onRemoveFromFavorites={handleRemoveFromFavorites}
+                selectedMarkets={selectedMarkets}
+                selectedStatuses={selectedStatuses}
+                selectedSource={selectedSource}
+                selectedPipelineStage={selectedPipelineStage}
+                searchQuery={searchQuery}
               />
             ))}
             </div>
@@ -2267,6 +2297,11 @@ function EngagePageContent() {
               className="h-[600px] w-full rounded-lg border border-gray-200"
               context="engage"
               currentViewMode={viewMode}
+              selectedMarkets={selectedMarkets}
+              selectedStatuses={selectedStatuses}
+              selectedSource={selectedSource}
+              selectedPipelineStage={selectedPipelineStage}
+              searchQuery={searchQuery}
             />
           </div>
         )}
@@ -2467,7 +2502,12 @@ function PropertyCard({
   onStatusUpdate,
   onMarketUpdate,
   currentViewMode,
-  onRemoveFromFavorites
+  onRemoveFromFavorites,
+  selectedMarkets,
+  selectedStatuses,
+  selectedSource,
+  selectedPipelineStage,
+  searchQuery
 }: { 
   property: any; 
   isSelected: boolean; 
@@ -2477,6 +2517,11 @@ function PropertyCard({
   onMarketUpdate?: (propertyId: string, newMarket: string | null) => void;
   currentViewMode?: string;
   onRemoveFromFavorites?: (propertyId: string) => void;
+  selectedMarkets: string[];
+  selectedStatuses: string[];
+  selectedSource: string;
+  selectedPipelineStage: string;
+  searchQuery: string;
 }) {
   const router = useRouter();
   const [pipelineStatus, setPipelineStatus] = useState(property.pipelineStatus);
@@ -2781,9 +2826,29 @@ function PropertyCard({
           <button 
             onClick={() => {
               const baseUrl = new URL('/engage', window.location.origin);
+              
+              // Preserve view mode
               if (currentViewMode && currentViewMode !== 'cards') {
                 baseUrl.searchParams.set('viewMode', currentViewMode);
               }
+              
+              // Preserve filter states
+              if (selectedMarkets.length > 0) {
+                baseUrl.searchParams.set('markets', selectedMarkets.join(','));
+              }
+              if (selectedStatuses.length > 0) {
+                baseUrl.searchParams.set('statuses', selectedStatuses.join(','));
+              }
+              if (selectedSource !== 'All') {
+                baseUrl.searchParams.set('source', selectedSource);
+              }
+              if (selectedPipelineStage !== 'all') {
+                baseUrl.searchParams.set('stage', selectedPipelineStage);
+              }
+              if (searchQuery.trim()) {
+                baseUrl.searchParams.set('search', searchQuery);
+              }
+              
               const backUrl = encodeURIComponent(baseUrl.toString());
               window.location.href = `/discover/property/${property.property_id || property.id}?context=engage&back=${backUrl}`;
             }}
