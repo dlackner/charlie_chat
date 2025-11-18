@@ -105,7 +105,7 @@ const PropertyMap = dynamic(() => import('react-map-gl/mapbox').then((mod) => {
       // Navigate to property details with appropriate context
       const contextParam = context === 'engage' ? '?context=engage' : context === 'buybox' ? '?context=buybox' : '';
       const separator = contextParam ? '&' : '?';
-      window.location.href = `/discover/property/${popupInfo.id || popupInfo.property_id}${contextParam}${separator}back=${backUrl}`;
+      window.location.href = `/discover/property/${popupInfo.property_id || popupInfo.id}${contextParam}${separator}back=${backUrl}`;
     };
 
     return (

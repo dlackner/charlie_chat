@@ -154,7 +154,10 @@ function EngagePageContent() {
             market_name: favorite.market_name,
             recommendation_type: favorite.recommendation_type,
             is_skip_traced: favorite.is_skip_traced,
-            has_pricing_scenario: favorite.has_pricing_scenario
+            has_pricing_scenario: favorite.has_pricing_scenario,
+            
+            // Ensure property_id is correct even if propertyData spread overwrites it
+            property_id: propertyData.property_id || favorite.property_id
           };
         }).filter(Boolean); // Remove any null entries
         
@@ -2256,99 +2259,15 @@ function EngagePageContent() {
         ) : null}
 
         {!isLoading && !error && viewMode === 'map' && (
-          <div className="hidden lg:flex gap-6 h-[600px]">
-            {/* Left: Map */}
-            <div className="w-2/5">
-              <PropertyMapWithRents
-                properties={filteredProperties}
-                className="h-full rounded-lg border border-gray-200"
-                context="engage"
-                currentViewMode={viewMode}
-              />
-            </div>
-            
-            {/* Right: Properties in 2-column grid */}
-            <div className="flex-1 overflow-y-auto">
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                {paginatedProperties.map((property) => (
-                  <PropertyCard
-                    key={property.id}
-                    property={property}
-                    isSelected={selectedProperties.includes(property.property_id)}
-                    onToggleSelect={() => togglePropertySelection(property.property_id)}
-                    marketOptions={marketOptions}
-                    onStatusUpdate={handleStatusUpdate}
-                    onMarketUpdate={handleMarketUpdate}
-                    currentViewMode={viewMode}
-                    onRemoveFromFavorites={handleRemoveFromFavorites}
-                  />
-                ))}
-              </div>
-              
-              {filteredProperties.length === 0 && (
-                <div className="flex items-center justify-center h-64">
-                  <div className="text-center">
-                    <Heart className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                    <h3 className="text-lg font-medium text-gray-900 mb-2">No Properties Found</h3>
-                    <p className="text-gray-600">No properties match your current filters.</p>
-                  </div>
-                </div>
-              )}
-
-              {/* Pagination Controls for Map View */}
-              {totalPages > 1 && (
-                <div className="mt-4 flex items-center justify-center space-x-2">
-                  <button
-                    onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                    disabled={currentPage === 1}
-                    className="px-3 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
-                  >
-                    Previous
-                  </button>
-                  
-                  <div className="flex items-center space-x-1">
-                    {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                      let pageNumber;
-                      if (totalPages <= 5) {
-                        pageNumber = i + 1;
-                      } else if (currentPage <= 3) {
-                        pageNumber = i + 1;
-                      } else if (currentPage >= totalPages - 2) {
-                        pageNumber = totalPages - 4 + i;
-                      } else {
-                        pageNumber = currentPage - 2 + i;
-                      }
-                      
-                      return (
-                        <button
-                          key={i}
-                          onClick={() => setCurrentPage(pageNumber)}
-                          className={`w-8 h-8 rounded-lg text-sm ${
-                            currentPage === pageNumber
-                              ? 'bg-blue-600 text-white'
-                              : 'border border-gray-300 text-gray-700 hover:bg-gray-50'
-                          }`}
-                        >
-                          {pageNumber}
-                        </button>
-                      );
-                    })}
-                  </div>
-                  
-                  <button
-                    onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                    disabled={currentPage === totalPages}
-                    className="px-3 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
-                  >
-                    Next
-                  </button>
-                  
-                  <div className="ml-4 text-xs text-gray-600">
-                    {startIndex + 1}-{Math.min(endIndex, filteredProperties.length)} of {filteredProperties.length}
-                  </div>
-                </div>
-              )}
-            </div>
+          /* Map Only View for Engage Page - Updated for better UX */
+          /* Previously showed Map + Cards combined view, but users expect map-only when clicking "Map" */
+          <div className="hidden lg:block">
+            <PropertyMapWithRents
+              properties={filteredProperties}
+              className="h-[600px] w-full rounded-lg border border-gray-200"
+              context="engage"
+              currentViewMode={viewMode}
+            />
           </div>
         )}
 

@@ -115,6 +115,7 @@ function transformListingToSnakeCase(listing: any) {
 }
 
 export async function POST(req: NextRequest) {
+  console.log("🚀 REALESTATEAPI ROUTE HIT!");
   try {
     const body = await req.json();
     console.log("📝 Raw body from client ➡️", body);
@@ -263,6 +264,7 @@ export async function POST(req: NextRequest) {
       ...(and && { and })
     };
 
+    console.log("🎯 PROPERTY_TYPE DEBUG:", property_type, "Type:", typeof property_type);
     console.log("📦 Outgoing payload ➡️", JSON.stringify(payload, null, 2));
 
     const res = await fetch("https://api.realestateapi.com/v2/PropertySearch", {
@@ -306,9 +308,26 @@ export async function POST(req: NextRequest) {
 
     // Track property search activity for all users (especially important for core users)
     // Only track actual searches, not ids_only requests or count requests
+    console.log("🔍 TRACKING CHECK:", {
+      ids_only,
+      count,
+      hasUser: !!user,
+      userId: user?.id,
+      conditions: {
+        notIdsOnly: !ids_only,
+        notCount: !count,
+        hasUser: !!(user && user.id),
+        willTrack: !ids_only && !count && user && user.id
+      }
+    });
+    
     if (!ids_only && !count && user && user.id) {
       try {
-        await fetch(`${req.nextUrl.origin}/api/activity-count`, {
+        console.log("📤 Making tracking API call for userId:", user.id);
+        const trackingUrl = `${req.nextUrl.origin}/api/activity-count`;
+        console.log("📍 Tracking URL:", trackingUrl);
+        
+        const trackingResponse = await fetch(trackingUrl, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -318,11 +337,17 @@ export async function POST(req: NextRequest) {
             activityType: 'property_searches'
           }),
         });
-        console.log("📊 Property search tracked for user:", user.id);
+        
+        const trackingData = await trackingResponse.text();
+        console.log("📊 Tracking response status:", trackingResponse.status);
+        console.log("📊 Tracking response data:", trackingData);
+        console.log("✅ Property search tracked for user:", user.id);
       } catch (trackingError) {
         // Don't fail the search if tracking fails
-        console.error("⚠️ Failed to track search activity:", trackingError);
+        console.error("❌ Failed to track search activity:", trackingError);
       }
+    } else {
+      console.log("⚠️ Skipping tracking - conditions not met");
     }
 
     return NextResponse.json(data);

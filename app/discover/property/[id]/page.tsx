@@ -88,7 +88,7 @@ export default function PropertyDetailsPage() {
           },
           body: JSON.stringify({
             id: params.id, // Search by specific property ID
-            propertyType: "MFR", // Only multifamily properties
+            property_type: "MFR", // Only multifamily properties
             size: 1,
             obfuscate: false,
             summary: false,
