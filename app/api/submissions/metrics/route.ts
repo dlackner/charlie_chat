@@ -26,21 +26,23 @@ export async function GET(req: NextRequest) {
     const now = new Date();
     const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
 
-    // Get active submission count
+    // Get active submission count (only Capital Club submissions)
     const { count: activeCount, error: activeError } = await supabase
       .from('submissions')
       .select('*', { count: 'exact', head: true })
       .eq('status', 'active')
-      .eq('is_public', true);
+      .eq('is_public', true)
+      .eq('partnership_type', 'Capital Club');
 
     if (activeError) throw activeError;
 
-    // Get submissions created in the last 7 days
+    // Get submissions created in the last 7 days (only Capital Club submissions)
     const { count: newCount, error: newError } = await supabase
       .from('submissions')
       .select('*', { count: 'exact', head: true })
       .eq('status', 'active')
       .eq('is_public', true)
+      .eq('partnership_type', 'Capital Club')
       .gte('created_at', sevenDaysAgo.toISOString());
 
     if (newError) throw newError;

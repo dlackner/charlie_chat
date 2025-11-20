@@ -110,6 +110,10 @@ export default function HomePage() {
   const [isLoadingMarketInsights, setIsLoadingMarketInsights] = useState(false);
   const [isLoadingPortfolio, setIsLoadingPortfolio] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  
+  // Capital Club funding opportunities count
+  const [capitalClubCount, setCapitalClubCount] = useState(0);
+  const [isLoadingCapitalClub, setIsLoadingCapitalClub] = useState(false);
 
   // Helper functions for cache management
   const getCachedData = (cacheKey: string, currentUserId: string): any => {
@@ -346,6 +350,27 @@ export default function HomePage() {
     fetchMarketInsights();
   }, [user?.id, selectedMarket]);
 
+  // Fetch Capital Club funding opportunities count
+  useEffect(() => {
+    const fetchCapitalClubCount = async () => {
+      setIsLoadingCapitalClub(true);
+      try {
+        const response = await fetch('/api/submissions/metrics');
+        if (response.ok) {
+          const data = await response.json();
+          setCapitalClubCount(data.activeCount || 0);
+        }
+      } catch (error) {
+        console.error('Error fetching Capital Club count:', error);
+        setCapitalClubCount(0);
+      } finally {
+        setIsLoadingCapitalClub(false);
+      }
+    };
+
+    fetchCapitalClubCount();
+  }, []);
+
   // Loading state
   if (isLoading) {
     return (
@@ -383,7 +408,9 @@ export default function HomePage() {
           <h2 className="text-3xl font-bold text-gray-900 mb-6">Announcements</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 border-l-4 border-l-blue-500 p-6">
-              <h3 className="font-semibold text-gray-900 mb-2">8 Properties Looking for Funding</h3>
+              <h3 className="font-semibold text-gray-900 mb-2">
+                {isLoadingCapitalClub ? 'Loading...' : `${capitalClubCount} Properties Looking for Funding`}
+              </h3>
               <p className="text-gray-600 text-sm mb-4">Active investment opportunities available to Capital Club members.</p>
               <Link 
                 href="/fund/browse"

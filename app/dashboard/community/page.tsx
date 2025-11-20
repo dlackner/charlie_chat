@@ -143,7 +143,9 @@ export default function CommunityPage() {
           <h2 className="text-3xl font-bold text-gray-900 mb-6">Announcements</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 border-l-4 border-l-blue-500 p-6">
-              <h3 className="font-semibold text-gray-900 mb-2">8 Properties Looking for Funding</h3>
+              <h3 className="font-semibold text-gray-900 mb-2">
+                {isLoadingSubmissions ? 'Loading...' : `${submissionMetrics.activeCount} Properties Looking for Funding`}
+              </h3>
               <p className="text-gray-600 text-sm mb-4">Active investment opportunities available to Capital Club members.</p>
               <Link 
                 href="/fund/browse"

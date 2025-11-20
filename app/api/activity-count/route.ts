@@ -9,9 +9,13 @@ import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 
 export async function POST(request: NextRequest) {
   try {
-    const { userId, activityType } = await request.json();
+    const body = await request.json();
+    console.log("📥 Activity tracking request received:", body);
+    
+    const { userId, activityType } = body;
 
     if (!userId || !activityType) {
+      console.error("❌ Missing required fields:", { userId, activityType });
       return NextResponse.json({ error: 'Missing userId or activityType' }, { status: 400 });
     }
 
@@ -24,6 +28,12 @@ export async function POST(request: NextRequest) {
     const supabase = createSupabaseAdminClient();
     const today = new Date().toISOString().split('T')[0]; // Get YYYY-MM-DD format
 
+    console.log("📊 Calling increment_activity_count with:", {
+      p_user_id: userId,
+      p_activity_date: today,
+      p_activity_type: activityType
+    });
+
     // Use the PostgreSQL function to properly increment
     const { error } = await supabase
       .rpc('increment_activity_count', {
@@ -33,10 +43,11 @@ export async function POST(request: NextRequest) {
       });
 
     if (error) {
-      console.error('Error incrementing activity count:', error);
+      console.error('❌ Error incrementing activity count:', error);
       return NextResponse.json({ error: 'Failed to increment activity count' }, { status: 500 });
     }
 
+    console.log("✅ Activity count incremented successfully");
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Error in activity count API:', error);

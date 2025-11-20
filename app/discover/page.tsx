@@ -1036,7 +1036,7 @@ function DiscoverPageContent() {
         const { apiFields } = savedSearch.criteria;
         
         let apiParams: any = {
-          propertyType: "MFR",
+          property_type: "MFR", // Fixed: was propertyType (camelCase), should be property_type (snake_case)
           count: false,
           size: 12,
           resultIndex: 0,
@@ -2686,39 +2686,16 @@ function DiscoverPageContent() {
                     ))}
                   </div>
                 ) : (
-                  /* Map + Card Combined View for Favorites */
-                  <div className="flex gap-6 h-[600px]">
-                    {/* Left: Map */}
-                    <div className="w-2/5">
-                      <PropertyMapWithRents
-                        properties={recentProperties}
-                        className="h-full rounded-lg border border-gray-200"
-                        context="discover"
-                        currentViewMode={viewMode}
-                        isShowingFavorites={true}
-                        hasSearched={false}
-                      />
-                    </div>
-                    
-                    {/* Right: Cards in 2-column grid */}
-                    <div className="flex-1 overflow-y-auto">
-                      <div className="grid grid-cols-2 gap-4 pr-16">
-                        {recentProperties.map((property, index) => (
-                          <RecentPropertyCard 
-                            key={property.property_id || property.id || `property-${index}`} 
-                            property={property}
-                            onToggleFavorite={toggleFavorite} 
-                            searchQuery={searchQuery}
-                            hasSearched={hasSearched}
-                            viewMode={viewMode}
-                            recentProperties={recentProperties}
-                            favoritePropertyIds={favoritePropertyIds}
-                            onViewDetails={handleViewDetails}
-                          />
-                        ))}
-                      </div>
-                    </div>
-                  </div>
+                  /* Map Only View for Daily Properties - Updated for better UX */
+                  /* Previously showed Map + Cards combined view, but users expect map-only when clicking "Map" */
+                  <PropertyMapWithRents
+                    properties={recentProperties}
+                    className="h-[600px] w-full rounded-lg border border-gray-200"
+                    context="discover"
+                    currentViewMode={viewMode}
+                    isShowingFavorites={true}
+                    hasSearched={false}
+                  />
                 )}
                 
                 {/* Daily Properties Pagination Controls */}
@@ -2859,101 +2836,17 @@ function DiscoverPageContent() {
                     )}
                   </>
                 ) : (
-                  /* Map + Card Combined View */
-                  <div className="flex gap-6 h-[600px]">
-                    {/* Left: Map */}
-                    <div className="w-2/5">
-                      <PropertyMapWithRents
-                        properties={paginatedSearchResults}
-                        className="h-full rounded-lg border border-gray-200"
-                        context="discover"
-                        currentViewMode={viewMode}
-                        isShowingFavorites={false}
-                        searchQuery={searchQuery}
-                        hasSearched={hasSearched}
-                      />
-                    </div>
-                    
-                    {/* Right: Cards in 2-column grid */}
-                    <div className="flex-1 overflow-y-auto">
-                      <div className="grid grid-cols-2 gap-4 pr-16">
-                        {paginatedSearchResults.length > 0 ? (
-                          paginatedSearchResults.map((property, i) => (
-                            <PropertyCard 
-                              key={property.id || i} 
-                              property={property} 
-                              searchQuery={searchQuery}
-                              hasSearched={hasSearched}
-                              favoritePropertyIds={favoritePropertyIds}
-                              onToggleFavorite={toggleFavorite}
-                              viewMode={viewMode}
-                              recentProperties={recentProperties}
-                              searchResults={searchResults}
-                              onViewDetails={handleViewDetails}
-                            />
-                          ))
-                        ) : (
-                          <div className="col-span-2 text-center py-8">
-                            <p className="text-gray-500">No properties found. Try adjusting your search criteria.</p>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                    
-                    {/* Combined View Pagination Controls */}
-                    {totalSearchPages > 1 && (
-                      <div className="mt-8 flex items-center justify-center space-x-2">
-                        <button
-                          onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                          disabled={currentPage === 1}
-                          className="px-3 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          Previous
-                        </button>
-                        
-                        <div className="flex items-center space-x-1">
-                          {Array.from({ length: Math.min(5, totalSearchPages) }, (_, i) => {
-                            let pageNumber;
-                            if (totalSearchPages <= 5) {
-                              pageNumber = i + 1;
-                            } else if (currentPage <= 3) {
-                              pageNumber = i + 1;
-                            } else if (currentPage >= totalSearchPages - 2) {
-                              pageNumber = totalSearchPages - 4 + i;
-                            } else {
-                              pageNumber = currentPage - 2 + i;
-                            }
-                            
-                            return (
-                              <button
-                                key={i}
-                                onClick={() => setCurrentPage(pageNumber)}
-                                className={`w-10 h-10 rounded-lg ${
-                                  currentPage === pageNumber
-                                    ? 'bg-blue-600 text-white'
-                                    : 'border border-gray-300 text-gray-700 hover:bg-gray-50'
-                                }`}
-                              >
-                                {pageNumber}
-                              </button>
-                            );
-                          })}
-                        </div>
-                        
-                        <button
-                          onClick={() => setCurrentPage(prev => Math.min(totalSearchPages, prev + 1))}
-                          disabled={currentPage === totalSearchPages}
-                          className="px-3 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          Next
-                        </button>
-                        
-                        <div className="ml-4 text-sm text-gray-600">
-                          Showing {searchStartIndex + 1}-{Math.min(searchEndIndex, searchResults.length)} of {propertyCount} properties
-                        </div>
-                      </div>
-                    )}
-                  </div>
+                  /* Map Only View - Updated for better UX */
+                  /* Previously showed Map + Cards combined view, but users expect map-only when clicking "Map" */
+                  <PropertyMapWithRents
+                    properties={paginatedSearchResults}
+                    className="h-[600px] w-full rounded-lg border border-gray-200"
+                    context="discover"
+                    currentViewMode={viewMode}
+                    isShowingFavorites={false}
+                    searchQuery={searchQuery}
+                    hasSearched={hasSearched}
+                  />
                 )}
               </div>
             ) : (
