@@ -605,15 +605,20 @@ function PricingPageContent() {
             Everything in Plus and more. Access to Charles Dobens Master Class Training and participation in weekly group coaching sessions.
           </p>
           <ul className="text-sm space-y-1 text-gray-800 mb-4 flex flex-col">
-            <li className="flex items-start"><span className="w-2 h-2 bg-indigo-600 rounded-full mt-2 mr-3 flex-shrink-0"></span>Membership in the MultifamilyOS Capital Club</li>
             <li className="flex items-start"><span className="w-2 h-2 bg-indigo-600 rounded-full mt-2 mr-3 flex-shrink-0"></span>Weekly Coaching Calls with Charles Dobens</li>
             <li className="flex items-start"><span className="w-2 h-2 bg-indigo-600 rounded-full mt-2 mr-3 flex-shrink-0"></span>Master Class Training Program</li>
             <li className="flex items-start"><span className="w-2 h-2 bg-indigo-600 rounded-full mt-2 mr-3 flex-shrink-0"></span>Community Access and Networking</li>
           </ul>
+          {isAnnual ? (
+            <div className="bg-gradient-to-r from-indigo-600 to-indigo-700 text-white text-center py-2 px-2 rounded-lg mb-4 font-semibold whitespace-nowrap text-sm">
+              Immediate Access to Capital Club funding
+            </div>
+          ) : (
+            <div className="bg-gradient-to-r from-indigo-600 to-indigo-700 text-white text-center py-2 px-2 rounded-lg mb-4 font-semibold whitespace-nowrap text-sm">
+              Access to Capital Club funding after six months*
+            </div>
+          )}
           <div className="flex-grow"></div>
-          <div className="text-lg font-semibold text-green-600 mb-4 text-center">
-            Access to Capital Club Funding
-          </div>
           <button
             onClick={() => handleCheckout(isAnnual ? PRO_ANNUAL : PRO_MONTHLY, isAnnual ? "annual" : "monthly")}
             className="w-full bg-black text-white py-2 rounded font-semibold transition duration-200 transform hover:scale-105 hover:bg-indigo-600 hover:shadow-xl"
@@ -1326,7 +1331,10 @@ function PricingPageContent() {
               <ul className="list-disc pl-6 space-y-1">
                 <li>Upgrades take effect immediately, unlocking new features on demand.</li>
                 <li>Downgrades apply at the next billing cycle — no penalties.</li>
-                <li>Cancellations can be done anytime with no cancellation fees. Annual subscriptions are billed upfront and are non-refundable - if you cancel, you'll retain full access until the end of your paid period.</li>
+                <li>Cancellations can be done anytime with no cancellation fees. Annual subscriptions are billed upfront and are non-refundable. If you cancel, you'll retain full access until the end of your paid period.</li>
+              </ul>
+              <ul className="pl-6 space-y-1 mt-2">
+                <li>* Need access to Capital Club funding sooner? Simply request an extension of your subscription for a full six months and you'll get immediate access to Capital Club funding.</li>
               </ul>
             </div>
           </div>

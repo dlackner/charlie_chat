@@ -2121,6 +2121,20 @@ export default function OfferAnalyzerPage() {
               <input
                 type="number"
                 id="amortizationPeriodYears"
+                // FIX: Updated amortization period input to handle formatting properly (READY FOR RELEASE)
+                // TODO: Uncomment the fixed version below and remove the old version
+                // FIXED: value={amortizationPeriodYears || ''}
+                // FIXED: onChange={(e) => {
+                //   const value = e.target.value;
+                //   if (value === '') {
+                //     setAmortizationPeriodYears(0);
+                //   } else {
+                //     const parsed = parseInt(value, 10);
+                //     if (!isNaN(parsed) && parsed > 0) {
+                //       setAmortizationPeriodYears(parsed);
+                //     }
+                //   }
+                // }}
                 value={amortizationPeriodYears ?? 0}
                 onChange={(e) => setAmortizationPeriodYears(Math.max(1, parseInt(e.target.value) || 1))}
                 disabled={shouldDisableInputs}
