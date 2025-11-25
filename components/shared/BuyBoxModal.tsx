@@ -74,8 +74,10 @@ const parseLocationInput = (locationInput: string): { type: 'city' | 'zip' | 'co
         return { type: 'city', city: '', state: '', zip: '', county: '' };
     }
 
-    const locationParts = locationInput.split(',').map(s => s.trim());
-    const zipMatch = locationInput.match(/\b\d{5}(-\d{4})?\b/);
+    // Remove country suffixes that interfere with parsing
+    const cleanedInput = locationInput.replace(/,\s*(USA|US|United States)$/i, '');
+    const locationParts = cleanedInput.split(',').map(s => s.trim());
+    const zipMatch = cleanedInput.match(/\b\d{5}(-\d{4})?\b/);
     
     if (zipMatch && locationParts.length === 1) {
         // Just a ZIP code
@@ -943,9 +945,13 @@ export const BuyBoxModal: React.FC<BuyBoxModalProps> = ({ isOpen, onClose, focus
                 return;
             }
 
+            // Validate that market has a name before saving
+            const marketName = market.customName?.trim() || market.market_name?.trim();
+            
             // If this is a template market, generate a new ID for database storage and update the market in state
             const isTemplate = market.id.startsWith('template-');
             const actualMarketId = isTemplate ? crypto.randomUUID() : market.id;
+            
             
             // If template, update the market ID in state to the new UUID for future operations
             if (isTemplate) {
@@ -956,15 +962,12 @@ export const BuyBoxModal: React.FC<BuyBoxModalProps> = ({ isOpen, onClose, focus
                     )
                 }));
             }
-
-            // Validate that market has a name before saving
-            const marketName = market.customName?.trim() || market.market_name?.trim();
             if (!marketName) {
                 setErrorMessage("Please enter a name for the market before saving");
                 return;
             }
 
-            // Check for duplicate market names for this user
+            // Check for duplicate market names, but exclude the current market if it's being updated
             const { data: existingMarkets, error: duplicateCheckError } = await supabase
                 .from("user_markets")
                 .select("id, market_name")
@@ -976,12 +979,23 @@ export const BuyBoxModal: React.FC<BuyBoxModalProps> = ({ isOpen, onClose, focus
                 return;
             }
 
-            // If we found existing markets with this name, check if it's not the current market
+            // If we found existing markets with this name, check if any are different from current market
             if (existingMarkets && existingMarkets.length > 0) {
-                const isDuplicate = existingMarkets.some(existingMarket => existingMarket.id !== actualMarketId);
-                if (isDuplicate) {
+                // For templates (new markets), check if any existing market has this name
+                if (isTemplate) {
+                    // New market - any existing market with same name is a duplicate
                     setErrorMessage(`A market named "${marketName}" already exists. Please choose a different name.`);
                     return;
+                } else {
+                    // Existing market - only duplicate if there's ANOTHER market (different ID) with same name
+                    const isDuplicate = existingMarkets.some(existingMarket => 
+                        existingMarket.id !== market.id && existingMarket.id !== actualMarketId
+                    );
+                    
+                    if (isDuplicate) {
+                        setErrorMessage(`A market named "${marketName}" already exists. Please choose a different name.`);
+                        return;
+                    }
                 }
             }
 
@@ -1119,8 +1133,9 @@ export const BuyBoxModal: React.FC<BuyBoxModalProps> = ({ isOpen, onClose, focus
             setBuyBoxData(prev => ({
                 ...prev,
                 markets: prev.markets.map(market =>
-                    market.id === marketId ? { 
+                    (market.id === marketId || market.id === actualMarketId) ? { 
                         ...market, 
+                        id: actualMarketId, // Ensure the ID is the actual UUID
                         property_count: propertyCount,
                         marketTier: marketTier || undefined
                     } : market
@@ -1247,11 +1262,8 @@ export const BuyBoxModal: React.FC<BuyBoxModalProps> = ({ isOpen, onClose, focus
                                             let marketsToShow = buyBoxData.markets;
                                             
                                             if (focusedMarket === null) {
-                                                // Add new market mode - show only new/empty markets and template markets
-                                                marketsToShow = buyBoxData.markets.filter(market => 
-                                                    (!market.market_name && !market.city) || 
-                                                    market.id === 'template-new-market'
-                                                );
+                                                // Add new market mode - no longer used since markets are created immediately
+                                                marketsToShow = [];
                                             } else if (focusedMarket) {
                                                 // Focus on specific market - find by market_key or display name with flexible matching
                                                 marketsToShow = buyBoxData.markets.filter(market => {
@@ -1352,8 +1364,13 @@ export const BuyBoxModal: React.FC<BuyBoxModalProps> = ({ isOpen, onClose, focus
                                                         : 'border-gray-200 shadow-sm hover:shadow-md hover:border-gray-300'
                                                 }`}>
                                                     <div 
-                                                        className={`p-4 transition-colors ${focusedMarket ? '' : 'cursor-pointer hover:bg-gray-50'}`}
-                                                        onClick={focusedMarket ? undefined : () => toggleMarketExpansion(market.id)}
+                                                        className={`p-4 transition-colors`}
+                                                        onClick={(e) => {
+                                                            // Only trigger expansion if not focused market and not clicking on interactive elements
+                                                            if (!focusedMarket && e.target === e.currentTarget) {
+                                                                toggleMarketExpansion(market.id);
+                                                            }
+                                                        }}
                                                     >
                                                         <div className="flex items-center justify-between">
                                                             <div className="flex flex-col">
@@ -1654,15 +1671,17 @@ export const BuyBoxModal: React.FC<BuyBoxModalProps> = ({ isOpen, onClose, focus
                                                                 </div>
                                                             </div>
 
-                                                            {/* Market Range Indicator */}
-                                                            {market.propertyCountChecked && (() => {
+                                                            {/* Market Range Indicator - Always shown */}
+                                                            {(() => {
                                                                 const debugMarketTier = market.marketTier || (market.market_tier ? MARKET_TIERS.find(t => t.tier === market.market_tier) || MARKET_TIERS[3] : MARKET_TIERS[3]);
                                                                 return (
-                                                                    <PropertyCountRangeIndicator
-                                                                        propertyCount={market.property_count || 0}
-                                                                        marketTier={debugMarketTier}
-                                                                        cityName={market.type === 'city' ? market.city : market.zip}
-                                                                    />
+                                                                    <div className={market.propertyCountChecked ? '' : 'opacity-30'}>
+                                                                        <PropertyCountRangeIndicator
+                                                                            propertyCount={market.propertyCountChecked ? (market.property_count || 0) : 0}
+                                                                            marketTier={debugMarketTier}
+                                                                            cityName={market.type === 'city' ? market.city : market.zip}
+                                                                        />
+                                                                    </div>
                                                                 );
                                                             })()}
 
@@ -1704,7 +1723,7 @@ export const BuyBoxModal: React.FC<BuyBoxModalProps> = ({ isOpen, onClose, focus
                                                                                 Enable weekly recommendations for this market
                                                                             </span>
                                                                             <p className="text-sm text-gray-600 mt-1">
-                                                                                Get curated properties for this market delivered every Monday
+                                                                                Get curated properties for this market delivered every Thursday night
                                                                             </p>
                                                                         </div>
                                                                     </label>
