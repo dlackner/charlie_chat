@@ -721,6 +721,9 @@ function DiscoverPageContent() {
       // Clean the search query - remove common prefixes like "Search 2 zip codes:"
       let cleanedQuery = query.replace(/^(search\s+\d+\s+zip\s+codes?:\s*)/i, '').trim();
       
+      // Remove country suffixes that interfere with parsing
+      cleanedQuery = cleanedQuery.replace(/,\s*(USA|US|United States)$/i, '');
+      
       const locationParts = cleanedQuery.split(',').map(s => s.trim());
       
       let searchFilters = { ...filters };
@@ -779,28 +782,22 @@ function DiscoverPageContent() {
         // Handle US addresses - can be 3 or 4 parts
         if (locationParts.length >= 4) {
           // Format: "73 Rhode Island Avenue, Newport, RI, USA" 
-          const statePart = locationParts[2].trim(); // "RI"
-          searchFilters.state = statePart.toUpperCase();
-          searchFilters.zip = hasZip ? zipMatch[0] : '';
-        } else if (locationParts.length === 3) {
-          // Format: "73 Rhode Island Avenue, Newport, RI" (no USA suffix)
-          const statePart = locationParts[2].trim(); // "RI" or "RI 02840" or "Florida"
+          const statePart = locationParts[2].trim(); // "RI" or "Florida"
           
           // Convert full state name to abbreviation if needed
           const statePartUpper = statePart.toUpperCase();
-          let stateToCheck = statePart;
-          if (US_STATES.hasOwnProperty(statePartUpper)) {
-            stateToCheck = US_STATES[statePartUpper as keyof typeof US_STATES];
-          }
-          
-          const stateZipMatch = stateToCheck.match(/^([a-zA-Z]{2})\s*(\d{5}(?:-\d{4})?)?$/);
+          searchFilters.state = US_STATES[statePartUpper as keyof typeof US_STATES] || statePartUpper;
+          searchFilters.zip = hasZip ? zipMatch[0] : '';
+        } else if (locationParts.length === 3) {
+          // Format: "73 Rhode Island Avenue, Newport, RI" (no USA suffix)
+          const statePart = locationParts[2].trim(); // "RI" or "RI 02840"
+          const stateZipMatch = statePart.match(/^([a-zA-Z]{2})\s*(\d{5}(?:-\d{4})?)?$/);
           
           if (stateZipMatch) {
             searchFilters.state = stateZipMatch[1].toUpperCase();
             searchFilters.zip = stateZipMatch[2] || (hasZip ? zipMatch[0] : '');
           } else {
-            // Fallback - try direct state name conversion
-            searchFilters.state = US_STATES[statePartUpper as keyof typeof US_STATES] || statePart.toUpperCase();
+            searchFilters.state = statePart.toUpperCase();
             searchFilters.zip = hasZip ? zipMatch[0] : '';
           }
         } else {
@@ -809,26 +806,10 @@ function DiscoverPageContent() {
           searchFilters.zip = hasZip ? zipMatch[0] : '';
         }
       } else if (locationParts.length >= 2) {
-        // Handle multiple formats:
-        // "City, State" -> city=City, state=State
-        // "Address, City, State" -> city=City, state=State (ignore address)
-        // "County, State" -> county=County, state=State
-        // "State, USA" -> state=State
-        
-        let cityPart, statePart;
-        
-        if (locationParts.length >= 3) {
-          // 3+ parts: likely "Address, City, State" format
-          cityPart = locationParts[locationParts.length - 2]; // second to last
-          statePart = locationParts[locationParts.length - 1]; // last
-        } else {
-          // 2 parts: "City, State" format
-          cityPart = locationParts[0];
-          statePart = locationParts[1];
-        }
-        
-        const firstPart = cityPart.trim();
-        const lastPart = statePart.trim();
+        // City, State format: "newport, ri" or "denver, co 80202"
+        // But also handle "State, USA" format: "New Hampshire, USA"
+        const firstPart = locationParts[0];
+        const lastPart = locationParts[1].trim();
         
         // Check if first part is a US state name (e.g., "New Hampshire, USA")
         const firstPartUpper = firstPart.toUpperCase();
@@ -843,43 +824,25 @@ function DiscoverPageContent() {
         } else if (firstPart.toLowerCase().includes('county')) {
           // Handle county format
           searchFilters.county = capitalizeWords(firstPart);
-          
-          // Convert full state name to abbreviation if needed
-          const lastPartUpper = lastPart.toUpperCase();
-          let stateToCheck = lastPart;
-          if (US_STATES.hasOwnProperty(lastPartUpper)) {
-            stateToCheck = US_STATES[lastPartUpper as keyof typeof US_STATES];
-          }
-          
-          const stateZipMatch = stateToCheck.match(/^([a-zA-Z]{2})\s*(\d{5}(?:-\d{4})?)?$/);
+          const stateZipMatch = lastPart.match(/^([a-zA-Z]{2})\s*(\d{5}(?:-\d{4})?)?$/);
           
           if (stateZipMatch) {
             searchFilters.state = stateZipMatch[1].toUpperCase();
             searchFilters.zip = stateZipMatch[2] || (hasZip ? zipMatch[0] : '');
           } else {
-            // Fallback - check if the whole thing is a state name
-            searchFilters.state = US_STATES[lastPartUpper as keyof typeof US_STATES] || lastPart.toUpperCase();
+            searchFilters.state = lastPart.toUpperCase();
             searchFilters.zip = hasZip ? zipMatch[0] : '';
           }
         } else {
           // Standard "City, State" format
           searchFilters.city = capitalizeWords(firstPart);
-          
-          // Convert full state name to abbreviation if needed
-          const lastPartUpper = lastPart.toUpperCase();
-          let stateToCheck = lastPart;
-          if (US_STATES.hasOwnProperty(lastPartUpper)) {
-            stateToCheck = US_STATES[lastPartUpper as keyof typeof US_STATES];
-          }
-          
-          const stateZipMatch = stateToCheck.match(/^([a-zA-Z]{2})\s*(\d{5}(?:-\d{4})?)?$/);
+          const stateZipMatch = lastPart.match(/^([a-zA-Z]{2})\s*(\d{5}(?:-\d{4})?)?$/);
           
           if (stateZipMatch) {
             searchFilters.state = stateZipMatch[1].toUpperCase();
             searchFilters.zip = stateZipMatch[2] || (hasZip ? zipMatch[0] : '');
           } else {
-            // Fallback - check if the whole thing is a state name
-            searchFilters.state = US_STATES[lastPartUpper as keyof typeof US_STATES] || lastPart.toUpperCase();
+            // Assume whole part is state and uppercase it
             searchFilters.state = lastPart.toUpperCase();
             searchFilters.zip = hasZip ? zipMatch[0] : '';
           }
@@ -1090,32 +1053,16 @@ function DiscoverPageContent() {
         
         // Add location if available
         if (searchQuery.trim()) {
-          const locationParts = searchQuery.split(',').map((s: string) => s.trim());
+          const cleanedQuery = searchQuery.replace(/,\s*(USA|US|United States)$/i, '');
+          const locationParts = cleanedQuery.split(',').map((s: string) => s.trim());
           const zipPattern = /^\d{5}(-\d{4})?$/;
-          const zipMatch = searchQuery.match(/\b\d{5}(-\d{4})?\b/);
+          const zipMatch = cleanedQuery.match(/\b\d{5}(-\d{4})?\b/);
           
           if (zipMatch && locationParts.length === 1) {
             apiParams.zip = zipMatch[0];
           } else if (locationParts.length >= 2) {
-            // Handle multiple formats:
-            // "City, State" -> city=City, state=State
-            // "Address, City, State" -> city=City, state=State (ignore address)
-            // "County, State" -> county=County, state=State
-            
-            let cityPart, statePart;
-            
-            if (locationParts.length >= 3) {
-              // 3+ parts: likely "Address, City, State" format
-              cityPart = locationParts[locationParts.length - 2]; // second to last
-              statePart = locationParts[locationParts.length - 1]; // last
-            } else {
-              // 2 parts: "City, State" format
-              cityPart = locationParts[0];
-              statePart = locationParts[1];
-            }
-            
-            const firstPart = cityPart.trim();
-            const lastPart = statePart.trim();
+            const firstPart = locationParts[0];
+            const lastPart = locationParts[1].trim();
             
             // Check if first part is a US state name (e.g., "New Hampshire, USA")
             const firstPartUpper = firstPart.toUpperCase();
@@ -1128,30 +1075,14 @@ function DiscoverPageContent() {
             } else if (firstPart.toLowerCase().includes('county')) {
               // Check if first part contains "County" - if so, use county parameter instead of city
               apiParams.county = firstPart;
-              
-              // Convert full state name to abbreviation if needed
-              const lastPartUpper = lastPart.toUpperCase();
-              let stateToCheck = lastPart;
-              if (US_STATES.hasOwnProperty(lastPartUpper)) {
-                stateToCheck = US_STATES[lastPartUpper as keyof typeof US_STATES];
-              }
-              
-              const stateZipMatch = stateToCheck.match(/^([a-zA-Z]{2})\s*(\d{5}(?:-\d{4})?)?$/);
+              const stateZipMatch = lastPart.match(/^([a-zA-Z]{2})\s*(\d{5}(?:-\d{4})?)?$/);
               if (stateZipMatch) {
                 apiParams.state = stateZipMatch[1].toUpperCase();
                 if (stateZipMatch[2]) apiParams.zip = stateZipMatch[2];
               }
             } else {
               apiParams.city = firstPart;
-              
-              // Convert full state name to abbreviation if needed
-              const lastPartUpper = lastPart.toUpperCase();
-              let stateToCheck = lastPart;
-              if (US_STATES.hasOwnProperty(lastPartUpper)) {
-                stateToCheck = US_STATES[lastPartUpper as keyof typeof US_STATES];
-              }
-              
-              const stateZipMatch = stateToCheck.match(/^([a-zA-Z]{2})\s*(\d{5}(?:-\d{4})?)?$/);
+              const stateZipMatch = lastPart.match(/^([a-zA-Z]{2})\s*(\d{5}(?:-\d{4})?)?$/);
               if (stateZipMatch) {
                 apiParams.state = stateZipMatch[1].toUpperCase();
                 if (stateZipMatch[2]) apiParams.zip = stateZipMatch[2];
@@ -1792,7 +1723,7 @@ function DiscoverPageContent() {
           
           // Add saved location if available
           if (search.filters.searchQuery && search.filters.searchQuery.trim()) {
-            const savedQuery = search.filters.searchQuery;
+            const savedQuery = search.filters.searchQuery.replace(/,\s*(USA|US|United States)$/i, '');
             const locationParts = savedQuery.split(',').map((s: string) => s.trim());
             const zipPattern = /^\d{5}(-\d{4})?$/;
             const zipMatch = savedQuery.match(/\b\d{5}(-\d{4})?\b/);
@@ -1800,25 +1731,8 @@ function DiscoverPageContent() {
             if (zipMatch && locationParts.length === 1) {
               apiParams.zip = zipMatch[0];
             } else if (locationParts.length >= 2) {
-              // Handle multiple formats:
-              // "City, State" -> city=City, state=State
-              // "Address, City, State" -> city=City, state=State (ignore address)
-              // "County, State" -> county=County, state=State
-              
-              let cityPart, statePart;
-              
-              if (locationParts.length >= 3) {
-                // 3+ parts: likely "Address, City, State" format
-                cityPart = locationParts[locationParts.length - 2]; // second to last
-                statePart = locationParts[locationParts.length - 1]; // last
-              } else {
-                // 2 parts: "City, State" format
-                cityPart = locationParts[0];
-                statePart = locationParts[1];
-              }
-              
-              const firstPart = cityPart.trim();
-              const lastPart = statePart.trim();
+              const firstPart = locationParts[0];
+              const lastPart = locationParts[1].trim();
               
               // Check if first part is a US state name (e.g., "New Hampshire, USA")
               const firstPartUpper = firstPart.toUpperCase();
@@ -1830,35 +1744,18 @@ function DiscoverPageContent() {
                 apiParams.state = US_STATES[firstPartUpper as keyof typeof US_STATES] || firstPartUpper;
               } else if (firstPart.toLowerCase().includes('county')) {
                 apiParams.county = firstPart;
-                
-                // Convert full state name to abbreviation if needed
-                const lastPartUpper = lastPart.toUpperCase();
-                let stateToCheck = lastPart;
-                if (US_STATES.hasOwnProperty(lastPartUpper)) {
-                  stateToCheck = US_STATES[lastPartUpper as keyof typeof US_STATES];
-                }
-                
-                const stateZipMatch = stateToCheck.match(/^([a-zA-Z]{2})\s*(\d{5}(?:-\d{4})?)?$/);
+                const stateZipMatch = lastPart.match(/^([a-zA-Z]{2})\s*(\d{5}(?:-\d{4})?)?$/);
                 if (stateZipMatch) {
                   apiParams.state = stateZipMatch[1].toUpperCase();
                   if (stateZipMatch[2]) {
                     apiParams.zip = stateZipMatch[2];
                   }
                 } else {
-                  // Fallback - check if the whole thing is a state name
-                  apiParams.state = US_STATES[lastPartUpper as keyof typeof US_STATES] || lastPart.toUpperCase();
+                  apiParams.state = lastPart.toUpperCase();
                 }
               } else {
                 apiParams.city = firstPart;
-                
-                // Convert full state name to abbreviation if needed
-                const lastPartUpper = lastPart.toUpperCase();
-                let stateToCheck = lastPart;
-                if (US_STATES.hasOwnProperty(lastPartUpper)) {
-                  stateToCheck = US_STATES[lastPartUpper as keyof typeof US_STATES];
-                }
-                
-                const stateZipMatch = stateToCheck.match(/^([a-zA-Z]{2})\s*(\d{5}(?:-\d{4})?)?$/);
+                const stateZipMatch = lastPart.match(/^([a-zA-Z]{2})\s*(\d{5}(?:-\d{4})?)?$/);
                 if (stateZipMatch) {
                   apiParams.state = stateZipMatch[1].toUpperCase();
                   if (stateZipMatch[2]) {

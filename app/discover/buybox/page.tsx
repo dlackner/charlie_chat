@@ -674,14 +674,93 @@ export default function BuyBoxPage() {
               
               {/* Add Market Tab */}
               <button
-                onClick={() => {
+                onClick={async () => {
                   // Check if user has reached the 5-market limit
                   if (userMarkets.length >= 5) {
                     showWarning('Maximum 5 markets allowed. Please delete an existing market first.', 'Market Limit Reached');
                     return;
                   }
-                  setFocusedMarket(null); // null means add new market mode
-                  setShowBuyBoxModal(true);
+                  
+                  // Prompt for market name
+                  const marketName = prompt('Enter a name for your new market:', `Market ${userMarkets.length + 1}`);
+                  if (!marketName?.trim()) {
+                    return; // User cancelled or entered empty name
+                  }
+                  
+                  // Create new market immediately
+                  try {
+                    // Query database to get existing market keys and names
+                    const { data: existingMarkets } = await supabase
+                      .from("user_markets")
+                      .select("market_key, market_name")
+                      .eq("user_id", user?.id);
+                    
+                    const existingKeys = (existingMarkets || []).map(m => m.market_key);
+                    const existingNames = (existingMarkets || []).map(m => m.market_name);
+                    
+                    // Check if market name already exists
+                    if (existingNames.includes(marketName.trim())) {
+                      showError(`A market named "${marketName.trim()}" already exists. Please choose a different name.`);
+                      return;
+                    }
+                    
+                    // Generate next market key
+                    const marketNumbers = existingKeys
+                      .filter(key => key.startsWith('Market'))
+                      .map(key => parseInt(key.replace('Market', '')))
+                      .filter(num => !isNaN(num));
+                    
+                    const maxNumber = marketNumbers.length > 0 ? Math.max(...marketNumbers) : 0;
+                    const nextMarketKey = `Market${maxNumber + 1}`;
+                    
+                    // Create market with good defaults
+                    const newMarket = {
+                      user_id: user?.id || '',
+                      market_key: nextMarketKey,
+                      market_name: marketName.trim(), // Use the user-entered name
+                      market_type: 'city',
+                      city: '',
+                      state: '',
+                      zip: '',
+                      county: '',
+                      units_min: 15,
+                      units_max: 35,
+                      assessed_value_min: 1000000,
+                      assessed_value_max: 2500000,
+                      estimated_value_min: 1200000,
+                      estimated_value_max: 2800000,
+                      year_built_min: 1990,
+                      year_built_max: 2010,
+                      total_decisions_made: 0,
+                      learning_phase: 'discovery',
+                      is_locked: true,
+                      lambda_value: 0.7,
+                      exploration_score: 0.5,
+                      production_notification_sent: false
+                    };
+                    
+                    // Save to database immediately
+                    const { error: insertError } = await supabase
+                      .from("user_markets")
+                      .insert([newMarket]);
+                    
+                    if (insertError) throw insertError;
+                    
+                    // Refresh markets list and focus on new market
+                    await loadUserData();
+                    setFocusedMarket(nextMarketKey);
+                    setShowBuyBoxModal(true);
+                    
+                  } catch (error: any) {
+                    console.error('Error creating market:', error);
+                    console.error('Error details:', {
+                      message: error.message,
+                      details: error.details,
+                      hint: error.hint,
+                      code: error.code
+                    });
+                    showError(`Failed to create new market: ${error.message || 'Unknown error'}`);
+                  }
                 }}
                 disabled={userMarkets.length >= 5}
                 className={`whitespace-nowrap py-2 px-1 border-b-2 border-transparent font-medium text-sm transition-colors flex items-center ${
@@ -841,7 +920,7 @@ export default function BuyBoxPage() {
                 } else if (decidedCount > 0) {
                   return `All ${decidedCount} recommendations reviewed this week!`;
                 } else {
-                  return 'No new recommendations this week. Weekly recommendations are generated automatically each Thursday night.';
+                  return 'Tampa Recommendations';  // Simple title when no recommendations
                 }
               })()}
             </p>
@@ -886,7 +965,7 @@ export default function BuyBoxPage() {
               <p className="text-sm text-gray-500">
                 {decidedProperties.size > 0
                   ? "New recommendations will be generated next Thursday night."
-                  : "`Weekly recommendations are generated automatically each Thursday night based on your buy box criteria.`"
+                  : "Weekly recommendations are generated automatically each Thursday night based on your buy box criteria."
                 }
               </p>
             </div>
