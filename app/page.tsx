@@ -388,15 +388,15 @@ export default function Home() {
                         sizes="(max-width: 640px) 100vw, (max-width: 1024px) 90vw, 1200px"
                       />
                       {carouselSlides[currentSlide].videoUrl && (
-                        <div className="absolute bottom-12 right-4 left-1/2 transform translate-x-4 text-center">
+                        <div className="absolute bottom-8 right-2 left-1/2 transform translate-x-2 text-center">
                           <button 
                             onClick={() => {
                               setCurrentVideoUrl(carouselSlides[currentSlide].videoUrl || '');
                               setShowVideoModal(true);
                             }}
-                            className="inline-flex items-center space-x-2 text-white font-bold text-lg hover:text-gray-200 hover:scale-110 transition-all duration-200 transform"
+                            className="inline-flex items-center space-x-1 text-white font-semibold text-sm sm:text-lg sm:space-x-2 hover:text-gray-200 hover:scale-105 transition-all duration-200 transform"
                           >
-                            <Play className="w-6 h-6" />
+                            <Play className="w-4 h-4 sm:w-6 sm:h-6" />
                             <span>View Demo</span>
                           </button>
                         </div>
