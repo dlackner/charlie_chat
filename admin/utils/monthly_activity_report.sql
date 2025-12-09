@@ -23,24 +23,45 @@
 --
 -- Results ordered by: Total activity (descending), User class, Email
 
+WITH activity_summary AS (
+  SELECT 
+    user_id,
+    SUM(CASE WHEN activity_type = 'property_searches' THEN count END) as property_searches,
+    SUM(CASE WHEN activity_type = 'offers_created' THEN count END) as offers_created,
+    SUM(CASE WHEN activity_type = 'lois_created' THEN count END) as lois_created,
+    SUM(CASE WHEN activity_type = 'marketing_letters_created' THEN count END) as marketing_letters_created,
+    SUM(CASE WHEN activity_type = 'emails_sent' THEN count END) as emails_sent,
+    SUM(count) as total_activity,
+    MAX(activity_date) as last_activity_date
+  FROM user_activity_counts
+  WHERE activity_date >= CURRENT_DATE - INTERVAL '30 days'
+  GROUP BY user_id
+),
+favorites_summary AS (
+  SELECT 
+    user_id,
+    COUNT(CASE WHEN recommendation_type = 'manual' THEN 1 END) as manual_favorites,
+    COUNT(CASE WHEN recommendation_type = 'algorithm' THEN 1 END) as algorithm_favorites,
+    COUNT(id) as total_favorites
+  FROM user_favorites
+  GROUP BY user_id
+)
 SELECT 
-  p.email,
-  p.user_class,
+  COALESCE(p.email, au.email) as email,
+  COALESCE(p.user_class, 'no_profile') as user_class,
   au.last_sign_in_at,
-  COALESCE(SUM(CASE WHEN uac.activity_type = 'property_searches' THEN uac.count END), 0) as property_searches,
-  COALESCE(SUM(CASE WHEN uac.activity_type = 'offers_created' THEN uac.count END), 0) as offers_created,
-  COALESCE(SUM(CASE WHEN uac.activity_type = 'lois_created' THEN uac.count END), 0) as lois_created,
-  COALESCE(SUM(CASE WHEN uac.activity_type = 'marketing_letters_created' THEN uac.count END), 0) as marketing_letters_created,
-  COALESCE(SUM(CASE WHEN uac.activity_type = 'emails_sent' THEN uac.count END), 0) as emails_sent,
-  COALESCE(SUM(uac.count), 0) as total_activity,
-  MAX(uac.activity_date) as last_activity_date,
-  COALESCE(COUNT(CASE WHEN uf.recommendation_type = 'manual' THEN 1 END), 0) as manual_favorites,
-  COALESCE(COUNT(CASE WHEN uf.recommendation_type = 'algorithm' THEN 1 END), 0) as algorithm_favorites,
-  COALESCE(COUNT(uf.id), 0) as total_favorites
-FROM profiles p
-LEFT JOIN auth.users au ON p.user_id = au.id
-LEFT JOIN user_activity_counts uac ON p.user_id = uac.user_id
-  AND uac.activity_date >= CURRENT_DATE - INTERVAL '30 days'
-LEFT JOIN user_favorites uf ON p.user_id = uf.user_id
-GROUP BY p.user_id, p.email, p.user_class, au.last_sign_in_at
-ORDER BY total_activity DESC, p.user_class, p.email;
+  COALESCE(act.property_searches, 0) as property_searches,
+  COALESCE(act.offers_created, 0) as offers_created,
+  COALESCE(act.lois_created, 0) as lois_created,
+  COALESCE(act.marketing_letters_created, 0) as marketing_letters_created,
+  COALESCE(act.emails_sent, 0) as emails_sent,
+  COALESCE(act.total_activity, 0) as total_activity,
+  act.last_activity_date,
+  COALESCE(fav.manual_favorites, 0) as manual_favorites,
+  COALESCE(fav.algorithm_favorites, 0) as algorithm_favorites,
+  COALESCE(fav.total_favorites, 0) as total_favorites
+FROM auth.users au
+LEFT JOIN profiles p ON au.id = p.user_id
+LEFT JOIN activity_summary act ON au.id = act.user_id
+LEFT JOIN favorites_summary fav ON au.id = fav.user_id
+ORDER BY total_activity DESC, user_class, email;

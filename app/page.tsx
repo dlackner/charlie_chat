@@ -190,32 +190,36 @@ export default function Home() {
       title: "Acquisitions Director",
       subtitle: "Scout off-market opportunities that match your buy box",
       icon: <Target className="w-16 h-16 text-blue-600" />,
-      image: "/feature-images/broker.png"
+      image: "/feature-images/broker.png",
+      videoUrl: "https://drive.google.com/file/d/1Hb8wZ_cANX78fbOgDsPBZe3nwgYaeier/preview"
     },
     {
       title: "Marketing Assistant", 
       subtitle: "Generate personalized letters and emails to property owners",
       icon: <Mail className="w-16 h-16 text-blue-600" />,
-      image: "/feature-images/marketing_assistant.png"
+      image: "/feature-images/marketing_assistant.png",
+      videoUrl: "https://drive.google.com/file/d/1TXVcA8odUX5TkxqYAgQyF23aZcXnkPlY/preview"
     },
     {
       title: "MBA Analyst",
       subtitle: "Model offers, run scenarios, and produce financial statements", 
       icon: <BarChart3 className="w-16 h-16 text-blue-600" />,
-      image: "/feature-images/MBA_analyst.png"
+      image: "/feature-images/MBA_analyst.png",
+      videoUrl: "https://drive.google.com/file/d/1rduqNewvbWu0ojlrw9OyeDYQ0fMDhS0m/preview"
     },
     {
       title: "Attorney",
       subtitle: "Draft LOIs and P&S agreements to accelerate negotiations",
       icon: <FileText className="w-16 h-16 text-blue-600" />,
       image: "/feature-images/Attorney.png",
-      videoUrl: "https://www.loom.com/embed/658c5fe49a6b4592aafce25aa770c819"
+      videoUrl: "https://drive.google.com/file/d/1BvkcI9EKKbCFC7HB8n2PQMNYlDvWfDNc/preview"
     },
     {
       title: "Financing Advisor",
       subtitle: "Identify capital sources to fund your investment pipeline",
       icon: <DollarSign className="w-16 h-16 text-blue-600" />,
-      image: "/feature-images/Financing_advisor.png"
+      image: "/feature-images/Financing_advisor.png",
+      videoUrl: "https://drive.google.com/file/d/16PWuGvTekaNTPtwUSYafqX6KZ427s2Yo/preview"
     }
   ];
 
@@ -384,7 +388,7 @@ export default function Home() {
                         sizes="(max-width: 640px) 100vw, (max-width: 1024px) 90vw, 1200px"
                       />
                       {carouselSlides[currentSlide].videoUrl && (
-                        <div className="absolute bottom-24 right-4 left-1/2 transform translate-x-4 text-center">
+                        <div className="absolute bottom-12 right-4 left-1/2 transform translate-x-4 text-center">
                           <button 
                             onClick={() => {
                               setCurrentVideoUrl(carouselSlides[currentSlide].videoUrl || '');
