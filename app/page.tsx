@@ -380,6 +380,17 @@ export default function Home() {
                 <div className="flex justify-center">
                   {carouselSlides[currentSlide].image ? (
                     <div className="relative w-full h-[300px] sm:h-[400px] md:h-[500px] lg:h-[600px] group">
+                      {/* Make entire carousel clickable on mobile for videos */}
+                      {carouselSlides[currentSlide].videoUrl && (
+                        <div 
+                          className="absolute inset-0 cursor-pointer lg:hidden z-20"
+                          onClick={() => {
+                            setCurrentVideoUrl(carouselSlides[currentSlide].videoUrl || '');
+                            setShowVideoModal(true);
+                          }}
+                        />
+                      )}
+                      
                       <Image
                         src={carouselSlides[currentSlide].image}
                         alt={carouselSlides[currentSlide].title}
@@ -387,18 +398,30 @@ export default function Home() {
                         className="object-contain"
                         sizes="(max-width: 640px) 100vw, (max-width: 1024px) 90vw, 1200px"
                       />
+                      
+                      {/* Desktop View Demo button */}
                       {carouselSlides[currentSlide].videoUrl && (
-                        <div className="absolute bottom-8 right-2 left-1/2 transform translate-x-2 text-center">
+                        <div className="hidden lg:block absolute bottom-12 right-4 left-1/2 transform translate-x-4 text-center">
                           <button 
                             onClick={() => {
                               setCurrentVideoUrl(carouselSlides[currentSlide].videoUrl || '');
                               setShowVideoModal(true);
                             }}
-                            className="inline-flex items-center space-x-1 text-white font-semibold text-sm sm:text-lg sm:space-x-2 hover:text-gray-200 hover:scale-105 transition-all duration-200 transform"
+                            className="inline-flex items-center space-x-2 text-white font-semibold text-lg hover:text-gray-200 hover:scale-105 transition-all duration-200 transform"
                           >
-                            <Play className="w-4 h-4 sm:w-6 sm:h-6" />
+                            <Play className="w-6 h-6" />
                             <span>View Demo</span>
                           </button>
+                        </div>
+                      )}
+                      
+                      {/* Mobile View Demo text overlay */}
+                      {carouselSlides[currentSlide].videoUrl && (
+                        <div className="lg:hidden absolute bottom-8 right-4 text-center pointer-events-none">
+                          <div className="inline-flex items-center space-x-1 text-white font-semibold text-sm bg-black/30 px-2 py-1 rounded">
+                            <Play className="w-4 h-4" />
+                            <span>Tap to View Demo</span>
+                          </div>
                         </div>
                       )}
                     </div>
