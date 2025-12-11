@@ -573,7 +573,7 @@ function PricingPageContent() {
             <li className="flex items-start"><span className="w-2 h-2 bg-blue-600 rounded-full mt-2 mr-3 flex-shrink-0"></span>Marketing Assistant — Create letters and emails</li>
             <li className="flex items-start"><span className="w-2 h-2 bg-blue-600 rounded-full mt-2 mr-3 flex-shrink-0"></span>Underwriting Manager — Model offers and generate financial statements</li>
             <li className="flex items-start"><span className="w-2 h-2 bg-blue-600 rounded-full mt-2 mr-3 flex-shrink-0"></span>Legal Department — Generate LOIs and Purchase & Sale Agreements</li>
-            <li className="flex items-start"><span className="w-2 h-2 bg-blue-600 rounded-full mt-2 mr-3 flex-shrink-0"></span>Investor Relations Specialist — Browse Capital Club properties looking for funding</li>
+            <li className="flex items-start"><span className="w-2 h-2 bg-blue-600 rounded-full mt-2 mr-3 flex-shrink-0"></span>Investor Relations Specialist — Browse and invest in Capital Club properties looking for funding</li>
           </ul>
           <button
             onClick={() => handleCheckout(isAnnual ? PLUS_ANNUAL : PLUS_MONTHLY, isAnnual ? "annual" : "monthly")}
