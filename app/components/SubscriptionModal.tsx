@@ -214,16 +214,48 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, on
   }, [isOpen]);
 
   const getSubscriptionInfo = (sub: Subscription) => {
-    const productId = sub.metadata?.productId || sub.metadata?.product_id;
-    const planName = PRODUCT_NAMES[productId!] || "Unknown Plan";
-    const billingCycle = sub.metadata?.plan === "annual" ? "Annual" : "Monthly";
+    // Get plan name from user_class instead of Stripe metadata
+    let planName = "Unknown Plan";
+    if (userClass) {
+      switch (userClass) {
+        case 'core':
+          planName = "Core";
+          break;
+        case 'plus':
+          planName = "Plus";
+          break;
+        case 'pro':
+          planName = "Pro";
+          break;
+        case 'cohort':
+          planName = "Cohort";
+          break;
+        case 'admin':
+          planName = "Admin";
+          break;
+        default:
+          planName = "Unknown Plan";
+      }
+    }
+    
+    // Determine billing cycle by calculating the difference between period start and end
+    // Since Stripe metadata doesn't reliably preserve the 'plan' field across renewals,
+    // we calculate the period length: >300 days = Annual, ≤300 days = Monthly
+    const periodStart = new Date(sub.current_period_start);
+    const periodEnd = new Date(sub.current_period_end);
+    const daysDifference = Math.floor((periodEnd.getTime() - periodStart.getTime()) / (1000 * 60 * 60 * 24));
+    const billingCycle = daysDifference > 300 ? "Annual" : "Monthly";
+    
+    // Add 1 day to current_period_end for next billing
+    const nextBillingDate = new Date(sub.current_period_end);
+    nextBillingDate.setDate(nextBillingDate.getDate() + 1);
     
     return {
       planName,
       billingCycle,
       amount: billingAmount,
       status: sub.status,
-      nextBilling: new Date(sub.current_period_end).toLocaleDateString(),
+      nextBilling: nextBillingDate.toLocaleDateString(),
       startDate: new Date(sub.current_period_start).toLocaleDateString(),
     };
   };
@@ -244,13 +276,13 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, on
           status: 'Active',
           description: 'Basic MultifamilyOS features'
         };
-      case 'charlie_chat_plus':
+      case 'plus':
         return {
           planName: 'Plus',
           status: 'Active', 
           description: 'Enhanced MultifamilyOS features'
         };
-      case 'charlie_chat_pro':
+      case 'pro':
         return {
           planName: 'Pro',
           status: 'Active',
@@ -261,6 +293,12 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, on
           planName: 'Cohort',
           status: 'Active',
           description: 'Exclusive cohort program access'
+        };
+      case 'admin':
+        return {
+          planName: 'Admin',
+          status: 'Active',
+          description: 'Administrative access'
         };
       default:
         return {

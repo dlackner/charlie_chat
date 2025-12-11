@@ -573,7 +573,7 @@ function PricingPageContent() {
             <li className="flex items-start"><span className="w-2 h-2 bg-blue-600 rounded-full mt-2 mr-3 flex-shrink-0"></span>Marketing Assistant — Create letters and emails</li>
             <li className="flex items-start"><span className="w-2 h-2 bg-blue-600 rounded-full mt-2 mr-3 flex-shrink-0"></span>Underwriting Manager — Model offers and generate financial statements</li>
             <li className="flex items-start"><span className="w-2 h-2 bg-blue-600 rounded-full mt-2 mr-3 flex-shrink-0"></span>Legal Department — Generate LOIs and Purchase & Sale Agreements</li>
-            <li className="flex items-start"><span className="w-2 h-2 bg-blue-600 rounded-full mt-2 mr-3 flex-shrink-0"></span>Investor Relations Specialist — Identify banks and S&L's</li>
+            <li className="flex items-start"><span className="w-2 h-2 bg-blue-600 rounded-full mt-2 mr-3 flex-shrink-0"></span>Investor Relations Specialist — Browse and invest in Capital Club properties looking for funding</li>
           </ul>
           <button
             onClick={() => handleCheckout(isAnnual ? PLUS_ANNUAL : PLUS_MONTHLY, isAnnual ? "annual" : "monthly")}
@@ -842,7 +842,7 @@ function PricingPageContent() {
             </div>
 
             <div className="grid grid-cols-4 gap-0 hover:bg-gray-50/50 transition-colors">
-              <div className="px-6 py-4 text-sm font-medium text-gray-900">Investor Relations Specialist — Identify banks and S&L's</div>
+              <div className="px-6 py-4 text-sm font-medium text-gray-900">Investor Relations Specialist — Browse Capital Club properties</div>
               <div className="px-6 py-4 text-center border-l border-gray-100">
                 <div className="w-5 h-5 rounded-full bg-gray-200 mx-auto flex items-center justify-center">
                   <div className="w-2 h-0.5 bg-gray-400"></div>
