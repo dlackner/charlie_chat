@@ -64,6 +64,7 @@ export default function OnboardingPage() {
       title: 'Add MultiFamilyOS to Your Safe Senders',
       description: 'Send a quick email to info@multifamilyos.ai from the email address you used to log in. This ensures our support messages, property alerts, and system notifications reach your inbox instead of junk mail.',
       day: 1,
+      icon: <User className="h-5 w-5" />,
       completed: false,
       category: 'foundation',
       estimatedTime: '2 min',
