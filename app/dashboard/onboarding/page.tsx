@@ -60,6 +60,17 @@ export default function OnboardingPage() {
       helpUrl: '/account/profile'
     },
     {
+      id: 'whitelist-email',
+      title: 'Add MultiFamilyOS to Your Safe Senders',
+      description: 'Send a quick email to info@multifamilyos.ai from the email address you used to log in. This ensures our support messages, property alerts, and system notifications reach your inbox instead of junk mail.',
+      day: 1,
+      icon: <User className="h-5 w-5" />,
+      completed: false,
+      category: 'foundation',
+      estimatedTime: '2 min',
+      helpUrl: 'mailto:info@multifamilyos.ai?subject=Whitelist Request&body=Please add this email address to your safe senders list.'
+    },
+    {
       id: 'search-properties',
       title: 'Search for Properties',
       description: 'Familiarize yourself with the Discover page. Enter a city or a ZIP code in the search bar, then try out some filters to refine your search.',

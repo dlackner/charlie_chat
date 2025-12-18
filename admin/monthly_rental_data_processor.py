@@ -353,7 +353,27 @@ def get_coordinate_lookup():
         394315: (45.8836, -95.3776),  # Alexandria, MN
         394535: (41.8439, -89.4793),  # Dixon, IL
         395110: (44.4906, -103.8590),  # Spearfish, SD
-        395004: (44.3009, -120.8342)   # Prineville, OR
+        395004: (44.3009, -120.8342),   # Prineville, OR
+        # Added missing coordinates from December 2025 processing
+        394810: (34.6182, -79.0086),   # Lumberton, NC
+        394511: (34.1748, -86.8436),   # Cullman, AL
+        394942: (33.4918, -80.8556),   # Orangeburg, SC
+        394936: (42.0776, -78.4297),   # Olean, NY
+        395077: (35.2506, -91.7362),   # Searcy, AR
+        845163: (33.8312, -87.2775),   # Jasper, AL
+        394956: (31.7621, -95.6308),   # Palestine, TX
+        394967: (34.2309, -111.3251),  # Payson, AZ
+        394887: (38.0565, -83.9433),   # Mount Sterling, KY
+        394842: (34.9334, -95.7697),   # McAlester, OK
+        394886: (33.1568, -94.9683),   # Mount Pleasant, TX
+        394382: (42.8781, -73.1968),   # Bennington, VT
+        394603: (42.4975, -94.1680),   # Fort Dodge, IA
+        394973: (40.7537, -86.0689),   # Peru, IN
+        394491: (41.4303, -97.3591),   # Columbus, NE
+        753878: (35.4937, -85.0122),   # Dayton, TN
+        394791: (40.7808, -99.7418),   # Lexington, NE
+        753921: (40.4849, -106.8317),  # Steamboat Springs, CO
+        394687: (45.7054, -121.5215)   # Hood River, OR
     }
 
 def search_missing_coordinates(missing_cities):

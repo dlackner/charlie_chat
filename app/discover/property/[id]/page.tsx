@@ -88,7 +88,8 @@ export default function PropertyDetailsPage() {
           },
           body: JSON.stringify({
             id: params.id, // Search by specific property ID
-            property_type: "MFR", // Only multifamily properties
+            // property_type: "MFR", // Commented out - when searching by specific property ID, no need to filter by type
+            // This allows SFR, OTHER, and manually added properties to be found in addition to MFR
             size: 1,
             obfuscate: false,
             summary: false,
