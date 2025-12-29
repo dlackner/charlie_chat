@@ -742,8 +742,9 @@ function DiscoverPageContent() {
         searchFilters.house = '';
         searchFilters.street = '';
       } else {
-        // Check if any part contains a zip code (5 digits)
-        const zipMatch = query.match(/\b\d{5}(-\d{4})?\b/);
+        // Check if any part contains a zip code (5 digits) - but not at the beginning (avoid house numbers)
+        // Look for zip codes after state abbreviations or in standalone context
+        const zipMatch = query.match(/(?:^|\s|,)\s*(\d{5}(?:-\d{4})?)\s*$/);
         const hasZip = zipMatch !== null;
         
         // Check if first part looks like a street address (contains numbers + text, including hyphenated)
@@ -751,7 +752,7 @@ function DiscoverPageContent() {
       
       if (hasZip && locationParts.length === 1) {
         // Just a zip code: "80202"
-        searchFilters.zip = zipMatch[0];
+        searchFilters.zip = zipMatch[1];
         searchFilters.city = '';
         searchFilters.state = '';
       } else if (isStreetAddress && locationParts.length >= 3) {
@@ -787,7 +788,7 @@ function DiscoverPageContent() {
           // Convert full state name to abbreviation if needed
           const statePartUpper = statePart.toUpperCase();
           searchFilters.state = US_STATES[statePartUpper as keyof typeof US_STATES] || statePartUpper;
-          searchFilters.zip = hasZip ? zipMatch[0] : '';
+          searchFilters.zip = hasZip ? zipMatch[1] : '';
         } else if (locationParts.length === 3) {
           // Format: "73 Rhode Island Avenue, Newport, RI" (no USA suffix)
           const statePart = locationParts[2].trim(); // "RI" or "RI 02840"
@@ -795,15 +796,15 @@ function DiscoverPageContent() {
           
           if (stateZipMatch) {
             searchFilters.state = stateZipMatch[1].toUpperCase();
-            searchFilters.zip = stateZipMatch[2] || (hasZip ? zipMatch[0] : '');
+            searchFilters.zip = stateZipMatch[2] || (hasZip ? zipMatch[1] : '');
           } else {
             searchFilters.state = statePart.toUpperCase();
-            searchFilters.zip = hasZip ? zipMatch[0] : '';
+            searchFilters.zip = hasZip ? zipMatch[1] : '';
           }
         } else {
           // Fallback for unusual formats
           searchFilters.state = lastPart.toUpperCase();
-          searchFilters.zip = hasZip ? zipMatch[0] : '';
+          searchFilters.zip = hasZip ? zipMatch[1] : '';
         }
       } else if (locationParts.length >= 2) {
         // City, State format: "newport, ri" or "denver, co 80202"
@@ -820,7 +821,7 @@ function DiscoverPageContent() {
           // Handle "State, USA" format - treat first part as state
           searchFilters.state = US_STATES[firstPartUpper as keyof typeof US_STATES] || firstPartUpper;
           searchFilters.city = '';
-          searchFilters.zip = hasZip ? zipMatch[0] : '';
+          searchFilters.zip = hasZip ? zipMatch[1] : '';
         } else if (firstPart.toLowerCase().includes('county')) {
           // Handle county format
           searchFilters.county = capitalizeWords(firstPart);
@@ -828,10 +829,10 @@ function DiscoverPageContent() {
           
           if (stateZipMatch) {
             searchFilters.state = stateZipMatch[1].toUpperCase();
-            searchFilters.zip = stateZipMatch[2] || (hasZip ? zipMatch[0] : '');
+            searchFilters.zip = stateZipMatch[2] || (hasZip ? zipMatch[1] : '');
           } else {
             searchFilters.state = lastPart.toUpperCase();
-            searchFilters.zip = hasZip ? zipMatch[0] : '';
+            searchFilters.zip = hasZip ? zipMatch[1] : '';
           }
         } else {
           // Standard "City, State" format
@@ -840,17 +841,17 @@ function DiscoverPageContent() {
           
           if (stateZipMatch) {
             searchFilters.state = stateZipMatch[1].toUpperCase();
-            searchFilters.zip = stateZipMatch[2] || (hasZip ? zipMatch[0] : '');
+            searchFilters.zip = stateZipMatch[2] || (hasZip ? zipMatch[1] : '');
           } else {
             // Assume whole part is state and uppercase it
             searchFilters.state = lastPart.toUpperCase();
-            searchFilters.zip = hasZip ? zipMatch[0] : '';
+            searchFilters.zip = hasZip ? zipMatch[1] : '';
           }
         }
       } else {
         // Single input - could be city name, zip, or street
         if (hasZip) {
-          searchFilters.zip = zipMatch[0];
+          searchFilters.zip = zipMatch[1];
           searchFilters.city = '';
           searchFilters.state = '';
         } else {
@@ -1059,7 +1060,7 @@ function DiscoverPageContent() {
           const zipMatch = cleanedQuery.match(/\b\d{5}(-\d{4})?\b/);
           
           if (zipMatch && locationParts.length === 1) {
-            apiParams.zip = zipMatch[0];
+            apiParams.zip = zipMatch[1];
           } else if (locationParts.length >= 2) {
             const firstPart = locationParts[0];
             const lastPart = locationParts[1].trim();
@@ -1729,7 +1730,7 @@ function DiscoverPageContent() {
             const zipMatch = savedQuery.match(/\b\d{5}(-\d{4})?\b/);
             
             if (zipMatch && locationParts.length === 1) {
-              apiParams.zip = zipMatch[0];
+              apiParams.zip = zipMatch[1];
             } else if (locationParts.length >= 2) {
               const firstPart = locationParts[0];
               const lastPart = locationParts[1].trim();
@@ -1768,7 +1769,7 @@ function DiscoverPageContent() {
             } else {
               // Single input - could be city, state, or zip
               if (zipMatch) {
-                apiParams.zip = zipMatch[0];
+                apiParams.zip = zipMatch[1];
               } else {
                 apiParams.city = savedQuery;
               }

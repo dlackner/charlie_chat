@@ -432,7 +432,15 @@ export default function HomePage() {
               <div className="text-xs text-gray-400 mt-3">November 3, 2025</div>
             </div>
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 border-l-4 border-l-green-500 p-6">
-              
+              <h3 className="font-semibold text-gray-900 mb-2">Add MultiFamilyOS to Your Safe Senders</h3>
+              <p className="text-gray-600 text-sm mb-4">Send a quick email to info@multifamilyos.ai from the email address you used to log in. This ensures our support messages, property alerts, and system notifications reach your inbox instead of junk mail.</p>
+              <a 
+                href="mailto:info@multifamilyos.ai?subject=Adding MultiFamilyOS to Safe Senders"
+                className="inline-block bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-lg transition-colors text-sm"
+              >
+                Send Email →
+              </a>
+              <div className="text-xs text-gray-400 mt-3">December 29, 2025</div>
             </div>
           </div>
         </div>
