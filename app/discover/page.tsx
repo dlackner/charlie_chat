@@ -1946,6 +1946,7 @@ function DiscoverPageContent() {
                     <input 
                       type="number" 
                       placeholder="Min"
+                      min="0"
                       value={filters.units_min}
                       onChange={(e) => updateFilter('units_min', e.target.value)}
                       className="w-16 px-2 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
@@ -1954,6 +1955,7 @@ function DiscoverPageContent() {
                     <input 
                       type="number" 
                       placeholder="Max"
+                      min="0"
                       value={filters.units_max}
                       onChange={(e) => updateFilter('units_max', e.target.value)}
                       className="w-16 px-2 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
@@ -2987,6 +2989,7 @@ function DiscoverPageContent() {
                       <input 
                         type="number" 
                         placeholder="Min"
+                        min="0"
                         value={filters.units_min}
                         onChange={(e) => updateFilter('units_min', e.target.value)}
                         className="w-16 px-2 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
@@ -2995,6 +2998,7 @@ function DiscoverPageContent() {
                       <input 
                         type="number" 
                         placeholder="Max"
+                        min="0"
                         value={filters.units_max}
                         onChange={(e) => updateFilter('units_max', e.target.value)}
                         className="w-16 px-2 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
