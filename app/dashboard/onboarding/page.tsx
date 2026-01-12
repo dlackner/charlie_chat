@@ -62,7 +62,7 @@ export default function OnboardingPage() {
     {
       id: 'whitelist-email',
       title: 'Add MultiFamilyOS to Your Safe Senders',
-      description: 'Send a quick email to info@multifamilyos.ai from the email address you used to log in. This ensures our support messages, property alerts, and system notifications reach your inbox instead of junk mail.',
+      description: 'Follow the instructions in the Email Set Up Guide at the top of the page before doing this. Send a quick email to info@multifamilyos.ai from the email address you used to log in. This ensures our support messages, property alerts, and system notifications reach your inbox instead of junk mail.',
       day: 1,
       icon: <User className="h-5 w-5" />,
       completed: false,
