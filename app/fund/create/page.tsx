@@ -252,6 +252,7 @@ function CreateSubmissionContent() {
             property_id,
             favorite_status,
             saved_properties (
+              address_full,
               address_street,
               address_city,
               address_state,
@@ -262,7 +263,7 @@ function CreateSubmissionContent() {
             )
           `)
           .eq('user_id', user.id)
-          .in('favorite_status', ['Engaged', 'LOI Sent']);
+          .in('favorite_status', ['Engaged', 'LOI Sent', 'Analyzing']);
 
         if (error) {
           console.error('Supabase query error:', error);
@@ -272,7 +273,7 @@ function CreateSubmissionContent() {
 
         const formattedProperties: Property[] = data?.map(item => ({
           property_id: item.property_id,
-          address: (item.saved_properties as any)?.address_street || '',
+          address: (item.saved_properties as any)?.address_full || (item.saved_properties as any)?.address_street || '',
           city: (item.saved_properties as any)?.address_city || '',
           state: (item.saved_properties as any)?.address_state || '',
           units_count: (item.saved_properties as any)?.units_count || 0,
@@ -1004,7 +1005,7 @@ function CreateSubmissionContent() {
             {submissionName.trim() && investmentThesis.trim() && (
               <div className="mb-8">
                 <h3 className="text-2xl font-bold text-gray-900 mb-2">Step 2: Select a Property for Funding</h3>
-                <p className="text-gray-600 mb-6">Choose from properties where you've already sent an LOI or are actively engaged</p>
+                <p className="text-gray-600 mb-6">Choose from properties with a pipeline status of <strong>Analyzing</strong>, <strong>LOI Sent</strong>, or <strong>Engaged</strong>.</p>
               </div>
             )}
               
@@ -1019,14 +1020,23 @@ function CreateSubmissionContent() {
                 </div>
               ) : (
                 <select
+                  size={8}
                   value={selectedPropertyId || ''}
                   onChange={(e) => handlePropertySelection(e.target.value)}
-                  className="w-full border border-gray-300 rounded-lg p-3"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  style={{
+                    fontSize: '14px',
+                    fontFamily: 'system-ui, -apple-system, sans-serif'
+                  }}
                 >
-                  <option value="">Choose a property...</option>
+                  <option value="" style={{ padding: '4px 2px' }}>Choose a property...</option>
                   {engagedProperties.map(property => (
-                    <option key={property.property_id} value={property.property_id}>
-                      {property.address}, {property.city}, {property.state} - {property.units_count} units ({property.favorite_status})
+                    <option 
+                      key={property.property_id} 
+                      value={property.property_id}
+                      style={{ padding: '4px 2px' }}
+                    >
+                      {property.address} • {property.city}, {property.state} • {property.units_count} units • {property.favorite_status}
                     </option>
                   ))}
                 </select>
