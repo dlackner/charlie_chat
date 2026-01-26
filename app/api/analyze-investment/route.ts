@@ -290,7 +290,7 @@ Be specific and tactical. This should guide how to approach THIS particular owne
   try {
     // Execute all prompts in parallel
     const prompts = [
-      performOpenAIAnalysis(marketPrompt, 200),
+      performOpenAIAnalysis(marketPrompt, 400),
       performOpenAIAnalysis(financialPrompt, 200), 
       performOpenAIAnalysis(featuresPrompt, 200),
       performOpenAIAnalysis(riskPrompt, 200),
