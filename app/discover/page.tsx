@@ -798,12 +798,15 @@ function DiscoverPageContent() {
             searchFilters.state = stateZipMatch[1].toUpperCase();
             searchFilters.zip = stateZipMatch[2] || (hasZip ? zipMatch[1] : '');
           } else {
-            searchFilters.state = statePart.toUpperCase();
+            // Convert full state name to abbreviation if possible
+            const statePartUpper = statePart.toUpperCase();
+            searchFilters.state = US_STATES[statePartUpper as keyof typeof US_STATES] || statePartUpper;
             searchFilters.zip = hasZip ? zipMatch[1] : '';
           }
         } else {
           // Fallback for unusual formats
-          searchFilters.state = lastPart.toUpperCase();
+          const lastPartUpper = lastPart.toUpperCase();
+          searchFilters.state = US_STATES[lastPartUpper as keyof typeof US_STATES] || lastPartUpper;
           searchFilters.zip = hasZip ? zipMatch[1] : '';
         }
       } else if (locationParts.length >= 2) {
@@ -831,7 +834,8 @@ function DiscoverPageContent() {
             searchFilters.state = stateZipMatch[1].toUpperCase();
             searchFilters.zip = stateZipMatch[2] || (hasZip ? zipMatch[1] : '');
           } else {
-            searchFilters.state = lastPart.toUpperCase();
+            const lastPartUpper = lastPart.toUpperCase();
+            searchFilters.state = US_STATES[lastPartUpper as keyof typeof US_STATES] || lastPartUpper;
             searchFilters.zip = hasZip ? zipMatch[1] : '';
           }
         } else {
@@ -843,8 +847,9 @@ function DiscoverPageContent() {
             searchFilters.state = stateZipMatch[1].toUpperCase();
             searchFilters.zip = stateZipMatch[2] || (hasZip ? zipMatch[1] : '');
           } else {
-            // Assume whole part is state and uppercase it
-            searchFilters.state = lastPart.toUpperCase();
+            // Convert full state name to abbreviation if possible
+            const lastPartUpper = lastPart.toUpperCase();
+            searchFilters.state = US_STATES[lastPartUpper as keyof typeof US_STATES] || lastPartUpper;
             searchFilters.zip = hasZip ? zipMatch[1] : '';
           }
         }
