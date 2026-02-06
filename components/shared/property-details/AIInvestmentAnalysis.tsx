@@ -5,12 +5,13 @@
  */
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Bot, ChevronDown, ChevronUp, Calculator } from 'lucide-react';
+import { Bot, ChevronDown, ChevronUp, Calculator, RefreshCw, Clock } from 'lucide-react';
 import { hasAccess } from '@/lib/v2/accessControl';
 import type { UserClass } from '@/lib/v2/accessControl';
 import { StandardModalWithActions } from '@/components/shared/StandardModal';
+import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 
 interface PropertyData {
   id?: string;
@@ -73,6 +74,55 @@ export function AIInvestmentAnalysis({ property, isEngageContext, userClass }: A
   const [analysisError, setAnalysisError] = useState<string | null>(null);
   const [investmentAnalysis, setInvestmentAnalysis] = useState<AnalysisResult | null>(null);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  
+  // NEW: Cached analysis state for persistent storage
+  const [cachedAnalysis, setCachedAnalysis] = useState<{
+    data: AnalysisResult;
+    generated_at: string;
+  } | null>(null);
+  const [isLoadingCache, setIsLoadingCache] = useState(false);
+
+  // NEW: Load cached analysis on component mount (engage context only)
+  useEffect(() => {
+    const loadCachedAnalysis = async () => {
+      if (!isEngageContext || !property?.id) return;
+      
+      setIsLoadingCache(true);
+      try {
+        const supabase = createSupabaseBrowserClient();
+        
+        const { data, error } = await supabase
+          .from('saved_properties')
+          .select('investment_analysis_data, investment_analysis_generated_at')
+          .eq('property_id', property.id)
+          .single();
+        
+        if (error) {
+          // Property not found in saved_properties table, that's okay
+          if (error.code !== 'PGRST116') { // PGRST116 = not found
+            console.error('Error loading cached analysis:', error);
+          }
+          return;
+        }
+        
+        // If cached analysis exists, set it
+        if (data?.investment_analysis_data && data?.investment_analysis_generated_at) {
+          const cachedData = {
+            data: data.investment_analysis_data,
+            generated_at: data.investment_analysis_generated_at
+          };
+          setCachedAnalysis(cachedData);
+          setInvestmentAnalysis(data.investment_analysis_data);
+        }
+      } catch (error) {
+        console.error('Failed to load cached analysis:', error);
+      } finally {
+        setIsLoadingCache(false);
+      }
+    };
+
+    loadCachedAnalysis();
+  }, [isEngageContext, property?.id]);
 
   const handleAnalyzeProperty = async () => {
     setIsAnalyzing(true);
@@ -112,6 +162,40 @@ export function AIInvestmentAnalysis({ property, isEngageContext, userClass }: A
       setInvestmentAnalysis(analysisResult);
       setIsAIAnalysisExpanded(true);
       
+      // NEW: Save analysis to cache after successful generation (engage context only)
+      if (isEngageContext && analysisResult) {
+        const timestamp = new Date().toISOString();
+        const cacheData = {
+          data: analysisResult,
+          generated_at: timestamp
+        };
+        setCachedAnalysis(cacheData);
+        
+        // Save to database
+        try {
+          const supabase = createSupabaseBrowserClient();
+          
+          console.log('🔍 Saving analysis for property.id:', property.id);
+          
+          const { data, error, count } = await supabase
+            .from('saved_properties')
+            .update({
+              investment_analysis_data: analysisResult,
+              investment_analysis_generated_at: timestamp
+            })
+            .eq('property_id', property.id)
+            .select();
+          
+          console.log('🔍 Update result - data:', data, 'error:', error, 'count:', count);
+          
+          if (error) {
+            console.error('Failed to save analysis to cache:', error);
+          }
+        } catch (cacheError) {
+          console.error('Cache save error:', cacheError);
+        }
+      }
+      
       // Show upgrade modal immediately for core users
       if (!hasAccess(userClass as UserClass, 'discover_investment_analysis')) {
         setShowUpgradeModal(true);
@@ -142,7 +226,8 @@ export function AIInvestmentAnalysis({ property, isEngageContext, userClass }: A
             </div>
           </div>
           <div className="flex items-center space-x-3">
-            {!isAnalyzing && (
+            {/* OLD: Simple analyze button - commented out for cached analysis feature */}
+            {/* {!isAnalyzing && (
               <button
                 onClick={(e) => {
                   e.stopPropagation();
@@ -153,6 +238,43 @@ export function AIInvestmentAnalysis({ property, isEngageContext, userClass }: A
                 <Bot className="h-4 w-4 mr-2" />
                 Analyze Investment
               </button>
+            )} */}
+            
+            {/* NEW: Cached analysis buttons with refresh option */}
+            {!isAnalyzing && (
+              <>
+                {cachedAnalysis ? (
+                  // Show refresh button when cached analysis exists
+                  <div className="flex items-center space-x-2">
+                    <div className="flex items-center text-sm text-gray-600">
+                      <Clock className="h-4 w-4 mr-1" />
+                      Generated {new Date(cachedAnalysis.generated_at).toLocaleDateString()}
+                    </div>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleAnalyzeProperty();
+                      }}
+                      className="flex items-center px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-all font-medium text-sm"
+                    >
+                      <RefreshCw className="h-4 w-4 mr-2" />
+                      Refresh Analysis
+                    </button>
+                  </div>
+                ) : (
+                  // Show analyze button when no cached analysis exists
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleAnalyzeProperty();
+                    }}
+                    className="flex items-center px-4 py-2 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-lg hover:from-blue-600 hover:to-purple-700 transition-all font-medium"
+                  >
+                    <Bot className="h-4 w-4 mr-2" />
+                    Analyze Investment
+                  </button>
+                )}
+              </>
             )}
             {isAIAnalysisExpanded ? (
               <ChevronUp className="h-5 w-5 text-gray-400" />
