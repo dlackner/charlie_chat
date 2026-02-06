@@ -18,6 +18,7 @@ import PropertyMapWithRents from '@/components/shared/PropertyMapWithRents';
 import dynamic from 'next/dynamic';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { useAlert } from '@/components/shared/AlertModal';
+import { getPropertyType } from '@/lib/propertyTypeOverrides';
 
 
 // Extend Window interface for address validation timeout
@@ -191,7 +192,7 @@ function DiscoverPageContent() {
               },
               body: JSON.stringify({
                 ...lastSearchFilters,
-                property_type: "MFR",
+                property_type: getPropertyType(lastSearchFilters?.state, lastSearchFilters?.county),
                 size: 12 * (currentPage - Math.floor(searchResults.length / PROPERTIES_PER_PAGE)),
                 resultIndex: nextResultIndex,
                 userId: user?.id || null // Add user ID for search tracking
@@ -883,7 +884,7 @@ function DiscoverPageContent() {
       
       const searchPayload = {
         ...searchFilters,
-        property_type: "MFR", // Only multifamily properties  
+        property_type: getPropertyType(searchFilters.state, searchFilters.county),
         size: 12, // Load 12 at a time for pagination
         resultIndex: 0,
         userId: user?.id || null // Add user ID for search tracking
@@ -1048,7 +1049,7 @@ function DiscoverPageContent() {
         const { apiFields } = savedSearch.criteria;
         
         let apiParams: any = {
-          property_type: "MFR", // Fixed: was propertyType (camelCase), should be property_type (snake_case)
+          property_type: getPropertyType(savedSearch.criteria?.state, savedSearch.criteria?.county),
           count: false,
           size: 12,
           resultIndex: 0,
@@ -1717,7 +1718,7 @@ function DiscoverPageContent() {
           
           // Build API params with saved location and filters
           let apiParams: any = {
-            property_type: "MFR",
+            property_type: getPropertyType(search.filters?.state, search.filters?.county),
             count: false,
             size: 12,
             resultIndex: 0,
