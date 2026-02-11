@@ -757,7 +757,15 @@ export default function MobileNavigation() {
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex justify-center items-center space-x-0">
               {desktopNav.mainMenuItems.map((item) => {
-                const isActive = item.href && (item.href === '/' ? pathname === '/' : pathname.startsWith(item.href));
+                const isActive = item.href && (item.href === '/' ? pathname === '/' : (() => {
+                  if (pathname.startsWith('/discover/property/')) {
+                    if (contextParam === 'engage' && item.href === '/engage') return true;
+                    if (contextParam === 'buybox' && item.href === '/discover') return true;
+                    if (!contextParam && item.href === '/discover') return true;
+                    return false;
+                  }
+                  return pathname.startsWith(item.href);
+                })());
                 const isSubmenuOpen = openSubmenus[item.name];
                 
                 return (
