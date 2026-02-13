@@ -496,15 +496,29 @@ export default function Home() {
             <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-8">
               Transform Into a Full-Spectrum Investment Firm
             </h2>
-            <div className="space-y-6 text-lg text-gray-700 leading-relaxed">
-              <p>
-                <strong>MultifamilyOS</strong> transforms individual investors into full-spectrum investment firms by providing an AI-powered team that never sleeps.
+            <p className="text-lg text-gray-700 leading-relaxed">
+              MultifamilyOS is an AI-powered investment team that never sleeps. Instead of juggling fragmented tools, emails, and spreadsheets, you get one intelligent platform that scouts properties, analyzes deals, generates documents, engages owners, and helps you secure financing. It's like having a full staff—property agent, analyst, attorney, marketer, and financing advisor—working 24/7 to scale your pipeline and close deals faster.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* 52-Week Master Class Section */}
+      <div className="bg-blue-600 py-16">
+        <div className="max-w-6xl mx-auto px-6">
+          <div className="text-center">
+            <h2 className="text-3xl md:text-4xl font-bold text-white mb-2">
+              Close Your First Multifamily Deal Faster
+            </h2>
+            <p className="text-xl text-blue-100 mb-6">
+              With AI, Coaching, and a Community That Funds Each Other
+            </p>
+            <div className="max-w-5xl mx-auto">
+              <p className="text-lg text-blue-50 leading-relaxed mb-4">
+                Professional members get exclusive access to the MultifamilyOS Cohort Program. Master every discipline of multifamily investing through weekly self-paced modules taught by Charles Dobens and hands-on practice using the MultifamilyOS.
               </p>
-              <p>
-                Instead of juggling fragmented tools, emails, and spreadsheets, you get one intelligent platform that scouts properties, analyzes deals, generates documents, engages owners, and helps you secure financing.
-              </p>
-              <p>
-                It's like having a full staff—property agent, analyst, attorney, marketer, and financing advisor—working 24/7 to scale your pipeline and close deals faster.
+              <p className="text-lg text-blue-50 leading-relaxed">
+                Apply what you learn immediately to real deals in your pipeline. Join weekly group sessions to discuss challenges, share insights, and accelerate your progress alongside fellow investors. From deal analysis to asset management, build the expertise to analyze, acquire, and grow a multifamily portfolio.
               </p>
             </div>
           </div>
@@ -523,7 +537,7 @@ export default function Home() {
             </div>
             
             <div className="max-w-4xl mx-auto mb-8">
-              <p className="text-xl text-gray-700 leading-relaxed">
+              <p className="text-lg text-gray-700 leading-relaxed">
                 Connect with an exclusive network of elite multifamily investors who are actively seeking investment opportunities and partnership deals. Our private member community creates a unique environment where experienced investors share deal flow, co-invest on larger acquisitions, and provide capital for promising projects.
               </p>
             </div>
@@ -548,7 +562,7 @@ export default function Home() {
             <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
               Built-In AI Property Coach
             </h2>
-            <p className="text-xl text-gray-600">
+            <p className="text-lg text-gray-600">
               Get instant, expert-level insights on any multifamily investment question
             </p>
           </div>
@@ -564,7 +578,7 @@ export default function Home() {
             <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
               Platform Capabilities
             </h2>
-            <p className="text-xl text-gray-600">
+            <p className="text-lg text-gray-600">
               Everything you need to find, analyze, and close multifamily deals
             </p>
           </div>

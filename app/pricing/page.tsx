@@ -602,11 +602,11 @@ function PricingPageContent() {
             </>
           )}
           <p className="text-sm text-gray-700 mb-4">
-            Everything in Plus and more. Access to Charles Dobens Master Class Training and participation in weekly group coaching sessions.
+            Everything in Plus and more. Membership in the MultifamilyOS Cohort program, including direct access to Charles Dobens.
           </p>
           <ul className="text-sm space-y-1 text-gray-800 mb-4 flex flex-col">
+            <li className="flex items-start"><span className="w-2 h-2 bg-indigo-600 rounded-full mt-2 mr-3 flex-shrink-0"></span>Self-paced Master Class Training Program</li>
             <li className="flex items-start"><span className="w-2 h-2 bg-indigo-600 rounded-full mt-2 mr-3 flex-shrink-0"></span>Weekly Coaching Calls with Charles Dobens</li>
-            <li className="flex items-start"><span className="w-2 h-2 bg-indigo-600 rounded-full mt-2 mr-3 flex-shrink-0"></span>Master Class Training Program</li>
             <li className="flex items-start"><span className="w-2 h-2 bg-indigo-600 rounded-full mt-2 mr-3 flex-shrink-0"></span>Community Access and Networking</li>
           </ul>
           {isAnnual ? (
@@ -1316,7 +1316,7 @@ function PricingPageContent() {
               <p className="mb-3">The Professional plan adds depth through:</p>
               <ul className="list-disc pl-6 space-y-1">
                 <li><strong>Capital Club</strong> – Engage with a network of multifamily property investors who can help underwrite deals and participate in funding. Accelerate capital raising and enjoy the confidence of having a network of backers behind your offers.</li>
-                <li><strong>Master Class Training</strong> – 90+ lessons led by Charles Dobens, the Multifamily Attorney, covering markets, deal structuring, capital raising, due diligence, and scaling. With $50M+ in personal investing experience and $3B+ in client transactions, Charles brings practical, field-tested strategies to every lesson.</li>
+                <li><strong>Master Class Training</strong> – A comprehensive program of weekly sessions led by Charles Dobens, the Multifamily Attorney, covering markets, deal structuring, capital raising, due diligence, and scaling. With $50M+ in personal investing experience and $3B+ in client transactions, Charles brings practical, field-tested strategies to every lesson.</li>
                 <li><strong>Weekly Coaching</strong> – Live calls with Charles Dobens that combine deal analysis, market updates, and expert Q&A. These sessions provide direct access to one of the most respected educators in multifamily investing.</li>
                 <li><strong>Community Access</strong> – Direct connection to experienced peers and mentors for accountability, support, and networking opportunities.</li>
               </ul>
