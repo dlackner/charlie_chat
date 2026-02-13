@@ -13,6 +13,7 @@ import { Dialog } from "@headlessui/react";
 import { PropertyCountRangeIndicator } from "@/components/ui/PropertyCountRangeIndicator";
 import { getPropertyCountStatus, MarketTier, MARKET_TIERS } from "@/lib/marketSizeUtil";
 
+
 // Utility function for capitalizing words (proper case)
 const capitalizeWords = (str: string) =>
     str.toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
@@ -745,7 +746,13 @@ export const BuyBoxModal: React.FC<BuyBoxModalProps> = ({ isOpen, onClose, focus
 
     const checkPropertyCount = async (market: Market): Promise<{ count: number; propertyIds: string[]; coordinates?: { lat: number; lng: number } }> => {
         try {
-            const searchPayload: any = {
+            // SEARCH CRITERIA LOGIC - Updated to use AND logic for better filtering
+            // CHANGES MADE:
+            // 1. Changed from OR to AND logic - properties must match ALL specified criteria
+            // 2. Added support for units_min = 0 to include counties with unknown unit counts  
+            // 3. Confirmed year_built nulls auto-pass by default (no special handling needed)
+            // 4. All criteria now applied directly to searchPayload for AND behavior
+            let searchPayload: any = {
                 size: 8000,  // Cap at 8,000 properties for API limit
                 resultIndex: 0,
                 count: true,
@@ -777,44 +784,61 @@ export const BuyBoxModal: React.FC<BuyBoxModalProps> = ({ isOpen, onClose, focus
                 return { count: 0, propertyIds: [], coordinates: undefined };
             }
 
-            const orCriteria: any[] = [];
+            // OLD OR LOGIC - COMMENTED OUT
+            // Previously used OR logic where properties matched ANY of the criteria types
+            // const orCriteria: any[] = [];
+            // if (market.units_min > 0 || market.units_max > 0) {
+            //     const unitsCondition: any = {};
+            //     if (market.units_min > 0) unitsCondition.units_min = market.units_min;
+            //     if (market.units_max > 0) unitsCondition.units_max = market.units_max;
+            //     orCriteria.push(unitsCondition);
+            // }
+            // if (market.assessed_value_min > 0 || market.assessed_value_max > 0) {
+            //     const assessedValueCondition: any = {};
+            //     if (market.assessed_value_min > 0) assessedValueCondition.assessed_value_min = market.assessed_value_min;
+            //     if (market.assessed_value_max > 0) assessedValueCondition.assessed_value_max = market.assessed_value_max;
+            //     orCriteria.push(assessedValueCondition);
+            // }
+            // if (market.estimated_value_min > 0 || market.estimated_value_max > 0) {
+            //     const estimatedValueCondition: any = {};
+            //     if (market.estimated_value_min > 0) estimatedValueCondition.value_min = market.estimated_value_min;
+            //     if (market.estimated_value_max > 0) estimatedValueCondition.value_max = market.estimated_value_max;
+            //     orCriteria.push(estimatedValueCondition);
+            // }
+            // if (market.year_built_min > 0 || market.year_built_max > 0) {
+            //     const yearBuiltCondition: any = {};
+            //     if (market.year_built_min > 0) yearBuiltCondition.year_built_min = market.year_built_min;
+            //     if (market.year_built_max > 0) yearBuiltCondition.year_built_max = market.year_built_max;
+            //     orCriteria.push(yearBuiltCondition);
+            // }
+            // if (orCriteria.length > 0) {
+            //     searchPayload.and = [
+            //         locationCondition,
+            //         { or: orCriteria }
+            //     ];
+            // } else {
+            //     Object.assign(searchPayload, locationCondition);
+            // }
 
-            if (market.units_min > 0 || market.units_max > 0) {
-                const unitsCondition: any = {};
-                if (market.units_min > 0) unitsCondition.units_min = market.units_min;
-                if (market.units_max > 0) unitsCondition.units_max = market.units_max;
-                orCriteria.push(unitsCondition);
-            }
-
-            if (market.assessed_value_min > 0 || market.assessed_value_max > 0) {
-                const assessedValueCondition: any = {};
-                if (market.assessed_value_min > 0) assessedValueCondition.assessed_value_min = market.assessed_value_min;
-                if (market.assessed_value_max > 0) assessedValueCondition.assessed_value_max = market.assessed_value_max;
-                orCriteria.push(assessedValueCondition);
-            }
-
-            if (market.estimated_value_min > 0 || market.estimated_value_max > 0) {
-                const estimatedValueCondition: any = {};
-                if (market.estimated_value_min > 0) estimatedValueCondition.value_min = market.estimated_value_min;
-                if (market.estimated_value_max > 0) estimatedValueCondition.value_max = market.estimated_value_max;
-                orCriteria.push(estimatedValueCondition);
-            }
-
-            if (market.year_built_min > 0 || market.year_built_max > 0) {
-                const yearBuiltCondition: any = {};
-                if (market.year_built_min > 0) yearBuiltCondition.year_built_min = market.year_built_min;
-                if (market.year_built_max > 0) yearBuiltCondition.year_built_max = market.year_built_max;
-                orCriteria.push(yearBuiltCondition);
-            }
-
-            if (orCriteria.length > 0) {
-                searchPayload.and = [
-                    locationCondition,
-                    { or: orCriteria }
-                ];
-            } else {
-                Object.assign(searchPayload, locationCondition);
-            }
+            // NEW AND LOGIC - All criteria must match
+            // Start with location condition and add all other criteria to the same object
+            Object.assign(searchPayload, locationCondition);
+            
+            // Add units criteria directly to search payload (allow 0 for units_min to include properties from counties that don't report unit counts)
+            if (market.units_min >= 0 && (market.units_min > 0 || market.units_max > 0)) searchPayload.units_min = market.units_min;
+            if (market.units_max > 0) searchPayload.units_max = market.units_max;
+            
+            // Add assessed value criteria directly to search payload
+            if (market.assessed_value_min > 0) searchPayload.assessed_value_min = market.assessed_value_min;
+            if (market.assessed_value_max > 0) searchPayload.assessed_value_max = market.assessed_value_max;
+            
+            // Add estimated value criteria directly to search payload
+            if (market.estimated_value_min > 0) searchPayload.value_min = market.estimated_value_min;
+            if (market.estimated_value_max > 0) searchPayload.value_max = market.estimated_value_max;
+            
+            // Add year built criteria (nulls auto-pass works by default - no special syntax needed)
+            if (market.year_built_min > 0) searchPayload.year_built_min = market.year_built_min;
+            if (market.year_built_max > 0) searchPayload.year_built_max = market.year_built_max;
 
             searchPayload.ids_only = true;
             
@@ -1537,7 +1561,7 @@ export const BuyBoxModal: React.FC<BuyBoxModalProps> = ({ isOpen, onClose, focus
                                                                             type="number"
                                                                             min="0"
                                                                             max="100"
-                                                                            value={market.units_min || ''}
+                                                                            value={market.units_min !== undefined && market.units_min !== null ? market.units_min.toString() : ''}
                                                                             placeholder="Min"
                                                                             onChange={(e) => {
                                                                                 e.stopPropagation();
@@ -1563,6 +1587,9 @@ export const BuyBoxModal: React.FC<BuyBoxModalProps> = ({ isOpen, onClose, focus
                                                                             className="w-20 px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors"
                                                                         />
                                                                     </div>
+                                                                    <p className="text-xs text-gray-500 mt-2">
+                                                                        Tip: Set Min to 0 to include properties with unknown unit count
+                                                                    </p>
                                                                 </div>
 
                                                                 <div>
