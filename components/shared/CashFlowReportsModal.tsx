@@ -200,7 +200,7 @@ export const CashFlowReportsModal: React.FC<CashFlowReportsModalProps> = ({
                         </div>
                         <Download className="h-5 w-5 text-blue-600" />
                         <button
-                          onClick={() => handleDeleteOffer(property.id)}
+                          onClick={(e) => { e.stopPropagation(); handleDeleteOffer(property.id); }}
                           disabled={deletingId === property.id}
                           className="p-2 text-red-600 hover:bg-red-50 rounded-md transition-colors disabled:opacity-50"
                           title="Delete pricing scenario"
