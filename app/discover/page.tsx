@@ -275,7 +275,8 @@ function DiscoverPageContent() {
     estimated_equity_max: '',
     mortgage_min: '',
     mortgage_max: '',
-    
+    equity_percent_min: '',
+
     // Distress & Special Conditions
     assumable: null as boolean | null,
     reo: null as boolean | null,
@@ -562,9 +563,12 @@ function DiscoverPageContent() {
 
   
 
-  // Load daily properties and user favorites on page load
+  // Load daily properties on page load (skip if restoring search)
   useEffect(() => {
-    loadDailyProperties();
+    const hasSearchFromUrl = searchParams.get('hasResults') === 'true';
+    if (!hasSearchFromUrl) {
+      loadDailyProperties();
+    }
   }, []);
   
   // Load user favorites for favoriting functionality
@@ -1013,7 +1017,8 @@ function DiscoverPageContent() {
       estimated_equity_max: '',
       mortgage_min: '',
       mortgage_max: '',
-      
+      equity_percent_min: '',
+
       // Distress & Special Conditions
       assumable: null,
       reo: null,
@@ -1376,6 +1381,7 @@ function DiscoverPageContent() {
         estimated_equity_max: 'financial',
         mortgage_min: 'financial',
         mortgage_max: 'financial',
+        equity_percent_min: 'financial',
         assumable: 'financial',
         reo: 'distress',
         pre_foreclosure: 'distress',
@@ -1429,6 +1435,7 @@ function DiscoverPageContent() {
         estimated_equity_max: '',
         mortgage_min: '',
         mortgage_max: '',
+        equity_percent_min: '',
         assumable: null,
         reo: null,
         pre_foreclosure: null,
@@ -1504,6 +1511,7 @@ function DiscoverPageContent() {
         estimated_equity_max: '',
         mortgage_min: '',
         mortgage_max: '',
+        equity_percent_min: '',
         assumable: null,
         reo: null,
         pre_foreclosure: null,
@@ -1561,6 +1569,7 @@ function DiscoverPageContent() {
         estimated_equity_max: 'financial',
         mortgage_min: 'financial',
         mortgage_max: 'financial',
+        equity_percent_min: 'financial',
         assumable: 'financial',
         reo: 'distress',
         pre_foreclosure: 'distress',
@@ -1613,6 +1622,7 @@ function DiscoverPageContent() {
         estimated_equity_max: '',
         mortgage_min: '',
         mortgage_max: '',
+        equity_percent_min: '',
         assumable: null,
         reo: null,
         pre_foreclosure: null,
@@ -1693,6 +1703,7 @@ function DiscoverPageContent() {
         estimated_equity_max: '',
         mortgage_min: '',
         mortgage_max: '',
+        equity_percent_min: '',
         assumable: null,
         reo: null,
         pre_foreclosure: null,
@@ -2345,11 +2356,26 @@ function DiscoverPageContent() {
                     />
                   </div>
                 </div>
-                
+
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-2 uppercase tracking-wide">
+                    Equity Percent (Min)
+                  </label>
+                  <div className="flex space-x-2">
+                    <input
+                      type="number"
+                      placeholder="Min %"
+                      value={filters.equity_percent_min || ''}
+                      onChange={(e) => updateFilter('equity_percent_min', e.target.value)}
+                      className="w-24 px-2 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+                </div>
+
                 <FilterGroup label="Assumable">
-                  <ToggleButton 
-                    active={filters.assumable === null} 
-                    label="Any" 
+                  <ToggleButton
+                    active={filters.assumable === null}
+                    label="Any"
                     color="blue"
                     onClick={() => updateFilter('assumable', null)}
                   />
@@ -3388,11 +3414,26 @@ function DiscoverPageContent() {
                       />
                     </div>
                   </div>
-                  
+
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-2 uppercase tracking-wide">
+                      Equity Percent (Min)
+                    </label>
+                    <div className="flex space-x-2">
+                      <input
+                        type="number"
+                        placeholder="Min %"
+                        value={filters.equity_percent_min || ''}
+                        onChange={(e) => updateFilter('equity_percent_min', e.target.value)}
+                        className="w-24 px-2 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      />
+                    </div>
+                  </div>
+
                   <FilterGroup label="Assumable">
-                    <ToggleButton 
-                      active={filters.assumable === null} 
-                      label="Any" 
+                    <ToggleButton
+                      active={filters.assumable === null}
+                      label="Any"
                       color="blue"
                       onClick={() => updateFilter('assumable', null)}
                     />

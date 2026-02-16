@@ -19,7 +19,7 @@ export const PropertyInfoSections: React.FC<PropertyInfoSectionsProps> = ({ prop
 
   // Helper function to format currency
   const formatCurrency = (value: number | null | undefined) => {
-    if (!value) return 'N/A';
+    if (value === null || value === undefined) return 'N/A';
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: 'USD',
