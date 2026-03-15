@@ -8,7 +8,7 @@
 
 import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { ChevronLeft, ChevronRight, TrendingUp, FileText, Mail, DollarSign, Building, Users, Target, Zap, Globe, Brain, BarChart3, MessageSquare, Calendar, CheckCircle, X, Crown, Play } from 'lucide-react';
+import { ChevronLeft, ChevronRight, TrendingUp, FileText, Mail, DollarSign, Building, Users, Target, Zap, Globe, Brain, BarChart3, MessageSquare, Calendar, CheckCircle, X, Crown, Play, AlertTriangle } from 'lucide-react';
 import Image from 'next/image';
 import { Dialog } from '@headlessui/react';
 import TypewriterChatDemo from '@/components/ui/TypewriterChatDemo';
@@ -357,17 +357,44 @@ export default function Home() {
                   </button>
                 </form>
               ) : (
-                <div className="text-center p-4 bg-green-50 border border-green-200 rounded-xl">
-                  <CheckCircle className="h-8 w-8 text-green-600 mx-auto mb-2" />
-                  <p className="text-green-600 font-medium mb-4">
-                    Check your email for the confirmation link!
-                  </p>
-                  <p className="text-sm text-gray-600">
-                    We've sent a login link to <strong>{signupEmail}</strong>. Click the link in your email to complete your registration and start your 7-day free trial.
-                  </p>
-                  <p className="text-xs text-gray-500 mt-3">
-                    Didn't receive the email? Check your spam folder.
-                  </p>
+                <div className="bg-white rounded-lg border border-gray-200 p-6">
+                  {/* Success Section */}
+                  <div className="flex items-start space-x-4 mb-6">
+                    <div className="flex-shrink-0">
+                      <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                        <CheckCircle className="w-5 h-5 text-blue-600" />
+                      </div>
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="text-lg font-bold text-gray-900">Check Your Email</h3>
+                      <p className="text-sm text-gray-600">MultifamilyOS.ai</p>
+                      <p className="text-sm text-gray-600 mt-2">
+                        A confirmation link has been sent to <strong>{signupEmail}</strong>
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Warning Section */}
+                  <div className="border-t border-gray-200 pt-6">
+                    <div className="flex items-start space-x-4">
+                      <div className="flex-shrink-0">
+                        <div className="w-10 h-10 bg-amber-100 rounded-lg flex items-center justify-center">
+                          <AlertTriangle className="w-5 h-5 text-amber-600" />
+                        </div>
+                      </div>
+                      <div className="flex-1">
+                        <h4 className="font-bold text-gray-900 mb-2">Check Your Spam Folder</h4>
+                        <p className="text-sm text-gray-600 mb-3">
+                          Our confirmation email often gets filtered. If you don't see it in your inbox, check:
+                        </p>
+                        <ul className="text-sm text-gray-600 space-y-1 text-left">
+                          <li>• <strong>Gmail:</strong> Check "Promotions" or "Spam" tabs</li>
+                          <li>• <strong>Outlook:</strong> Check your "Junk" folder</li>
+                          <li>• <strong>Other providers:</strong> Search for "MultifamilyOS"</li>
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               )}
             </div>
@@ -707,16 +734,44 @@ export default function Home() {
                 </p>
               </div>
             ) : (
-              <div className="text-center p-4 bg-green-50 border border-green-200 rounded-xl">
-                <CheckCircle className="h-8 w-8 text-green-600 mx-auto mb-2" />
-                <h3 className="font-medium text-green-800 mb-1">Check Your Email</h3>
-                <p className="text-green-600 text-sm">
-                  A confirmation link has been sent to <strong>{email}</strong>. 
-                  Click the link to complete your registration and start your 7-day free trial.
-                </p>
-                <p className="text-xs text-gray-500 mt-3">
-                  Didn't receive the email? Check your spam folder.
-                </p>
+              <div className="bg-white rounded-lg border border-gray-200 p-6">
+                {/* Success Section */}
+                <div className="flex items-start space-x-4 mb-6">
+                  <div className="flex-shrink-0">
+                    <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                      <CheckCircle className="w-5 h-5 text-blue-600" />
+                    </div>
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="text-lg font-bold text-gray-900">Check Your Email</h3>
+                    <p className="text-sm text-gray-600">MultifamilyOS.ai</p>
+                    <p className="text-sm text-gray-600 mt-2">
+                      A confirmation link has been sent to <strong>{email}</strong>
+                    </p>
+                  </div>
+                </div>
+
+                {/* Warning Section */}
+                <div className="border-t border-gray-200 pt-6">
+                  <div className="flex items-start space-x-4">
+                    <div className="flex-shrink-0">
+                      <div className="w-10 h-10 bg-amber-100 rounded-lg flex items-center justify-center">
+                        <AlertTriangle className="w-5 h-5 text-amber-600" />
+                      </div>
+                    </div>
+                    <div className="flex-1">
+                      <h4 className="font-bold text-gray-900 mb-2">Check Your Spam Folder</h4>
+                      <p className="text-sm text-gray-600 mb-3">
+                        Our confirmation email often gets filtered. If you don't see it in your inbox, check:
+                      </p>
+                      <ul className="text-sm text-gray-600 space-y-1 text-left">
+                        <li>• <strong>Gmail:</strong> Check "Promotions" or "Spam" tabs</li>
+                        <li>• <strong>Outlook:</strong> Check your "Junk" folder</li>
+                        <li>• <strong>Other providers:</strong> Search for "MultifamilyOS"</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
               </div>
             )}
           </div>
