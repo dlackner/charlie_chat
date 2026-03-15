@@ -30,24 +30,24 @@ export default function PropertyMapWithRents(props: PropertyMapWithRentsProps) {
   const [rentData, setRentData] = useState<ProcessedRentData[]>([]);
   const [isLoadingRentData, setIsLoadingRentData] = useState(true);
 
-  // Load rental data from CSV file on component mount (same as legacy version)
+  // Load rental data from API on component mount
   useEffect(() => {
     const loadRentData = async () => {
       try {
         setIsLoadingRentData(true);
-        
-        // Fetch rental data from CSV file (same as legacy my-properties)
-        const response = await fetch('/Monthly Rental Rates.csv?v=3');
+
+        // Fetch rental data from database API
+        const response = await fetch('/api/rental-data');
         if (!response.ok) {
-          throw new Error(`Failed to fetch CSV: ${response.status}`);
+          throw new Error(`Failed to fetch rental data: ${response.status}`);
         }
-        
+
         const csvText = await response.text();
-        
-        // Use same RentDataProcessor as legacy version
+
+        // Use same RentDataProcessor for CSV format compatibility
         const processor = new RentDataProcessor(csvText);
         const processedData = processor.processRentData();
-        
+
         setRentData(processedData);
       } catch (error) {
         console.error('Error loading rent data:', error);
