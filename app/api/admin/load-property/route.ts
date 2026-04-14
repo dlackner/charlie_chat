@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
+import { createClient } from '@supabase/supabase-js';
 
 interface PropertyData {
   absenteeOwner?: boolean;
@@ -123,9 +124,9 @@ interface PropertyData {
 
 export async function POST(request: NextRequest) {
   try {
-    // Create Supabase client for auth verification
+    // Create Supabase client for auth verification (with anon key)
     const cookieStore = await import('next/headers').then(m => m.cookies());
-    const supabase = createServerClient(
+    const anonSupabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
       {
@@ -148,8 +149,14 @@ export async function POST(request: NextRequest) {
       }
     );
 
+    // Create Supabase client with service role key for admin operations (bypasses RLS)
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    );
+
     // Verify user is authenticated
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    const { data: { user }, error: userError } = await anonSupabase.auth.getUser();
     if (userError || !user) {
       return NextResponse.json(
         { error: 'Authentication required' },
@@ -158,7 +165,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Verify user is admin
-    const { data: profile } = await supabase
+    const { data: profile } = await anonSupabase
       .from('profiles')
       .select('user_class')
       .eq('user_id', user.id)
@@ -223,74 +230,70 @@ export async function POST(request: NextRequest) {
       .eq('property_id', propertyId)
       .single();
 
-    if (existingProperty) {
-      return NextResponse.json(
-        { error: `Property ${propertyId} already exists in saved_properties` },
-        { status: 409 }
-      );
-    }
+    // Only insert if property doesn't already exist
+    if (!existingProperty) {
+      // Insert into saved_properties
+      const { error: propertyError } = await supabase
+        .from('saved_properties')
+        .insert({
+          property_id: propertyId,
+          address_street: actualPropertyData.address?.street || null,
+          address_full: actualPropertyData.address?.address || null,
+          address_city: actualPropertyData.address?.city || null,
+          address_state: actualPropertyData.address?.state || null,
+          address_zip: actualPropertyData.address?.zip || null,
+          latitude: actualPropertyData.latitude || null,
+          longitude: actualPropertyData.longitude || null,
+          mail_address_full: actualPropertyData.mailAddress?.address || null,
+          mail_address_street: actualPropertyData.mailAddress?.street || null,
+          mail_address_city: actualPropertyData.mailAddress?.city || null,
+          mail_address_state: actualPropertyData.mailAddress?.state || null,
+          mail_address_zip: actualPropertyData.mailAddress?.zip || null,
+          property_type: actualPropertyData.propertyType || null,
+          units_count: actualPropertyData.unitsCount || null,
+          year_built: actualPropertyData.yearBuilt || null,
+          square_feet: actualPropertyData.squareFeet || null,
+          lot_square_feet: actualPropertyData.lotSquareFeet || null,
+          flood_zone: actualPropertyData.floodZone || null,
+          flood_zone_description: actualPropertyData.floodZoneDescription || null,
+          assessed_value: actualPropertyData.assessedValue || null,
+          assessed_land_value: actualPropertyData.assessedLandValue || null,
+          estimated_value: actualPropertyData.estimatedValue || null,
+          estimated_equity: actualPropertyData.estimatedEquity || null,
+          last_sale_amount: actualPropertyData.lastSaleAmount ? parseFloat(actualPropertyData.lastSaleAmount) : null,
+          mls_active: actualPropertyData.mlsActive || null,
+          for_sale: actualPropertyData.forSale || null,
+          assumable: actualPropertyData.assumable || null,
+          auction: actualPropertyData.auction || null,
+          reo: actualPropertyData.reo || null,
+          pre_foreclosure: actualPropertyData.preForeclosure || null,
+          foreclosure: actualPropertyData.foreclosure || null,
+          private_lender: actualPropertyData.privateLender || null,
+          owner_last_name: actualPropertyData.owner1LastName || actualPropertyData.companyName || null,
+          out_of_state_absentee_owner: actualPropertyData.outOfStateAbsenteeOwner || null,
+          in_state_absentee_owner: actualPropertyData.inStateAbsenteeOwner || null,
+          owner_occupied: actualPropertyData.ownerOccupied || null,
+          corporate_owned: actualPropertyData.corporateOwned || null,
+          investor_buyer: actualPropertyData.investorBuyer || null,
+          total_portfolio_equity: actualPropertyData.totalPortfolioEquity ? parseFloat(actualPropertyData.totalPortfolioEquity) : null,
+          total_portfolio_mortgage_balance: actualPropertyData.totalPortfolioMortgageBalance ? parseFloat(actualPropertyData.totalPortfolioMortgageBalance) : null,
+          total_properties_owned: actualPropertyData.totalPropertiesOwned ? parseInt(actualPropertyData.totalPropertiesOwned) : null,
+          equity_percent: actualPropertyData.equityPercent || null,
+          total_open_mortgage_balance: actualPropertyData.openMortgageBalance || null,
+          median_household_income: actualPropertyData.medianIncome ? parseFloat(actualPropertyData.medianIncome) : null,
+          county: actualPropertyData.address?.county || null,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          saved_at: new Date().toISOString()
+        });
 
-    // Insert into saved_properties
-    const { error: propertyError } = await supabase
-      .from('saved_properties')
-      .insert({
-        property_id: propertyId,
-        address_street: actualPropertyData.address?.street || null,
-        address_full: actualPropertyData.address?.address || null,
-        address_city: actualPropertyData.address?.city || null,
-        address_state: actualPropertyData.address?.state || null,
-        address_zip: actualPropertyData.address?.zip || null,
-        latitude: actualPropertyData.latitude || null,
-        longitude: actualPropertyData.longitude || null,
-        mail_address_full: actualPropertyData.mailAddress?.address || null,
-        mail_address_street: actualPropertyData.mailAddress?.street || null,
-        mail_address_city: actualPropertyData.mailAddress?.city || null,
-        mail_address_state: actualPropertyData.mailAddress?.state || null,
-        mail_address_zip: actualPropertyData.mailAddress?.zip || null,
-        property_type: actualPropertyData.propertyType || null,
-        units_count: actualPropertyData.unitsCount || null,
-        year_built: actualPropertyData.yearBuilt || null,
-        square_feet: actualPropertyData.squareFeet || null,
-        lot_square_feet: actualPropertyData.lotSquareFeet || null,
-        flood_zone: actualPropertyData.floodZone || null,
-        flood_zone_description: actualPropertyData.floodZoneDescription || null,
-        assessed_value: actualPropertyData.assessedValue || null,
-        assessed_land_value: actualPropertyData.assessedLandValue || null,
-        estimated_value: actualPropertyData.estimatedValue || null,
-        estimated_equity: actualPropertyData.estimatedEquity || null,
-        last_sale_amount: actualPropertyData.lastSaleAmount ? parseFloat(actualPropertyData.lastSaleAmount) : null,
-        mls_active: actualPropertyData.mlsActive || null,
-        for_sale: actualPropertyData.forSale || null,
-        assumable: actualPropertyData.assumable || null,
-        auction: actualPropertyData.auction || null,
-        reo: actualPropertyData.reo || null,
-        pre_foreclosure: actualPropertyData.preForeclosure || null,
-        foreclosure: actualPropertyData.foreclosure || null,
-        private_lender: actualPropertyData.privateLender || null,
-        owner_last_name: actualPropertyData.owner1LastName || actualPropertyData.companyName || null,
-        out_of_state_absentee_owner: actualPropertyData.outOfStateAbsenteeOwner || null,
-        in_state_absentee_owner: actualPropertyData.inStateAbsenteeOwner || null,
-        owner_occupied: actualPropertyData.ownerOccupied || null,
-        corporate_owned: actualPropertyData.corporateOwned || null,
-        investor_buyer: actualPropertyData.investorBuyer || null,
-        total_portfolio_equity: actualPropertyData.totalPortfolioEquity ? parseFloat(actualPropertyData.totalPortfolioEquity) : null,
-        total_portfolio_mortgage_balance: actualPropertyData.totalPortfolioMortgageBalance ? parseFloat(actualPropertyData.totalPortfolioMortgageBalance) : null,
-        total_properties_owned: actualPropertyData.totalPropertiesOwned ? parseInt(actualPropertyData.totalPropertiesOwned) : null,
-        equity_percent: actualPropertyData.equityPercent || null,
-        total_open_mortgage_balance: actualPropertyData.openMortgageBalance || null,
-        median_household_income: actualPropertyData.medianIncome ? parseFloat(actualPropertyData.medianIncome) : null,
-        county: actualPropertyData.address?.county || null,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-        saved_at: new Date().toISOString()
-      });
-
-    if (propertyError) {
-      console.error('Error inserting property:', propertyError);
-      return NextResponse.json(
-        { error: 'Failed to save property to database' },
-        { status: 500 }
-      );
+      if (propertyError) {
+        console.error('Error inserting property:', propertyError);
+        return NextResponse.json(
+          { error: 'Failed to save property to database' },
+          { status: 500 }
+        );
+      }
     }
 
     // Check if user favorite already exists
