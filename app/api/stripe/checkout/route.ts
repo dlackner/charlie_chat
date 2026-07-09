@@ -9,10 +9,6 @@ import Stripe from "stripe";
 import { NextRequest } from "next/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
-// Initialize both Stripe instances
-const stripeOld = new Stripe(process.env.STRIPE_SECRET_KEY!);
-const stripeNew = new Stripe(process.env.STRIPE_NEW_SECRET_KEY!);
-
 // Product type mapping: identify Plus vs Pro/Cohort
 const productToType: Record<string, "plus" | "pro" | "cohort"> = {
   // Plus products → NEW Stripe account
@@ -112,9 +108,21 @@ export async function POST(req: NextRequest) {
 
     console.log(`📦 Product type: ${productType} → ${productType === "plus" ? "NEW Stripe account" : "OLD Stripe account"}`);
 
-    // Select correct pricing and Stripe instance based on product type
+    // Initialize Stripe instance based on product type
+    const stripeKey = productType === "plus" ? process.env.STRIPE_NEW_SECRET_KEY : process.env.STRIPE_SECRET_KEY;
+    if (!stripeKey) {
+      console.error("❌ Missing Stripe API key for:", productType);
+      return new Response(
+        JSON.stringify({ error: "Stripe configuration error" }),
+        { status: 500, headers: { "Content-Type": "application/json" } }
+      );
+    }
+
+    const Stripe = await import("stripe");
+    const stripe = new Stripe.default(stripeKey);
+
+    // Select correct pricing based on product type
     const pricingMap = productType === "plus" ? newStripeProductPricing : oldStripeProductPricing;
-    const stripe = productType === "plus" ? stripeNew : stripeOld;
 
     const product = pricingMap[productId];
     if (!product) {
