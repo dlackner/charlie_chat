@@ -78,6 +78,7 @@ const PERMISSIONS: Record<Exclude<UserClass, null>, Feature[]> = {
     'discover',
     'discover_saved',
     'discover_property_details',
+    'discover_favorite_properties',
     'ai_coach',
     'fund_browse',
     'pricing',

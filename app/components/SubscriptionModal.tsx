@@ -52,15 +52,6 @@ interface Subscription {
   };
 }
 
-interface CreditPurchase {
-  id: number;
-  purchased_at: string;
-  credit_amount: number;
-  stripe_price_id: string;
-  status: string;
-  metadata: any;
-}
-
 interface PaymentMethod {
   id: string;
   last4: string;
@@ -79,7 +70,6 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, on
   const { user: currentUser, supabase } = useAuth();
   const { setShowSubscriptionSupport } = useModal();
   const [subscription, setSubscription] = useState<Subscription | null>(null);
-  const [creditPurchases, setCreditPurchases] = useState<CreditPurchase[]>([]);
   const [billingAmount, setBillingAmount] = useState<number | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | null>(null);
   const [userClass, setUserClass] = useState<string | null>(null);
@@ -133,9 +123,6 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, on
           fetchPaymentMethod(customerId);
         }
 
-        if (!data) {
-          fetchCreditPurchases();
-        }
       } catch (err) {
         console.error('Error fetching subscription:', err);
         setError('Failed to load subscription information');
@@ -170,34 +157,6 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, on
       }
     };
 
-    const fetchCreditPurchases = async () => {
-      if (!currentUser) return;
-      
-      try {
-        const twoMonthsAgo = new Date();
-        twoMonthsAgo.setMonth(twoMonthsAgo.getMonth() - 2);
-
-        const { data, error } = await supabase
-          .from('credit_purchases')
-          .select('id, purchased_at, credit_amount, stripe_price_id, status, metadata, stripe_customer_id')
-          .eq('user_id', currentUser.id)
-          .gte('purchased_at', twoMonthsAgo.toISOString())
-          .order('purchased_at', { ascending: false });
-
-        if (error) {
-          throw error;
-        }
-
-        setCreditPurchases(data || []);
-
-        if (data && data.length > 0 && data[0].stripe_customer_id && !subscription) {
-          fetchPaymentMethod(data[0].stripe_customer_id);
-        }
-      } catch (err) {
-        console.error('Error fetching credit purchases:', err);
-      }
-    };
-
     fetchSubscription();
   }, [isOpen, currentUser, supabase]);
 
@@ -205,7 +164,6 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, on
   useEffect(() => {
     if (!isOpen) {
       setSubscription(null);
-      setCreditPurchases([]);
       setBillingAmount(null);
       setPaymentMethod(null);
       setUserClass(null);
@@ -575,36 +533,6 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, on
                 )}
 
                 {/* Recent Credit Purchases */}
-                {creditPurchases.length > 0 && (
-                  <div className="mt-8 pt-6 border-t border-gray-200">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Recent Credit Purchases</h3>
-                    <div className="space-y-3">
-                      {creditPurchases.map((purchase) => (
-                        <div key={purchase.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                          <div className="flex items-center space-x-3">
-                            <div className="p-2 bg-blue-100 rounded-lg">
-                              <CreditCard className="w-4 h-4 text-blue-600" />
-                            </div>
-                            <div>
-                              <p className="font-medium text-gray-900">{purchase.credit_amount} Credits</p>
-                              <p className="text-sm text-gray-600">{new Date(purchase.purchased_at).toLocaleDateString()}</p>
-                            </div>
-                          </div>
-                          <div className="flex items-center space-x-2">
-                            <span className={`text-xs px-2 py-1 rounded-full font-medium ${
-                              purchase.status === 'completed' || purchase.status === 'paid' 
-                                ? 'bg-green-100 text-green-800' 
-                                : 'bg-yellow-100 text-yellow-800'
-                            }`}>
-                              {purchase.status === 'completed' || purchase.status === 'paid' ? 'Completed' : purchase.status}
-                            </span>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
               </div>
             )}
           </div>

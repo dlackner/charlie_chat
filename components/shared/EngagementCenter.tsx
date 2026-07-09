@@ -203,7 +203,7 @@ export function EngagementCenter({
               <div className="flex items-center">
                 <Route className="h-4 w-4 mr-2" />
                 <div>
-                  <div>Road Trip</div>
+                  <div>Find Comps</div>
                   <div className="text-xs text-gray-500">Explore nearby properties</div>
                 </div>
               </div>
