@@ -54,7 +54,7 @@ function hasPremiumAccess(userClass: string | null): boolean {
 }
 
 function PricingPageContent() {
-  const [isAnnual, setIsAnnual] = useState(true);
+  const [isAnnual, setIsAnnual] = useState(false);
   const [userClass, setUserClass] = useState<string | null>(null);
   const [showTrialAlert, setShowTrialAlert] = useState(false);
   const [showPremiumUserModal, setShowPremiumUserModal] = useState(false);
@@ -514,7 +514,7 @@ function PricingPageContent() {
             <p className="text-sm text-gray-500">Forever free</p>
           </div>
           <p className="text-sm text-gray-700 mb-4">
-            Essential AI-powered multifamily investing system. Access nationwide property search, market intelligence, and AI-driven analysis tools.
+            The essential AI-powered multifamily investing system. Includes unlimited nationwide property search, community dashboard, and AI-powered deal insights.
           </p>
           <ul className="text-sm space-y-1 text-gray-800 mb-4 flex flex-col">
             <li className="flex items-start"><span className="w-2 h-2 bg-green-500 rounded-full mt-2 mr-3 flex-shrink-0"></span>Unlimited Property Search</li>
@@ -538,12 +538,12 @@ function PricingPageContent() {
           <h2 className="text-2xl font-semibold mb-2">Plus</h2>
           {isAnnual ? (
             <>
-              <p className="text-xl font-bold mb-1">$75</p>
-              <p className="text-sm text-gray-500 mb-4">(Per month, billed annually)</p>
+              <p className="text-xl font-bold mb-1">$399</p>
+              <p className="text-sm text-gray-500 mb-4">(Billed annually)</p>
             </>
           ) : (
             <>
-              <p className="text-xl font-bold mb-1">$90</p>
+              <p className="text-xl font-bold mb-1">$39</p>
               <p className="text-sm text-gray-500 mb-4">(Billed monthly)</p>
             </>
           )}
