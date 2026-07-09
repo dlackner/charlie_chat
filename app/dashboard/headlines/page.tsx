@@ -411,7 +411,7 @@ export default function HomePage() {
               <h3 className="font-semibold text-gray-900 mb-2">
                 {isLoadingCapitalClub ? 'Loading...' : `${capitalClubCount} Properties Looking for Funding`}
               </h3>
-              <p className="text-gray-600 text-sm mb-4">Active investment opportunities available to Capital Club members.</p>
+              <p className="text-gray-600 text-sm mb-4">Active investment opportunities available to Community members.</p>
               <Link 
                 href="/fund/browse"
                 className="inline-block bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors text-sm"
@@ -419,17 +419,6 @@ export default function HomePage() {
                 Browse Opportunities →
               </Link>
               <div className="text-xs text-gray-400 mt-3">November 5, 2025</div>
-            </div>
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 border-l-4 border-l-yellow-500 p-6">
-              <h3 className="font-semibold text-gray-900 mb-2">Join the Capital Club</h3>
-              <p className="text-gray-600 text-sm mb-4">The Capital Club is now accepting new members</p>
-              <Link 
-                href="/capital-club"
-                className="inline-block bg-yellow-600 hover:bg-yellow-700 text-white font-medium py-2 px-4 rounded-lg transition-colors text-sm"
-              >
-                Join the Capital Club →
-              </Link>
-              <div className="text-xs text-gray-400 mt-3">November 3, 2025</div>
             </div>
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 border-l-4 border-l-green-500 p-6">
               <h3 className="font-semibold text-gray-900 mb-2">Add MultiFamilyOS to Your Safe Senders</h3>

@@ -105,9 +105,9 @@ function BrowseSubmissionsContent() {
         
         // For non-admin users, show either:
         // 1. All of their own submissions, OR
-        // 2. Capital Club submissions from others
+        // 2. Capital Club or Community submissions from others
         if (!hasAccess(userClass, 'admin_tools') && user) {
-          query = query.or(`user_id.eq.${user.id},partnership_type.eq.Capital Club`);
+          query = query.or(`user_id.eq.${user.id},partnership_type.eq.Capital Club,partnership_type.eq.Community`);
         }
         
         const { data, error } = await query.order('created_at', { ascending: false });

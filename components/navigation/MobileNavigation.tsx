@@ -238,16 +238,10 @@ export default function MobileNavigation() {
             href: hasAccess(currentUserClass, 'fund_create') ? '/fund/create' : undefined,
             disabled: !hasAccess(currentUserClass, 'fund_create')
           }]),
-          { 
-            name: 'Browse Submissions', 
+          {
+            name: 'Browse Submissions',
             href: hasAccess(currentUserClass, 'fund_browse') ? '/fund/browse' : undefined,
             disabled: !hasAccess(currentUserClass, 'fund_browse')
-          },
-          { 
-            name: 'About', 
-            href: '/fund/about',
-            disabled: false,
-            description: 'Capital Club requirements'
           }
         ]
       },
@@ -385,17 +379,11 @@ export default function MobileNavigation() {
             disabled: !hasAccess(currentUserClass, 'fund_create'),
             description: 'Submit your deal for funding'
           },
-          { 
-            name: 'Browse Submissions', 
+          {
+            name: 'Browse Submissions',
             href: hasAccess(currentUserClass, 'fund_browse') ? '/fund/browse' : undefined,
             disabled: !hasAccess(currentUserClass, 'fund_browse'),
             description: 'View investment opportunities'
-          },
-          { 
-            name: 'About', 
-            href: '/fund/about',
-            disabled: false,
-            description: 'Capital Club requirements'
           }
         ],
         disabled: isNotLoggedIn

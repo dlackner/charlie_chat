@@ -2,51 +2,52 @@
  * CHARLIE2 V2 - Stripe Checkout Session Creation API
  * Handles payment processing for subscription plans only
  * Creates Stripe checkout sessions with proper metadata for webhook processing
- * Part of the new V2 application architecture
+ * Routes Plus users to NEW Stripe account, Pro/Cohort to OLD (existing) Stripe account
  */
 
 import Stripe from "stripe";
 import { NextRequest } from "next/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
+// Initialize both Stripe instances
+const stripeOld = new Stripe(process.env.STRIPE_SECRET_KEY!);
+const stripeNew = new Stripe(process.env.STRIPE_NEW_SECRET_KEY!);
 
-const productPricing: Record<
+// Product type mapping: identify Plus vs Pro/Cohort
+const productToType: Record<string, "plus" | "pro" | "cohort"> = {
+  // Plus products → NEW Stripe account
+  [process.env.NEXT_PUBLIC_MULTIFAMILYOS_PLUS_MONTHLY_PRODUCT!]: "plus",
+  [process.env.NEXT_PUBLIC_MULTIFAMILYOS_PLUS_ANNUAL_PRODUCT!]: "plus",
+  // Pro products → OLD Stripe account (existing)
+  [process.env.NEXT_PUBLIC_MULTIFAMILYOS_PRO_MONTHLY_PRODUCT!]: "pro",
+  [process.env.NEXT_PUBLIC_MULTIFAMILYOS_PRO_ANNUAL_PRODUCT!]: "pro",
+  // Cohort products → OLD Stripe account (existing)
+  [process.env.NEXT_PUBLIC_MULTIFAMILY_COHORT_MONTHLY_PRODUCT!]: "cohort",
+  [process.env.NEXT_PUBLIC_MULTIFAMILY_COHORT_ANNUAL_PRODUCT!]: "cohort",
+};
+
+// OLD Stripe Account (Pro & Cohort products)
+const oldStripeProductPricing: Record<
   string,
   { monthly?: string; annual?: string; mode: "subscription" | "payment" }
 > = {
-  // MULTIFAMILYOS PRODUCTS
-  // MultiFamilyOS Plus Monthly Product
-  [process.env.NEXT_PUBLIC_MULTIFAMILYOS_PLUS_MONTHLY_PRODUCT!]: {
-    monthly: process.env.NEXT_PUBLIC_MULTIFAMILYOS_PLUS_MONTHLY_PRICE!,
-    annual: process.env.NEXT_PUBLIC_MULTIFAMILYOS_PLUS_ANNUAL_PRICE!,
-    mode: "subscription",
-  },
-  // MultiFamilyOS Plus Annual Product
-  [process.env.NEXT_PUBLIC_MULTIFAMILYOS_PLUS_ANNUAL_PRODUCT!]: {
-    monthly: process.env.NEXT_PUBLIC_MULTIFAMILYOS_PLUS_MONTHLY_PRICE!,
-    annual: process.env.NEXT_PUBLIC_MULTIFAMILYOS_PLUS_ANNUAL_PRICE!,
-    mode: "subscription",
-  },
-  // MultiFamilyOS Pro Monthly Product
+  // MultiFamilyOS Pro
   [process.env.NEXT_PUBLIC_MULTIFAMILYOS_PRO_MONTHLY_PRODUCT!]: {
     monthly: process.env.NEXT_PUBLIC_MULTIFAMILYOS_PRO_MONTHLY_PRICE!,
     annual: process.env.NEXT_PUBLIC_MULTIFAMILYOS_PRO_ANNUAL_PRICE!,
     mode: "subscription",
   },
-  // MultiFamilyOS Pro Annual Product
   [process.env.NEXT_PUBLIC_MULTIFAMILYOS_PRO_ANNUAL_PRODUCT!]: {
     monthly: process.env.NEXT_PUBLIC_MULTIFAMILYOS_PRO_MONTHLY_PRICE!,
     annual: process.env.NEXT_PUBLIC_MULTIFAMILYOS_PRO_ANNUAL_PRICE!,
     mode: "subscription",
   },
-  // MultiFamilyOS Cohort Monthly Product
+  // MultiFamilyOS Cohort
   [process.env.NEXT_PUBLIC_MULTIFAMILY_COHORT_MONTHLY_PRODUCT!]: {
     monthly: process.env.NEXT_PUBLIC_MULTIFAMILY_COHORT_MONTHLY_PRICE!,
     annual: process.env.NEXT_PUBLIC_MULTIFAMILY_COHORT_ANNUAL_PRICE!,
     mode: "subscription",
   },
-  // MultiFamilyOS Cohort Annual Product
   [process.env.NEXT_PUBLIC_MULTIFAMILY_COHORT_ANNUAL_PRODUCT!]: {
     monthly: process.env.NEXT_PUBLIC_MULTIFAMILY_COHORT_MONTHLY_PRICE!,
     annual: process.env.NEXT_PUBLIC_MULTIFAMILY_COHORT_ANNUAL_PRICE!,
@@ -54,16 +55,32 @@ const productPricing: Record<
   },
 };
 
-// V2: Subscription-only model
+// NEW Stripe Account (Plus products only)
+const newStripeProductPricing: Record<
+  string,
+  { monthly?: string; annual?: string; mode: "subscription" | "payment" }
+> = {
+  // MultiFamilyOS Plus
+  [process.env.NEXT_PUBLIC_MULTIFAMILYOS_PLUS_MONTHLY_PRODUCT!]: {
+    monthly: process.env.NEXT_PUBLIC_MULTIFAMILYOS_PLUS_MONTHLY_PRICE_NEW!,
+    annual: process.env.NEXT_PUBLIC_MULTIFAMILYOS_PLUS_ANNUAL_PRICE_NEW!,
+    mode: "subscription",
+  },
+  [process.env.NEXT_PUBLIC_MULTIFAMILYOS_PLUS_ANNUAL_PRODUCT!]: {
+    monthly: process.env.NEXT_PUBLIC_MULTIFAMILYOS_PLUS_MONTHLY_PRICE_NEW!,
+    annual: process.env.NEXT_PUBLIC_MULTIFAMILYOS_PLUS_ANNUAL_PRICE_NEW!,
+    mode: "subscription",
+  },
+};
 
 export async function POST(req: NextRequest) {
   try {
     const supabase = createSupabaseAdminClient();
-    
+
     // Get the authorization header
     const authHeader = req.headers.get("authorization");
     const token = authHeader?.replace("Bearer ", "");
-    
+
     if (!token) {
       return new Response(JSON.stringify({ error: "Missing auth token" }), { status: 401 });
     }
@@ -77,15 +94,31 @@ export async function POST(req: NextRequest) {
     }
 
     const userId = user.id;
-    console.log("🔍 DEBUG: User ID for checkout:", userId);
+    console.log("🔍 User ID for checkout:", userId);
 
     // Handle subscription purchases only
     const body = await req.json();
     const { productId, plan }: { productId: string; plan: "monthly" | "annual" } = body;
 
-    const product = productPricing[productId];
-    if (!product) {
+    // Determine product type and select appropriate Stripe instance
+    const productType = productToType[productId];
+    if (!productType) {
       console.error("❌ Invalid product ID:", productId);
+      return new Response(
+        JSON.stringify({ error: "Product not found" }),
+        { status: 404, headers: { "Content-Type": "application/json" } }
+      );
+    }
+
+    console.log(`📦 Product type: ${productType} → ${productType === "plus" ? "NEW Stripe account" : "OLD Stripe account"}`);
+
+    // Select correct pricing and Stripe instance based on product type
+    const pricingMap = productType === "plus" ? newStripeProductPricing : oldStripeProductPricing;
+    const stripe = productType === "plus" ? stripeNew : stripeOld;
+
+    const product = pricingMap[productId];
+    if (!product) {
+      console.error("❌ Product not found in pricing map:", productId);
       return new Response(
         JSON.stringify({ error: "Product not found" }),
         { status: 404, headers: { "Content-Type": "application/json" } }
@@ -101,6 +134,8 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    console.log(`💳 Creating checkout with ${productType} price: ${priceId}`);
+
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ["card"],
       mode: product.mode,
@@ -113,6 +148,8 @@ export async function POST(req: NextRequest) {
         plan,
       },
     });
+
+    console.log(`✅ Checkout session created: ${session.id}`);
 
     return new Response(JSON.stringify({ url: session.url }), {
       status: 200,

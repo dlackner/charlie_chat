@@ -114,7 +114,7 @@ export const AICoachThread: FC<AICoachThreadProps> = ({ userClass }) => {
           </div>
           <p className="text-gray-700">
             Upgrade your plan to attach files and get more detailed AI assistance. 
-            Choose from our Plus or Pro plans to unlock this feature and many more!
+            Upgrade to Plus to unlock this feature and many more!
           </p>
         </div>
       </StandardModalWithActions>

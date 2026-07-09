@@ -500,7 +500,7 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, on
                                   Ready to Unlock Your Investment Potential?
                                 </h3>
                                 <p className="text-gray-700 mb-4 leading-relaxed">
-                                  You're just scratching the surface! Upgrade to <strong>Plus</strong> or <strong>Pro</strong> to access the full power of our multifamily investment platform:
+                                  You're just scratching the surface! Upgrade to <strong>Plus</strong> to access the full power of our multifamily investment platform:
                                 </p>
                                 
                                 <div className="text-left space-y-3 mb-6">
@@ -516,9 +516,6 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, on
                                   <div className="flex items-start space-x-3">
                                     <span className="text-gray-700"><strong>File Uploads in AI Coach</strong> - Analyze your own deals</span>
                                   </div>
-                                  <div className="flex items-start space-x-3">
-                                    <span className="text-gray-700"><strong>Access to Capital Club</strong> - Submit your properties for funding (Pro subscription only)</span>
-                                  </div>
                                 </div>
                               </div>
 
@@ -527,7 +524,7 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, on
                                   onClick={handleUpgrade}
                                   className="bg-gradient-to-r from-blue-600 to-blue-700 text-white px-8 py-3 rounded-lg hover:from-blue-700 hover:to-blue-800 transition-all duration-200 font-semibold text-lg shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
                                 >
-                                  Upgrade to Plus or Pro Now
+                                  Upgrade to Plus Now
                                 </button>
                               </div>
                               

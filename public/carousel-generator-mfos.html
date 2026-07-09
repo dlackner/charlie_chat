@@ -342,13 +342,13 @@
                 height: auto;
                 min-height: 500px;
             }
-            
+
             .slide-content {
                 flex-direction: column;
                 padding: 30px;
                 gap: 30px;
             }
-            
+
             .slide-title {
                 font-size: 2.5rem;
             }
@@ -375,12 +375,12 @@
                 <div class="slide-visual">
                     <div class="mockup search-interface">
                         <button class="search-button">🔍 Search Properties</button>
-                        <div class="filter-item">NUMBER OF UNITS ⌄</div>
-                        <div class="filter-item">OWNER INFORMATION ⌄</div>
-                        <div class="filter-item">SALE HISTORY ⌄</div>
-                        <div class="filter-item">PHYSICAL CHARACTERISTICS ⌄</div>
-                        <div class="filter-item">FINANCIAL INFORMATION ⌄</div>
-                        <div class="filter-item">DISTRESS & SPECIAL CONDITIONS ⌄</div>
+                        <div class="filter-item">NUMBER OF UNITS ⊟</div>
+                        <div class="filter-item">OWNER INFORMATION ⊟</div>
+                        <div class="filter-item">SALE HISTORY ⊟</div>
+                        <div class="filter-item">PHYSICAL CHARACTERISTICS ⊟</div>
+                        <div class="filter-item">FINANCIAL INFORMATION ⊟</div>
+                        <div class="filter-item">DISTRESS & SPECIAL CONDITIONS ⊟</div>
                     </div>
                 </div>
             </div>
@@ -402,7 +402,7 @@
                 </div>
                 <div class="slide-visual">
                     <div class="mockup marketing-mockup">
-                        <div class="doc-header">📧 Engagement Center (1) ⌄</div>
+                        <div class="doc-header">📧 Engagement Center (1) ⊟</div>
                         <div style="color: #6b7280; font-size: 0.9rem; margin-bottom: 20px; text-align: center;">MARKETING MATERIALS</div>
                         <div class="marketing-option">
                             <div style="display: flex; align-items: center; margin-bottom: 12px;">
@@ -505,7 +505,7 @@
                             <div class="legal-option">Purchase & Sale</div>
                         </div>
                         <div style="border-top: 1px solid #e5e7eb; padding-top: 15px;">
-                            <div style="font-size: 0.9rem; color: #374151; margin-bottom: 8px;">📄 Letters of Intent</div>
+                            <div style="font-size: 0.9rem; color: #374151; margin-bottom: 8px;">📋 Letters of Intent</div>
                             <div style="font-size: 0.9rem; color: #374151; margin-bottom: 8px;">📋 Purchase & Sale</div>
                             <div style="font-size: 0.9rem; color: #374151;">⚡ Auto-Populated</div>
                         </div>
@@ -519,7 +519,7 @@
             <div class="slide-content">
                 <div class="slide-text">
                     <div class="slide-title">Investor Relations Specialist</div>
-                    <div class="slide-subtitle">Capital Club for Property Investment</div>
+                    <div class="slide-subtitle">Community Funding Network</div>
                     <div class="slide-description">Collaborate with members of the MultifamilyOS Community to fund your acquisitions</div>
                     <ul class="feature-list">
                         <li>Investment partner matching</li>
@@ -530,7 +530,7 @@
                 </div>
                 <div class="slide-visual">
                     <div class="mockup financing-mockup">
-                        <div class="capital-header">💼 Capital Club Network</div>
+                        <div class="capital-header">Community Financing Network</div>
                         <div class="financing-metrics">
                             <div class="financing-metric">
                                 <div class="financing-value">47</div>
@@ -571,7 +571,7 @@
     <script>
         async function downloadSlide(slideId, filename) {
             const slide = document.getElementById(slideId);
-            
+
             try {
                 const canvas = await html2canvas(slide, {
                     width: 1200,
@@ -581,7 +581,7 @@
                     allowTaint: true,
                     backgroundColor: null
                 });
-                
+
                 const link = document.createElement('a');
                 link.download = `${filename}.png`;
                 link.href = canvas.toDataURL('image/png');

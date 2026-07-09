@@ -215,11 +215,10 @@ export default function Home() {
       videoUrl: "https://drive.google.com/file/d/1BvkcI9EKKbCFC7HB8n2PQMNYlDvWfDNc/preview"
     },
     {
-      title: "Financing Advisor",
-      subtitle: "Identify capital sources to fund your investment pipeline",
+      title: "Investor Relations Specialist",
+      subtitle: "Community Funding Network",
       icon: <DollarSign className="w-16 h-16 text-blue-600" />,
-      image: "/feature-images/Financing_advisor.png",
-      videoUrl: "https://drive.google.com/file/d/16PWuGvTekaNTPtwUSYafqX6KZ427s2Yo/preview"
+      image: "/feature-images/Financing_advisor.png"
     }
   ];
 
@@ -530,8 +529,8 @@ export default function Home() {
         </div>
       </div>
 
-      {/* 52-Week Master Class Section */}
-      <div className="bg-blue-600 py-16">
+      {/* 52-Week Master Class Section - HIDDEN */}
+      {/* <div className="bg-blue-600 py-16">
         <div className="max-w-6xl mx-auto px-6">
           <div className="text-center">
             <h2 className="text-3xl md:text-4xl font-bold text-white mb-2">
@@ -550,10 +549,10 @@ export default function Home() {
             </div>
           </div>
         </div>
-      </div>
+      </div> */}
 
-      {/* Access Funding Section */}
-      <div className="bg-purple-50 py-16">
+      {/* Access Funding Section - HIDDEN */}
+      {/* <div className="bg-purple-50 py-16">
         <div className="max-w-6xl mx-auto px-6">
           <div className="text-center">
             <div className="flex flex-col items-center mb-6">
@@ -562,13 +561,13 @@ export default function Home() {
               </div>
               <h2 className="text-3xl md:text-4xl font-bold text-gray-900">Join the Capital Club</h2>
             </div>
-            
+
             <div className="max-w-4xl mx-auto mb-8">
               <p className="text-lg text-gray-700 leading-relaxed">
                 Connect with an exclusive network of elite multifamily investors who are actively seeking investment opportunities and partnership deals. Our private member community creates a unique environment where experienced investors share deal flow, co-invest on larger acquisitions, and provide capital for promising projects.
               </p>
             </div>
-            
+
             <button
               onClick={() => {
                 window.location.href = '/capital-club';
@@ -580,16 +579,16 @@ export default function Home() {
             </button>
           </div>
         </div>
-      </div>
+      </div> */}
 
       {/* Built-In AI Property Coach */}
-      <div className="bg-gray-50 pt-16 pb-12">
+      <div className="bg-blue-600 pt-16 pb-12">
         <div className="max-w-7xl mx-auto px-6">
           <div className="text-center mb-8">
-            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
+            <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
               Built-In AI Property Coach
             </h2>
-            <p className="text-lg text-gray-600">
+            <p className="text-lg text-blue-100">
               Get instant, expert-level insights on any multifamily investment question
             </p>
           </div>

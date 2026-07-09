@@ -2,7 +2,7 @@
  * CHARLIE2 V2 - Pricing Page
  * Subscription plans and billing management with Stripe integration
  * Supports both legacy and new user class systems during transition
- * Features: Core/Plus/Pro plans, annual/monthly billing, upgrade/downgrade flows
+ * Features: Core/Plus plans, annual/monthly billing, upgrade flows
  * Part of the new V2 application architecture
  */
 "use client";
@@ -275,7 +275,7 @@ function PricingPageContent() {
         // Something went wrong - could show proper error notification
       }
     } else {
-      // For premium users (Plus, Pro, Cohort), show Charlie's modal
+      // For premium users (Plus), show Charlie's modal
       if (hasPremiumAccess(userClass) || userClass === 'cohort') {
         setShowPremiumUserModal(true);
       } else if (normalized === 'core') {
@@ -455,25 +455,6 @@ function PricingPageContent() {
       return;
     }
 
-    // Check for Pro → Plus downgrade
-    // Check if Pro user is trying to downgrade to Plus
-    const normalized = normalizeUserClass(userClass);
-    if (normalized === 'pro' && (productId === PLUS_MONTHLY || productId === PLUS_ANNUAL)) {
-      setShowDowngradeModal(true);
-      return;
-    }
-
-    // Check for Cohort downgrades (to any lower tier)
-    if (userClass === 'cohort' && (
-      productId === PLUS_MONTHLY || 
-      productId === PLUS_ANNUAL ||
-      productId === PRO_MONTHLY ||
-      productId === PRO_ANNUAL
-    )) {
-      setShowDowngradeModal(true);
-      return;
-    }
-
     // Check if user is affiliate user with stored payment method
     const { data: profile } = await supabase
       .from('profiles')
@@ -519,7 +500,8 @@ function PricingPageContent() {
         </button>
       </div>
 
-      <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pt-8 justify-items-center">
+      <div className="flex justify-center">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-8 max-w-4xl">
         {/* Core FREE */}
         <div className="border border-gray-300 rounded-lg p-6 bg-white shadow hover:shadow-lg hover:-translate-y-1 transform transition duration-200 ease-in-out flex flex-col relative">
           {/* Free Badge */}
@@ -551,7 +533,7 @@ function PricingPageContent() {
         <div data-plan="plus" className="border border-gray-300 rounded-lg p-6 bg-white shadow hover:shadow-lg hover:-translate-y-1 transform transition duration-200 ease-in-out flex flex-col relative">
           {/* Most Popular Badge */}
           <div className="absolute -top-6 left-6 z-10">
-            <span className="bg-gradient-to-r from-blue-500 to-blue-600 text-white text-xs font-extrabold px-4 py-2 rounded-full shadow-lg border-2 border-white whitespace-nowrap">STRONG FOUNDATION</span>
+            <span className="bg-gradient-to-r from-blue-500 to-blue-600 text-white text-xs font-extrabold px-4 py-2 rounded-full shadow-lg border-2 border-white whitespace-nowrap">MOST POPULAR</span>
           </div>
           <h2 className="text-2xl font-semibold mb-2">Plus</h2>
           {isAnnual ? (
@@ -573,7 +555,7 @@ function PricingPageContent() {
             <li className="flex items-start"><span className="w-2 h-2 bg-blue-600 rounded-full mt-2 mr-3 flex-shrink-0"></span>Marketing Assistant — Create letters and emails</li>
             <li className="flex items-start"><span className="w-2 h-2 bg-blue-600 rounded-full mt-2 mr-3 flex-shrink-0"></span>Underwriting Manager — Model offers and generate financial statements</li>
             <li className="flex items-start"><span className="w-2 h-2 bg-blue-600 rounded-full mt-2 mr-3 flex-shrink-0"></span>Legal Department — Generate LOIs and Purchase & Sale Agreements</li>
-            <li className="flex items-start"><span className="w-2 h-2 bg-blue-600 rounded-full mt-2 mr-3 flex-shrink-0"></span>Investor Relations Specialist — Browse and invest in Capital Club properties looking for funding</li>
+            <li className="flex items-start"><span className="w-2 h-2 bg-blue-600 rounded-full mt-2 mr-3 flex-shrink-0"></span>Investor Relations Specialist — Browse and invest in community member properties looking for funding</li>
           </ul>
           <button
             onClick={() => handleCheckout(isAnnual ? PLUS_ANNUAL : PLUS_MONTHLY, isAnnual ? "annual" : "monthly")}
@@ -583,50 +565,7 @@ function PricingPageContent() {
           </button>
         </div>
 
-        {/* Pro */}
-        <div className="border border-gray-300 rounded-lg p-6 bg-white shadow hover:shadow-lg hover:-translate-y-1 transform transition duration-200 ease-in-out flex flex-col relative">
-          {/* Best Value Badge */}
-          <div className="absolute -top-6 left-6 z-10">
-            <span className="bg-gradient-to-r from-indigo-600 to-indigo-700 text-white text-xs font-extrabold px-4 py-2 rounded-full shadow-lg border-2 border-white whitespace-nowrap">MOST POPULAR</span>
-          </div>
-          <h2 className="text-2xl font-semibold mb-2">Professional</h2>
-          {isAnnual ? (
-            <>
-              <p className="text-xl font-bold mb-1">$250</p>
-              <p className="text-sm text-gray-500 mb-4">(Per month, billed annually)</p>
-            </>
-          ) : (
-            <>
-              <p className="text-xl font-bold mb-1">$297</p>
-              <p className="text-sm text-gray-500 mb-4">(Billed monthly)</p>
-            </>
-          )}
-          <p className="text-sm text-gray-700 mb-4">
-            Everything in Plus and more. Membership in the MultifamilyOS Cohort program, including direct access to Charles Dobens.
-          </p>
-          <ul className="text-sm space-y-1 text-gray-800 mb-4 flex flex-col">
-            <li className="flex items-start"><span className="w-2 h-2 bg-indigo-600 rounded-full mt-2 mr-3 flex-shrink-0"></span>Self-paced Master Class Training Program</li>
-            <li className="flex items-start"><span className="w-2 h-2 bg-indigo-600 rounded-full mt-2 mr-3 flex-shrink-0"></span>Weekly Coaching Calls with Charles Dobens</li>
-            <li className="flex items-start"><span className="w-2 h-2 bg-indigo-600 rounded-full mt-2 mr-3 flex-shrink-0"></span>Community Access and Networking</li>
-          </ul>
-          {isAnnual ? (
-            <div className="bg-gradient-to-r from-indigo-600 to-indigo-700 text-white text-center py-2 px-2 rounded-lg mb-4 font-semibold whitespace-nowrap text-sm">
-              Immediate Access to Capital Club funding
-            </div>
-          ) : (
-            <div className="bg-gradient-to-r from-indigo-600 to-indigo-700 text-white text-center py-2 px-2 rounded-lg mb-4 font-semibold whitespace-nowrap text-sm">
-              Access to Capital Club funding after six months*
-            </div>
-          )}
-          <div className="flex-grow"></div>
-          <button
-            onClick={() => handleCheckout(isAnnual ? PRO_ANNUAL : PRO_MONTHLY, isAnnual ? "annual" : "monthly")}
-            className="w-full bg-black text-white py-2 rounded font-semibold transition duration-200 transform hover:scale-105 hover:bg-indigo-600 hover:shadow-xl"
-          >
-            Get Access
-          </button>
-        </div>
-
+      </div>
       </div>
 
       {/* Feature Comparison Section - Hidden on mobile */}
@@ -642,7 +581,7 @@ function PricingPageContent() {
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden mb-16">
           {/* Header */}
           <div className="bg-gradient-to-r from-gray-50 to-gray-100 border-b border-gray-200">
-            <div className="grid grid-cols-4 gap-0">
+            <div className="grid grid-cols-3 gap-0">
               <div className="px-6 py-4">
                 <div className="text-lg font-bold text-gray-900">Compare Features</div>
               </div>
@@ -651,9 +590,6 @@ function PricingPageContent() {
               </div>
               <div className="px-6 py-4 text-center border-l border-gray-200">
                 <div className="text-lg font-bold text-gray-900">Plus</div>
-              </div>
-              <div className="px-6 py-4 text-center border-l border-gray-200">
-                <div className="text-lg font-bold text-gray-900">Professional</div>
               </div>
             </div>
           </div>
@@ -665,7 +601,7 @@ function PricingPageContent() {
           
           {/* Feature Rows */}
           <div className="divide-y divide-gray-100">
-            <div className="grid grid-cols-4 gap-0 hover:bg-gray-50/50 transition-colors">
+            <div className="grid grid-cols-3 gap-0 hover:bg-gray-50/50 transition-colors">
               <div className="px-6 py-4 text-sm font-medium text-gray-900">Unlimited Property Search</div>
               <div className="px-6 py-4 text-center border-l border-gray-100">
                 <div className="w-5 h-5 rounded-full bg-green-500 mx-auto flex items-center justify-center">
@@ -681,16 +617,9 @@ function PricingPageContent() {
                   </svg>
                 </div>
               </div>
-              <div className="px-6 py-4 text-center border-l border-gray-100">
-                <div className="w-5 h-5 rounded-full bg-indigo-600 mx-auto flex items-center justify-center">
-                  <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                  </svg>
-                </div>
-              </div>
             </div>
 
-            <div className="grid grid-cols-4 gap-0 hover:bg-gray-50/50 transition-colors">
+            <div className="grid grid-cols-3 gap-0 hover:bg-gray-50/50 transition-colors">
               <div className="px-6 py-4 text-sm font-medium text-gray-900">Community Dashboard</div>
               <div className="px-6 py-4 text-center border-l border-gray-100">
                 <div className="w-5 h-5 rounded-full bg-green-500 mx-auto flex items-center justify-center">
@@ -706,16 +635,9 @@ function PricingPageContent() {
                   </svg>
                 </div>
               </div>
-              <div className="px-6 py-4 text-center border-l border-gray-100">
-                <div className="w-5 h-5 rounded-full bg-indigo-600 mx-auto flex items-center justify-center">
-                  <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                  </svg>
-                </div>
-              </div>
             </div>
 
-            <div className="grid grid-cols-4 gap-0 hover:bg-gray-50/50 transition-colors">
+            <div className="grid grid-cols-3 gap-0 hover:bg-gray-50/50 transition-colors">
               <div className="px-6 py-4 text-sm font-medium text-gray-900">AI-powered Investment Advisor</div>
               <div className="px-6 py-4 text-center border-l border-gray-100">
                 <div className="w-5 h-5 rounded-full bg-green-500 mx-auto flex items-center justify-center">
@@ -731,13 +653,6 @@ function PricingPageContent() {
                   </svg>
                 </div>
               </div>
-              <div className="px-6 py-4 text-center border-l border-gray-100">
-                <div className="w-5 h-5 rounded-full bg-indigo-600 mx-auto flex items-center justify-center">
-                  <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                  </svg>
-                </div>
-              </div>
             </div>
           </div>
 
@@ -747,7 +662,7 @@ function PricingPageContent() {
           </div>
           
           <div className="divide-y divide-gray-100">
-            <div className="grid grid-cols-4 gap-0 hover:bg-gray-50/50 transition-colors">
+            <div className="grid grid-cols-3 gap-0 hover:bg-gray-50/50 transition-colors">
               <div className="px-6 py-4 text-sm font-medium text-gray-900">Acquisitions Director — Scout off-market opportunities</div>
               <div className="px-6 py-4 text-center border-l border-gray-100">
                 <div className="w-5 h-5 rounded-full bg-green-500 mx-auto flex items-center justify-center">
@@ -763,16 +678,9 @@ function PricingPageContent() {
                   </svg>
                 </div>
               </div>
-              <div className="px-6 py-4 text-center border-l border-gray-100">
-                <div className="w-5 h-5 rounded-full bg-indigo-600 mx-auto flex items-center justify-center">
-                  <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                  </svg>
-                </div>
-              </div>
             </div>
 
-            <div className="grid grid-cols-4 gap-0 hover:bg-gray-50/50 transition-colors">
+            <div className="grid grid-cols-3 gap-0 hover:bg-gray-50/50 transition-colors">
               <div className="px-6 py-4 text-sm font-medium text-gray-900">Marketing Assistant — Create letters and emails</div>
               <div className="px-6 py-4 text-center border-l border-gray-100">
                 <div className="w-5 h-5 rounded-full bg-gray-200 mx-auto flex items-center justify-center">
@@ -786,16 +694,9 @@ function PricingPageContent() {
                   </svg>
                 </div>
               </div>
-              <div className="px-6 py-4 text-center border-l border-gray-100">
-                <div className="w-5 h-5 rounded-full bg-indigo-600 mx-auto flex items-center justify-center">
-                  <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                  </svg>
-                </div>
-              </div>
             </div>
 
-            <div className="grid grid-cols-4 gap-0 hover:bg-gray-50/50 transition-colors">
+            <div className="grid grid-cols-3 gap-0 hover:bg-gray-50/50 transition-colors">
               <div className="px-6 py-4 text-sm font-medium text-gray-900">Underwriting Manager — Model offers and generate financial statements</div>
               <div className="px-6 py-4 text-center border-l border-gray-100">
                 <div className="w-5 h-5 rounded-full bg-gray-200 mx-auto flex items-center justify-center">
@@ -809,16 +710,9 @@ function PricingPageContent() {
                   </svg>
                 </div>
               </div>
-              <div className="px-6 py-4 text-center border-l border-gray-100">
-                <div className="w-5 h-5 rounded-full bg-indigo-600 mx-auto flex items-center justify-center">
-                  <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                  </svg>
-                </div>
-              </div>
             </div>
 
-            <div className="grid grid-cols-4 gap-0 hover:bg-gray-50/50 transition-colors">
+            <div className="grid grid-cols-3 gap-0 hover:bg-gray-50/50 transition-colors">
               <div className="px-6 py-4 text-sm font-medium text-gray-900">Legal Department — Generate LOIs and Purchase & Sale Agreements</div>
               <div className="px-6 py-4 text-center border-l border-gray-100">
                 <div className="w-5 h-5 rounded-full bg-gray-200 mx-auto flex items-center justify-center">
@@ -832,17 +726,10 @@ function PricingPageContent() {
                   </svg>
                 </div>
               </div>
-              <div className="px-6 py-4 text-center border-l border-gray-100">
-                <div className="w-5 h-5 rounded-full bg-indigo-600 mx-auto flex items-center justify-center">
-                  <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                  </svg>
-                </div>
-              </div>
             </div>
 
-            <div className="grid grid-cols-4 gap-0 hover:bg-gray-50/50 transition-colors">
-              <div className="px-6 py-4 text-sm font-medium text-gray-900">Investor Relations Specialist — Browse Capital Club properties</div>
+            <div className="grid grid-cols-3 gap-0 hover:bg-gray-50/50 transition-colors">
+              <div className="px-6 py-4 text-sm font-medium text-gray-900">Investor Relations Specialist — Browse Community properties looking for funding</div>
               <div className="px-6 py-4 text-center border-l border-gray-100">
                 <div className="w-5 h-5 rounded-full bg-gray-200 mx-auto flex items-center justify-center">
                   <div className="w-2 h-0.5 bg-gray-400"></div>
@@ -850,13 +737,6 @@ function PricingPageContent() {
               </div>
               <div className="px-6 py-4 text-center border-l border-gray-100">
                 <div className="w-5 h-5 rounded-full bg-blue-600 mx-auto flex items-center justify-center">
-                  <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                  </svg>
-                </div>
-              </div>
-              <div className="px-6 py-4 text-center border-l border-gray-100">
-                <div className="w-5 h-5 rounded-full bg-indigo-600 mx-auto flex items-center justify-center">
                   <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                   </svg>
@@ -871,7 +751,7 @@ function PricingPageContent() {
           </div>
           
           <div className="divide-y divide-gray-100">
-            <div className="grid grid-cols-4 gap-0 hover:bg-gray-50/50 transition-colors">
+            <div className="grid grid-cols-3 gap-0 hover:bg-gray-50/50 transition-colors">
               <div className="px-6 py-4 text-sm font-medium text-gray-900">AI-Powered Property Analysis</div>
               <div className="px-6 py-4 text-center border-l border-gray-100">
                 <div className="w-5 h-5 rounded-full bg-gray-200 mx-auto flex items-center justify-center">
@@ -885,16 +765,9 @@ function PricingPageContent() {
                   </svg>
                 </div>
               </div>
-              <div className="px-6 py-4 text-center border-l border-gray-100">
-                <div className="w-5 h-5 rounded-full bg-indigo-600 mx-auto flex items-center justify-center">
-                  <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                  </svg>
-                </div>
-              </div>
             </div>
 
-            <div className="grid grid-cols-4 gap-0 hover:bg-gray-50/50 transition-colors">
+            <div className="grid grid-cols-3 gap-0 hover:bg-gray-50/50 transition-colors">
               <div className="px-6 py-4 text-sm font-medium text-gray-900">Favorite Properties</div>
               <div className="px-6 py-4 text-center border-l border-gray-100">
                 <div className="w-5 h-5 rounded-full bg-gray-200 mx-auto flex items-center justify-center">
@@ -908,16 +781,9 @@ function PricingPageContent() {
                   </svg>
                 </div>
               </div>
-              <div className="px-6 py-4 text-center border-l border-gray-100">
-                <div className="w-5 h-5 rounded-full bg-indigo-600 mx-auto flex items-center justify-center">
-                  <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                  </svg>
-                </div>
-              </div>
             </div>
 
-            <div className="grid grid-cols-4 gap-0 hover:bg-gray-50/50 transition-colors">
+            <div className="grid grid-cols-3 gap-0 hover:bg-gray-50/50 transition-colors">
               <div className="px-6 py-4 text-sm font-medium text-gray-900">Custom Buy Boxes</div>
               <div className="px-6 py-4 text-center border-l border-gray-100">
                 <div className="w-5 h-5 rounded-full bg-gray-200 mx-auto flex items-center justify-center">
@@ -931,16 +797,9 @@ function PricingPageContent() {
                   </svg>
                 </div>
               </div>
-              <div className="px-6 py-4 text-center border-l border-gray-100">
-                <div className="w-5 h-5 rounded-full bg-indigo-600 mx-auto flex items-center justify-center">
-                  <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                  </svg>
-                </div>
-              </div>
             </div>
 
-            <div className="grid grid-cols-4 gap-0 hover:bg-gray-50/50 transition-colors">
+            <div className="grid grid-cols-3 gap-0 hover:bg-gray-50/50 transition-colors">
               <div className="px-6 py-4 text-sm font-medium text-gray-900">Personalized AI Recommendations</div>
               <div className="px-6 py-4 text-center border-l border-gray-100">
                 <div className="w-5 h-5 rounded-full bg-gray-200 mx-auto flex items-center justify-center">
@@ -954,16 +813,9 @@ function PricingPageContent() {
                   </svg>
                 </div>
               </div>
-              <div className="px-6 py-4 text-center border-l border-gray-100">
-                <div className="w-5 h-5 rounded-full bg-indigo-600 mx-auto flex items-center justify-center">
-                  <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                  </svg>
-                </div>
-              </div>
             </div>
 
-            <div className="grid grid-cols-4 gap-0 hover:bg-gray-50/50 transition-colors">
+            <div className="grid grid-cols-3 gap-0 hover:bg-gray-50/50 transition-colors">
               <div className="px-6 py-4 text-sm font-medium text-gray-900">Saved Searches</div>
               <div className="px-6 py-4 text-center border-l border-gray-100">
                 <div className="w-5 h-5 rounded-full bg-gray-200 mx-auto flex items-center justify-center">
@@ -977,16 +829,9 @@ function PricingPageContent() {
                   </svg>
                 </div>
               </div>
-              <div className="px-6 py-4 text-center border-l border-gray-100">
-                <div className="w-5 h-5 rounded-full bg-indigo-600 mx-auto flex items-center justify-center">
-                  <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                  </svg>
-                </div>
-              </div>
             </div>
 
-            <div className="grid grid-cols-4 gap-0 hover:bg-gray-50/50 transition-colors">
+            <div className="grid grid-cols-3 gap-0 hover:bg-gray-50/50 transition-colors">
               <div className="px-6 py-4 text-sm font-medium text-gray-900">Reminders and Notes</div>
               <div className="px-6 py-4 text-center border-l border-gray-100">
                 <div className="w-5 h-5 rounded-full bg-gray-200 mx-auto flex items-center justify-center">
@@ -1000,16 +845,9 @@ function PricingPageContent() {
                   </svg>
                 </div>
               </div>
-              <div className="px-6 py-4 text-center border-l border-gray-100">
-                <div className="w-5 h-5 rounded-full bg-indigo-600 mx-auto flex items-center justify-center">
-                  <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                  </svg>
-                </div>
-              </div>
             </div>
 
-            <div className="grid grid-cols-4 gap-0 hover:bg-gray-50/50 transition-colors">
+            <div className="grid grid-cols-3 gap-0 hover:bg-gray-50/50 transition-colors">
               <div className="px-6 py-4 text-sm font-medium text-gray-900">LOI Templates</div>
               <div className="px-6 py-4 text-center border-l border-gray-100">
                 <div className="w-5 h-5 rounded-full bg-gray-200 mx-auto flex items-center justify-center">
@@ -1023,16 +861,9 @@ function PricingPageContent() {
                   </svg>
                 </div>
               </div>
-              <div className="px-6 py-4 text-center border-l border-gray-100">
-                <div className="w-5 h-5 rounded-full bg-indigo-600 mx-auto flex items-center justify-center">
-                  <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                  </svg>
-                </div>
-              </div>
             </div>
 
-            <div className="grid grid-cols-4 gap-0 hover:bg-gray-50/50 transition-colors">
+            <div className="grid grid-cols-3 gap-0 hover:bg-gray-50/50 transition-colors">
               <div className="px-6 py-4 text-sm font-medium text-gray-900">Marketing Letter Generator</div>
               <div className="px-6 py-4 text-center border-l border-gray-100">
                 <div className="w-5 h-5 rounded-full bg-gray-200 mx-auto flex items-center justify-center">
@@ -1046,16 +877,9 @@ function PricingPageContent() {
                   </svg>
                 </div>
               </div>
-              <div className="px-6 py-4 text-center border-l border-gray-100">
-                <div className="w-5 h-5 rounded-full bg-indigo-600 mx-auto flex items-center justify-center">
-                  <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                  </svg>
-                </div>
-              </div>
             </div>
 
-            <div className="grid grid-cols-4 gap-0 hover:bg-gray-50/50 transition-colors">
+            <div className="grid grid-cols-3 gap-0 hover:bg-gray-50/50 transition-colors">
               <div className="px-6 py-4 text-sm font-medium text-gray-900">Email Outreach Tool</div>
               <div className="px-6 py-4 text-center border-l border-gray-100">
                 <div className="w-5 h-5 rounded-full bg-gray-200 mx-auto flex items-center justify-center">
@@ -1069,16 +893,9 @@ function PricingPageContent() {
                   </svg>
                 </div>
               </div>
-              <div className="px-6 py-4 text-center border-l border-gray-100">
-                <div className="w-5 h-5 rounded-full bg-indigo-600 mx-auto flex items-center justify-center">
-                  <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                  </svg>
-                </div>
-              </div>
             </div>
 
-            <div className="grid grid-cols-4 gap-0 hover:bg-gray-50/50 transition-colors">
+            <div className="grid grid-cols-3 gap-0 hover:bg-gray-50/50 transition-colors">
               <div className="px-6 py-4 text-sm font-medium text-gray-900">Skip Tracing Tool</div>
               <div className="px-6 py-4 text-center border-l border-gray-100">
                 <div className="w-5 h-5 rounded-full bg-gray-200 mx-auto flex items-center justify-center">
@@ -1092,16 +909,9 @@ function PricingPageContent() {
                   </svg>
                 </div>
               </div>
-              <div className="px-6 py-4 text-center border-l border-gray-100">
-                <div className="w-5 h-5 rounded-full bg-indigo-600 mx-auto flex items-center justify-center">
-                  <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                  </svg>
-                </div>
-              </div>
             </div>
 
-            <div className="grid grid-cols-4 gap-0 hover:bg-gray-50/50 transition-colors">
+            <div className="grid grid-cols-3 gap-0 hover:bg-gray-50/50 transition-colors">
               <div className="px-6 py-4 text-sm font-medium text-gray-900">Advanced Analytics</div>
               <div className="px-6 py-4 text-center border-l border-gray-100">
                 <div className="w-5 h-5 rounded-full bg-gray-200 mx-auto flex items-center justify-center">
@@ -1115,132 +925,7 @@ function PricingPageContent() {
                   </svg>
                 </div>
               </div>
-              <div className="px-6 py-4 text-center border-l border-gray-100">
-                <div className="w-5 h-5 rounded-full bg-indigo-600 mx-auto flex items-center justify-center">
-                  <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                  </svg>
-                </div>
-              </div>
             </div>
-          </div>
-
-          {/* Capital & Coaching Section */}
-          <div className="bg-blue-50 px-6 py-3 border-b border-gray-100">
-            <h4 className="text-sm font-semibold text-blue-800">Capital & Coaching</h4>
-          </div>
-          
-          <div className="divide-y divide-gray-100">
-            <div className="grid grid-cols-4 gap-0 hover:bg-gray-50/50 transition-colors">
-              <div className="px-6 py-4 text-sm font-medium text-gray-900">Membership in the MultifamilyOS Capital Club</div>
-              <div className="px-6 py-4 text-center border-l border-gray-100">
-                <div className="w-5 h-5 rounded-full bg-green-600 mx-auto flex items-center justify-center">
-                  <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                  </svg>
-                </div>
-              </div>
-              <div className="px-6 py-4 text-center border-l border-gray-100">
-                <div className="w-5 h-5 rounded-full bg-blue-600 mx-auto flex items-center justify-center">
-                  <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                  </svg>
-                </div>
-              </div>
-              <div className="px-6 py-4 text-center border-l border-gray-100">
-                <div className="w-5 h-5 rounded-full bg-indigo-600 mx-auto flex items-center justify-center">
-                  <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                  </svg>
-                </div>
-              </div>
-            </div>
-            <div className="grid grid-cols-4 gap-0 hover:bg-gray-50/50 transition-colors">
-              <div className="px-6 py-4 text-sm font-medium text-gray-900">Access Capital Club Funding</div>
-              <div className="px-6 py-4 text-center border-l border-gray-100">
-                <div className="w-5 h-5 rounded-full bg-gray-200 mx-auto flex items-center justify-center">
-                  <div className="w-2 h-0.5 bg-gray-400"></div>
-                </div>
-              </div>
-              <div className="px-6 py-4 text-center border-l border-gray-100">
-                <div className="w-5 h-5 rounded-full bg-gray-200 mx-auto flex items-center justify-center">
-                  <div className="w-2 h-0.5 bg-gray-400"></div>
-                </div>
-              </div>
-              <div className="px-6 py-4 text-center border-l border-gray-100">
-                <div className="w-5 h-5 rounded-full bg-indigo-600 mx-auto flex items-center justify-center">
-                  <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                  </svg>
-                </div>
-              </div>
-            </div>
-            <div className="grid grid-cols-4 gap-0 hover:bg-gray-50/50 transition-colors">
-              <div className="px-6 py-4 text-sm font-medium text-gray-900">Weekly Coaching Calls with Charles Dobens</div>
-              <div className="px-6 py-4 text-center border-l border-gray-100">
-                <div className="w-5 h-5 rounded-full bg-gray-200 mx-auto flex items-center justify-center">
-                  <div className="w-2 h-0.5 bg-gray-400"></div>
-                </div>
-              </div>
-              <div className="px-6 py-4 text-center border-l border-gray-100">
-                <div className="w-5 h-5 rounded-full bg-gray-200 mx-auto flex items-center justify-center">
-                  <div className="w-2 h-0.5 bg-gray-400"></div>
-                </div>
-              </div>
-              <div className="px-6 py-4 text-center border-l border-gray-100">
-                <div className="w-5 h-5 rounded-full bg-indigo-600 mx-auto flex items-center justify-center">
-                  <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                  </svg>
-                </div>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-4 gap-0 hover:bg-gray-50/50 transition-colors">
-              <div className="px-6 py-4 text-sm font-medium text-gray-900">Master Class Training</div>
-              <div className="px-6 py-4 text-center border-l border-gray-100">
-                <div className="w-5 h-5 rounded-full bg-gray-200 mx-auto flex items-center justify-center">
-                  <div className="w-2 h-0.5 bg-gray-400"></div>
-                </div>
-              </div>
-              <div className="px-6 py-4 text-center border-l border-gray-100">
-                <div className="w-5 h-5 rounded-full bg-gray-200 mx-auto flex items-center justify-center">
-                  <div className="w-2 h-0.5 bg-gray-400"></div>
-                </div>
-              </div>
-              <div className="px-6 py-4 text-center border-l border-gray-100">
-                <div className="w-5 h-5 rounded-full bg-indigo-600 mx-auto flex items-center justify-center">
-                  <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                  </svg>
-                </div>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-4 gap-0 hover:bg-gray-50/50 transition-colors">
-              <div className="px-6 py-4 text-sm font-medium text-gray-900">Community Access and Networking</div>
-              <div className="px-6 py-4 text-center border-l border-gray-100">
-                <div className="w-5 h-5 rounded-full bg-gray-200 mx-auto flex items-center justify-center">
-                  <div className="w-2 h-0.5 bg-gray-400"></div>
-                </div>
-              </div>
-              <div className="px-6 py-4 text-center border-l border-gray-100">
-                <div className="w-5 h-5 rounded-full bg-gray-200 mx-auto flex items-center justify-center">
-                  <div className="w-2 h-0.5 bg-gray-400"></div>
-                </div>
-              </div>
-              <div className="px-6 py-4 text-center border-l border-gray-100">
-                <div className="w-5 h-5 rounded-full bg-indigo-600 mx-auto flex items-center justify-center">
-                  <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                  </svg>
-                </div>
-              </div>
-            </div>
-
-
-
-
           </div>
         </div>
       </div>
@@ -1303,25 +988,12 @@ function PricingPageContent() {
                 <li>Analyst → Financial modeling and scenario testing</li>
                 <li>Legal Department → Drafting LOIs and contracts</li>
                 <li>Marketing assistant → Outreach campaigns and letters</li>
-                <li>Financing advisor → Lender and capital source recommendations</li>
+                <li>Investor Relations Specialist → Browse and invest in multifamily properties</li>
               </ul>
               <p className="mt-3">It's like having a $10M+ investment team on call, 24/7 — without the payroll.</p>
             </div>
           </div>
 
-          {/* FAQ Item 5 */}
-          <div id="charlie-chat-pro-details" className="bg-white border border-gray-200 rounded-lg p-6 shadow hover:shadow-lg transition duration-200">
-            <h3 className="text-xl font-bold text-blue-600 mb-3">What's included in MultifamilyOS Professional?</h3>
-            <div className="text-sm text-gray-700">
-              <p className="mb-3">The Professional plan adds depth through:</p>
-              <ul className="list-disc pl-6 space-y-1">
-                <li><strong>Capital Club</strong> – Engage with a network of multifamily property investors who can help underwrite deals and participate in funding. Accelerate capital raising and enjoy the confidence of having a network of backers behind your offers.</li>
-                <li><strong>Master Class Training</strong> – A comprehensive program of weekly sessions led by Charles Dobens, the Multifamily Attorney, covering markets, deal structuring, capital raising, due diligence, and scaling. With $50M+ in personal investing experience and $3B+ in client transactions, Charles brings practical, field-tested strategies to every lesson.</li>
-                <li><strong>Weekly Coaching</strong> – Live calls with Charles Dobens that combine deal analysis, market updates, and expert Q&A. These sessions provide direct access to one of the most respected educators in multifamily investing.</li>
-                <li><strong>Community Access</strong> – Direct connection to experienced peers and mentors for accountability, support, and networking opportunities.</li>
-              </ul>
-            </div>
-          </div>
 
           {/* FAQ Item 6 */}
           <div className="bg-white border border-gray-200 rounded-lg p-6 shadow hover:shadow-lg transition duration-200">
@@ -1334,7 +1006,6 @@ function PricingPageContent() {
                 <li>Cancellations can be done anytime with no cancellation fees. Annual subscriptions are billed upfront and are non-refundable. If you cancel, you'll retain full access until the end of your paid period.</li>
               </ul>
               <ul className="pl-6 space-y-1 mt-2">
-                <li>* Need access to Capital Club funding sooner? Simply request an extension of your subscription for a full six months and you'll get immediate access to Capital Club funding.</li>
               </ul>
             </div>
           </div>
@@ -1387,7 +1058,7 @@ function PricingPageContent() {
                     if (userClass === 'cohort') {
                       return <>You're already in my exclusive Cohort program! That means you get everything in Core <em>plus</em> all the premium features, unlimited property searches, my personal coaching calls, and direct access to me. <br/><br/>You're all set with the best we've got – no need to go backwards!</>;
                     } else if (normalized === 'pro') {
-                      return <>You're already a Professional member! That gives you everything in basic Core <em>plus</em> unlimited property searches, advanced analytics, my master class training, and weekly group coaching. <br/><br/>You've got the premium experience already – no need to downgrade!</>;
+                      return <>You're already on the Pro plan! That gives you everything in basic Core <em>plus</em> unlimited property searches, advanced analytics, and all premium tools. <br/><br/>You've got the full experience already – no need to downgrade!</>;
                     } else {
                       return <>You're already a Plus member! That gets you everything in basic Core <em>plus</em> unlimited property searches, advanced analytics, and all the premium tools. <br/><br/>You've got more than the basic plan already – you're all set!</>;
                     }
@@ -1440,7 +1111,7 @@ function PricingPageContent() {
                     </>
                   ) : (
                     <>
-                      <p className="mb-4">You're thinking about downgrading from Professional to Plus? Look, I get it - sometimes budgets change. But here's what you'd be giving up if you make that move:</p>
+                      <p className="mb-4">You're thinking about downgrading? Look, I get it - sometimes budgets change. But here's what you'd be giving up if you make this move:</p>
                       
                       <div className="mb-4">
                         <p className="font-semibold mb-2">You'd lose access to:</p>
@@ -1471,7 +1142,7 @@ function PricingPageContent() {
               onClick={() => setShowDowngradeModal(false)}
               className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-colors"
             >
-              {userClass === 'cohort' ? 'Stay in Cohort' : 'Keep Professional'}
+              {userClass === 'cohort' ? 'Stay in Cohort' : 'Keep Current Plan'}
             </button>
             <button
               onClick={handleDowngradeRequest}

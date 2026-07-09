@@ -178,7 +178,7 @@ const AICoachContent = ({ threads, loadingThreads, loadThread, createNewThread, 
           </div>
           <p className="text-gray-700">
             Upgrade your plan to create multiple chat threads and keep your conversations organized. 
-            Choose from our Plus or Professional plans to unlock this feature and many more!
+            Upgrade to Plus to unlock this feature and many more!
           </p>
         </div>
       </StandardModalWithActions>
