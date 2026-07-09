@@ -538,7 +538,10 @@ function PricingPageContent() {
           <h2 className="text-2xl font-semibold mb-2">Plus</h2>
           {isAnnual ? (
             <>
-              <p className="text-xl font-bold mb-1">$399</p>
+              <div className="flex items-center gap-2 mb-4">
+                <p className="text-xl font-bold">$399</p>
+                <span className="inline-block bg-green-500 text-white text-xs font-bold px-3 py-1 rounded-full">Save 17%</span>
+              </div>
               <p className="text-sm text-gray-500 mb-4">(Billed annually)</p>
             </>
           ) : (
