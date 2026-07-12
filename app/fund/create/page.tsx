@@ -94,6 +94,7 @@ function CreateSubmissionContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user, supabase, isLoading: authLoading } = useAuth();
+  const [userClass, setUserClass] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedPropertyId, setSelectedPropertyId] = useState<string | null>(null);
   const [selectedOfferId, setSelectedOfferId] = useState<string | null>(null);
@@ -109,7 +110,25 @@ function CreateSubmissionContent() {
     return 'confident';
   });
   const [hoveredSentiment, setHoveredSentiment] = useState<string | null>(null);
-  
+
+  // Fetch user class on mount
+  useEffect(() => {
+    const fetchUserClass = async () => {
+      if (!user?.id) return;
+      try {
+        const { data } = await supabase
+          .from('profiles')
+          .select('user_class')
+          .eq('user_id', user.id)
+          .single();
+        if (data) setUserClass(data.user_class);
+      } catch (err) {
+        console.error('Error fetching user class:', err);
+      }
+    };
+    fetchUserClass();
+  }, [user?.id, supabase]);
+
   // New state for submission name, partnership type, and investment thesis
   const [submissionName, setSubmissionName] = useState<string>('');
   const [partnershipType, setPartnershipType] = useState<string>('Limited Partner');
@@ -971,8 +990,8 @@ function CreateSubmissionContent() {
                   >
                     <option value="506(b)">506(b)</option>
                     <option value="506(c)">506(c)</option>
-                    <option value="Capital Club">Capital Club</option>
-                    <option value="Crowd Funding">Crowd Funding</option>
+                    {(userClass === 'pro' || userClass === 'admin') && <option value="Capital Club">Capital Club</option>}
+                    {userClass !== 'pro' && <option value="Community">Community</option>}
                     <option value="Limited Partner">Limited Partner</option>
                     <option value="Private Equity">Private Equity</option>
                   </select>
@@ -995,7 +1014,7 @@ function CreateSubmissionContent() {
                     className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-y min-h-[150px]"
                   />
                   <p className="mt-2 text-sm text-gray-500">
-                    This will be shared with the Capital Club as part of your submission. The text box will expand as you type.
+                    This will be shared with the Community as part of your submission. The text box will expand as you type.
                   </p>
                 </div>
               </div>

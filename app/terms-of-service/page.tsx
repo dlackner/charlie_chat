@@ -69,12 +69,6 @@ export default function TermsOfServicePage() {
             <h3 className="text-xl font-semibold text-gray-800 mb-3">2.2 Plus Membership</h3>
             <p>Includes all Core benefits plus access to enhanced AI-powered analysis tools and expanded content libraries.</p>
 
-            <h3 className="text-xl font-semibold text-gray-800 mb-3">2.3 Professional ("Pro") Membership</h3>
-            <p>Includes all Plus features, plus access to advanced training programs and weekly digital group coaching sessions.</p>
-
-            <h3 className="text-xl font-semibold text-gray-800 mb-3">2.4 Cohort Membership</h3>
-            <p>Includes all Pro features, plus live coaching sessions, structured accountability groups, and access to investor and funding communities when available.</p>
-
             <p>Features, limits, and availability may change over time. Continued use after such changes constitutes acceptance.</p>
 
 
@@ -101,7 +95,7 @@ export default function TermsOfServicePage() {
             <h3 className="text-xl font-semibold text-gray-800 mb-3">4.4 Refund Policy</h3>
             <p>Unless stated otherwise in writing:</p>
             <ul className="list-disc list-inside ml-4 space-y-1">
-              <li>Payments for Plus, Pro, and Cohort memberships are non-refundable.</li>
+              <li>Payments for Plus memberships are non-refundable.</li>
               <li>No refunds are provided for partial months, unused time, or early cancellations.</li>
               <li>Cohort programs may include separate written terms regarding payments or refunds.</li>
             </ul>
@@ -154,16 +148,13 @@ export default function TermsOfServicePage() {
             <p>We do not sell personal information. Aggregated or anonymized data may be used to improve Services and AI performance.</p>
 
 
-            <h2 className="text-2xl font-bold text-gray-900 mt-8 mb-4">8. Community, Coaching, and Capital Club Participation</h2>
+            <h2 className="text-2xl font-bold text-gray-900 mt-8 mb-4">8. Conduct</h2>
 
 
             <h3 className="text-xl font-semibold text-gray-800 mb-3">8.1 Conduct</h3>
-            <p>You agree to act respectfully and professionally in all community, coaching, or Capital Club environments. Harassment, solicitation, or sharing of confidential information is prohibited.</p>
+            <p>You agree to act respectfully and professionally in all community and coaching environments. Harassment, solicitation, or sharing of confidential information is prohibited.</p>
 
-            <h3 className="text-xl font-semibold text-gray-800 mb-3">8.2 Capital Club</h3>
-            <p>Access to investor or funding communities does not guarantee investment, capital, or deal approval. You are solely responsible for compliance with applicable securities laws.</p>
-
-            <h3 className="text-xl font-semibold text-gray-800 mb-3">8.3 Moderation and Removal</h3>
+            <h3 className="text-xl font-semibold text-gray-800 mb-3">8.2 Moderation and Removal</h3>
             <p>We may limit, suspend, or revoke community or coaching access for misconduct.</p>
 
 
@@ -248,7 +239,7 @@ export default function TermsOfServicePage() {
             <h2 className="text-2xl font-bold text-gray-900 mt-8 mb-4">16. Governing Law</h2>
 
 
-            <p>These Terms are governed by the laws of the Commonwealth of Massachusetts, except where preempted by federal law.</p>
+            <p>These Terms are governed by the laws of Rhode Island, except where preempted by federal law.</p>
 
 
             <h2 className="text-2xl font-bold text-gray-900 mt-8 mb-4">17. Communications and Notices</h2>

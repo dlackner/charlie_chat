@@ -1582,7 +1582,7 @@ function EngagePageContent() {
               >
                 <Route className="h-6 w-6 mb-2" />
                 <div className="text-center">
-                  <div className="font-medium">Road Trip</div>
+                  <div className="font-medium">Find Comps</div>
                   <div className="text-xs text-gray-500 mt-1">Explore nearby</div>
                 </div>
               </button>
@@ -1921,7 +1921,7 @@ function EngagePageContent() {
                       <div className="flex items-center">
                         <Route className="h-4 w-4 mr-2" />
                         <div>
-                          <div>Road Trip</div>
+                          <div>Find Comps</div>
                           <div className="text-xs text-gray-500">Explore nearby properties</div>
                         </div>
                       </div>

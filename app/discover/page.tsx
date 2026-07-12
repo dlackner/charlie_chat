@@ -2616,13 +2616,13 @@ function DiscoverPageContent() {
                     </div>
                   </div>
                   <p className="text-xs text-gray-700 mb-3">
-                    Save and organize your property searches for quick access later. Plus and Pro plans include this powerful feature.
+                    Save and organize your property searches for quick access later. Plus plan includes this powerful feature.
                   </p>
                   <button
                     onClick={() => router.push('/pricing')}
                     className="w-full bg-blue-600 text-white text-xs font-medium py-2 px-3 rounded-md hover:bg-blue-700 transition-colors"
                   >
-                    Upgrade to Plus or Professional
+                    Upgrade to Plus
                   </button>
                 </div>
               )}
@@ -3673,7 +3673,7 @@ function DiscoverPageContent() {
           </div>
           <p className="text-gray-700">
             Upgrade your plan to save favorite properties and access them anytime. 
-            Choose from our Plus or Pro plans to unlock this feature and many more!
+            Upgrade to Plus to unlock this feature and many more!
           </p>
         </div>
       </StandardModalWithActions>
