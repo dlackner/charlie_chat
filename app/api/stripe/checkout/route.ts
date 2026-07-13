@@ -159,7 +159,7 @@ export async function POST(req: NextRequest) {
 
     console.log(`✅ Checkout session created: ${session.id}`);
 
-    return new Response(JSON.stringify({ url: session.url }), {
+    return new Response(JSON.stringify({ url: session.url, productType }), {
       status: 200,
       headers: { "Content-Type": "application/json" },
     });

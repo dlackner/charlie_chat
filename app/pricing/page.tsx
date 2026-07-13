@@ -201,8 +201,12 @@ function PricingPageContent() {
       }
       
       const data = await res.json();
-      
+
       if (data.url) {
+        // Store product type in sessionStorage for success page
+        if (data.productType) {
+          sessionStorage.setItem('checkoutProduct', data.productType);
+        }
         // Add small delay and use replace for more reliable redirect
         setTimeout(() => {
           window.location.replace(data.url);
