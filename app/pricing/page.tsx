@@ -16,8 +16,8 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import DirectCheckoutModal from "@/components/pricing/DirectCheckoutModal";
 
 // ✅ Import product IDs from env
-const PLUS_MONTHLY = process.env.NEXT_PUBLIC_MULTIFAMILYOS_PLUS_MONTHLY_PRODUCT!;
-const PLUS_ANNUAL = process.env.NEXT_PUBLIC_MULTIFAMILYOS_PLUS_ANNUAL_PRODUCT!;
+const PLUS_MONTHLY = process.env.NEXT_PUBLIC_MULTIFAMILYOS_PLUS_MONTHLY_PRODUCT_NEW!;
+const PLUS_ANNUAL = process.env.NEXT_PUBLIC_MULTIFAMILYOS_PLUS_ANNUAL_PRODUCT_NEW!;
 const PRO_MONTHLY = process.env.NEXT_PUBLIC_MULTIFAMILYOS_PRO_MONTHLY_PRODUCT!;
 const PRO_ANNUAL = process.env.NEXT_PUBLIC_MULTIFAMILYOS_PRO_ANNUAL_PRODUCT!;
 const COHORT_MONTHLY = process.env.NEXT_PUBLIC_MULTIFAMILY_COHORT_MONTHLY_PRODUCT!;

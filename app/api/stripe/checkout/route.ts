@@ -12,8 +12,8 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 // Product type mapping: identify Plus vs Pro/Cohort
 const productToType: Record<string, "plus" | "pro" | "cohort"> = {
   // Plus products → NEW Stripe account
-  [process.env.NEXT_PUBLIC_MULTIFAMILYOS_PLUS_MONTHLY_PRODUCT!]: "plus",
-  [process.env.NEXT_PUBLIC_MULTIFAMILYOS_PLUS_ANNUAL_PRODUCT!]: "plus",
+  [process.env.NEXT_PUBLIC_MULTIFAMILYOS_PLUS_MONTHLY_PRODUCT_NEW!]: "plus",
+  [process.env.NEXT_PUBLIC_MULTIFAMILYOS_PLUS_ANNUAL_PRODUCT_NEW!]: "plus",
   // Pro products → OLD Stripe account (existing)
   [process.env.NEXT_PUBLIC_MULTIFAMILYOS_PRO_MONTHLY_PRODUCT!]: "pro",
   [process.env.NEXT_PUBLIC_MULTIFAMILYOS_PRO_ANNUAL_PRODUCT!]: "pro",
