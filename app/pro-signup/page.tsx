@@ -68,6 +68,10 @@ export default function ProSignupPage() {
             if (res.ok) {
               const data = await res.json();
               if (data.url) {
+                // Store product type in sessionStorage for success page
+                if (data.productType) {
+                  sessionStorage.setItem('checkoutProduct', data.productType);
+                }
                 window.location.replace(data.url);
               }
             }

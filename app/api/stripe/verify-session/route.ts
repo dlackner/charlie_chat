@@ -7,13 +7,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2025-08-27.basil',
-});
-
 export async function POST(req: NextRequest) {
   try {
-    const { sessionId } = await req.json();
+    const { sessionId, productType } = await req.json();
+
+    // Initialize Stripe instances lazily
+    const stripeOld = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+      apiVersion: '2025-08-27.basil',
+    });
+
+    const stripeNew = new Stripe(process.env.STRIPE_NEW_SECRET_KEY!, {
+      apiVersion: '2025-08-27.basil',
+    });
 
     if (!sessionId) {
       return NextResponse.json({
@@ -22,7 +27,10 @@ export async function POST(req: NextRequest) {
       }, { status: 400 });
     }
 
-    // Retrieve the session from Stripe
+    // Select Stripe instance based on product type
+    const stripe = productType === 'plus' ? stripeNew : stripeOld;
+
+    // Retrieve the session from appropriate Stripe account
     const session = await stripe.checkout.sessions.retrieve(sessionId, {
       expand: ['line_items.data.price.product']
     });

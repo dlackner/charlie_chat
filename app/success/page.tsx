@@ -46,6 +46,11 @@ function SuccessPageContent() {
       }
 
       try {
+        // Get product type from sessionStorage
+        const productType = typeof window !== 'undefined'
+          ? sessionStorage.getItem('checkoutProduct') || 'pro'
+          : 'pro';
+
         // Verify the Stripe session exists and get session details
         const response = await fetch('/api/stripe/verify-session', {
           method: 'POST',
@@ -53,7 +58,8 @@ function SuccessPageContent() {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            sessionId
+            sessionId,
+            productType
           }),
         });
 

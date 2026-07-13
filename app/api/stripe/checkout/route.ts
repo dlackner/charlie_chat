@@ -12,8 +12,8 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 // Product type mapping: identify Plus vs Pro/Cohort
 const productToType: Record<string, "plus" | "pro" | "cohort"> = {
   // Plus products → NEW Stripe account
-  [process.env.NEXT_PUBLIC_MULTIFAMILYOS_PLUS_MONTHLY_PRODUCT!]: "plus",
-  [process.env.NEXT_PUBLIC_MULTIFAMILYOS_PLUS_ANNUAL_PRODUCT!]: "plus",
+  [process.env.NEXT_PUBLIC_MULTIFAMILYOS_PLUS_MONTHLY_PRODUCT_NEW!]: "plus",
+  [process.env.NEXT_PUBLIC_MULTIFAMILYOS_PLUS_ANNUAL_PRODUCT_NEW!]: "plus",
   // Pro products → OLD Stripe account (existing)
   [process.env.NEXT_PUBLIC_MULTIFAMILYOS_PRO_MONTHLY_PRODUCT!]: "pro",
   [process.env.NEXT_PUBLIC_MULTIFAMILYOS_PRO_ANNUAL_PRODUCT!]: "pro",
@@ -57,12 +57,12 @@ const newStripeProductPricing: Record<
   { monthly?: string; annual?: string; mode: "subscription" | "payment" }
 > = {
   // MultiFamilyOS Plus
-  [process.env.NEXT_PUBLIC_MULTIFAMILYOS_PLUS_MONTHLY_PRODUCT!]: {
+  [process.env.NEXT_PUBLIC_MULTIFAMILYOS_PLUS_MONTHLY_PRODUCT_NEW!]: {
     monthly: process.env.NEXT_PUBLIC_MULTIFAMILYOS_PLUS_MONTHLY_PRICE_NEW!,
     annual: process.env.NEXT_PUBLIC_MULTIFAMILYOS_PLUS_ANNUAL_PRICE_NEW!,
     mode: "subscription",
   },
-  [process.env.NEXT_PUBLIC_MULTIFAMILYOS_PLUS_ANNUAL_PRODUCT!]: {
+  [process.env.NEXT_PUBLIC_MULTIFAMILYOS_PLUS_ANNUAL_PRODUCT_NEW!]: {
     monthly: process.env.NEXT_PUBLIC_MULTIFAMILYOS_PLUS_MONTHLY_PRICE_NEW!,
     annual: process.env.NEXT_PUBLIC_MULTIFAMILYOS_PLUS_ANNUAL_PRICE_NEW!,
     mode: "subscription",
@@ -159,7 +159,7 @@ export async function POST(req: NextRequest) {
 
     console.log(`✅ Checkout session created: ${session.id}`);
 
-    return new Response(JSON.stringify({ url: session.url }), {
+    return new Response(JSON.stringify({ url: session.url, productType }), {
       status: 200,
       headers: { "Content-Type": "application/json" },
     });
