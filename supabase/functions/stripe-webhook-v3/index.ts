@@ -3,21 +3,16 @@
 // This is a clone of webhook-v2 adapted for the new Stripe account
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-import Stripe from 'https://esm.sh/stripe@14';
-
-console.log("Stripe Webhook V3 (NEW Stripe Account) starting up...");
+import Stripe from 'https://esm.sh/stripe@17?target=denonext';
 
 const stripe = new Stripe(Deno.env.get('STRIPE_NEW_SECRET_KEY') ?? '', {
   apiVersion: '2023-10-16'
 });
 
+const cryptoProvider = Stripe.createSubtleCryptoProvider();
+
 serve(async (req) => {
   console.log("🛎️ Request received:", req.method, req.url);
-
-  console.log("📋 All request headers:");
-  for (const [key, value] of req.headers.entries()) {
-    console.log(`  ${key}: ${value}`);
-  }
 
   try {
     if (req.method === 'OPTIONS') {
@@ -26,7 +21,7 @@ serve(async (req) => {
       });
     }
 
-    const signature = req.headers.get('stripe-signature');
+    const signature = req.headers.get('Stripe-Signature');
     if (!signature) {
       console.error("❌ Missing Stripe signature");
       console.error("❌ Available headers:", Array.from(req.headers.keys()));
@@ -37,7 +32,9 @@ serve(async (req) => {
     const event = await stripe.webhooks.constructEventAsync(
       body,
       signature,
-      Deno.env.get('STRIPE_NEW_WEBHOOK_SIGNING_SECRET') ?? ''
+      Deno.env.get('STRIPE_NEW_WEBHOOK_SIGNING_SECRET') ?? '',
+      undefined,
+      cryptoProvider
     );
 
     console.log("✅ Webhook verified, event type:", event.type);
@@ -130,19 +127,48 @@ async function processCheckoutSession(session, supabase, stripe) {
   console.log("Session mode:", session.mode);
   console.log("Session customer:", session.customer);
 
-  const userIdFromMetadata = session.metadata?.userId;
-  if (!userIdFromMetadata) {
-    console.error("❌ Missing userId in metadata:", session.metadata);
-    throw new Error('Missing userId in metadata');
+  let userId = session.metadata?.userId;
+
+  if (!userId) {
+    console.log("⚠️ No userId in metadata — attempting fallback lookup");
+
+    if (session.customer) {
+      const { data: customerProfile } = await supabase
+        .from("profiles")
+        .select("user_id")
+        .eq("stripe_customer_id", session.customer)
+        .single();
+      if (customerProfile) {
+        userId = customerProfile.user_id;
+        console.log("✅ Found user by stripe_customer_id:", userId);
+      }
+    }
+
+    if (!userId && session.customer_details?.email) {
+      const { data: emailProfile } = await supabase
+        .from("profiles")
+        .select("user_id")
+        .eq("email", session.customer_details.email)
+        .single();
+      if (emailProfile) {
+        userId = emailProfile.user_id;
+        console.log("✅ Found user by email:", session.customer_details.email, "→", userId);
+      }
+    }
+
+    if (!userId) {
+      console.error("❌ Could not resolve user from metadata, customer ID, or email");
+      throw new Error('Could not resolve userId');
+    }
   }
 
-  console.log("🔍 Looking up user:", userIdFromMetadata);
+  console.log("🔍 Looking up user:", userId);
 
   // Look up user profile
   const { data: profile, error: profileError } = await supabase
     .from("profiles")
     .select("user_id, email, user_class")
-    .eq("user_id", userIdFromMetadata)
+    .eq("user_id", userId)
     .single();
 
   if (profileError || !profile) {

@@ -1,14 +1,15 @@
 // supabase/functions/stripe-webhook-v2/index.ts
-// Based on working version, updated with new user classes
+// OLD Stripe Account webhook - handles Pro/Cohort and legacy Plus
+// Updated to Stripe SDK @17 for modern webhook signature verification
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-import Stripe from 'https://esm.sh/stripe@14';
-
-console.log("Function starting up...");
+import Stripe from 'https://esm.sh/stripe@17?target=denonext';
 
 const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') ?? '', {
   apiVersion: '2023-10-16'
 });
+
+const cryptoProvider = Stripe.createSubtleCryptoProvider();
 
 serve(async (req) => {
   console.log("🛎️ Request received:", req.method, req.url);
@@ -26,7 +27,7 @@ serve(async (req) => {
       });
     }
 
-    const signature = req.headers.get('stripe-signature');
+    const signature = req.headers.get('Stripe-Signature');
     if (!signature) {
       console.error("❌ Missing Stripe signature");
       console.error("❌ Available headers:", Array.from(req.headers.keys()));
@@ -35,9 +36,11 @@ serve(async (req) => {
 
     const body = await req.text();
     const event = await stripe.webhooks.constructEventAsync(
-      body, 
-      signature, 
-      Deno.env.get('STRIPE_WEBHOOK_SIGNING_SECRET') ?? ''
+      body,
+      signature,
+      Deno.env.get('STRIPE_WEBHOOK_SIGNING_SECRET') ?? '',
+      undefined,
+      cryptoProvider
     );
     
     console.log("✅ Webhook verified, event type:", event.type);

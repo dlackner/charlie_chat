@@ -3,6 +3,11 @@
  * Handles payment processing for subscription plans only
  * Creates Stripe checkout sessions with proper metadata for webhook processing
  * Routes Plus users to NEW Stripe account, Pro/Cohort to OLD (existing) Stripe account
+ *
+ * MIGRATION NOTE (July 2026): Plus products are being migrated to a new Stripe account.
+ * - NEW Plus products (with _NEW suffix) → NEW Stripe account (v3 webhook)
+ * - OLD Plus products (no _NEW suffix) → OLD Stripe account (v2 webhook) [TEMPORARY]
+ * Once all old Plus subscriptions are upgraded/migrated, remove old Plus mappings below.
  */
 
 import Stripe from "stripe";
@@ -11,9 +16,13 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
 // Product type mapping: identify Plus vs Pro/Cohort
 const productToType: Record<string, "plus" | "pro" | "cohort"> = {
-  // Plus products → NEW Stripe account
+  // NEW Plus products → NEW Stripe account
   [process.env.NEXT_PUBLIC_MULTIFAMILYOS_PLUS_MONTHLY_PRODUCT_NEW!]: "plus",
   [process.env.NEXT_PUBLIC_MULTIFAMILYOS_PLUS_ANNUAL_PRODUCT_NEW!]: "plus",
+  // OLD Plus products → OLD Stripe account (TEMPORARY - migration in progress)
+  // TODO: Remove once all old Plus subscriptions have been migrated to new account
+  [process.env.NEXT_PUBLIC_MULTIFAMILYOS_PLUS_MONTHLY_PRODUCT!]: "pro",
+  [process.env.NEXT_PUBLIC_MULTIFAMILYOS_PLUS_ANNUAL_PRODUCT!]: "pro",
   // Pro products → OLD Stripe account (existing)
   [process.env.NEXT_PUBLIC_MULTIFAMILYOS_PRO_MONTHLY_PRODUCT!]: "pro",
   [process.env.NEXT_PUBLIC_MULTIFAMILYOS_PRO_ANNUAL_PRODUCT!]: "pro",
@@ -27,6 +36,17 @@ const oldStripeProductPricing: Record<
   string,
   { monthly?: string; annual?: string; mode: "subscription" | "payment" }
 > = {
+  // MultiFamilyOS Plus (OLD - legacy subscribers)
+  [process.env.NEXT_PUBLIC_MULTIFAMILYOS_PLUS_MONTHLY_PRODUCT!]: {
+    monthly: process.env.NEXT_PUBLIC_MULTIFAMILYOS_PLUS_MONTHLY_PRICE!,
+    annual: process.env.NEXT_PUBLIC_MULTIFAMILYOS_PLUS_ANNUAL_PRICE!,
+    mode: "subscription",
+  },
+  [process.env.NEXT_PUBLIC_MULTIFAMILYOS_PLUS_ANNUAL_PRODUCT!]: {
+    monthly: process.env.NEXT_PUBLIC_MULTIFAMILYOS_PLUS_MONTHLY_PRICE!,
+    annual: process.env.NEXT_PUBLIC_MULTIFAMILYOS_PLUS_ANNUAL_PRICE!,
+    mode: "subscription",
+  },
   // MultiFamilyOS Pro
   [process.env.NEXT_PUBLIC_MULTIFAMILYOS_PRO_MONTHLY_PRODUCT!]: {
     monthly: process.env.NEXT_PUBLIC_MULTIFAMILYOS_PRO_MONTHLY_PRICE!,
