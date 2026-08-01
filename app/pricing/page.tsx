@@ -484,7 +484,7 @@ function PricingPageContent() {
     <div className="min-h-screen bg-white text-black px-6 py-12">
       <h1 className="text-3xl sm:text-5xl font-semibold mb-6 text-blue-600 text-center">Pricing</h1>
 
-      {/* Toggle for Monthly/Annual */}
+      {/* Toggle for Monthly/Annual - Annual hidden for now, uncomment to re-enable
       <div className="flex justify-center mb-8">
         <button
           onClick={() => setIsAnnual(false)}
@@ -503,6 +503,7 @@ function PricingPageContent() {
           Annually
         </button>
       </div>
+      */}
 
       <div className="flex justify-center">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-8 max-w-4xl">
@@ -551,7 +552,7 @@ function PricingPageContent() {
           ) : (
             <>
               <p className="text-xl font-bold mb-1">$39</p>
-              <p className="text-sm text-gray-500 mb-4">(Billed monthly)</p>
+              <p className="text-sm text-gray-500 mb-4">Billed monthly</p>
             </>
           )}
           <p className="text-sm text-gray-700 mb-4">
