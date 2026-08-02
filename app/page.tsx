@@ -292,7 +292,7 @@ export default function Home() {
     {
       icon: <Building className="w-6 h-6" />,
       title: "Flexible Pricing",
-      description: "Start free and scale to pro—designed for everyone from new investors to experienced pros"
+      description: "Start free and scale to plus—designed for everyone from new investors to seasoned pros"
     }
   ];
 

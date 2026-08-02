@@ -628,8 +628,8 @@ export function AIInvestmentAnalysis({ property, isEngageContext, userClass }: A
             </div>
           </div>
           <p className="text-gray-700">
-            Upgrade your plan to get an AI property analysis and recommendation. 
-            Choose from our Plus or Pro plans to unlock this feature and many more!
+            Upgrade your plan to get an AI property analysis and recommendation.
+            Choose our Plus plan to unlock this feature and many more!
           </p>
         </div>
       </StandardModalWithActions>

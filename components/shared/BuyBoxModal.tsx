@@ -1194,7 +1194,7 @@ export const BuyBoxModal: React.FC<BuyBoxModalProps> = ({ isOpen, onClose, focus
                             </Dialog.Title>
                             
                             <p className="text-gray-600 mb-2">
-                                My Buy Box is available for Pro and Cohort members.
+                                My Buy Box is available for Plus members.
                             </p>
                             
                             <p className="text-gray-600 mb-6">
