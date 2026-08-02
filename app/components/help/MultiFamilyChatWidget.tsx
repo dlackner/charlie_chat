@@ -1,5 +1,5 @@
 /*
- * CHARLIE2 V2 - Customer Support Help Widget
+ * Customer Support Help Widget
  * Interactive help widget for customer support inquiries
  * Positioned as dropdown from header navigation
  * Part of the new V2 application architecture
@@ -91,7 +91,7 @@ const MultiFamilyChatWidget = () => {
           },
           body: JSON.stringify({ 
             message: customerSupportMessage,
-            userEmail: user?.email || 'anonymous@charlieus.ai',
+            userEmail: user?.email || 'info@multifamilyos.ai',
             userName: userProfile?.first_name && userProfile?.last_name 
               ? `${userProfile.first_name} ${userProfile.last_name}` 
               : null

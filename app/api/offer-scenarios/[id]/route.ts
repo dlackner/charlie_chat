@@ -1,5 +1,5 @@
 /*
- * CHARLIE2 V2 - Individual Offer Scenario API
+ * Individual Offer Scenario API
  * GET, PUT, DELETE operations for a specific offer scenario
  * Part of the new V2 API architecture
  */

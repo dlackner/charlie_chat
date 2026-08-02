@@ -1,5 +1,5 @@
 /*
- * CHARLIE2 - Auth Callback Handler
+ * Auth Callback Handler
  * Handles magic link authentication callbacks for signup and login flows
  * Processes PKCE code exchange and redirects to appropriate dashboard pages
  * Part of the new application architecture

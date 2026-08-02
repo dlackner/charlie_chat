@@ -1,5 +1,5 @@
 /*
- * CHARLIE2 V2 - Discover Page
+ * Discover Page
  * Advanced property search and filtering with comprehensive saved search functionality
  * Features: Clean map implementation, connected filter system, smart searches
  * TODO: Move to app/v2/discover/ for proper V2 organization

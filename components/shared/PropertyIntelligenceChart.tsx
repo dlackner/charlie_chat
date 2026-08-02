@@ -1,5 +1,5 @@
 /*
- * CHARLIE2 V2 - Property Intelligence Chart Component
+ * Property Intelligence Chart Component
  * Provides both mixed bar/line chart and funnel chart visualizations
  * Part of the new V2 component architecture
  */

@@ -1,5 +1,5 @@
 /*
- * CHARLIE2 V2 - Cash Flow Reports Modal
+ * Cash Flow Reports Modal
  * Modal for viewing and generating 10-year cash flow reports from saved offer scenarios
  * Features: List properties with pricing scenarios, generate reports, delete functionality
  * Part of the new V2 UI architecture

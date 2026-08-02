@@ -47,11 +47,10 @@ export const useOfferAnalyzerAccess = (): UseOfferAnalyzerAccessReturn => {
     // Check if user has access to Offer Analyzer
     // Offer Analyzer is available to all user classes except disabled
     const hasAccess =
-        userClass === "charlie_chat_pro" ||
-        userClass === "charlie_chat_plus" ||
-        userClass === "cohort" ||
-        userClass === "charlie_chat" ||
-        userClass === "trial";
+        userClass === "trial" ||
+        userClass === "core" ||
+        userClass === "plus" ||
+        userClass === "pro";
         // Note: disabled users get NO access
 
     return {

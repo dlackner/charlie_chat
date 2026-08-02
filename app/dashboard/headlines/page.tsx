@@ -1,5 +1,5 @@
 /*
- * CHARLIE2 V2 - Home Page
+ * Home Page
  * Investment metrics and portfolio management dashboard overview
  * Main landing page for authenticated users in V2 application
  */

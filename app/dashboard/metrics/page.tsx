@@ -1,5 +1,5 @@
 /*
- * CHARLIE2 V2 - Dashboard Metrics Page
+ * Dashboard Metrics Page
  * Real-time activity tracking and performance metrics for real estate investors
  * Features: Activity coaching, time-based charts, property tracking metrics
  * Part of the new V2 application architecture

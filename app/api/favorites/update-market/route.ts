@@ -1,5 +1,5 @@
 /*
- * CHARLIE2 V2 - Update Favorite Market API
+ * Update Favorite Market API
  * Allows updating the market assignment of saved properties
  */
 import { NextRequest, NextResponse } from "next/server";

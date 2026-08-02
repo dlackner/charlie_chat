@@ -1,5 +1,5 @@
 /*
- * CHARLIE2 V2 - Daily Activity API
+ * Daily Activity API
  * Returns daily activity count for a specific user and activity type
  * Part of the new V2 application architecture
  */

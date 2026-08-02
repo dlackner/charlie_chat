@@ -502,11 +502,6 @@ export const MultiCriteriaFilter: React.FC<MultiCriteriaFilterProps> = ({
           >
             <div className="p-6">
               <div className="flex items-center mb-4">
-                <img
-                  src="/charlie.png"
-                  alt="Charlie"
-                  className="w-10 h-10 rounded-full mr-3 shadow-md border-[0.5px] border-gray-300"
-                />
                 <h3 className="text-lg font-semibold text-gray-900">Property Filter Guide</h3>
               </div>
               

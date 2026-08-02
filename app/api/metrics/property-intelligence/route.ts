@@ -1,5 +1,5 @@
 /*
- * CHARLIE2 V2 - Property Intelligence Metrics API
+ * Property Intelligence Metrics API
  * Pipeline analytics with status, market, and source filtering
  * Part of the new V2 API architecture
  */

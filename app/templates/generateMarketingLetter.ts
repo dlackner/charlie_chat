@@ -1,5 +1,5 @@
 /*
- * CHARLIE2 V2 - Marketing Letter Generator
+ * Marketing Letter Generator
  * Generates personalized marketing letters for property owners
  * Supports printing, email generation, and CSV export functionality
  */

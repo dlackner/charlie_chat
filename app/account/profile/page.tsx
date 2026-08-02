@@ -1,5 +1,5 @@
 /*
- * CHARLIE2 V2 - Profile Management Page
+ * Profile Management Page
  * Dynamic profile page with live Supabase database integration
  * Fetches and saves real user profile data
  * Part of the new V2 application architecture

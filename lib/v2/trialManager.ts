@@ -1,5 +1,5 @@
 /*
- * CHARLIE2 V2 - Trial Management System
+ * Trial Management System
  * Handles trial expiration logic and automatic conversion to core
  * Checks trial dates and updates user_class when 7 days have passed
  * Part of the new V2 application architecture

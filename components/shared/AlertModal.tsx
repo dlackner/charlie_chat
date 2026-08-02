@@ -1,5 +1,5 @@
 /*
- * CHARLIE2 V2 - Alert Modal Component
+ * Alert Modal Component
  * Replaces browser alert() popups with consistent V2 branding
  * Based on existing modal patterns from engage page
  * Supports success, error, warning, and confirmation notification types

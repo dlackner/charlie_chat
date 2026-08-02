@@ -1,8 +1,8 @@
 /*
- * CHARLIE2 V2 - Stripe Checkout Session Creation API
+ * Stripe Checkout Session Creation API
  * Handles payment processing for subscription plans only
  * Creates Stripe checkout sessions with proper metadata for webhook processing
- * Routes Plus users to NEW Stripe account, Pro/Cohort to OLD (existing) Stripe account
+ * Routes Plus users to NEW Stripe account, Pro to OLD (existing) Stripe account
  *
  * MIGRATION NOTE (July 2026): Plus products are being migrated to a new Stripe account.
  * - NEW Plus products (with _NEW suffix) → NEW Stripe account (v3 webhook)
@@ -14,8 +14,8 @@ import Stripe from "stripe";
 import { NextRequest } from "next/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
-// Product type mapping: identify Plus vs Pro/Cohort
-const productToType: Record<string, "plus" | "pro" | "cohort"> = {
+// Product type mapping: identify Plus vs Pro
+const productToType: Record<string, "plus" | "pro"> = {
   // NEW Plus products → NEW Stripe account
   [process.env.NEXT_PUBLIC_MULTIFAMILYOS_PLUS_MONTHLY_PRODUCT_NEW!]: "plus",
   [process.env.NEXT_PUBLIC_MULTIFAMILYOS_PLUS_ANNUAL_PRODUCT_NEW!]: "plus",
@@ -26,12 +26,9 @@ const productToType: Record<string, "plus" | "pro" | "cohort"> = {
   // Pro products → OLD Stripe account (existing)
   [process.env.NEXT_PUBLIC_MULTIFAMILYOS_PRO_MONTHLY_PRODUCT!]: "pro",
   [process.env.NEXT_PUBLIC_MULTIFAMILYOS_PRO_ANNUAL_PRODUCT!]: "pro",
-  // Cohort products → OLD Stripe account (existing)
-  [process.env.NEXT_PUBLIC_MULTIFAMILY_COHORT_MONTHLY_PRODUCT!]: "cohort",
-  [process.env.NEXT_PUBLIC_MULTIFAMILY_COHORT_ANNUAL_PRODUCT!]: "cohort",
 };
 
-// OLD Stripe Account (Pro & Cohort products)
+// OLD Stripe Account (Pro products)
 const oldStripeProductPricing: Record<
   string,
   { monthly?: string; annual?: string; mode: "subscription" | "payment" }
@@ -56,17 +53,6 @@ const oldStripeProductPricing: Record<
   [process.env.NEXT_PUBLIC_MULTIFAMILYOS_PRO_ANNUAL_PRODUCT!]: {
     monthly: process.env.NEXT_PUBLIC_MULTIFAMILYOS_PRO_MONTHLY_PRICE!,
     annual: process.env.NEXT_PUBLIC_MULTIFAMILYOS_PRO_ANNUAL_PRICE!,
-    mode: "subscription",
-  },
-  // MultiFamilyOS Cohort
-  [process.env.NEXT_PUBLIC_MULTIFAMILY_COHORT_MONTHLY_PRODUCT!]: {
-    monthly: process.env.NEXT_PUBLIC_MULTIFAMILY_COHORT_MONTHLY_PRICE!,
-    annual: process.env.NEXT_PUBLIC_MULTIFAMILY_COHORT_ANNUAL_PRICE!,
-    mode: "subscription",
-  },
-  [process.env.NEXT_PUBLIC_MULTIFAMILY_COHORT_ANNUAL_PRODUCT!]: {
-    monthly: process.env.NEXT_PUBLIC_MULTIFAMILY_COHORT_MONTHLY_PRICE!,
-    annual: process.env.NEXT_PUBLIC_MULTIFAMILY_COHORT_ANNUAL_PRICE!,
     mode: "subscription",
   },
 };

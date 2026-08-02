@@ -8,7 +8,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useOfferAnalyzerAccess } from './usePropertyAnalyzerAccess';
 import { AuthGuard } from '@/components/auth/AuthGuard';
 import { UnsavedChangesModal } from './UnsavedChangesModal';
-import { CharlieTooltip } from './CharlieTooltip';
+import { HelpTooltip } from './HelpTooltip';
 import { SaveOfferModal } from '@/components/shared/SaveOfferModal';
 import AlertModal, { useAlert } from '@/components/shared/AlertModal';
 import {
@@ -884,7 +884,7 @@ export default function OfferAnalyzerPage() {
     }
   };
 
-  // Property data for 10-year cash flow report (moved into Charlie's Analysis)
+  // Property data for 10-year cash flow report
   const propertyData = useMemo(() => ({
     propertyStreet,
     propertyCity,
@@ -1035,8 +1035,8 @@ export default function OfferAnalyzerPage() {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
       if (userInteracted && !allowLeavingRef.current) {
         e.preventDefault();
-        e.returnValue = "Charlie here. I see you've been working on an offer and I don't want you to lose your work! Save your scenario first by clicking 'More' then 'Save scenario'.";
-        return "Charlie here. I see you've been working on an offer and I don't want you to lose your work! Save your scenario first by clicking 'More' then 'Save scenario'.";
+        e.returnValue = "You've been working on an offer — don't lose your work! Save your scenario first by clicking 'More' then 'Save scenario'.";
+        return "You've been working on an offer — don't lose your work! Save your scenario first by clicking 'More' then 'Save scenario'.";
       }
     };
 
@@ -1724,7 +1724,7 @@ export default function OfferAnalyzerPage() {
         </button>
 
         <div className="flex justify-between items-end mb-6">
-          {/* Investment Grade Card - Modern Charlie2 Style */}
+          {/* Investment Grade Card */}
           <div className="bg-gradient-to-r from-blue-600 to-blue-700 p-4 rounded-lg shadow-lg flex items-center text-white">
             <div className="flex items-center space-x-3">
               <div className="p-2 bg-white/20 rounded-lg">
@@ -1824,79 +1824,79 @@ export default function OfferAnalyzerPage() {
 
         <div className="mt-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {/* Column 1 - Row 1 */}
-          <CharlieTooltip message="Total rental income after vacancy. The foundation of every deal—if this number's wrong, the entire analysis is worthless.">
+          <HelpTooltip message="Total rental income after vacancy. The foundation of every deal—if this number's wrong, the entire analysis is worthless.">
             <div className="bg-white p-5 rounded-xl shadow-lg border border-gray-200 cursor-pointer">
               <h3 className="text-md font-semibold text-blue-600 mb-1">Gross Operating Income</h3>
               <p className="text-2xl font-bold text-gray-900">{formatCurrency(effectiveGrossIncome)}</p>
             </div>
-          </CharlieTooltip>
+          </HelpTooltip>
 
           {/* Column 2 - Row 1 */}
-          <CharlieTooltip message="Net Operating Income—the money left after all operating expenses. This pays the mortgage and generates cash flow. The most critical number in real estate.">
+          <HelpTooltip message="Net Operating Income—the money left after all operating expenses. This pays the mortgage and generates cash flow. The most critical number in real estate.">
             <div className="bg-white p-5 rounded-xl shadow-lg border border-gray-200 cursor-pointer">
               <h3 className="text-md font-semibold text-blue-600 mb-1">Net Operating Income</h3>
               <p className="text-2xl font-bold text-gray-900">{formatCurrency(netOperatingIncome)}</p>
             </div>
-          </CharlieTooltip>
+          </HelpTooltip>
 
           {/* Column 3 - Row 1 */}
-          <CharlieTooltip message="How well your property covers its debt payments. 1.25+ is what lenders want. Below 1.0 means you're paying out of pocket every month.">
+          <HelpTooltip message="How well your property covers its debt payments. 1.25+ is what lenders want. Below 1.0 means you're paying out of pocket every month.">
             <div className="bg-white p-5 rounded-xl shadow-lg border border-gray-200 cursor-pointer">
               <h3 className="text-md font-semibold text-blue-600 mb-1">Debt Service Coverage Ratio</h3>
               <p className="text-2xl font-bold text-gray-900">{debtServiceCoverageRatio.toFixed(2)}</p>
             </div>
-          </CharlieTooltip>
+          </HelpTooltip>
 
           {/* Column 1 - Row 2 */}
-          <CharlieTooltip message="Percentage of income consumed by expenses. Under 50% is excellent. Over 60% means the property is working against you.">
+          <HelpTooltip message="Percentage of income consumed by expenses. Under 50% is excellent. Over 60% means the property is working against you.">
             <div className="bg-white p-5 rounded-xl shadow-lg border border-gray-200 cursor-pointer">
               <h3 className="text-md font-semibold text-blue-600 mb-1">Expense Ratio (Year 1)</h3>
               <p className="text-2xl font-bold text-gray-900">{formatPercentage(expenseRatio)}</p>
             </div>
-          </CharlieTooltip>
+          </HelpTooltip>
 
           {/* Column 2 - Row 2 */}
-          <CharlieTooltip message="Money in your pocket each month after debt service. Positive is good, negative means you're feeding the property every month.">
+          <HelpTooltip message="Money in your pocket each month after debt service. Positive is good, negative means you're feeding the property every month.">
             <div className="bg-white p-5 rounded-xl shadow-lg border border-gray-200 cursor-pointer">
               <h3 className="text-md font-semibold text-blue-600 mb-1">Cash Flow (Before Tax)</h3>
               <p className="text-2xl font-bold text-gray-900">{formatCurrency(cashFlowBeforeTax)}</p>
             </div>
-          </CharlieTooltip>
+          </HelpTooltip>
 
           {/* Column 3 - Row 2 */}
-          <CharlieTooltip message="Return on actual cash invested in year one. Immediate gratification—the cash return on the down payment and closing costs.">
+          <HelpTooltip message="Return on actual cash invested in year one. Immediate gratification—the cash return on the down payment and closing costs.">
             <div className="bg-white p-5 rounded-xl shadow-lg border border-gray-200 cursor-pointer">
               <h3 className="text-md font-semibold text-blue-600 mb-1">Cash-on-Cash Return (Year 1)</h3>
               <p className="text-2xl font-bold text-gray-900">{formatPercentage(cashOnCashReturn)}</p>
             </div>
-          </CharlieTooltip>
+          </HelpTooltip>
 
           {/* Column 1 - Row 3 */}
-          <CharlieTooltip message="Cash flow after setting aside money for future repairs and improvements. This is your real spendable cash—don't forget the reserves!">
+          <HelpTooltip message="Cash flow after setting aside money for future repairs and improvements. This is your real spendable cash—don't forget the reserves!">
             <div className="bg-white p-5 rounded-xl shadow-lg border border-gray-200 cursor-pointer">
               <h3 className="text-md font-semibold text-blue-600 mb-1">Cash Flow (After Capital Reserve)</h3>
               <p className="text-2xl font-bold text-gray-900">{formatCurrency(cashFlowAfterCapitalReserve)}</p>
             </div>
-          </CharlieTooltip>
+          </HelpTooltip>
 
           {/* Column 2 - Row 3 */}
-          <CharlieTooltip message="Total return if sold at the end of the holding period. Includes all cash flow plus sale proceeds. The ultimate performance metric.">
+          <HelpTooltip message="Total return if sold at the end of the holding period. Includes all cash flow plus sale proceeds. The ultimate performance metric.">
             <div className="bg-white p-5 rounded-xl shadow-lg border border-gray-200 cursor-pointer">
               <h3 className="text-md font-semibold text-blue-600 mb-1">Total ROI ({holdingPeriodYears} Year)</h3>
               <p className="text-2xl font-bold text-gray-900">{formatPercentage(roiAtHorizon)}</p>
             </div>
-          </CharlieTooltip>
+          </HelpTooltip>
 
           {/* Column 3 - Row 3 */}
-          <CharlieTooltip message="Annual return including cash flow AND appreciation. The gold standard metric—double digits are excellent but market reality matters.">
+          <HelpTooltip message="Annual return including cash flow AND appreciation. The gold standard metric—double digits are excellent but market reality matters.">
             <div className="bg-white p-5 rounded-xl shadow-lg border border-gray-200 cursor-pointer">
               <h3 className="text-md font-semibold text-blue-600 mb-1">Internal Rate of Return ({holdingPeriodYears} Year)</h3>
               <p className="text-2xl font-bold text-gray-900">{formatPercentage(irr)}</p>
             </div>
-          </CharlieTooltip>
+          </HelpTooltip>
 
           {/* Column 1 - Row 4 */}
-          <CharlieTooltip message="Annual payment to the bank. This comes out of NOI first—everything else is profit. Keep debt service manageable.">
+          <HelpTooltip message="Annual payment to the bank. This comes out of NOI first—everything else is profit. Keep debt service manageable.">
             <div className="bg-white p-5 rounded-xl shadow-lg border border-gray-200 cursor-pointer">
               <h3 className="text-md font-semibold text-blue-600 mb-1">
                 {loanStructure === 'interest-only' ? 'Annual IO Payment' : 'Annual Debt Service'}
@@ -1913,41 +1913,41 @@ export default function OfferAnalyzerPage() {
                 </p>
               )}
             </div>
-          </CharlieTooltip>
+          </HelpTooltip>
 
           {/* Column 2 - Row 4 */}
-          <CharlieTooltip message="How much you still owe the bank after one year. With interest-only loans, this doesn't change much. That's the point.">
+          <HelpTooltip message="How much you still owe the bank after one year. With interest-only loans, this doesn't change much. That's the point.">
             <div className="bg-white p-5 rounded-xl shadow-lg border border-gray-200 cursor-pointer">
               <h3 className="text-md font-semibold text-blue-600 mb-1">Loan Balance (Year 1)</h3>
               <p className="text-2xl font-bold text-gray-900">{formatCurrency(year1LoanBalance)}</p>
             </div>
-          </CharlieTooltip>
+          </HelpTooltip>
 
           {/* Column 3 - Row 4 */}
-          <CharlieTooltip message="NOI divided by purchase price. Like a stock dividend—higher is better, but don't chase cap rates into bad neighborhoods.">
+          <HelpTooltip message="NOI divided by purchase price. Like a stock dividend—higher is better, but don't chase cap rates into bad neighborhoods.">
             <div className="bg-white p-5 rounded-xl shadow-lg border border-gray-200 cursor-pointer">
               <h3 className="text-md font-semibold text-blue-600 mb-1">Cap Rate (Year 1)</h3>
               <p className="text-2xl font-bold text-gray-900">{formatPercentage(capRate)}</p>
             </div>
-          </CharlieTooltip>
+          </HelpTooltip>
 
           {/* Column 1 - Row 5 */}
-          <CharlieTooltip message="When your cumulative cash flow turns positive and you stop feeding the deal. The sooner the better—deals that never break even are wealth destroyers.">
+          <HelpTooltip message="When your cumulative cash flow turns positive and you stop feeding the deal. The sooner the better—deals that never break even are wealth destroyers.">
             <div className="bg-white p-5 rounded-xl shadow-lg border border-gray-200 cursor-pointer">
               <h3 className="text-md font-semibold text-blue-600 mb-1">Break-Even Point</h3>
               <p className="text-2xl font-bold text-gray-900">
                 {breakEvenYear !== null ? `${breakEvenYear} years` : 'N/A (No positive cash flow within horizon)'}
               </p>
             </div>
-          </CharlieTooltip>
+          </HelpTooltip>
 
           {/* Column 2 - Row 5 */}
-          <CharlieTooltip message="Property value at sale minus remaining debt. The ultimate payday—appreciation plus principal paydown over time.">
+          <HelpTooltip message="Property value at sale minus remaining debt. The ultimate payday—appreciation plus principal paydown over time.">
             <div className="bg-white p-5 rounded-xl shadow-lg border border-gray-200 cursor-pointer">
               <h3 className="text-md font-semibold text-blue-600 mb-1">Projected Equity (at Year {holdingPeriodYears})</h3>
               <p className="text-2xl font-bold text-gray-900">{formatCurrency(projectedEquityAtHorizon)}</p>
             </div>
-          </CharlieTooltip>
+          </HelpTooltip>
         </div>
 
       </div>
@@ -2036,7 +2036,7 @@ export default function OfferAnalyzerPage() {
         </div>
         <div className="mb-5">
           <label htmlFor="purchasePrice" className="block text-sm font-medium text-gray-700 mb-1">Purchase Price ($)</label>
-          <CharlieTooltip message="This is your offer price. Don't get emotional—stick to the numbers. What can you realistically pay and still make money?">
+          <HelpTooltip message="This is your offer price. Don't get emotional—stick to the numbers. What can you realistically pay and still make money?">
             <input
               type="text"
               id="purchasePrice"
@@ -2047,12 +2047,12 @@ export default function OfferAnalyzerPage() {
               step="10000"
               suppressHydrationWarning={true}
             />
-          </CharlieTooltip>
+          </HelpTooltip>
         </div>
 
         <div className="mb-5">
           <label htmlFor="downPaymentPercentage" className="block text-sm font-medium text-gray-700 mb-1">Down Payment (%)</label>
-          <CharlieTooltip message="Most deals need 20-25% down. Less down = higher leverage = higher returns IF the deal works. More down = safer but lower returns.">
+          <HelpTooltip message="Most deals need 20-25% down. Less down = higher leverage = higher returns IF the deal works. More down = safer but lower returns.">
             <input
               type="number"
               id="downPaymentPercentage"
@@ -2064,12 +2064,12 @@ export default function OfferAnalyzerPage() {
               min="0"
               max="100"
             />
-          </CharlieTooltip>
+          </HelpTooltip>
         </div>
 
         <div className="mb-5">
           <label htmlFor="interestRate" className="block text-sm font-medium text-gray-700 mb-1">Interest Rate (%)</label>
-          <CharlieTooltip message="Shop around! A half percent difference on a million-dollar loan costs $5,000/year. Broker relationships matter here.">
+          <HelpTooltip message="Shop around! A half percent difference on a million-dollar loan costs $5,000/year. Broker relationships matter here.">
             <input
               type="number"
               id="interestRate"
@@ -2079,13 +2079,13 @@ export default function OfferAnalyzerPage() {
               className={`w-full p-2.5 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow duration-150 ease-in-out shadow-sm ${shouldDisableInputs ? 'bg-gray-100 cursor-not-allowed' : 'bg-white'}`}
               step="0.1"
             />
-          </CharlieTooltip>
+          </HelpTooltip>
         </div>
 
         {/* Loan Structure Selection */}
         <div className="mb-5">
           <label className="block text-sm font-medium text-gray-700 mb-3">Loan Structure</label>
-          <CharlieTooltip message="Interest-only gives better cash flow early but higher payments later. Strategic for value-add deals with planned improvements.">
+          <HelpTooltip message="Interest-only gives better cash flow early but higher payments later. Strategic for value-add deals with planned improvements.">
             <div className="flex space-x-4">
               <label className="flex items-center">
                 <input
@@ -2110,14 +2110,14 @@ export default function OfferAnalyzerPage() {
                 <span className="text-sm text-gray-700">Interest-Only Loan</span>
               </label>
             </div>
-          </CharlieTooltip>
+          </HelpTooltip>
         </div>
 
         {/* Conditional Fields Based on Loan Structure */}
         {loanStructure === 'amortizing' ? (
           <div className="mb-5">
             <label htmlFor="amortizationPeriodYears" className="block text-sm font-medium text-gray-700 mb-1">Amortization Period (Years)</label>
-            <CharlieTooltip message="30 years = lower payments, more cash flow. 25 years = higher payments but faster equity building. Choose based on strategy.">
+            <HelpTooltip message="30 years = lower payments, more cash flow. 25 years = higher payments but faster equity building. Choose based on strategy.">
               <input
                 type="number"
                 id="amortizationPeriodYears"
@@ -2142,13 +2142,13 @@ export default function OfferAnalyzerPage() {
                 step="1"
                 min="1"
               />
-            </CharlieTooltip>
+            </HelpTooltip>
           </div>
         ) : (
           <div className="space-y-5">
             <div>
               <label htmlFor="interestOnlyPeriodYears" className="block text-sm font-medium text-gray-700 mb-1">Interest-Only Period (Years)</label>
-              <CharlieTooltip message="Perfect for value-add deals. Use this time to increase rents, then refinance. Plan the exit before the IO period ends.">
+              <HelpTooltip message="Perfect for value-add deals. Use this time to increase rents, then refinance. Plan the exit before the IO period ends.">
                 <input
                   type="number"
                   id="interestOnlyPeriodYears"
@@ -2159,11 +2159,11 @@ export default function OfferAnalyzerPage() {
                   step="1"
                   min="1"
                 />
-              </CharlieTooltip>
+              </HelpTooltip>
             </div>
             <div>
               <label htmlFor="refinanceTermYears" className="block text-sm font-medium text-gray-700 mb-1">Refinance Term (Years)</label>
-              <CharlieTooltip message="Plan the exit strategy now. Sell, refinance, or hold? This term should align with the business plan.">
+              <HelpTooltip message="Plan the exit strategy now. Sell, refinance, or hold? This term should align with the business plan.">
                 <input
                   type="number"
                   id="refinanceTermYears"
@@ -2174,7 +2174,7 @@ export default function OfferAnalyzerPage() {
                   step="1"
                   min="0"
                 />
-              </CharlieTooltip>
+              </HelpTooltip>
               <p className="text-xs text-gray-500 mt-1">Enter 0 if planning to sell at end of interest-only period</p>
             </div>
           </div>
@@ -2182,7 +2182,7 @@ export default function OfferAnalyzerPage() {
 
         <div className="mb-5 mt-3">
           <label htmlFor="closingCostsPercentage" className="block text-sm font-medium text-gray-700 mb-1">Closing Costs (%)</label>
-          <CharlieTooltip message="Don't forget these! They add up fast. Budget 2-4% depending on lender and market. Factor them into return calculations.">
+          <HelpTooltip message="Don't forget these! They add up fast. Budget 2-4% depending on lender and market. Factor them into return calculations.">
             <input
               type="number"
               id="closingCostsPercentage"
@@ -2193,13 +2193,13 @@ export default function OfferAnalyzerPage() {
               step="0.1"
               min="0"
             />
-          </CharlieTooltip>
+          </HelpTooltip>
         </div>
 
         {/* Disposition Cap Rate */}
         <div className="mb-5">
           <label htmlFor="dispositionCapRate" className="block text-sm font-medium text-gray-700 mb-1">Disposition Cap Rate (%)</label>
-          <CharlieTooltip message="What cap rate at sale? Be conservative—markets change. Assume 0.5-1% higher than current market rates.">
+          <HelpTooltip message="What cap rate at sale? Be conservative—markets change. Assume 0.5-1% higher than current market rates.">
             <input
               type="number"
               id="dispositionCapRate"
@@ -2210,7 +2210,7 @@ export default function OfferAnalyzerPage() {
               step="0.1"
               min="0"
             />
-          </CharlieTooltip>
+          </HelpTooltip>
         </div>
 
         <div className="border-b border-gray-200 pb-2 mb-6 mt-8">
@@ -2218,7 +2218,7 @@ export default function OfferAnalyzerPage() {
         </div>
         <div className="mb-5">
           <label htmlFor="numUnits" className="block text-sm font-medium text-gray-700 mb-1">Number of Units</label>
-          <CharlieTooltip message="More units = more stability. Fewer units = higher risk but potentially higher returns per unit. Know your market.">
+          <HelpTooltip message="More units = more stability. Fewer units = higher risk but potentially higher returns per unit. Know your market.">
             <input
               type="text"
               id="numUnits"
@@ -2228,12 +2228,12 @@ export default function OfferAnalyzerPage() {
               className={`w-full p-2.5 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow duration-150 ease-in-out shadow-sm ${shouldDisableInputs ? 'bg-gray-100 cursor-not-allowed' : 'bg-white'}`}
               suppressHydrationWarning={true}
             />
-          </CharlieTooltip>
+          </HelpTooltip>
         </div>
 
         <div className="mb-5">
           <label htmlFor="avgMonthlyRentPerUnit" className="block text-sm font-medium text-gray-700 mb-1">Avg Monthly Rent (per unit) ($)</label>
-          <CharlieTooltip message="This should be market rent, not current rent. What can the property actually command? Drive the comps personally.">
+          <HelpTooltip message="This should be market rent, not current rent. What can the property actually command? Drive the comps personally.">
             <input
               type="text"
               id="avgMonthlyRentPerUnit"
@@ -2244,12 +2244,12 @@ export default function OfferAnalyzerPage() {
               step="100"
               suppressHydrationWarning={true}
             />
-          </CharlieTooltip>
+          </HelpTooltip>
         </div>
 
         <div className="mb-5">
           <label htmlFor="vacancyRate" className="block text-sm font-medium text-gray-700 mb-1">Vacancy Rate (%)</label>
-          <CharlieTooltip message="Don't be optimistic! Even the best properties have turnover. Use 5-10% minimum, higher for value-add deals.">
+          <HelpTooltip message="Don't be optimistic! Even the best properties have turnover. Use 5-10% minimum, higher for value-add deals.">
             <input
               type="number"
               id="vacancyRate"
@@ -2261,12 +2261,12 @@ export default function OfferAnalyzerPage() {
               min="0"
               max="100"
             />
-          </CharlieTooltip>
+          </HelpTooltip>
         </div>
 
         <div className="mb-5">
           <label htmlFor="annualRentalGrowthRate" className="block text-sm font-medium text-gray-700 mb-1">Annual Rental Growth Rate (%)</label>
-          <CharlieTooltip message="Inflation is an ally in real estate. But don't assume boom-era growth rates. Be realistic—1-3% is usually safe.">
+          <HelpTooltip message="Inflation is an ally in real estate. But don't assume boom-era growth rates. Be realistic—1-3% is usually safe.">
             <input
               type="number"
               id="annualRentalGrowthRate"
@@ -2277,12 +2277,12 @@ export default function OfferAnalyzerPage() {
               step="0.1"
               min="0"
             />
-          </CharlieTooltip>
+          </HelpTooltip>
         </div>
 
         <div className="mb-5">
           <label htmlFor="otherIncomeAnnual" className="block text-sm font-medium text-gray-700 mb-1">Other Income ($)</label>
-          <CharlieTooltip message="Laundry, parking, pet fees, storage—every dollar counts. But don't rely on income that doesn't exist yet.">
+          <HelpTooltip message="Laundry, parking, pet fees, storage—every dollar counts. But don't rely on income that doesn't exist yet.">
             <input
               type="text"
               id="otherIncomeAnnual"
@@ -2293,12 +2293,12 @@ export default function OfferAnalyzerPage() {
               step="100"
               suppressHydrationWarning={true}
             />
-          </CharlieTooltip>
+          </HelpTooltip>
         </div>
 
         <div className="mb-5">
           <label htmlFor="incomeReductionsAnnual" className="block text-sm font-medium text-gray-700 mb-1">Income Reducers ($)</label>
-          <CharlieTooltip message="Concessions, bad debt, employee unit discounts. The stuff that hits your bottom line but isn't an 'expense.'">
+          <HelpTooltip message="Concessions, bad debt, employee unit discounts. The stuff that hits your bottom line but isn't an 'expense.'">
             <input
               type="text"
               id="incomeReductionsAnnual"
@@ -2309,7 +2309,7 @@ export default function OfferAnalyzerPage() {
               step="100"
               suppressHydrationWarning={true}
             />
-          </CharlieTooltip>
+          </HelpTooltip>
         </div>
 
         <div className="border-b border-gray-200 pb-2 mb-6 mt-8">
@@ -2328,7 +2328,7 @@ export default function OfferAnalyzerPage() {
           <div>
             <div className="mb-5">
               <label htmlFor="operatingExpensePercentage" className="block text-sm font-medium text-gray-700 mb-1">Operating Expense Ratio (%)</label>
-              <CharlieTooltip message={`Industry rule of thumb based on 25+ years of experience. These are guidelines - adjust based on specific property and market conditions.
+              <HelpTooltip message={`Industry rule of thumb based on 25+ years of experience. These are guidelines - adjust based on specific property and market conditions.
 
 • All Bills Paid, 1985 or older: 60%+ of gross income
 • Tenant Paid, 1986-2010: 45-55% of gross income
@@ -2348,7 +2348,7 @@ export default function OfferAnalyzerPage() {
                   className="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow duration-150 ease-in-out shadow-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                   placeholder="45"
                 />
-              </CharlieTooltip>
+              </HelpTooltip>
               {(operatingExpensePercentage < 20 || operatingExpensePercentage > 80) && (
                 <p className="text-red-600 text-sm mt-1">Please enter a percentage between 20% and 80%</p>
               )}
@@ -2356,7 +2356,7 @@ export default function OfferAnalyzerPage() {
             
             <div className="mb-5">
               <label htmlFor="expenseGrowthRate" className="block text-sm font-medium text-gray-700 mb-1">Expense Growth Rate (%)</label>
-              <CharlieTooltip message="Expenses grow faster than rent in many markets. Don't assume they stay flat—that's the #1 rookie mistake.">
+              <HelpTooltip message="Expenses grow faster than rent in many markets. Don't assume they stay flat—that's the #1 rookie mistake.">
                 <input
                   type="number"
                   id="expenseGrowthRate"
@@ -2367,14 +2367,14 @@ export default function OfferAnalyzerPage() {
                   step="0.1"
                   min="0"
                 />
-              </CharlieTooltip>
+              </HelpTooltip>
             </div>
           </div>
         ) : (
           <div>
         <div className="mb-5">
           <label htmlFor="propertyTaxes" className="block text-sm font-medium text-gray-700 mb-1">Property Taxes ($)</label>
-          <CharlieTooltip message="These will go up! Especially after you improve the property. Budget for reassessment—it's coming.">
+          <HelpTooltip message="These will go up! Especially after you improve the property. Budget for reassessment—it's coming.">
             <input
               type="text"
               id="propertyTaxes"
@@ -2385,12 +2385,12 @@ export default function OfferAnalyzerPage() {
               step="100"
               suppressHydrationWarning={true}
             />
-          </CharlieTooltip>
+          </HelpTooltip>
         </div>
 
         <div className="mb-5">
           <label htmlFor="insurance" className="block text-sm font-medium text-gray-700 mb-1">Insurance ($)</label>
-          <CharlieTooltip message="Shop this annually. And get the right coverage—don't cheap out on liability. One lawsuit can kill your returns.">
+          <HelpTooltip message="Shop this annually. And get the right coverage—don't cheap out on liability. One lawsuit can kill your returns.">
             <input
               type="text"
               id="insurance"
@@ -2401,12 +2401,12 @@ export default function OfferAnalyzerPage() {
               step="100"
               suppressHydrationWarning={true}
             />
-          </CharlieTooltip>
+          </HelpTooltip>
         </div>
 
         <div className="mb-5">
           <label htmlFor="propertyManagementFeePercentage" className="block text-sm font-medium text-gray-700 mb-1">Property Management Fee (%)</label>
-          <CharlieTooltip message="Good management is worth every penny. Bad management will cost you more than the fee. Interview multiple companies.">
+          <HelpTooltip message="Good management is worth every penny. Bad management will cost you more than the fee. Interview multiple companies.">
             <input
               type="number"
               id="propertyManagementFeePercentage"
@@ -2417,12 +2417,12 @@ export default function OfferAnalyzerPage() {
               step="0.1"
               min="0"
             />
-          </CharlieTooltip>
+          </HelpTooltip>
         </div>
 
         <div className="mb-5">
           <label htmlFor="maintenanceRepairsAnnual" className="block text-sm font-medium text-gray-700 mb-1">Maintenance & Repairs ($)</label>
-          <CharlieTooltip message="Deferred maintenance is a profit killer. Budget generously here—better to overestimate than get surprised.">
+          <HelpTooltip message="Deferred maintenance is a profit killer. Budget generously here—better to overestimate than get surprised.">
             <input
               type="text"
               id="maintenanceRepairsAnnual"
@@ -2433,12 +2433,12 @@ export default function OfferAnalyzerPage() {
               step="100"
               suppressHydrationWarning={true}
             />
-          </CharlieTooltip>
+          </HelpTooltip>
         </div>
 
         <div className="mb-5">
           <label htmlFor="utilitiesAnnual" className="block text-sm font-medium text-gray-700 mb-1">Utilities ($)</label>
-          <CharlieTooltip message="Who pays what? Separate meters save you money. Master metered properties need higher budgets.">
+          <HelpTooltip message="Who pays what? Separate meters save you money. Master metered properties need higher budgets.">
             <input
               type="text"
               id="utilitiesAnnual"
@@ -2449,12 +2449,12 @@ export default function OfferAnalyzerPage() {
               step="100"
               suppressHydrationWarning={true}
             />
-          </CharlieTooltip>
+          </HelpTooltip>
         </div>
 
         <div className="mb-5">
           <label htmlFor="contractServicesAnnual" className="block text-sm font-medium text-gray-700 mb-1">Contract Services ($)</label>
-          <CharlieTooltip message="Landscaping, elevator, HVAC contracts. Lock in good vendors early—they're hard to find and keep.">
+          <HelpTooltip message="Landscaping, elevator, HVAC contracts. Lock in good vendors early—they're hard to find and keep.">
             <input
               type="text"
               id="contractServicesAnnual"
@@ -2465,12 +2465,12 @@ export default function OfferAnalyzerPage() {
               step="100"
               suppressHydrationWarning={true}
             />
-          </CharlieTooltip>
+          </HelpTooltip>
         </div>
 
         <div className="mb-5">
           <label htmlFor="payrollAnnual" className="block text-sm font-medium text-gray-700 mb-1">Payroll ($)</label>
-          <CharlieTooltip message="On-site staff for 50+ units usually makes sense. Factor in benefits, not just wages.">
+          <HelpTooltip message="On-site staff for 50+ units usually makes sense. Factor in benefits, not just wages.">
             <input
               type="text"
               id="payrollAnnual"
@@ -2481,12 +2481,12 @@ export default function OfferAnalyzerPage() {
               step="100"
               suppressHydrationWarning={true}
             />
-          </CharlieTooltip>
+          </HelpTooltip>
         </div>
 
         <div className="mb-5">
           <label htmlFor="marketingAnnual" className="block text-sm font-medium text-gray-700 mb-1">Marketing ($)</label>
-          <CharlieTooltip message="Good marketing keeps vacancy low. Apartment finders, online listings, signage—it all adds up but pays for itself.">
+          <HelpTooltip message="Good marketing keeps vacancy low. Apartment finders, online listings, signage—it all adds up but pays for itself.">
             <input
               type="text"
               id="marketingAnnual"
@@ -2497,12 +2497,12 @@ export default function OfferAnalyzerPage() {
               step="100"
               suppressHydrationWarning={true}
             />
-          </CharlieTooltip>
+          </HelpTooltip>
         </div>
 
         <div className="mb-5">
           <label htmlFor="gAndAAnnual" className="block text-sm font-medium text-gray-700 mb-1">G&A ($)</label>
-          <CharlieTooltip message="General & Administrative—the miscellaneous expenses. Legal, accounting, office supplies. Usually 2-5% of gross income.">
+          <HelpTooltip message="General & Administrative—the miscellaneous expenses. Legal, accounting, office supplies. Usually 2-5% of gross income.">
             <input
               type="text"
               id="gAndAAnnual"
@@ -2513,12 +2513,12 @@ export default function OfferAnalyzerPage() {
               step="100"
               suppressHydrationWarning={true}
             />
-          </CharlieTooltip>
+          </HelpTooltip>
         </div>
 
         <div className="mb-5">
           <label htmlFor="otherExpensesAnnual" className="block text-sm font-medium text-gray-700 mb-1">Other Expenses ($)</label>
-          <CharlieTooltip message="The catch-all category. There's always something. Budget for it or get surprised by it.">
+          <HelpTooltip message="The catch-all category. There's always something. Budget for it or get surprised by it.">
             <input
               type="text"
               id="otherExpensesAnnual"
@@ -2529,12 +2529,12 @@ export default function OfferAnalyzerPage() {
               step="100"
               suppressHydrationWarning={true}
             />
-          </CharlieTooltip>
+          </HelpTooltip>
         </div>
 
         <div className="mb-5">
           <label htmlFor="expenseGrowthRate" className="block text-sm font-medium text-gray-700 mb-1">Expense Growth Rate (%)</label>
-          <CharlieTooltip message="Expenses grow faster than rent in many markets. Don't assume they stay flat—that's the #1 rookie mistake.">
+          <HelpTooltip message="Expenses grow faster than rent in many markets. Don't assume they stay flat—that's the #1 rookie mistake.">
             <input
               type="number"
               id="expenseGrowthRate"
@@ -2545,7 +2545,7 @@ export default function OfferAnalyzerPage() {
               step="0.1"
               min="0"
             />
-          </CharlieTooltip>
+          </HelpTooltip>
         </div>
           </div>
         )}
@@ -2555,7 +2555,7 @@ export default function OfferAnalyzerPage() {
         </div>
         <div className="mb-5">
           <label htmlFor="capitalReservePerUnitAnnual" className="block text-sm font-medium text-gray-700 mb-1">Capital Reserve (per unit) ($)</label>
-          <CharlieTooltip message="The 'stuff breaks' fund. HVAC, roofs, parking lots—big ticket items. Use $300-500/unit minimum.">
+          <HelpTooltip message="The 'stuff breaks' fund. HVAC, roofs, parking lots—big ticket items. Use $300-500/unit minimum.">
             <input
               type="text"
               id="capitalReservePerUnitAnnual"
@@ -2566,11 +2566,11 @@ export default function OfferAnalyzerPage() {
               step="10"
               suppressHydrationWarning={true}
             />
-          </CharlieTooltip>
+          </HelpTooltip>
         </div>
         <div className="mb-5">
           <label htmlFor="deferredCapitalReservePerUnit" className="block text-sm font-medium text-gray-700 mb-1">Deferred Capital Reserve (per unit) ($)</label>
-          <CharlieTooltip message="Buying a fixer-upper? This is your renovation budget per unit. Be generous—construction always costs more.">
+          <HelpTooltip message="Buying a fixer-upper? This is your renovation budget per unit. Be generous—construction always costs more.">
             <input
               type="text"
               id="deferredCapitalReservePerUnit"
@@ -2581,11 +2581,11 @@ export default function OfferAnalyzerPage() {
               step="10"
               suppressHydrationWarning={true}
             />
-          </CharlieTooltip>
+          </HelpTooltip>
         </div>
         <div className="mb-6">
           <label htmlFor="holdingPeriodYears" className="block text-sm font-medium text-gray-700 mb-1">Holding Period (Years)</label>
-          <CharlieTooltip message="How long before selling or refinancing? Longer holds smooth out market volatility but tie up capital.">
+          <HelpTooltip message="How long before selling or refinancing? Longer holds smooth out market volatility but tie up capital.">
             <div className="flex items-center">
               <input
                 type="range"
@@ -2599,7 +2599,7 @@ export default function OfferAnalyzerPage() {
               />
               <span className="ml-3 text-gray-700 font-medium w-10 text-right">{holdingPeriodYears}</span>
             </div>
-          </CharlieTooltip>
+          </HelpTooltip>
         </div>
       </div>
     </div>

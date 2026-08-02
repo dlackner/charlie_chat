@@ -1,5 +1,5 @@
 /*
- * CHARLIE2 V2 - Engage Page
+ * Engage Page
  * Property engagement and workflow management
  * Part of the new V2 application architecture
  * TODO: Consider moving to app/v2/engage/ for proper V2 organization

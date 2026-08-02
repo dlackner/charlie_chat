@@ -1,5 +1,5 @@
 /*
- * CHARLIE2 V2 - Favorites API (Updated)
+ * Favorites API (Updated)
  * Property favorites management with proper authentication
  * Updated to use real authenticated users instead of hardcoded IDs
  */

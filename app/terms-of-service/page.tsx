@@ -97,7 +97,6 @@ export default function TermsOfServicePage() {
             <ul className="list-disc list-inside ml-4 space-y-1">
               <li>Payments for Plus memberships are non-refundable.</li>
               <li>No refunds are provided for partial months, unused time, or early cancellations.</li>
-              <li>Cohort programs may include separate written terms regarding payments or refunds.</li>
             </ul>
 
             <h3 className="text-xl font-semibold text-gray-800 mb-3">4.5 Failed or Disputed Payments</h3>

@@ -1,5 +1,5 @@
 /*
- * CHARLIE2 V2 - AI Coach Interface
+ * AI Coach Interface
  * Modern chat interface using assistant-ui components with real estate coaching focus
  * Features chat persistence, suggested prompts, and GPT-4o mini integration
  * Part of the new V2 application architecture

@@ -1,5 +1,5 @@
 /*
- * CHARLIE2 V2 - Community Insights Dashboard
+ * Community Insights Dashboard
  * Real-time community metrics, property heat map, and AI-powered market insights
  * Features: Activity trends, geographic heat map, live market analysis
  * Part of the new V2 application architecture

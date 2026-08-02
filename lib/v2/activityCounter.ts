@@ -1,5 +1,5 @@
 /*
- * CHARLIE2 V2 - Activity Counter Utility
+ * Activity Counter Utility
  * Increments user activity counts for coaching metrics
  * Part of the new V2 application architecture
  */

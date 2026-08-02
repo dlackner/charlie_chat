@@ -1,5 +1,5 @@
 /*
- * CHARLIE2 V2 - Trial Status API
+ * Trial Status API
  * Server-side endpoint to check and update trial status
  * Part of the new V2 application architecture
  */

@@ -1,5 +1,5 @@
 /*
- * CHARLIE2 V2 - Community Insights API
+ * Community Insights API
  * Returns community-wide metrics for the metrics dashboard top row
  * Part of the new V2 application architecture
  */

@@ -1,5 +1,5 @@
 /*
- * CHARLIE2 V2 - Buy Box Modal Component
+ * Buy Box Modal Component
  * User investment criteria configuration with market setup
  * Part of the new V2 application architecture
  */
@@ -1841,19 +1841,13 @@ export const BuyBoxModal: React.FC<BuyBoxModalProps> = ({ isOpen, onClose, focus
             <div className="fixed inset-0 bg-black/50" aria-hidden="true" />
             <div className="fixed inset-0 flex items-center justify-center p-4">
                 <Dialog.Panel className="w-full max-w-4xl rounded-lg bg-white p-6 shadow-xl">
-                    {/* Header with Charlie */}
                     <div className="flex items-start gap-4 mb-4">
-                        <img
-                            src="/charlie.png"
-                            alt="Charlie"
-                            className="w-12 h-12 rounded-full shadow-md border flex-shrink-0"
-                        />
                         <div>
                             <h3 className="text-xl font-semibold text-gray-900 mb-2">
-                                How I Learn Your Investment Style
+                                How This Learns Your Investment Style
                             </h3>
                             <p className="text-gray-700 text-sm">
-                                Plot twist: I'm actually getting smarter! My machine learning algorithms are always watching and learning, getting better at predicting what makes you say "YES!" to a property.
+                                The machine learning behind this feature is always watching and learning, getting better at predicting what makes you say "YES!" to a property.
                             </p>
                         </div>
                     </div>
@@ -1871,8 +1865,8 @@ export const BuyBoxModal: React.FC<BuyBoxModalProps> = ({ isOpen, onClose, focus
                             <div>
                                 <h4 className="font-medium text-gray-900 mb-1">Discovery Phase</h4>
                                 <p className="text-sm text-gray-700">
-                                    I'm just getting started! I'm watching your early property choices to understand what catches your eye. 
-                                    Every property you favorite teaches me something new about your investment style.
+                                    Just getting started — your early property choices are used to understand what catches your eye.
+                                    Every property you favorite teaches the system something new about your investment style.
                                 </p>
                             </div>
                         </div>
@@ -1888,8 +1882,8 @@ export const BuyBoxModal: React.FC<BuyBoxModalProps> = ({ isOpen, onClose, focus
                             <div>
                                 <h4 className="font-medium text-gray-900 mb-1">Learning Phase</h4>
                                 <p className="text-sm text-gray-700">
-                                    Getting smarter! I'm analyzing patterns in your favorites and building your unique investment profile. 
-                                    I'm starting to understand your preferred neighborhoods, property types, and price ranges.
+                                    Getting smarter — patterns in your favorites are analyzed to build your unique investment profile.
+                                    Your preferred neighborhoods, property types, and price ranges are starting to take shape.
                                 </p>
                             </div>
                         </div>
@@ -1905,8 +1899,8 @@ export const BuyBoxModal: React.FC<BuyBoxModalProps> = ({ isOpen, onClose, focus
                             <div>
                                 <h4 className="font-medium text-gray-900 mb-1">Mastery Phase</h4>
                                 <p className="text-sm text-gray-700">
-                                    I've got it! I understand your preferences and can recommend properties that match your investment style. 
-                                    My recommendations are becoming more targeted and relevant to your goals.
+                                    Your preferences are understood well enough to recommend properties that match your investment style.
+                                    Recommendations are becoming more targeted and relevant to your goals.
                                 </p>
                             </div>
                         </div>
@@ -1922,8 +1916,8 @@ export const BuyBoxModal: React.FC<BuyBoxModalProps> = ({ isOpen, onClose, focus
                             <div>
                                 <h4 className="font-medium text-gray-900 mb-1">Production Phase</h4>
                                 <p className="text-sm text-gray-700">
-                                    I'm in the zone! Using everything I've learned to find you the perfect investment opportunities. 
-                                    My recommendations are now highly personalized and optimized for your specific investment criteria.
+                                    Everything learned so far is being used to find the perfect investment opportunities.
+                                    Recommendations are now highly personalized and optimized for your specific investment criteria.
                                 </p>
                             </div>
                         </div>
@@ -1936,7 +1930,7 @@ export const BuyBoxModal: React.FC<BuyBoxModalProps> = ({ isOpen, onClose, focus
                             onClick={handleCloseLearningPhases}
                             className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-6 rounded-lg transition-colors duration-150"
                         >
-                            Got it, Charlie!
+                            Got it!
                         </button>
                     </div>
                 </Dialog.Panel>

@@ -585,9 +585,9 @@ export const generate10YearCashFlowReport = async (props: CashFlowReportProps): 
   const labelColWidth = 140;
   const yearColWidth = 60;
   
-  // Draw blue header bar (Charlie blue color)
+  // Draw blue header bar
   const headerHeight = 20;
-  doc.setFillColor(28, 89, 159); // Charlie blue color
+  doc.setFillColor(28, 89, 159); // Brand blue
   doc.rect(leftMargin, yPosition, contentWidth, headerHeight, 'F');
   
   // Draw table headers with white text

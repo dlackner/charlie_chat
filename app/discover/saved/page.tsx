@@ -1,5 +1,5 @@
 /*
- * CHARLIE2 V2 - Saved Searches Page
+ * Saved Searches Page
  * Pre-configured search templates for different property investment strategies
  * Routes to V2 discover page with applied filters
  */

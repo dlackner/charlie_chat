@@ -1,5 +1,5 @@
 /*
- * CHARLIE2 V2 - Property Heat Map API
+ * Property Heat Map API
  * Returns property locations and favorite counts for heat map visualization
  * Part of the new V2 application architecture
  */

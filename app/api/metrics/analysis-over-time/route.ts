@@ -1,5 +1,5 @@
 /*
- * CHARLIE2 V2 - Offers Created Over Time API
+ * Offers Created Over Time API
  * Returns chart data for offers created over time
  * Part of the new V2 API architecture
  */

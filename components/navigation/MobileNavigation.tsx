@@ -1,5 +1,5 @@
 /*
- * CHARLIE2 V2 - Mobile Navigation Component
+ * Mobile Navigation Component
  * Updated navigation menu for V2 application with proper routing to /v2/ paths
  * Features responsive mobile/desktop navigation with dropdown menus
  */

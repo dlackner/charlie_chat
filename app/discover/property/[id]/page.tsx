@@ -1,5 +1,5 @@
 /*
- * CHARLIE2 V2 - Property Detail Page
+ * Property Detail Page
  * Comprehensive property details with AI investment analysis
  * Features: Fixed navigation, working AI analysis, clean UI
  * TODO: Move to app/v2/discover/property/[id]/ for proper V2 organization

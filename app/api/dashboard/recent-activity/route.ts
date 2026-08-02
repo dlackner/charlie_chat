@@ -1,5 +1,5 @@
 /*
- * CHARLIE2 V2 - Dashboard Recent Activity API
+ * Dashboard Recent Activity API
  * Fetches recent user activity data from user_activity_counts table
  * Part of the new V2 application architecture
  */

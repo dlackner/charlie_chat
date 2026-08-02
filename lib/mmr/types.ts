@@ -1,4 +1,4 @@
-// MMR Types - Integrated with existing Charlie Chat schema
+// MMR Types - Integrated with existing schema
 
 // Extends your existing saved_properties table structure
 export interface SavedProperty {

@@ -1,5 +1,5 @@
 /*
- * CHARLIE2 V2 - Trial End Modal
+ * Trial End Modal
  * Modal shown at the end of 7-day trial period
  * Updated with MultifamilyOS.ai branding and simplified flow
  * Takes users directly to pricing page without "Maybe Later" option

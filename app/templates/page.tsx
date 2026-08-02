@@ -1,5 +1,5 @@
 /*
- * CHARLIE2 V2 - Templates Page
+ * Templates Page
  * Document generation for LOI, Purchase Agreements, and other real estate templates
  * Features Word document export and form validation
  */

@@ -1,5 +1,5 @@
 /*
- * CHARLIE2 V2 - Property Info Sections Component
+ * Property Info Sections Component
  * Organized property information display with consistent formatting
  * Used in property detail pages for the new V2 architecture
  */

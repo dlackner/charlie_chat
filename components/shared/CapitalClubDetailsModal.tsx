@@ -66,7 +66,7 @@ export default function CapitalClubDetailsModal({ isOpen, onClose }: CapitalClub
               <h3 className="text-xl font-bold text-gray-900 mb-4">Here's how it works.</h3>
               
               <p className="text-gray-700 leading-relaxed mb-6">
-                If you're a member of the MFOS Professional or MFOS Cohort program, you're already part of something bigger—you're automatically enrolled in the MFOS Capital Club.
+                If you're a member of the MFOS Professional program, you're already part of something bigger—you're automatically enrolled in the MFOS Capital Club.
               </p>
               
               <div className="space-y-6">

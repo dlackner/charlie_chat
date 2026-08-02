@@ -1,5 +1,5 @@
 /*
- * CHARLIE2 V2 - Profile Modal Component
+ * Profile Modal Component
  * Modal interface for editing user profile information
  * Features live database integration and form validation
  * Part of the new V2 application architecture

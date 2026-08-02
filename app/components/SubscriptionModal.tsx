@@ -1,5 +1,5 @@
 /*
- * CHARLIE2 V2 - Subscription Management Modal
+ * Subscription Management Modal
  * Dynamic subscription modal with real Stripe integration and Supabase data
  * Displays current subscription status, billing info, and payment methods
  * Part of the new V2 application architecture
@@ -29,10 +29,6 @@ const PRODUCT_NAMES: { [key: string]: string } = {
   [process.env.NEXT_PUBLIC_CHARLIE_CHAT_PRO_ANNUAL_PRODUCT!]: "Pro",
   [process.env.NEXT_PUBLIC_MULTIFAMILYOS_PRO_MONTHLY_PRODUCT!]: "Pro",
   [process.env.NEXT_PUBLIC_MULTIFAMILYOS_PRO_ANNUAL_PRODUCT!]: "Pro",
-  
-  // Cohort Plans (New)
-  [process.env.NEXT_PUBLIC_MULTIFAMILY_COHORT_MONTHLY_PRODUCT!]: "Cohort",
-  [process.env.NEXT_PUBLIC_MULTIFAMILY_COHORT_ANNUAL_PRODUCT!]: "Cohort",
 };
 
 interface Subscription {
@@ -185,9 +181,6 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, on
         case 'pro':
           planName = "Pro";
           break;
-        case 'cohort':
-          planName = "Cohort";
-          break;
         case 'admin':
           planName = "Admin";
           break;
@@ -245,12 +238,6 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, on
           planName: 'Pro',
           status: 'Active',
           description: 'Full MultifamilyOS with training & coaching'
-        };
-      case 'cohort':
-        return {
-          planName: 'Cohort',
-          status: 'Active',
-          description: 'Exclusive cohort program access'
         };
       case 'admin':
         return {

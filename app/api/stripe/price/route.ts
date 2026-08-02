@@ -1,5 +1,5 @@
 /*
- * CHARLIE2 V2 - Stripe Price Information API
+ * Stripe Price Information API
  * Retrieves price details from Stripe for subscription products
  * Used by SubscriptionModal to display current subscription pricing
  * Part of the new V2 application architecture

@@ -316,13 +316,11 @@ const PropertySummaryButton = ({
     const [showSummary, setShowSummary] = useState(false);
     const [summary, setSummary] = useState('');
 
-    // Check if user has access to Charlie's Analysis
+    // Check if user has access to AI Analysis
     // Must match the same logic as My Properties access control
     const hasAccess = userClass && (
-        userClass === "charlie_chat_pro" ||
-        userClass === "charlie_chat_plus" ||
-        userClass === "cohort" ||
         userClass === "trial" ||
+        userClass === "plus" ||
         userClass === "pro"
     );
 

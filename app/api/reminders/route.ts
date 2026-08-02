@@ -1,5 +1,5 @@
 /*
- * CHARLIE2 V2 - Reminders API
+ * Reminders API
  * Extracts reminders from property notes using @MM/DD/YYYY format
  * Part of the new V2 API architecture
  */

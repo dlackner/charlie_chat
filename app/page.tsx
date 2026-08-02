@@ -1,5 +1,5 @@
 /*
- * CHARLIE2 V2 - MultifamilyOS Landing Page with Signup Integration
+ * MultifamilyOS Landing Page with Signup Integration
  * Modern marketing landing page with integrated signup functionality and trial flow
  * Features: Passwordless auth, email capture, affiliate tracking, V2 dashboard redirect
  * Part of the new V2 component architecture

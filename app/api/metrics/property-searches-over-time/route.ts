@@ -1,5 +1,5 @@
 /*
- * CHARLIE2 V2 - Property Searches Over Time API
+ * Property Searches Over Time API
  * Returns property search activity metrics for a specific user over time
  * Used for monthly activity reports and analytics
  */

@@ -187,7 +187,7 @@ export const StatusFilter: React.FC<StatusFilterProps> = ({
         </div>
       )}
 
-      {/* Charlie Chat Info Modal */}
+      {/* Property Status Info Modal */}
       {showInfoModal && (
         <div 
           className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-[60]"
@@ -198,13 +198,7 @@ export const StatusFilter: React.FC<StatusFilterProps> = ({
             onClick={(e) => e.stopPropagation()}
           >
             <div className="p-6">
-              {/* Header with Charlie image */}
               <div className="flex items-center mb-4">
-                <img
-                  src="/charlie.png"
-                  alt="Charlie"
-                  className="w-10 h-10 rounded-full mr-3 shadow-md border-[0.5px] border-gray-300"
-                />
                 <div className="flex items-center">
                   <h3 className="text-lg font-semibold text-gray-900">
                     Property Status Guide
