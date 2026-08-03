@@ -271,9 +271,10 @@ function EngagePageContent() {
     const matchesSource = selectedSource === 'All' || 
       (selectedSource === 'Algorithm' && property.source === 'A') ||
       (selectedSource === 'Manual' && property.source === 'M');
-    const matchesSearch = searchQuery === '' || 
+    const matchesSearch = searchQuery === '' ||
       property.address.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      property.city.toLowerCase().includes(searchQuery.toLowerCase());
+      property.city.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (property.zip || '').toLowerCase().includes(searchQuery.toLowerCase());
     
     return matchesStatus && matchesPipelineStage && matchesMarket && matchesSource && matchesSearch;
   });

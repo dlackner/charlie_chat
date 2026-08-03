@@ -920,7 +920,7 @@ export default function BuyBoxPage() {
                 } else if (decidedCount > 0) {
                   return `All ${decidedCount} recommendations reviewed this week!`;
                 } else {
-                  return 'Tampa Recommendations';  // Simple title when no recommendations
+                  return '';
                 }
               })()}
             </p>

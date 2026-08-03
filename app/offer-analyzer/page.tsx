@@ -272,7 +272,7 @@ export default function OfferAnalyzerPage() {
 
   // --- Input States: CAPITAL EXPENDITURES (ANNUAL) ---
   const [capitalReservePerUnitAnnual, setCapitalReservePerUnitAnnual] = useState<number>(0); // Per unit, annual
-  const [holdingPeriodYears, setHoldingPeriodYears] = useState<number>(0); // Years
+  const [holdingPeriodYears, setHoldingPeriodYears] = useState<number>(10); // Years
   const [deferredCapitalReservePerUnit, setDeferredCapitalReservePerUnit] = useState<number>(0);
   // --- Helper function for formatting and parsing numerical inputs with commas ---
   const formatAndParseNumberInput = (
@@ -968,7 +968,7 @@ export default function OfferAnalyzerPage() {
           setExpenseGrowthRate(parsed.expenseGrowthRate ?? 0);
           setCapitalReservePerUnitAnnual(parsed.capitalReservePerUnitAnnual ?? 0);
           setDeferredCapitalReservePerUnit(parsed.deferredCapitalReservePerUnit ?? 0);
-          setHoldingPeriodYears(parsed.holdingPeriodYears ?? 1);
+          setHoldingPeriodYears(parsed.holdingPeriodYears ?? 10);
           setUsePercentageMode(parsed.usePercentageMode ?? false);
           setOperatingExpensePercentage(parsed.operatingExpensePercentage ?? 45);
 

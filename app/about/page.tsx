@@ -14,7 +14,7 @@ export default function AboutPage() {
               MultifamilyOS.ai
             </h1>
             <p className="text-xl md:text-2xl text-gray-600 leading-relaxed">
-              Built by Real Estate Operators and AI Technology Innovators
+              The AI-Powered Operating System for Multifamily Investing
             </p>
           </div>
         </div>

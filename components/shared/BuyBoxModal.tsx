@@ -957,8 +957,91 @@ export const BuyBoxModal: React.FC<BuyBoxModalProps> = ({ isOpen, onClose, focus
         return R * c; // Distance in miles
     };
 
-    const saveMarket = async (marketId: string) => {
-        if (!user || !supabase) return;
+    // Computes property count + market tier/rental region for a market. Read-only - no database write.
+    const computeMarketPreview = async (market: Market) => {
+        const { count: rawPropertyCount, propertyIds, coordinates } = await checkPropertyCount(market);
+        // Cap property count at 8,000 for display and storage (API limit)
+        const propertyCount = Math.min(rawPropertyCount, 8000);
+
+        let marketTier: MarketTier | null = null;
+        let rentalRegionId: number | null = null;
+
+        if (coordinates) {
+            // Looking for rental market near coordinates
+            // Get both rental region and market tier from market_rental_data table
+            const rentalMarket = await findNearestRentalMarket(coordinates.lat, coordinates.lng);
+            if (rentalMarket) {
+                rentalRegionId = rentalMarket.region_id;
+                marketTier = rentalMarket.market_tier ? MARKET_TIERS.find(tier => tier.tier === rentalMarket.market_tier) || MARKET_TIERS[3] : null;
+            } else {
+                // No rental market found for coordinates - defaulting to Tier 4
+                marketTier = MARKET_TIERS[3]; // Tier 4 (Small City)
+            }
+        }
+
+        return { propertyCount, propertyIds, coordinates, marketTier, rentalRegionId };
+    };
+
+    // Recalculates the property count/tier for a market's current criteria and updates local
+    // state only - no database write. Lets the user try different criteria before committing.
+    const previewMarket = async (marketId: string): Promise<boolean> => {
+        setSavingMarkets(prev => new Set(prev).add(marketId));
+
+        try {
+            const market = buyBoxData.markets.find(m => m.id === marketId);
+            if (!market) {
+                setErrorMessage("Market not found");
+                return false;
+            }
+
+            const marketName = market.customName?.trim() || market.market_name?.trim();
+            if (!marketName) {
+                setErrorMessage("Please enter a name for the market before checking");
+                return false;
+            }
+
+            const hasUnitsFilter = (market.units_min > 0 || market.units_max > 0);
+            const hasAssessedValueFilter = (market.assessed_value_min > 0 || market.assessed_value_max > 0);
+            const hasEstimatedValueFilter = (market.estimated_value_min > 0 || market.estimated_value_max > 0);
+            const hasYearBuiltFilter = (market.year_built_min > 0 || market.year_built_max > 0);
+
+            if (!hasUnitsFilter && !hasAssessedValueFilter && !hasEstimatedValueFilter && !hasYearBuiltFilter) {
+                setErrorMessage("Please set at least one filter criteria (Units, Year Built, Assessed Value, or Estimated Value)");
+                return false;
+            }
+
+            const { propertyCount, marketTier, rentalRegionId } = await computeMarketPreview(market);
+
+            setBuyBoxData(prev => ({
+                ...prev,
+                markets: prev.markets.map(m =>
+                    m.id === marketId
+                        ? {
+                            ...m,
+                            property_count: propertyCount,
+                            propertyCountChecked: true,
+                            marketTier: marketTier || undefined,
+                            rentalRegionId: rentalRegionId || undefined
+                        }
+                        : m
+                )
+            }));
+
+            return true;
+        } catch (error: any) {
+            setErrorMessage(`Error checking property count: ${error.message || JSON.stringify(error)}`);
+            return false;
+        } finally {
+            setSavingMarkets(prev => {
+                const newSet = new Set(prev);
+                newSet.delete(marketId);
+                return newSet;
+            });
+        }
+    };
+
+    const saveMarket = async (marketId: string): Promise<boolean> => {
+        if (!user || !supabase) return false;
 
         setSavingMarkets(prev => new Set(prev).add(marketId));
 
@@ -966,7 +1049,7 @@ export const BuyBoxModal: React.FC<BuyBoxModalProps> = ({ isOpen, onClose, focus
             const market = buyBoxData.markets.find(m => m.id === marketId);
             if (!market) {
                 setErrorMessage("Market not found");
-                return;
+                return false;
             }
 
             // Validate that market has a name before saving
@@ -988,7 +1071,7 @@ export const BuyBoxModal: React.FC<BuyBoxModalProps> = ({ isOpen, onClose, focus
             }
             if (!marketName) {
                 setErrorMessage("Please enter a name for the market before saving");
-                return;
+                return false;
             }
 
             // Check for duplicate market names, but exclude the current market if it's being updated
@@ -1000,7 +1083,7 @@ export const BuyBoxModal: React.FC<BuyBoxModalProps> = ({ isOpen, onClose, focus
 
             if (duplicateCheckError) {
                 setErrorMessage("Error checking for duplicate market names");
-                return;
+                return false;
             }
 
             // If we found existing markets with this name, check if any are different from current market
@@ -1009,7 +1092,7 @@ export const BuyBoxModal: React.FC<BuyBoxModalProps> = ({ isOpen, onClose, focus
                 if (isTemplate) {
                     // New market - any existing market with same name is a duplicate
                     setErrorMessage(`A market named "${marketName}" already exists. Please choose a different name.`);
-                    return;
+                    return false;
                 } else {
                     // Existing market - only duplicate if there's ANOTHER market (different ID) with same name
                     const isDuplicate = existingMarkets.some(existingMarket => 
@@ -1018,7 +1101,7 @@ export const BuyBoxModal: React.FC<BuyBoxModalProps> = ({ isOpen, onClose, focus
                     
                     if (isDuplicate) {
                         setErrorMessage(`A market named "${marketName}" already exists. Please choose a different name.`);
-                        return;
+                        return false;
                     }
                 }
             }
@@ -1031,44 +1114,23 @@ export const BuyBoxModal: React.FC<BuyBoxModalProps> = ({ isOpen, onClose, focus
 
             if (!hasUnitsFilter && !hasAssessedValueFilter && !hasEstimatedValueFilter && !hasYearBuiltFilter) {
                 setErrorMessage("Please set at least one filter criteria (Units, Year Built, Assessed Value, or Estimated Value) before saving");
-                return;
+                return false;
             }
 
             // Proceed with property count check and tier calculation
-            const { count: rawPropertyCount, propertyIds, coordinates } = await checkPropertyCount(market);
-            // Cap property count at 8,000 for display and storage (API limit)
-            const propertyCount = Math.min(rawPropertyCount, 8000);
-
-            let marketTier: MarketTier | null = null;
-            let rentalRegionId: number | null = null;
-
-            if (coordinates) {
-                // Looking for rental market near coordinates
-                // Get both rental region and market tier from market_rental_data table
-                const rentalMarket = await findNearestRentalMarket(coordinates.lat, coordinates.lng);
-                if (rentalMarket) {
-                    rentalRegionId = rentalMarket.region_id;
-                    marketTier = rentalMarket.market_tier ? MARKET_TIERS.find(tier => tier.tier === rentalMarket.market_tier) || MARKET_TIERS[3] : null;
-                    // Found rental market for coordinates
-                } else {
-                    // No rental market found for coordinates - defaulting to Tier 4
-                    // Default to Tier 4 when no market found within radius
-                    marketTier = MARKET_TIERS[3]; // Tier 4 (Small City)
-                    // Using default Tier 4 for unmatched location
-                }
-            }
+            const { propertyCount, propertyIds, coordinates, marketTier, rentalRegionId } = await computeMarketPreview(market);
 
             const criteriaHash = generateCriteriaHash(market);
 
             const updatedMarkets = buyBoxData.markets.map(m =>
-                m.id === marketId 
-                    ? { 
-                        ...m, 
-                        propertyCount, 
-                        propertyCountChecked: true, 
+                m.id === marketId
+                    ? {
+                        ...m,
+                        property_count: propertyCount,
+                        propertyCountChecked: true,
                         marketTier: marketTier || undefined,
                         rentalRegionId: rentalRegionId || undefined
-                    } 
+                    }
                     : m
             );
 
@@ -1165,10 +1227,12 @@ export const BuyBoxModal: React.FC<BuyBoxModalProps> = ({ isOpen, onClose, focus
                     } : market
                 )
             }));
-            
+
+            return true;
         } catch (error: any) {
             // Handle unexpected market save errors silently
             setErrorMessage(`Error saving market: ${error.message || JSON.stringify(error)}`);
+            return false;
         } finally {
             setSavingMarkets(prev => {
                 const newSet = new Set(prev);
@@ -1176,6 +1240,41 @@ export const BuyBoxModal: React.FC<BuyBoxModalProps> = ({ isOpen, onClose, focus
                 return newSet;
             });
         }
+    };
+
+    // Save any expanded (potentially edited) markets before closing.
+    // Leaves the modal open if a save fails so the user can see/fix the error.
+    const handleDone = async () => {
+        let candidateMarkets: typeof buyBoxData.markets = [];
+
+        if (focusedMarket) {
+            // Focused mode: the UI always treats the focused market as expanded/editable
+            // regardless of its own isExpanded flag - match the same logic used to render it.
+            const match = buyBoxData.markets.find(m => {
+                const marketName = m.market_name || m.customName || `${m.city}, ${m.state}`;
+                return m.market_key === focusedMarket || marketName === focusedMarket;
+            });
+            if (match) candidateMarkets = [match];
+        } else {
+            // Show-all mode: a market with isExpanded === undefined still renders expanded,
+            // so match that here too instead of a plain truthy check.
+            candidateMarkets = buyBoxData.markets.filter(m => m.isExpanded !== false);
+        }
+
+        // Skip blank, never-saved template markets - closing without filling them in
+        // shouldn't block Done, since nothing has been persisted for them yet.
+        const marketsToSave = candidateMarkets.filter(m => {
+            const isBlankTemplate = m.id.startsWith('template-') &&
+                !(m.customName?.trim() || m.market_name?.trim());
+            return !isBlankTemplate;
+        });
+
+        for (const market of marketsToSave) {
+            const success = await saveMarket(market.id);
+            if (!success) return;
+        }
+
+        onClose();
     };
 
 
@@ -1451,18 +1550,18 @@ export const BuyBoxModal: React.FC<BuyBoxModalProps> = ({ isOpen, onClose, focus
                                                                 </div>
                                                             </div>
                                                             <div className="flex items-center space-x-2">
-                                                                {/* Save button - Only visible when expanded */}
+                                                                {/* Preview button - Only visible when expanded. Recalculates the property count without saving. */}
                                                                 {isExpanded && (
                                                                     <button
                                                                         onClick={(e) => {
                                                                             e.stopPropagation();
-                                                                            saveMarket(market.id);
+                                                                            previewMarket(market.id);
                                                                         }}
                                                                         disabled={isSavingThis}
                                                                         className="px-4 py-2 rounded text-sm font-medium transition-colors bg-blue-500 text-white hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
-                                                                        title="Save market configuration"
+                                                                        title="Check property count for this criteria (does not save)"
                                                                     >
-                                                                        {isSavingThis ? 'Updating...' : 'Update Criteria'}
+                                                                        {isSavingThis ? 'Checking...' : 'Update Count'}
                                                                     </button>
                                                                 )}
                                                                 {!focusedMarket && (
@@ -1820,14 +1919,15 @@ export const BuyBoxModal: React.FC<BuyBoxModalProps> = ({ isOpen, onClose, focus
                         )}
                     </div>
 
-                    {/* Footer with Done button */}
+                    {/* Footer with Save Changes button */}
                     <div className="px-8 py-4 border-t border-gray-100 bg-gray-50">
                         <div className="flex justify-end">
                             <button
-                                onClick={onClose}
-                                className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-6 rounded-lg transition-colors"
+                                onClick={handleDone}
+                                disabled={savingMarkets.size > 0}
+                                className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-6 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                             >
-                                Done
+                                {savingMarkets.size > 0 ? 'Saving...' : 'Save Changes'}
                             </button>
                         </div>
                     </div>

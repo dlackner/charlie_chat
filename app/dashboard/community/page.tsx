@@ -153,7 +153,6 @@ export default function CommunityPage() {
               >
                 Browse Opportunities →
               </Link>
-              <div className="text-xs text-gray-400 mt-3">November 5, 2025</div>
             </div>
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 border-l-4 border-l-green-500 p-6">
               
