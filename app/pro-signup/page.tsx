@@ -1,19 +1,20 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import DirectCheckoutModal from '@/components/pricing/DirectCheckoutModal';
 
 const PRO_MONTHLY = process.env.NEXT_PUBLIC_MULTIFAMILYOS_PRO_MONTHLY_PRODUCT!;
 const PRO_ANNUAL = process.env.NEXT_PUBLIC_MULTIFAMILYOS_PRO_ANNUAL_PRODUCT!;
 
-export default function ProSignupPage() {
+function ProSignupContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const supabase = createSupabaseBrowserClient();
   const [isOpen, setIsOpen] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
-  const [isAnnual, setIsAnnual] = useState(false);
+  const isAnnual = searchParams.get('plan') === 'annual';
 
   const handleClose = () => {
     router.push('/');
@@ -99,5 +100,13 @@ export default function ProSignupPage() {
         isLoading={isLoading}
       />
     </div>
+  );
+}
+
+export default function ProSignupPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-gray-50" />}>
+      <ProSignupContent />
+    </Suspense>
   );
 }
