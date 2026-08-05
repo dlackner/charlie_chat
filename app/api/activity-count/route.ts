@@ -11,8 +11,8 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     console.log("📥 Activity tracking request received:", body);
-    
-    const { userId, activityType } = body;
+
+    const { userId, activityType, count } = body;
 
     if (!userId || !activityType) {
       console.error("❌ Missing required fields:", { userId, activityType });
@@ -20,10 +20,14 @@ export async function POST(request: NextRequest) {
     }
 
     // Validate activity type
-    const validActivityTypes = ['offers_created', 'lois_created', 'marketing_letters_created', 'emails_sent', 'property_searches'];
+    const validActivityTypes = ['offers_created', 'lois_created', 'marketing_letters_created', 'emails_sent', 'property_searches', 'properties_retrieved'];
     if (!validActivityTypes.includes(activityType)) {
       return NextResponse.json({ error: 'Invalid activity type' }, { status: 400 });
     }
+
+    // Optional increment amount (defaults to 1, e.g. for event counters like property_searches).
+    // properties_retrieved passes the actual number of properties returned in the response.
+    const incrementBy = Number.isInteger(count) && count > 0 ? count : 1;
 
     const supabase = createSupabaseAdminClient();
     const today = new Date().toISOString().split('T')[0]; // Get YYYY-MM-DD format
@@ -31,7 +35,8 @@ export async function POST(request: NextRequest) {
     console.log("📊 Calling increment_activity_count with:", {
       p_user_id: userId,
       p_activity_date: today,
-      p_activity_type: activityType
+      p_activity_type: activityType,
+      p_count: incrementBy
     });
 
     // Use the PostgreSQL function to properly increment
@@ -39,7 +44,8 @@ export async function POST(request: NextRequest) {
       .rpc('increment_activity_count', {
         p_user_id: userId,
         p_activity_date: today,
-        p_activity_type: activityType
+        p_activity_type: activityType,
+        p_count: incrementBy
       });
 
     if (error) {

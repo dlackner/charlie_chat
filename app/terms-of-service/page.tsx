@@ -113,7 +113,8 @@ export default function TermsOfServicePage() {
               <li>Copy, resell, or distribute materials outside your membership rights,</li>
               <li>Interfere with platform operations or other users,</li>
               <li>Attempt unauthorized access to accounts, systems, or data,</li>
-              <li>Scrape, crawl, or reverse-engineer platform content or architecture.</li>
+              <li>Scrape, crawl, or reverse-engineer platform content or architecture,</li>
+              <li>Deliberately or excessively perform property searches or other data retrieval - whether manually, through bots, or through other automation - with the intent to abuse, burden, or drive up costs to the platform.</li>
             </ul>
 
             <p>Violations may result in suspension or termination without refund.</p>

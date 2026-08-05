@@ -6,7 +6,7 @@
  */
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { ArrowLeft, Printer, ExternalLink, ChevronDown, ChevronUp, Zap, Phone, Mail, User, Heart } from 'lucide-react';
 import { StreetViewImage } from '@/components/ui/StreetViewImage';
@@ -47,6 +47,7 @@ export default function PropertyDetailsPage() {
   const [isFavorited, setIsFavorited] = useState(false);
   const [isToggling, setIsToggling] = useState(false);
   const [savedPropertyId, setSavedPropertyId] = useState<string | null>(null);
+  const fetchedPropertyIdRef = useRef<string | null>(null);
 
   // Fetch user class
   useEffect(() => {
@@ -74,9 +75,14 @@ export default function PropertyDetailsPage() {
 
   // Fetch property data when component mounts
   useEffect(() => {
+    // Guard against this effect running more than once for the same property
+    // (React Strict Mode double-invokes mount effects in dev).
+    if (fetchedPropertyIdRef.current === params.id) return;
+    fetchedPropertyIdRef.current = params.id as string;
+
     const fetchPropertyData = async () => {
       if (!params.id) return;
-      
+
       try {
         setIsLoading(true);
         setError(null);
@@ -234,7 +240,10 @@ export default function PropertyDetailsPage() {
     if (backUrl) {
       try {
         const decodedUrl = decodeURIComponent(backUrl);
-        window.location.href = decodedUrl;
+        // Client-side navigation (avoids a full page reload). Discover restores its
+        // results from the discoverSearchCache written in sessionStorage, not from
+        // any in-memory state surviving this navigation.
+        router.push(decodedUrl);
       } catch (error) {
         console.error('Error decoding back URL:', error);
         // Fallback based on context
