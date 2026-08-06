@@ -1,5 +1,5 @@
 /*
- * CHARLIE2 V2 - AI Investment Analysis Component
+ * AI Investment Analysis Component
  * OpenAI-powered property investment analysis with comprehensive metrics
  * Features: Fixed API endpoint, working analysis, detailed reporting
  */
@@ -49,7 +49,7 @@ interface AnalysisResult {
   };
   narrative: {
     marketOverview: string;
-    charliesTake: string;
+    investmentOutlook: string;
     strategy: string[];
     ownerApproach?: string;
     verdict: {
@@ -476,7 +476,7 @@ export function AIInvestmentAnalysis({ property, isEngageContext, userClass }: A
                 <div className="mb-4">
                   <h5 className="font-medium text-gray-800 mb-2 text-sm">Investment Outlook:</h5>
                   <p className="text-gray-700 text-sm leading-relaxed">
-                    {investmentAnalysis.narrative.charliesTake}
+                    {investmentAnalysis.narrative.investmentOutlook}
                   </p>
                 </div>
 
@@ -628,8 +628,8 @@ export function AIInvestmentAnalysis({ property, isEngageContext, userClass }: A
             </div>
           </div>
           <p className="text-gray-700">
-            Upgrade your plan to get an AI property analysis and recommendation. 
-            Choose from our Plus or Pro plans to unlock this feature and many more!
+            Upgrade your plan to get an AI property analysis and recommendation.
+            Choose our Plus plan to unlock this feature and many more!
           </p>
         </div>
       </StandardModalWithActions>

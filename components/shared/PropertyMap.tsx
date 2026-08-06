@@ -1,5 +1,5 @@
 /*
- * CHARLIE2 V2 - Shared Property Map Component
+ * Shared Property Map Component
  * Consolidated map component for discover, engage, and other property display pages
  * Features: Dynamic centering, popups, context-aware navigation, rental data overlay
  * Replaces inline DiscoverMap and provides unified map experience

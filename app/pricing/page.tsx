@@ -1,5 +1,5 @@
 /*
- * CHARLIE2 V2 - Pricing Page
+ * Pricing Page
  * Subscription plans and billing management with Stripe integration
  * Supports both legacy and new user class systems during transition
  * Features: Core/Plus plans, annual/monthly billing, upgrade flows
@@ -12,7 +12,6 @@ import { useAuth } from "@/contexts/AuthContext"; // Add this import
 import { useModal } from "@/contexts/ModalContext"; // Add this import
 import { useRouter, useSearchParams } from "next/navigation"; // Add this import
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import DirectCheckoutModal from "@/components/pricing/DirectCheckoutModal";
 
 // ✅ Import product IDs from env
@@ -20,37 +19,16 @@ const PLUS_MONTHLY = process.env.NEXT_PUBLIC_MULTIFAMILYOS_PLUS_MONTHLY_PRODUCT_
 const PLUS_ANNUAL = process.env.NEXT_PUBLIC_MULTIFAMILYOS_PLUS_ANNUAL_PRODUCT_NEW!;
 const PRO_MONTHLY = process.env.NEXT_PUBLIC_MULTIFAMILYOS_PRO_MONTHLY_PRODUCT!;
 const PRO_ANNUAL = process.env.NEXT_PUBLIC_MULTIFAMILYOS_PRO_ANNUAL_PRODUCT!;
-const COHORT_MONTHLY = process.env.NEXT_PUBLIC_MULTIFAMILY_COHORT_MONTHLY_PRODUCT!;
-const COHORT_ANNUAL = process.env.NEXT_PUBLIC_MULTIFAMILY_COHORT_ANNUAL_PRODUCT!;
 
 // User class normalization for legacy compatibility
 function normalizeUserClass(userClass: string | null): string | null {
-  if (!userClass) return null;
-  
-  // Map legacy classes to new ones for consistent behavior
-  switch (userClass) {
-    case 'charlie_chat':
-      return 'core';
-    case 'charlie_chat_plus':
-      return 'plus';
-    case 'charlie_chat_pro':
-      return 'pro';
-    // Pass through new classes and cohort unchanged
-    case 'trial':
-    case 'core':
-    case 'plus':
-    case 'pro':
-    case 'cohort':
-      return userClass;
-    default:
-      return userClass; // Keep unknown classes as-is for safety
-  }
+  return userClass;
 }
 
-// Check if user has premium access (plus/pro/cohort level)
+// Check if user has premium access (plus/pro level)
 function hasPremiumAccess(userClass: string | null): boolean {
   const normalized = normalizeUserClass(userClass);
-  return normalized === 'plus' || normalized === 'pro' || normalized === 'cohort';
+  return normalized === 'plus' || normalized === 'pro';
 }
 
 function PricingPageContent() {
@@ -232,15 +210,15 @@ function PricingPageContent() {
     }
   };
 
-  // Handle Charlie Chat conversion for existing trial users
-  const handleCharlieChatConversion = async () => {
+  // Handle conversion to Core for existing trial users
+  const handleCoreConversion = async () => {
     // Check if user is logged in
     if (!currentUser) {
       router.push('/#signup-form');
       return;
     }
 
-    // If user is trial, convert them to core (charlie_chat legacy support)
+    // If user is trial, convert them to core
     const normalized = normalizeUserClass(userClass);
     if (normalized === 'trial') {
       try {
@@ -255,7 +233,7 @@ function PricingPageContent() {
           return;
         }
 
-        const res = await fetch('/api/convert-to-charlie-chat', {
+        const res = await fetch('/api/convert-to-core', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -279,8 +257,8 @@ function PricingPageContent() {
         // Something went wrong - could show proper error notification
       }
     } else {
-      // For premium users (Plus), show Charlie's modal
-      if (hasPremiumAccess(userClass) || userClass === 'cohort') {
+      // For premium users (Plus), show the premium user modal
+      if (hasPremiumAccess(userClass)) {
         setShowPremiumUserModal(true);
       } else if (normalized === 'core') {
         // Core users are expired trial users - show upgrade modal
@@ -484,7 +462,7 @@ function PricingPageContent() {
     <div className="min-h-screen bg-white text-black px-6 py-12">
       <h1 className="text-3xl sm:text-5xl font-semibold mb-6 text-blue-600 text-center">Pricing</h1>
 
-      {/* Toggle for Monthly/Annual */}
+      {/* Toggle for Monthly/Annual - Annual hidden for now, uncomment to re-enable
       <div className="flex justify-center mb-8">
         <button
           onClick={() => setIsAnnual(false)}
@@ -503,6 +481,7 @@ function PricingPageContent() {
           Annually
         </button>
       </div>
+      */}
 
       <div className="flex justify-center">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-8 max-w-4xl">
@@ -526,7 +505,7 @@ function PricingPageContent() {
             <li className="flex items-start"><span className="w-2 h-2 bg-green-500 rounded-full mt-2 mr-3 flex-shrink-0"></span>AI-powered Investment Advisor</li>
           </ul>
           <button
-            onClick={handleCharlieChatConversion}
+            onClick={handleCoreConversion}
             className="mt-auto w-full bg-gray-800 text-white py-2 rounded font-semibold transition duration-200 transform hover:scale-105 hover:bg-gray-900 hover:shadow-xl"
           >
             Get Started For Free
@@ -551,7 +530,7 @@ function PricingPageContent() {
           ) : (
             <>
               <p className="text-xl font-bold mb-1">$39</p>
-              <p className="text-sm text-gray-500 mb-4">(Billed monthly)</p>
+              <p className="text-sm text-gray-500 mb-4">Billed monthly</p>
             </>
           )}
           <p className="text-sm text-gray-700 mb-4">
@@ -1022,15 +1001,11 @@ function PricingPageContent() {
         </div>
       </div>
 
-      {/* Charlie Trial Alert Dialog */}
+      {/* Trial Alert Dialog */}
       <Dialog open={showTrialAlert} onOpenChange={setShowTrialAlert}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <div className="flex items-start gap-4">
-              <Avatar className="size-12 flex-shrink-0">
-                <AvatarImage src="/charlie.png" alt="Charlie" />
-                <AvatarFallback>CC</AvatarFallback>
-              </Avatar>
               <div className="flex-1">
                 <DialogTitle className="text-lg font-semibold text-gray-900">
                   Hi there!
@@ -1048,15 +1023,11 @@ function PricingPageContent() {
         </DialogContent>
       </Dialog>
 
-      {/* Premium User Charlie Modal */}
+      {/* Premium User Modal */}
       <Dialog open={showPremiumUserModal} onOpenChange={setShowPremiumUserModal}>
         <DialogContent className="sm:max-w-md border-2 border-blue-500">
           <DialogHeader>
             <div className="flex items-start gap-4">
-              <Avatar className="size-12 flex-shrink-0">
-                <AvatarImage src="/charlie.png" alt="Charlie" />
-                <AvatarFallback>CC</AvatarFallback>
-              </Avatar>
               <div className="flex-1">
                 <DialogTitle className="text-lg font-semibold text-gray-900">
                   Hi there!
@@ -1064,9 +1035,7 @@ function PricingPageContent() {
                 <DialogDescription className="text-base mt-2 text-gray-700">
                   {(() => {
                     const normalized = normalizeUserClass(userClass);
-                    if (userClass === 'cohort') {
-                      return <>You're already in my exclusive Cohort program! That means you get everything in Core <em>plus</em> all the premium features, unlimited property searches, my personal coaching calls, and direct access to me. <br/><br/>You're all set with the best we've got – no need to go backwards!</>;
-                    } else if (normalized === 'pro') {
+                    if (normalized === 'pro') {
                       return <>You're already on the Pro plan! That gives you everything in basic Core <em>plus</em> unlimited property searches, advanced analytics, and all premium tools. <br/><br/>You've got the full experience already – no need to downgrade!</>;
                     } else {
                       return <>You're already a Plus member! That gets you everything in basic Core <em>plus</em> unlimited property searches, advanced analytics, and all the premium tools. <br/><br/>You've got more than the basic plan already – you're all set!</>;
@@ -1084,64 +1053,31 @@ function PricingPageContent() {
         <DialogContent className="sm:max-w-2xl border-2 border-blue-500">
           <DialogHeader>
             <div className="flex items-start gap-4">
-              <Avatar className="size-12 flex-shrink-0">
-                <AvatarImage src="/charlie.png" alt="Charlie" />
-                <AvatarFallback>CC</AvatarFallback>
-              </Avatar>
               <div className="flex-1">
                 <DialogTitle className="text-lg font-semibold text-gray-900">
                   Hold on there!
                 </DialogTitle>
                 <div className="text-base mt-2 text-gray-700">
-                  {userClass === 'cohort' ? (
-                    <>
-                      <p className="mb-4">You're thinking about downgrading from the Cohort program? Look, I get it - sometimes budgets change. But here's what you'd be giving up if you make that move:</p>
-                      
-                      <div className="mb-4">
-                        <p className="font-semibold mb-2">You'd lose access to:</p>
-                        <ul className="list-disc ml-4 space-y-1">
-                          <li>Weekly expert sessions led by me</li>
-                          <li>One-on-one access to attorney Charles Dobens</li>
-                          <li>Supportive community of peers & investors</li>
-                          <li>Step-by-step roadmap for your multifamily investing journey</li>
-                        </ul>
-                      </div>
-                      
-                      <div className="mb-4">
-                        <p className="font-semibold mb-2">You'd keep:</p>
-                        <ul className="list-disc ml-4 space-y-1">
-                          <li>All the features of whichever plan you choose</li>
-                          <li>Unlimited property searches and analytics</li>
-                          <li>Everything in basic Core</li>
-                        </ul>
-                      </div>
-                      
-                      <p>That's exclusive access and personal mentorship you'd be walking away from. Are you sure you want to make this change?</p>
-                    </>
-                  ) : (
-                    <>
-                      <p className="mb-4">You're thinking about downgrading? Look, I get it - sometimes budgets change. But here's what you'd be giving up if you make this move:</p>
-                      
-                      <div className="mb-4">
-                        <p className="font-semibold mb-2">You'd lose access to:</p>
-                        <ul className="list-disc ml-4 space-y-1">
-                          <li>My Master Class Training Program (hundreds of hours of content)</li>
-                          <li>Weekly group coaching calls with me personally</li>
-                          <li>Direct access to the community</li>
-                        </ul>
-                      </div>
-                      
-                      <div className="mb-4">
-                        <p className="font-semibold mb-2">You'd keep:</p>
-                        <ul className="list-disc ml-4 space-y-1">
-                          <li>All the Plus features (unlimited property searches, analytics, marketing tools)</li>
-                          <li>Everything in basic Core</li>
-                        </ul>
-                      </div>
-                      
-                      <p>That's a lot of valuable training and personal mentorship you'd be walking away from. Are you sure you want to make this change?</p>
-                    </>
-                  )}
+                  <p className="mb-4">You're thinking about downgrading? We get it - sometimes budgets change. But here's what you'd be giving up if you make this move:</p>
+
+                  <div className="mb-4">
+                    <p className="font-semibold mb-2">You'd lose access to:</p>
+                    <ul className="list-disc ml-4 space-y-1">
+                      <li>The Master Class Training Program (hundreds of hours of content)</li>
+                      <li>Weekly group coaching calls</li>
+                      <li>Direct access to the community</li>
+                    </ul>
+                  </div>
+
+                  <div className="mb-4">
+                    <p className="font-semibold mb-2">You'd keep:</p>
+                    <ul className="list-disc ml-4 space-y-1">
+                      <li>All the Plus features (unlimited property searches, analytics, marketing tools)</li>
+                      <li>Everything in basic Core</li>
+                    </ul>
+                  </div>
+
+                  <p>That's a lot of valuable training and personal mentorship you'd be walking away from. Are you sure you want to make this change?</p>
                 </div>
               </div>
             </div>
@@ -1151,7 +1087,7 @@ function PricingPageContent() {
               onClick={() => setShowDowngradeModal(false)}
               className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-colors"
             >
-              {userClass === 'cohort' ? 'Stay in Cohort' : 'Keep Current Plan'}
+              Keep Current Plan
             </button>
             <button
               onClick={handleDowngradeRequest}
@@ -1168,16 +1104,12 @@ function PricingPageContent() {
         <DialogContent className="sm:max-w-lg border-2 border-blue-500">
           <DialogHeader>
             <div className="flex items-start gap-4">
-              <Avatar className="size-12 flex-shrink-0">
-                <AvatarImage src="/charlie.png" alt="Charlie" />
-                <AvatarFallback>CC</AvatarFallback>
-              </Avatar>
               <div className="flex-1">
                 <DialogTitle className="text-lg font-semibold text-gray-900">
                   Got it!
                 </DialogTitle>
                 <div className="text-base mt-2 text-gray-700">
-                  <p className="mb-4">No problem - I understand you'd like to make that change. Here's what to do next:</p>
+                  <p className="mb-4">No problem - here's what to do next:</p>
                   
                   <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
                     <p className="font-semibold text-blue-800 mb-2">📧 Contact Our Team:</p>

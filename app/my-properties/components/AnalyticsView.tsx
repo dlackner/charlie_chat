@@ -342,11 +342,6 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
       {totalProperties >= 3 && (
         <div className="bg-white rounded-lg border border-gray-200 p-6">
           <div className="flex items-center space-x-3 mb-4">
-            <img
-              src="/charlie.png"
-              alt="Charlie"
-              className="w-8 h-8 rounded-full shadow-md border-[0.5px] border-gray-300"
-            />
             <h3 className="text-lg font-semibold text-gray-900">Portfolio Insights</h3>
           </div>
           

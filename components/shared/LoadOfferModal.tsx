@@ -1,5 +1,5 @@
 /*
- * CHARLIE2 V2 - Load Offer Modal
+ * Load Offer Modal
  * Modal for loading and managing saved offer analyzer scenarios
  * Features: List scenarios, load, delete, search/filter
  */

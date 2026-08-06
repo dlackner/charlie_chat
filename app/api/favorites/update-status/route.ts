@@ -1,5 +1,5 @@
 /*
- * CHARLIE2 V2 - Update Favorite Status API
+ * Update Favorite Status API
  * Allows updating the pipeline status (favorite_status) of saved properties
  */
 import { NextRequest, NextResponse } from "next/server";

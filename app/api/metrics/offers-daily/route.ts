@@ -1,5 +1,5 @@
 /*
- * CHARLIE2 V2 - Daily Offers Count API
+ * Daily Offers Count API
  * Returns count of offers created on a specific date
  * Part of the new V2 API architecture for activity coaching
  */

@@ -1,5 +1,5 @@
 /*
- * CHARLIE2 V2 - Favorites Over Time API
+ * Favorites Over Time API
  * Returns chart data for user favorites added over time
  * Part of the new V2 API architecture
  */

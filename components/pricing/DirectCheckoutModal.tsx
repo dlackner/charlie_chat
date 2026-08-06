@@ -62,7 +62,7 @@ export default function DirectCheckoutModal({
           </p>
         </div>
 
-        {/* Billing Frequency Toggle */}
+        {/* Billing Frequency Toggle - Annual hidden for now, uncomment to re-enable
         <div className="mb-4">
           <label className="block text-sm font-medium text-gray-700 mb-2">
             Billing Frequency
@@ -94,6 +94,7 @@ export default function DirectCheckoutModal({
             </button>
           </div>
         </div>
+        */}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>

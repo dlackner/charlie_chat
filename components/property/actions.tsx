@@ -10,7 +10,7 @@ import { StreetViewImage } from '../ui/StreetViewImage';
 
 interface PropertyActionsProps {
   listing: Listing;
-  userClass?: 'trial' | 'charlie_chat' | 'charlie_chat_pro' | 'cohort';
+  userClass?: 'trial' | 'core' | 'plus' | 'pro';
 }
 
 export const PropertyActions = ({ listing }: PropertyActionsProps) => {

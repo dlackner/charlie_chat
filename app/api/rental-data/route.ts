@@ -1,5 +1,5 @@
 /*
- * CHARLIE2 V2 - Rental Data API
+ * Rental Data API
  * Serves market rental data from database for map overlays
  * Replaces CSV-based approach with real-time database queries
  */

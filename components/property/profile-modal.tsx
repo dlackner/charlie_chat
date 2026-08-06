@@ -15,7 +15,7 @@ interface PropertyProfileModalProps {
   onNext: () => void;
   canGoPrev: boolean;
   canGoNext: boolean;
-  userClass: 'trial' | 'charlie_chat' | 'charlie_chat_pro' | 'cohort';
+  userClass: 'trial' | 'core' | 'plus' | 'pro';
 }
 
 export const PropertyProfileModal = ({

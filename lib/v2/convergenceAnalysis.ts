@@ -1,5 +1,5 @@
 /*
- * CHARLIE2 V2 - Market Convergence Analysis
+ * Market Convergence Analysis
  * Advanced statistical analysis to determine user preference learning phases
  * 4-stage system: Discovery → Learning → Mastery → Production
  */

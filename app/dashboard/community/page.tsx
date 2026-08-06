@@ -1,5 +1,5 @@
 /*
- * CHARLIE2 V2 - Community Insights Dashboard
+ * Community Insights Dashboard
  * Real-time community metrics, property heat map, and AI-powered market insights
  * Features: Activity trends, geographic heat map, live market analysis
  * Part of the new V2 application architecture
@@ -153,7 +153,6 @@ export default function CommunityPage() {
               >
                 Browse Opportunities →
               </Link>
-              <div className="text-xs text-gray-400 mt-3">November 5, 2025</div>
             </div>
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 border-l-4 border-l-green-500 p-6">
               

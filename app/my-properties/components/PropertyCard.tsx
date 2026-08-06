@@ -1,5 +1,5 @@
 /*
- * CHARLIE2 V2 - Property Card Component
+ * Property Card Component
  * Displays saved property information with selection, favoriting, and status management
  * Features expandable details, street view images, and bulk actions
  */

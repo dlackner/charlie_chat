@@ -1,5 +1,5 @@
 /*
- * CHARLIE2 V2 - Places Autocomplete API
+ * Places Autocomplete API
  * Location search and autocomplete functionality
  * Part of the new V2 API architecture
  */

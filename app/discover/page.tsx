@@ -1,5 +1,5 @@
 /*
- * CHARLIE2 V2 - Discover Page
+ * Discover Page
  * Advanced property search and filtering with comprehensive saved search functionality
  * Features: Clean map implementation, connected filter system, smart searches
  * TODO: Move to app/v2/discover/ for proper V2 organization
@@ -97,7 +97,8 @@ function DiscoverPageContent() {
     return (urlViewMode === 'map' || urlViewMode === 'cards') ? urlViewMode : 'cards';
   });
   const [isRestoringSearch, setIsRestoringSearch] = useState(false);
-  
+  const hasRestoredSearchRef = useRef(false);
+
   // Wrapper function to prevent map mode on mobile
   const handleSetViewMode = (mode: 'cards' | 'map') => {
     if (typeof window !== 'undefined' && window.innerWidth < 768 && mode === 'map') {
@@ -135,7 +136,19 @@ function DiscoverPageContent() {
       collapsedSections
     };
     sessionStorage.setItem('discoverPageFilters', JSON.stringify(filterState));
-    
+
+    // Cache the actual results too, so returning via Back can restore them
+    // instantly instead of re-running the search against the paid API.
+    if (hasSearched && searchQuery) {
+      sessionStorage.setItem('discoverSearchCache', JSON.stringify({
+        query: searchQuery,
+        searchResults,
+        propertyCount,
+        lastSearchFilters,
+        currentPage
+      }));
+    }
+
     const baseUrl = new URL('/discover', window.location.origin);
     baseUrl.searchParams.set('viewMode', viewMode);
     
@@ -150,7 +163,10 @@ function DiscoverPageContent() {
     
     const backUrl = encodeURIComponent(baseUrl.toString());
     const propertyId = property.property_id || property.id;
-    window.location.href = `/discover/property/${propertyId}?back=${backUrl}`;
+    // Client-side navigation (avoids a full page reload). Note: this does NOT
+    // preserve this page's state across the round trip - that's handled separately
+    // by the discoverSearchCache written above and read back in the restore effect.
+    router.push(`/discover/property/${propertyId}?back=${backUrl}`);
   };
   
   // Simple pagination for 24 daily properties (2 pages of 12 each)
@@ -429,15 +445,46 @@ function DiscoverPageContent() {
 
   // Restore search state from URL parameters if present
   useEffect(() => {
+    // Guard against this effect running more than once per real page load
+    // (React Strict Mode double-invokes mount effects in dev).
+    if (hasRestoredSearchRef.current) return;
+    hasRestoredSearchRef.current = true;
+
     const restoreSearchState = async () => {
       const query = searchParams.get('q');
       const hasResults = searchParams.get('hasResults') === 'true';
-      
+
       if (query && hasResults) {
         setIsRestoringSearch(true);
         setSearchQuery(query);
-        // Re-run the search to restore results
-        await performSearch(query);
+
+        // Try to restore from the results cache first (set by handleViewDetails
+        // right before navigating away) instead of re-running the search against
+        // the paid API for data we already had a moment ago.
+        const cachedRaw = sessionStorage.getItem('discoverSearchCache');
+        let restoredFromCache = false;
+        if (cachedRaw) {
+          try {
+            const cached = JSON.parse(cachedRaw);
+            if (cached.query === query) {
+              setSearchResults(cached.searchResults || []);
+              setPropertyCount(cached.propertyCount || 0);
+              setHasSearched(true);
+              setLastSearchFilters(cached.lastSearchFilters ?? null);
+              setCurrentPage(cached.currentPage || 1);
+              restoredFromCache = true;
+            }
+          } catch (error) {
+            console.error('Error restoring search cache:', error);
+          }
+          sessionStorage.removeItem('discoverSearchCache');
+        }
+
+        if (!restoredFromCache) {
+          // No valid cache (e.g. shared link, bookmark, or cache expired) - fetch for real.
+          await performSearch(query);
+        }
+
         setIsRestoringSearch(false);
       }
     };

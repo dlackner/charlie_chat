@@ -1,5 +1,5 @@
 /*
- * CHARLIE2 V2 - Saved Searches API
+ * Saved Searches API
  * CRUD operations for user's saved search criteria
  * Part of the new V2 API architecture
  */

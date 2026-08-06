@@ -97,7 +97,6 @@ export default function TermsOfServicePage() {
             <ul className="list-disc list-inside ml-4 space-y-1">
               <li>Payments for Plus memberships are non-refundable.</li>
               <li>No refunds are provided for partial months, unused time, or early cancellations.</li>
-              <li>Cohort programs may include separate written terms regarding payments or refunds.</li>
             </ul>
 
             <h3 className="text-xl font-semibold text-gray-800 mb-3">4.5 Failed or Disputed Payments</h3>
@@ -114,7 +113,8 @@ export default function TermsOfServicePage() {
               <li>Copy, resell, or distribute materials outside your membership rights,</li>
               <li>Interfere with platform operations or other users,</li>
               <li>Attempt unauthorized access to accounts, systems, or data,</li>
-              <li>Scrape, crawl, or reverse-engineer platform content or architecture.</li>
+              <li>Scrape, crawl, or reverse-engineer platform content or architecture,</li>
+              <li>Deliberately or excessively perform property searches or other data retrieval - whether manually, through bots, or through other automation - with the intent to abuse, burden, or drive up costs to the platform.</li>
             </ul>
 
             <p>Violations may result in suspension or termination without refund.</p>
@@ -273,7 +273,7 @@ export default function TermsOfServicePage() {
             </div>
 
             <p className="text-sm text-gray-500 text-center mt-8">
-              Last Updated: November 10, 2025
+              Last Updated: August 5, 2026
             </p>
           </div>
         </div>

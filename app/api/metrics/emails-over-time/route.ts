@@ -1,5 +1,5 @@
 /*
- * CHARLIE2 V2 - Emails Over Time API
+ * Emails Over Time API
  * Returns weekly email sending counts for metrics dashboard
  * Part of the new V2 application architecture
  */

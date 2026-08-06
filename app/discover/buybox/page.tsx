@@ -1,5 +1,5 @@
 /*
- * CHARLIE2 V2 - Buy Box Page
+ * Buy Box Page
  * Weekly property recommendations based on user-defined buy box criteria
  * Integrates with existing weekly recommendations system architecture
  */
@@ -920,7 +920,7 @@ export default function BuyBoxPage() {
                 } else if (decidedCount > 0) {
                   return `All ${decidedCount} recommendations reviewed this week!`;
                 } else {
-                  return 'Tampa Recommendations';  // Simple title when no recommendations
+                  return '';
                 }
               })()}
             </p>

@@ -1,5 +1,5 @@
 /*
- * CHARLIE2 V2 - Mobile Navigation Component
+ * Mobile Navigation Component
  * Updated navigation menu for V2 application with proper routing to /v2/ paths
  * Features responsive mobile/desktop navigation with dropdown menus
  */
@@ -13,7 +13,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useModal } from '@/contexts/ModalContext';
 import { SubscriptionModal } from '@/app/components/SubscriptionModal';
 import SubscriptionSupportModal from '@/components/ui/SubscriptionSupportModal';
-import { hasAccess, canAccessDashboard, canAccessDiscover, canAccessEngage } from '@/lib/v2/accessControl';
+import { hasAccess, canAccessDashboard, canAccessDiscover, canAccessEngage, isAdmin } from '@/lib/v2/accessControl';
 import type { UserClass } from '@/lib/v2/accessControl';
 import { useTrialStatus } from '@/lib/v2/useTrialStatus';
 import TrialEndModal from '@/app/components/TrialEndModal';
@@ -306,6 +306,7 @@ export default function MobileNavigation() {
         submenu: [
           { name: 'Profile', href: '/account/profile' },
           { name: 'Subscription', action: () => setShowSubscriptionModal(true) },
+          { name: 'Admin', href: isAdmin(currentUserClass) ? '/admin/metrics' : undefined, disabled: !isAdmin(currentUserClass) },
           { name: 'Sign Out', action: handleSignOut }
         ]
       }
@@ -335,6 +336,7 @@ export default function MobileNavigation() {
         submenu: [
           { name: 'Profile', href: '/account/profile' },
           { name: 'Subscription', action: () => setShowSubscriptionModal(true) },
+          { name: 'Admin', href: isAdmin(currentUserClass) ? '/admin/metrics' : undefined, disabled: !isAdmin(currentUserClass) },
           { name: 'Sign Out', action: handleSignOut }
         ]
       }
@@ -707,6 +709,16 @@ export default function MobileNavigation() {
                   {openSubmenus['ACCOUNT'] && !desktopNav.topBarItems.account.disabled && (
                     <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg border border-blue-600 z-50">
                       {desktopNav.topBarItems.account.submenu?.map((subItem) => {
+                        if (subItem.disabled || !subItem.href && !subItem.action) {
+                          return (
+                            <div
+                              key={subItem.name}
+                              className="block px-4 py-2 text-sm text-gray-400 cursor-not-allowed"
+                            >
+                              {subItem.name}
+                            </div>
+                          );
+                        }
                         if (subItem.action) {
                           return (
                             <button

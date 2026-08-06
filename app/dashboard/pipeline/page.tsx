@@ -1,5 +1,5 @@
 /*
- * CHARLIE2 V2 - Dashboard Pipeline Page
+ * Dashboard Pipeline Page
  * Interactive Kanban-style property pipeline management with drag-and-drop functionality
  * Features: Deal quality matrix, property intelligence charts, pipeline analytics
  * Part of the new V2 application architecture

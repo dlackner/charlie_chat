@@ -1,17 +1,16 @@
 /*
- * CHARLIE2 V2 - Access Control System
+ * Access Control System
  * Centralized permission management based on user_class
  * Controls menu items and page access throughout V2 application
  * Part of the new V2 application architecture
  */
 
 // V2 User Classes
-export type UserClass = 
-  | 'trial' 
-  | 'core' 
-  | 'plus' 
-  | 'pro' 
-  | 'cohort'
+export type UserClass =
+  | 'trial'
+  | 'core'
+  | 'plus'
+  | 'pro'
   | 'admin'
   | null;
 
@@ -70,10 +69,11 @@ const PERMISSIONS: Record<Exclude<UserClass, null>, Feature[]> = {
     'property_analyzer'
   ],
 
-  // Core plan - basic access (legacy charlie_chat users)
+  // Core plan - basic access
   core: [
     'dashboard',
     'dashboard_community',
+    'dashboard_pipeline',
     'dashboard_onboarding',
     'discover',
     'discover_saved',
@@ -132,33 +132,6 @@ const PERMISSIONS: Record<Exclude<UserClass, null>, Feature[]> = {
     'ai_coach',
     'ai_coach_attachments',
     'ai_coach_threads',
-    'fund_browse',
-    'fund_create',
-    'pricing',
-    'account',
-    'property_analyzer'
-  ],
-
-  // Cohort users - full access like pro
-  cohort: [
-    'dashboard',
-    'dashboard_headlines',
-    'dashboard_community',
-    'dashboard_metrics',
-    'dashboard_pipeline', 
-    'dashboard_onboarding',
-    'discover',
-    'discover_buybox',
-    'discover_saved',
-    'discover_saved_searches',
-    'discover_property_details',
-    'discover_favorite_properties',
-    'discover_investment_analysis',
-    'engage',
-    'engage_templates',
-    'ai_coach',
-    'ai_coach_attachments',
-    'ai_coach_threads', 
     'fund_browse',
     'fund_create',
     'pricing',
@@ -248,10 +221,10 @@ export function isTrial(userClass: UserClass): boolean {
 }
 
 /**
- * Check if user has premium features (plus/pro/cohort)
+ * Check if user has premium features (plus/pro)
  */
 export function hasPremiumAccess(userClass: UserClass): boolean {
-  return userClass === 'plus' || userClass === 'pro' || userClass === 'cohort' || userClass === 'admin';
+  return userClass === 'plus' || userClass === 'pro' || userClass === 'admin';
 }
 
 /**
@@ -270,7 +243,6 @@ export function getUserClassDisplayName(userClass: UserClass): string {
     core: 'Core',
     plus: 'Plus',
     pro: 'Pro',
-    cohort: 'Cohort',
     admin: 'Admin'
   };
   

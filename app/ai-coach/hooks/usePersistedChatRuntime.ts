@@ -1,5 +1,5 @@
 /*
- * CHARLIE2 V2 - Persisted Chat Runtime Hook
+ * Persisted Chat Runtime Hook
  * Custom hook to integrate assistant-ui with database persistence
  * Manages thread loading, saving, and synchronization
  * Part of the new V2 application architecture

@@ -1,5 +1,5 @@
 /*
- * CHARLIE2 V2 - Skip Trace Integration
+ * Skip Trace Integration
  * Handles property skip trace requests and data processing
  * Integrates with Supabase for data storage and retrieval
  */

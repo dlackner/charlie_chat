@@ -1,5 +1,5 @@
 /*
- * CHARLIE2 V2 - User Markets API
+ * User Markets API
  * Fetch user's active markets from user_markets table
  * Part of the new V2 application architecture
  */

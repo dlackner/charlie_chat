@@ -1,5 +1,5 @@
 /*
- * CHARLIE2 V2 - LOIs Over Time API
+ * LOIs Over Time API
  * Returns weekly LOI creation counts for metrics dashboard
  * Part of the new V2 application architecture
  */

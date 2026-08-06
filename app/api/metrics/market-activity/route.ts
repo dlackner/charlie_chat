@@ -1,5 +1,5 @@
 /*
- * CHARLIE2 V2 - Market Activity Distribution API
+ * Market Activity Distribution API
  * Returns chart data for user activity across different markets
  * Part of the new V2 API architecture
  */

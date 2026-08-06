@@ -1,5 +1,5 @@
 /*
- * CHARLIE2 V2 - Profile Management Page
+ * Profile Management Page
  * Dynamic profile page with live Supabase database integration
  * Fetches and saves real user profile data
  * Part of the new V2 application architecture
@@ -8,7 +8,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { User, Upload, Save, X, ArrowLeft } from 'lucide-react';
+import { User, Upload, Save, X, ArrowLeft, Trash2 } from 'lucide-react';
 import { AuthGuard } from '@/components/auth/AuthGuard';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
@@ -412,6 +412,18 @@ export default function ProfilePage() {
                       height={40}
                       className="border border-gray-300 rounded"
                     />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setLogoFile(null);
+                        setLogoPreview(null);
+                      }}
+                      className="mt-1 flex items-center gap-1 text-sm text-red-500 hover:text-red-600"
+                      aria-label="Remove logo"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                      Remove
+                    </button>
                   </div>
                 )}
               </div>

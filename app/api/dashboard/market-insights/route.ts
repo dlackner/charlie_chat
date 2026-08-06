@@ -1,5 +1,5 @@
 /*
- * CHARLIE2 V2 - Dashboard Market Insights API
+ * Dashboard Market Insights API
  * Provides market pulse data, portfolio insights, and AI trends for selected buy box markets
  * Part of the new V2 application architecture
  */

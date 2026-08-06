@@ -1,5 +1,5 @@
 /*
- * CHARLIE2 V2 - Offer Scenarios API
+ * Offer Scenarios API
  * CRUD operations for saved offer analysis scenarios
  * Part of the new V2 API architecture
  */

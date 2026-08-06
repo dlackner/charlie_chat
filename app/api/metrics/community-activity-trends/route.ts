@@ -1,5 +1,5 @@
 /*
- * CHARLIE2 V2 - Community Activity Trends API
+ * Community Activity Trends API
  * Returns weekly trends of properties favorited and total value for community insights
  * Part of the new V2 application architecture
  */

@@ -1,5 +1,5 @@
 /*
- * CHARLIE2 V2 - User Profile API
+ * User Profile API
  * Fetch user profile information from the profiles table
  * Used for marketing letter generation and other profile-dependent features
  */

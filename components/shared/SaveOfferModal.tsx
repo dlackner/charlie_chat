@@ -1,5 +1,5 @@
 /*
- * CHARLIE2 V2 - Save Offer Modal
+ * Save Offer Modal
  * Modal for saving offer analyzer scenarios to database
  * Features: Analysis name, description, validation, error handling
  */

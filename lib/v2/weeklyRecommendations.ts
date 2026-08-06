@@ -1,5 +1,5 @@
  /*
- * CHARLIE2 V2 - Weekly Recommendations Business Logic
+ * Weekly Recommendations Business Logic
  * Property Selection Methodology using MMR (Maximal Marginal Relevance)
  * Core engine for generating diverse property recommendations based on user buy box criteria
  */

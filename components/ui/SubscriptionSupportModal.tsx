@@ -83,7 +83,7 @@ const SubscriptionSupportModal = () => {
           },
           body: JSON.stringify({ 
             message: subscriptionMessage,
-            userEmail: user?.email || 'anonymous@charlieus.ai',
+            userEmail: user?.email || 'info@multifamilyos.ai',
             userName: userProfile?.first_name && userProfile?.last_name 
               ? `${userProfile.first_name} ${userProfile.last_name}` 
               : null

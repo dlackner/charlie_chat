@@ -1,5 +1,5 @@
 /*
- * CHARLIE2 V2 - Update Favorite Notes API
+ * Update Favorite Notes API
  * Allows updating the notes field of saved properties for reminders functionality
  * Part of the new V2 API architecture
  */

@@ -1,5 +1,5 @@
 /*
- * CHARLIE2 V2 - AI Investment Analysis API
+ * AI Investment Analysis API
  * OpenAI-powered property investment analysis
  * Part of the new V2 API architecture
  */
@@ -51,7 +51,7 @@ interface AnalysisResult {
   };
   narrative: {
     marketOverview: string;
-    charliesTake: string;
+    investmentOutlook: string;
     strategy: string[];
     ownerApproach?: string;
     verdict: {
@@ -543,7 +543,7 @@ async function buildAnalysisResult({
     },
     narrative: {
       marketOverview,
-      charliesTake: investmentOutlook,
+      investmentOutlook,
       strategy: strategyLines.length > 0 ? strategyLines : [
         'Conduct thorough property inspection',
         'Research local rental market rates',
@@ -625,7 +625,7 @@ async function buildFallbackAnalysis(property: PropertyData): Promise<AnalysisRe
     },
     narrative: {
       marketOverview: `${property.city}, ${property.state} market presents opportunities for ${ageCategory} multifamily properties. Local market conditions and rental demand should be evaluated for this ${property.units}-unit investment.`,
-      charliesTake: `This ${ageCategory} ${property.units}-unit property requires detailed market analysis to determine investment potential. The fundamentals suggest moderate opportunity with proper due diligence.`,
+      investmentOutlook: `This ${ageCategory} ${property.units}-unit property requires detailed market analysis to determine investment potential. The fundamentals suggest moderate opportunity with proper due diligence.`,
       strategy: [
         'Conduct thorough property inspection',
         'Research local rental market rates',

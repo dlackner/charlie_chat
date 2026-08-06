@@ -1,5 +1,5 @@
 /*
- * CHARLIE2 V2 - Trial Status Hook
+ * Trial Status Hook
  * React hook for managing trial status and triggering modal
  * Integrates with auth system and trial manager
  * Part of the new V2 application architecture

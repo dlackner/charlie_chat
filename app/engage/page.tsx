@@ -1,5 +1,5 @@
 /*
- * CHARLIE2 V2 - Engage Page
+ * Engage Page
  * Property engagement and workflow management
  * Part of the new V2 application architecture
  * TODO: Consider moving to app/v2/engage/ for proper V2 organization
@@ -271,9 +271,10 @@ function EngagePageContent() {
     const matchesSource = selectedSource === 'All' || 
       (selectedSource === 'Algorithm' && property.source === 'A') ||
       (selectedSource === 'Manual' && property.source === 'M');
-    const matchesSearch = searchQuery === '' || 
+    const matchesSearch = searchQuery === '' ||
       property.address.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      property.city.toLowerCase().includes(searchQuery.toLowerCase());
+      property.city.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (property.zip || '').toLowerCase().includes(searchQuery.toLowerCase());
     
     return matchesStatus && matchesPipelineStage && matchesMarket && matchesSource && matchesSearch;
   });

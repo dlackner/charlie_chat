@@ -1,5 +1,5 @@
 /*
- * CHARLIE2 V2 - Property Map with Rental Data Overlay
+ * Property Map with Rental Data Overlay
  * Wrapper component that adds rental data functionality to PropertyMap
  * Features: Toggle button, legend, rental data loading and display
  * Used by discover and engage pages

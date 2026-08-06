@@ -1,5 +1,5 @@
 /*
- * CHARLIE2 V2 - Marketing Letters Over Time API
+ * Marketing Letters Over Time API
  * Returns weekly marketing letter creation counts for metrics dashboard
  * Part of the new V2 application architecture
  */

@@ -345,6 +345,24 @@ export async function POST(req: NextRequest) {
         console.log("📊 Tracking response status:", trackingResponse.status);
         console.log("📊 Tracking response data:", trackingData);
         console.log("✅ Property search tracked for user:", user.id);
+
+        // Also track how many properties were actually returned in this response,
+        // so we can see if some users are driving up API cost via volume.
+        const propertiesReturned = data.recordCount ?? data.data?.length ?? 0;
+        if (propertiesReturned > 0) {
+          const propertiesTrackingResponse = await fetch(trackingUrl, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              userId: user.id,
+              activityType: 'properties_retrieved',
+              count: propertiesReturned
+            }),
+          });
+          console.log("📊 Properties retrieved tracking status:", propertiesTrackingResponse.status);
+        }
       } catch (trackingError) {
         // Don't fail the search if tracking fails
         console.error("❌ Failed to track search activity:", trackingError);

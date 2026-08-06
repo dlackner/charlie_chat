@@ -15,7 +15,7 @@ export default function CapitalClubSponsors() {
               As a MultifamilyOS user, you know how to find and analyze great multifamily opportunities. Now, it's time to get those properties funded.
             </p>
             <p>
-              The Capital Club connects Professional and Cohort MultifamilyOS users with a network of active investors seeking high-quality opportunities. You bring the property — and together, we bring the capital, expertise, and partnerships to make it real.
+              The Capital Club connects Professional MultifamilyOS users with a network of active investors seeking high-quality opportunities. You bring the property — and together, we bring the capital, expertise, and partnerships to make it real.
             </p>
           </div>
         </div>

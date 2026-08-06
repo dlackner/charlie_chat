@@ -1,5 +1,5 @@
 /*
- * CHARLIE2 V2 - StandardModal Component
+ * StandardModal Component
  * Reusable modal component for consistent UI across the application
  * Features modern design with backdrop blur, smooth animations, and brand-aligned styling
  * Replaces inconsistent modal implementations throughout the app

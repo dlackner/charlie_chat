@@ -1,5 +1,5 @@
 /*
- * CHARLIE2 V2 - Shared Rental Data Processor
+ * Shared Rental Data Processor
  * Processes rental data for map overlays across discover and engage pages
  * Features: CSV parsing, quintile coloring, metro area matching
  */
