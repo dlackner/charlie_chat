@@ -1,7 +1,7 @@
 //PART OF THE NEW V2 VERSION
 
 import { NextRequest, NextResponse } from "next/server";
-import { createSupabaseAdminClient } from '@/lib/supabase/admin';
+import { incrementActivityCountServer } from '@/lib/server/activityTracking';
 
 // Transform external API camelCase response to snake_case for consistent frontend usage
 function transformListingToSnakeCase(listing: any) {
@@ -311,64 +311,20 @@ export async function POST(req: NextRequest) {
 
     // Track property search activity for all users (especially important for core users)
     // Only track actual searches, not ids_only requests or count requests
-    console.log("🔍 TRACKING CHECK:", {
-      ids_only,
-      count,
-      hasUser: !!user,
-      userId: user?.id,
-      conditions: {
-        notIdsOnly: !ids_only,
-        notCount: !count,
-        hasUser: !!(user && user.id),
-        willTrack: !ids_only && !count && user && user.id
-      }
-    });
-    
     if (!ids_only && !count && user && user.id) {
       try {
-        console.log("📤 Making tracking API call for userId:", user.id);
-        const trackingUrl = `${req.nextUrl.origin}/api/activity-count`;
-        console.log("📍 Tracking URL:", trackingUrl);
-        
-        const trackingResponse = await fetch(trackingUrl, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            userId: user.id,
-            activityType: 'property_searches'
-          }),
-        });
-        
-        const trackingData = await trackingResponse.text();
-        console.log("📊 Tracking response status:", trackingResponse.status);
-        console.log("📊 Tracking response data:", trackingData);
-        console.log("✅ Property search tracked for user:", user.id);
+        await incrementActivityCountServer(user.id, 'property_searches');
 
         // Also track how many properties were actually returned in this response,
         // so we can see if some users are driving up API cost via volume.
         const propertiesReturned = data.recordCount ?? data.data?.length ?? 0;
         if (propertiesReturned > 0) {
-          const propertiesTrackingResponse = await fetch(trackingUrl, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              userId: user.id,
-              activityType: 'properties_retrieved',
-              count: propertiesReturned
-            }),
-          });
-          console.log("📊 Properties retrieved tracking status:", propertiesTrackingResponse.status);
+          await incrementActivityCountServer(user.id, 'properties_retrieved', propertiesReturned);
         }
       } catch (trackingError) {
         // Don't fail the search if tracking fails
         console.error("❌ Failed to track search activity:", trackingError);
       }
-    } else {
-      console.log("⚠️ Skipping tracking - conditions not met");
     }
 
     return NextResponse.json(data);
