@@ -18,8 +18,8 @@ interface PropertyModalProps {
 }
 
 function PropertyModal({ property, onClose }: PropertyModalProps) {
-  const streetViewUrl = `https://www.google.com/maps?q=${encodeURIComponent(property.address_full || property.address_street || '')}&layer=c&cbll=${property.latitude},${property.longitude}&cbp=12,0,0,0,5&z=17`;
-  
+  const streetViewUrl = `https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${property.latitude},${property.longitude}&heading=0&pitch=0&fov=80`;
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-lg max-w-md w-full p-6">
@@ -248,7 +248,7 @@ function RoadtripContent() {
             
             // Add new nearby property markers
             filtered.forEach((property) => {
-              const streetViewUrl = `https://www.google.com/maps?q=${encodeURIComponent(property.address_full || property.address_street || '')}&layer=c&cbll=${property.latitude},${property.longitude}&cbp=12,0,0,0,5&z=17`;
+              const streetViewUrl = `https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${property.latitude},${property.longitude}&heading=0&pitch=0&fov=80`;
               
               const popup = new mapboxgl.Popup({ 
                 closeButton: false, 
@@ -509,7 +509,7 @@ function RoadtripContent() {
         }
 
         // Add center property marker (red)
-        const centerStreetViewUrl = `https://www.google.com/maps?q=${encodeURIComponent(centerProperty.address_full || centerProperty.address_street || '')}&layer=c&cbll=${centerProperty.latitude},${centerProperty.longitude}&cbp=12,0,0,0,5&z=17`;
+        const centerStreetViewUrl = `https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${centerProperty.latitude},${centerProperty.longitude}&heading=0&pitch=0&fov=80`;
         
         const centerPopup = new mapboxgl.Popup({ 
           closeButton: false, 
@@ -553,7 +553,7 @@ function RoadtripContent() {
             longitude: property.longitude
           });
           
-          const streetViewUrl = `https://www.google.com/maps?q=${encodeURIComponent(property.address_full || property.address_street || '')}&layer=c&cbll=${property.latitude},${property.longitude}&cbp=12,0,0,0,5&z=17`;
+          const streetViewUrl = `https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${property.latitude},${property.longitude}&heading=0&pitch=0&fov=80`;
           
           const popup = new mapboxgl.Popup({ 
             closeButton: false, 
