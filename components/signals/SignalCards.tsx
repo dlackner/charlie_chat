@@ -8,7 +8,7 @@
 
 import { useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
-import { Heart, EyeOff, Loader2 } from 'lucide-react';
+import { Heart, EyeOff, Loader2, ChevronUp, ChevronDown, X, Copy, Check } from 'lucide-react';
 
 export interface SignalEvent {
   id: string;
@@ -51,6 +51,10 @@ export function SignalCard({ signal, onView, onRemoved }: {
   const pathname = usePathname();
   const [isFavoriting, setIsFavoriting] = useState(false);
   const [isDismissing, setIsDismissing] = useState(false);
+  const [isLoadingApproach, setIsLoadingApproach] = useState(false);
+  const [approach, setApproach] = useState<{ whyNow: string; howToApproach: string } | null>(null);
+  const [showApproach, setShowApproach] = useState(false);
+  const [isCopied, setIsCopied] = useState(false);
 
   const handleView = () => {
     if (onView) {
@@ -92,6 +96,47 @@ export function SignalCard({ signal, onView, onRemoved }: {
       if (response.ok) onRemoved?.(signal.id);
     } finally {
       setIsDismissing(false);
+    }
+  };
+
+  const handleGetApproach = async () => {
+    // If already loaded, toggle visibility
+    if (approach) {
+      setShowApproach(!showApproach);
+      return;
+    }
+    // If loading or already shown, don't duplicate the fetch
+    if (isLoadingApproach || showApproach) return;
+
+    setIsLoadingApproach(true);
+    setShowApproach(true);
+    try {
+      const response = await fetch('/api/deal-signals/approach', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ propertyId: signal.propertyId })
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setApproach(data);
+      } else {
+        console.error('Get approach failed:', response.status);
+        setShowApproach(false);
+      }
+    } finally {
+      setIsLoadingApproach(false);
+    }
+  };
+
+  const handleCopyApproach = async () => {
+    if (!approach) return;
+    const text = `Why Now\n${approach.whyNow}\n\nHow to Approach\n${approach.howToApproach}`;
+    try {
+      await navigator.clipboard.writeText(text);
+      setIsCopied(true);
+      setTimeout(() => setIsCopied(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy:', err);
     }
   };
 
@@ -172,6 +217,21 @@ export function SignalCard({ signal, onView, onRemoved }: {
           <div className="flex gap-1.5 order-3">
             <button
               type="button"
+              onClick={handleGetApproach}
+              disabled={isLoadingApproach}
+              className="text-xs font-semibold px-2.5 py-1.5 rounded-lg bg-green-600 hover:bg-green-700 text-white transition-colors whitespace-nowrap disabled:opacity-50"
+            >
+              {isLoadingApproach ? (
+                <>
+                  <Loader2 size={12} className="inline mr-1 animate-spin" />
+                  Loading
+                </>
+              ) : (
+                'Deal Strategy'
+              )}
+            </button>
+            <button
+              type="button"
               onClick={handleView}
               className="text-xs font-semibold px-2.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white transition-colors whitespace-nowrap"
             >
@@ -180,6 +240,48 @@ export function SignalCard({ signal, onView, onRemoved }: {
           </div>
         </div>
       </div>
+
+      {showApproach && approach && (
+        <div className="mt-4 pt-4 border-t border-gray-100 space-y-4">
+          <div className="flex items-start justify-between">
+            <div className="flex-1">
+              <button
+                type="button"
+                onClick={() => setShowApproach(false)}
+                className="flex items-center gap-2 mb-3"
+              >
+                <span className="text-sm font-bold text-blue-600 uppercase tracking-wide">Why Now</span>
+                {showApproach ? <ChevronUp size={16} className="text-blue-600" /> : <ChevronDown size={16} className="text-blue-600" />}
+              </button>
+              {showApproach && (
+                <p className="text-sm text-gray-700 leading-relaxed">{approach.whyNow}</p>
+              )}
+            </div>
+            <div className="flex gap-1.5 ml-2 mt-1">
+              <button
+                type="button"
+                onClick={handleCopyApproach}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+                title="Copy to clipboard"
+              >
+                {isCopied ? <Check size={16} className="text-green-600" /> : <Copy size={16} />}
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowApproach(false)}
+                className="text-gray-400 hover:text-gray-600"
+                title="Close"
+              >
+                <X size={16} />
+              </button>
+            </div>
+          </div>
+          <div>
+            <p className="text-sm font-bold text-blue-600 uppercase tracking-wide mb-3">How to Approach</p>
+            <p className="text-sm text-gray-700 leading-relaxed">{approach.howToApproach}</p>
+          </div>
+        </div>
+      )}
     </article>
   );
 }
