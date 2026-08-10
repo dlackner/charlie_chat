@@ -73,7 +73,12 @@ export default function MobileNavigation() {
       if (!contextParam && item.href === '/discover') return true;
       return false;
     }
-    
+
+    // Signal Feed lives under /dashboard/signals but belongs to DISCOVER, not MANAGE.
+    if (item.href === '/discover' && pathname.startsWith('/dashboard/signals')) {
+      return true;
+    }
+
     return pathname.startsWith(item.href);
   };
   const { showSubscriptionModal, setShowSubscriptionModal } = useModal();
@@ -201,10 +206,15 @@ export default function MobileNavigation() {
             href: hasAccess(currentUserClass, 'dashboard_onboarding') ? '/dashboard/onboarding' : undefined,
             disabled: !hasAccess(currentUserClass, 'dashboard_onboarding')
           },
-          { 
-            name: 'Buy Box', 
+          {
+            name: 'Buy Box',
             href: hasAccess(currentUserClass, 'discover_buybox') ? '/discover/buybox' : undefined,
             disabled: !hasAccess(currentUserClass, 'discover_buybox')
+          },
+          {
+            name: 'Deal Signals',
+            href: hasAccess(currentUserClass, 'deal_signals') ? '/discover/signals/setup' : undefined,
+            disabled: !hasAccess(currentUserClass, 'deal_signals')
           }
         ]
       },
@@ -214,7 +224,19 @@ export default function MobileNavigation() {
         name: 'DISCOVER',
         href: '/discover',
         icon: Search,
-        disabled: isNotLoggedIn || (isLoadingUserClass ? false : !canAccessDiscover(currentUserClass))
+        disabled: isNotLoggedIn || (isLoadingUserClass ? false : !canAccessDiscover(currentUserClass)),
+        submenu: [
+          {
+            name: 'Property Search',
+            href: canAccessDiscover(currentUserClass) ? '/discover' : undefined,
+            disabled: !canAccessDiscover(currentUserClass)
+          },
+          {
+            name: 'Signal Feed',
+            href: hasAccess(currentUserClass, 'deal_signals') ? '/dashboard/signals' : undefined,
+            disabled: !hasAccess(currentUserClass, 'deal_signals')
+          }
+        ]
       },
 
       // Engage
@@ -263,8 +285,8 @@ export default function MobileNavigation() {
             href: hasAccess(currentUserClass, 'dashboard_metrics') ? '/dashboard/metrics' : undefined,
             disabled: !hasAccess(currentUserClass, 'dashboard_metrics')
           },
-          { 
-            name: 'Community', 
+          {
+            name: 'Community',
             href: hasAccess(currentUserClass, 'dashboard_community') ? '/dashboard/community' : undefined,
             disabled: !hasAccess(currentUserClass, 'dashboard_community')
           }
@@ -353,11 +375,17 @@ export default function MobileNavigation() {
             disabled: !hasAccess(currentUserClass, 'dashboard_onboarding'),
             description: 'Learn the platform'
           },
-          { 
-            name: 'Buy Box', 
+          {
+            name: 'Buy Box',
             href: hasAccess(currentUserClass, 'discover_buybox') ? '/discover/buybox' : undefined,
             disabled: !hasAccess(currentUserClass, 'discover_buybox'),
             description: 'Set investment criteria'
+          },
+          {
+            name: 'Deal Signals',
+            href: hasAccess(currentUserClass, 'deal_signals') ? '/discover/signals/setup' : undefined,
+            disabled: !hasAccess(currentUserClass, 'deal_signals'),
+            description: 'Watch markets for off-market signals'
           }
         ],
         disabled: isNotLoggedIn
@@ -365,7 +393,21 @@ export default function MobileNavigation() {
       {
         name: 'DISCOVER',
         href: '/discover',
-        disabled: isNotLoggedIn || (isLoadingUserClass ? false : !canAccessDiscover(currentUserClass))
+        disabled: isNotLoggedIn || (isLoadingUserClass ? false : !canAccessDiscover(currentUserClass)),
+        submenu: [
+          {
+            name: 'Property Search',
+            href: canAccessDiscover(currentUserClass) ? '/discover' : undefined,
+            disabled: !canAccessDiscover(currentUserClass),
+            description: 'Search and filter properties'
+          },
+          {
+            name: 'Signal Feed',
+            href: hasAccess(currentUserClass, 'deal_signals') ? '/dashboard/signals' : undefined,
+            disabled: !hasAccess(currentUserClass, 'deal_signals'),
+            description: 'Off-market signals and market watch'
+          }
+        ]
       },
       {
         name: 'ENGAGE',
@@ -411,8 +453,8 @@ export default function MobileNavigation() {
             disabled: !hasAccess(currentUserClass, 'dashboard_community'),
             description: 'News & Trends'
           },
-          { 
-            name: 'Pipeline', 
+          {
+            name: 'Pipeline',
             href: hasAccess(currentUserClass, 'dashboard_pipeline') ? '/dashboard/pipeline' : undefined,
             disabled: !hasAccess(currentUserClass, 'dashboard_pipeline'),
             description: 'Track your deals'
@@ -757,15 +799,31 @@ export default function MobileNavigation() {
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex justify-center items-center space-x-0">
               {desktopNav.mainMenuItems.map((item) => {
-                const isActive = item.href && (item.href === '/' ? pathname === '/' : (() => {
-                  if (pathname.startsWith('/discover/property/')) {
-                    if (contextParam === 'engage' && item.href === '/engage') return true;
-                    if (contextParam === 'buybox' && item.href === '/discover') return true;
-                    if (!contextParam && item.href === '/discover') return true;
-                    return false;
-                  }
-                  return pathname.startsWith(item.href);
-                })());
+                const isActive = item.href
+                  ? (item.href === '/' ? pathname === '/' : (() => {
+                      if (pathname.startsWith('/discover/property/')) {
+                        if (contextParam === 'engage' && item.href === '/engage') return true;
+                        if (contextParam === 'buybox' && item.href === '/discover') return true;
+                        if (!contextParam && item.href === '/discover') return true;
+                        return false;
+                      }
+                      // Buy Box and Deal Signals setup live under /discover/... but belong to
+                      // ONBOARD, not the DISCOVER browse experience - don't double-light DISCOVER.
+                      if (
+                        item.href === '/discover' &&
+                        (pathname.startsWith('/discover/buybox') || pathname.startsWith('/discover/signals/setup'))
+                      ) {
+                        return false;
+                      }
+                      // Signal Feed lives under /dashboard/signals but belongs to DISCOVER, not MANAGE.
+                      if (item.href === '/discover' && pathname.startsWith('/dashboard/signals')) {
+                        return true;
+                      }
+                      return pathname.startsWith(item.href);
+                    })())
+                  // Dropdown-only items (ONBOARD, FUND, MANAGE) have no href of their own -
+                  // light up when the current page is one of their submenu pages.
+                  : (item.submenu?.some((sub: any) => sub.href && pathname.startsWith(sub.href)) ?? false);
                 const isSubmenuOpen = openSubmenus[item.name];
                 
                 return (

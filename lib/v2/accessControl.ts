@@ -39,6 +39,7 @@ export type Feature =
   | 'pricing'
   | 'account'
   | 'property_analyzer'
+  | 'deal_signals'
   | 'admin_tools';
 
 // Permission configuration for each user class
@@ -66,7 +67,8 @@ const PERMISSIONS: Record<Exclude<UserClass, null>, Feature[]> = {
     'fund_browse',
     'pricing',
     'account',
-    'property_analyzer'
+    'property_analyzer',
+    'deal_signals'
   ],
 
   // Core plan - basic access
@@ -109,7 +111,8 @@ const PERMISSIONS: Record<Exclude<UserClass, null>, Feature[]> = {
     'fund_create',
     'pricing',
     'account',
-    'property_analyzer'
+    'property_analyzer',
+    'deal_signals'
   ],
 
   // Pro plan - full access
@@ -136,7 +139,8 @@ const PERMISSIONS: Record<Exclude<UserClass, null>, Feature[]> = {
     'fund_create',
     'pricing',
     'account',
-    'property_analyzer'
+    'property_analyzer',
+    'deal_signals'
   ],
 
   // Admin users - full access plus admin-specific tools
@@ -164,6 +168,7 @@ const PERMISSIONS: Record<Exclude<UserClass, null>, Feature[]> = {
     'pricing',
     'account',
     'property_analyzer',
+    'deal_signals',
     'admin_tools'
   ]
 };
