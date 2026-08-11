@@ -3,6 +3,7 @@ import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 import Anthropic from '@anthropic-ai/sdk';
+import { defaultWeights } from '@/lib/dealSignalsCatalog';
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
@@ -67,8 +68,26 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(snapshot.approach_summary);
     }
 
+    // Load user weights to detect anomalies
+    const { data: weightsRow } = await admin
+      .from('deal_signal_weights')
+      .select('weights')
+      .eq('user_id', user.id)
+      .maybeSingle();
+
+    const weights: Record<string, number> = { ...defaultWeights, ...(weightsRow?.weights || {}) };
+    const totalWeight = Object.values(weights).reduce((sum, w) => sum + (w || 0), 0) || 1;
+
+    // Detect anomalous weights (>50% of total)
+    const anomalousWeights: Record<string, number> = {};
+    for (const [key, value] of Object.entries(weights)) {
+      if (value > 0 && value / totalWeight > 0.5) {
+        anomalousWeights[key] = value;
+      }
+    }
+
     // Generate new approach summary via Anthropic
-    const prompt = buildApproachPrompt(snapshot, latestEvents || []);
+    const prompt = buildApproachPrompt(snapshot, latestEvents || [], anomalousWeights);
 
     const message = await anthropic.messages.create({
       model: MODEL,
@@ -101,7 +120,7 @@ export async function POST(req: NextRequest) {
   }
 }
 
-function buildApproachPrompt(snapshot: any, events: any[]): string {
+function buildApproachPrompt(snapshot: any, events: any[], anomalousWeights: Record<string, number>): string {
   const address = snapshot.address || 'the property';
   const units = snapshot.units || 'unknown';
   const yearBuilt = snapshot.year_built || 'unknown';
@@ -119,6 +138,10 @@ function buildApproachPrompt(snapshot: any, events: any[]): string {
     .map(e => `${e.signal_key} (${new Date(e.detected_at).toLocaleDateString()})`)
     .join(', ');
 
+  const anomalyWarning = Object.keys(anomalousWeights).length > 0
+    ? `\n\nIMPORTANT: This property's score is heavily driven by the investor's weighting on ${Object.keys(anomalousWeights).join(', ')}. Verify this matches their actual strategy, as it may be skewing the signal.`
+    : '';
+
   return `You are advising a real estate investor on how to approach an off-market multifamily property opportunity.
 
 Property Details:
@@ -129,11 +152,11 @@ Property Details:
 - Equity Position: ${equity}%
 - Absentee Owner: ${absentee}
 - Active Signals: ${activeSignals}
-- Recent Events: ${recentEvents}
+- Recent Events: ${recentEvents}${anomalyWarning}
 
 Write two concise sections (3-4 sentences each) in plain English:
 
-1. "Why Now" - explain what's likely going on with this owner and why this is a timely opportunity to reach out. Focus on neutral facts (ownership situation, property condition, equity position) rather than distress signals. What combination of factors makes them potentially receptive to a conversation?
+1. "Why Now" - explain what's likely going on with this owner and why this is a timely opportunity to reach out. Focus on neutral facts (ownership situation, property condition, equity position) rather than distress signals. What combination of factors makes them potentially receptive to a conversation?${Object.keys(anomalousWeights).length > 0 ? ' If the investor\'s weighting on a particular factor is unusually high, you may mention it as context (e.g., "Your heavy weighting on absentee owners suggests...") only if it genuinely affects the opportunity assessment.' : ''}
 
 2. "How to Approach" - give practical, respectful guidance on how to open a conversation with this owner. Be specific about: what to lead with, what tone to strike, and what NOT to do. If there's a hard deadline (like an auction), make that the conversation hook. Avoid generic real estate advice.
 
