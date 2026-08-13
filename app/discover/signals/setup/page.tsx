@@ -587,7 +587,7 @@ export default function DealSignalsSetupPage() {
             <section className="bg-white rounded-2xl shadow-sm ring-1 ring-gray-900/5 p-6 sm:p-8">
               <SectionHeading
                 title="Markets you're watching"
-                subtitle={`Add up to ${MAX_MARKETS} - each can have its own location and property criteria. Tighter criteria means fewer properties to watch, and fewer chances to catch a signal - if your feed stays empty, try widening your filters.`}
+                subtitle={`Add up to ${MAX_MARKETS} - each can have its own location and property criteria. If you use tighter criteria, you'll watch fewer properties and have fewer chances to catch a signal. If your feed stays empty, try widening your filters.`}
               />
 
               {/* Market tabs */}
