@@ -99,9 +99,22 @@ async function scanSteadyState(supabase: any, location: DistinctLocation, locati
     const priorFlags: Record<string, boolean> = existingSnapshot?.flags || {};
     const newlyTriggered = TRIGGER_SIGNALS.filter((key) => currentFlags[key] && !priorFlags[key]);
 
+    // Snapshot must be written before the event - deal_signal_events.property_id has a
+    // foreign key on deal_signal_property_snapshots.property_id, so inserting the event
+    // first fails for any property with no existing snapshot row yet.
+    const now = new Date().toISOString();
+    const { error: snapshotError } = await supabase
+      .from('deal_signal_property_snapshots')
+      .upsert(
+        { property_id: id, location_key: locationKey, flags: { ...priorFlags, ...currentFlags }, last_checked_at: now, updated_at: now },
+        { onConflict: 'property_id' }
+      );
+    if (snapshotError) {
+      console.error(`Deal Signals steady state: snapshot upsert failed for property ${id}: ${snapshotError.message}`);
+    }
+
     if (newlyTriggered.length > 0) {
       const propertySnapshot = buildEventPropertySnapshot(record);
-      const now = new Date().toISOString();
       const eventRows = newlyTriggered.map((signalKey) => ({
         property_id: id,
         signal_key: signalKey,
@@ -115,17 +128,6 @@ async function scanSteadyState(supabase: any, location: DistinctLocation, locati
       } else {
         eventsCreated += eventRows.length;
       }
-    }
-
-    const now = new Date().toISOString();
-    const { error: snapshotError } = await supabase
-      .from('deal_signal_property_snapshots')
-      .upsert(
-        { property_id: id, location_key: locationKey, flags: { ...priorFlags, ...currentFlags }, last_checked_at: now, updated_at: now },
-        { onConflict: 'property_id' }
-      );
-    if (snapshotError) {
-      console.error(`Deal Signals steady state: snapshot upsert failed for property ${id}: ${snapshotError.message}`);
     }
   }
 
@@ -217,9 +219,22 @@ async function scanMarketWatchForMarket(supabase: any, market: MarketForBaseline
     const marketWatchFlags = extractMarketWatchFlags(record);
     const newlyTriggered = MARKET_WATCH_SIGNALS.filter((key) => marketWatchFlags[key] && !priorFlags[key]);
 
+    // Snapshot must be written before the event - deal_signal_events.property_id has a
+    // foreign key on deal_signal_property_snapshots.property_id, so inserting the event
+    // first fails for any property with no existing snapshot row yet.
+    const now = new Date().toISOString();
+    const { error: snapshotError } = await supabase
+      .from('deal_signal_property_snapshots')
+      .upsert(
+        { property_id: id, location_key: locationKey, flags: { ...priorFlags, ...marketWatchFlags }, last_checked_at: now, updated_at: now },
+        { onConflict: 'property_id' }
+      );
+    if (snapshotError) {
+      console.error(`Deal Signals market watch: snapshot upsert failed for property ${id}: ${snapshotError.message}`);
+    }
+
     if (newlyTriggered.length > 0) {
       const propertySnapshot = buildEventPropertySnapshot(record);
-      const now = new Date().toISOString();
       const eventRows = newlyTriggered.map((signalKey) => ({
         property_id: id,
         signal_key: signalKey,
@@ -233,17 +248,6 @@ async function scanMarketWatchForMarket(supabase: any, market: MarketForBaseline
       } else {
         eventsCreated += eventRows.length;
       }
-    }
-
-    const now = new Date().toISOString();
-    const { error: snapshotError } = await supabase
-      .from('deal_signal_property_snapshots')
-      .upsert(
-        { property_id: id, location_key: locationKey, flags: { ...priorFlags, ...marketWatchFlags }, last_checked_at: now, updated_at: now },
-        { onConflict: 'property_id' }
-      );
-    if (snapshotError) {
-      console.error(`Deal Signals market watch: snapshot upsert failed for property ${id}: ${snapshotError.message}`);
     }
   }
 

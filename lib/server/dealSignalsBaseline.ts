@@ -196,6 +196,15 @@ export async function runMarketBaseline(
     const propertySnapshot = buildEventPropertySnapshot(record);
     const activeTriggers = TRIGGER_SIGNALS.filter((key) => currentFlags[key]);
 
+    // Snapshot must be written before the event - deal_signal_events.property_id has a
+    // foreign key on deal_signal_property_snapshots.property_id, so inserting the event
+    // first fails for any property being scanned for the first time (no existing snapshot row).
+    const { error: snapshotError } = await admin.from('deal_signal_property_snapshots').upsert(
+      { property_id: propertyId, location_key: locationKey, flags: { ...currentFlags, ...marketWatchFlags }, last_checked_at: now, updated_at: now },
+      { onConflict: 'property_id' }
+    );
+    if (!snapshotError) baselinedCount++;
+
     if (activeTriggers.length > 0) {
       const eventRows = activeTriggers.map((signalKey) => ({
         property_id: propertyId,
@@ -212,12 +221,6 @@ export async function runMarketBaseline(
         retrievedCount++;
       }
     }
-
-    const { error: snapshotError } = await admin.from('deal_signal_property_snapshots').upsert(
-      { property_id: propertyId, location_key: locationKey, flags: { ...currentFlags, ...marketWatchFlags }, last_checked_at: now, updated_at: now },
-      { onConflict: 'property_id' }
-    );
-    if (!snapshotError) baselinedCount++;
   }
 
   return { candidatesFound: flagsByProperty.size, baselined: baselinedCount, retrieved: retrievedCount };
