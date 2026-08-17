@@ -6,8 +6,8 @@ import {
   AttachmentPrimitive,
   ComposerPrimitive,
   MessagePrimitive,
-  useAttachment,
 } from "@assistant-ui/react";
+import { useAuiState } from "@assistant-ui/store";
 import { useShallow } from "zustand/shallow";
 import {
   Tooltip,
@@ -46,11 +46,12 @@ const useFileSrc = (file: File | undefined) => {
 };
 
 const useAttachmentSrc = () => {
-  const { file, src } = useAttachment(
-    useShallow((a): { file?: File; src?: string } => {
+  const { file, src } = useAuiState(
+    useShallow((s): { file?: File; src?: string } => {
+      const a = s.attachment;
       if (a.type !== "image") return {};
       if (a.file) return { file: a.file };
-      const src = a.content?.filter((c) => c.type === "image")[0]?.image;
+      const src = (a.content?.filter((c) => c.type === "image")[0] as any)?.image;
       if (!src) return {};
       return { src };
     }),
@@ -105,8 +106,8 @@ const AttachmentPreviewDialog: FC<PropsWithChildren> = ({ children }) => {
 };
 
 const AttachmentThumb: FC = () => {
-  const isImage = useAttachment((a) => a.type === "image");
-  const attachmentType = useAttachment((a) => a.type);
+  const isImage = useAuiState((s) => s.attachment.type === "image");
+  const attachmentType = useAuiState((s) => s.attachment.type);
   const src = useAttachmentSrc();
   
   const getFileIcon = () => {
@@ -126,10 +127,9 @@ const AttachmentThumb: FC = () => {
   );
 };
 
-const AttachmentUI: FC = () => {
-  const canRemove = useAttachment((a) => a.source !== "message");
-  const typeLabel = useAttachment((a) => {
-    const type = a.type;
+const AttachmentCard: FC<{ showRemove: boolean }> = ({ showRemove }) => {
+  const typeLabel = useAuiState((s) => {
+    const type = s.attachment.type;
     switch (type) {
       case "image":
         return "Image";
@@ -138,13 +138,12 @@ const AttachmentUI: FC = () => {
       case "file":
         return "File";
       default:
-        const _exhaustiveCheck: never = type;
-        throw new Error(`Unknown attachment type: ${_exhaustiveCheck}`);
+        return "File";
     }
   });
-  
-  const attachmentType = useAttachment((a) => a.type);
-  
+
+  const attachmentType = useAuiState((s) => s.attachment.type);
+
   return (
     <Tooltip>
       <AttachmentPrimitive.Root className="relative mt-3">
@@ -157,7 +156,7 @@ const AttachmentUI: FC = () => {
                   PDF Document
                 </div>
               )}
-              
+
               {/* File content */}
               <div className="flex h-12 items-center gap-2 p-2">
                 <AttachmentThumb />
@@ -173,7 +172,7 @@ const AttachmentUI: FC = () => {
             </div>
           </TooltipTrigger>
         </AttachmentPreviewDialog>
-        {canRemove && <AttachmentRemove />}
+        {showRemove && <AttachmentRemove />}
       </AttachmentPrimitive.Root>
       <TooltipContent side="top">
         <AttachmentPrimitive.Name />
@@ -181,6 +180,12 @@ const AttachmentUI: FC = () => {
     </Tooltip>
   );
 };
+
+// Split into two zero-props components (rather than threading a `showRemove` prop through
+// the `components={{ Attachment: ... }}` slot) since it's unconfirmed whether that primitive
+// slot API forwards custom props to the component it instantiates.
+const MessageAttachmentUI: FC = () => <AttachmentCard showRemove={false} />;
+const ComposerAttachmentUI: FC = () => <AttachmentCard showRemove={true} />;
 
 const AttachmentRemove: FC = () => {
   return (
@@ -199,7 +204,7 @@ const AttachmentRemove: FC = () => {
 export const UserMessageAttachments: FC = () => {
   return (
     <div className="flex w-full flex-row gap-3 col-span-full col-start-1 row-start-1 justify-end">
-      <MessagePrimitive.Attachments components={{ Attachment: AttachmentUI }} />
+      <MessagePrimitive.Attachments components={{ Attachment: MessageAttachmentUI }} />
     </div>
   );
 };
@@ -208,7 +213,7 @@ export const ComposerAttachments: FC = () => {
   return (
     <div className="flex w-full flex-row gap-3 overflow-x-auto">
       <ComposerPrimitive.Attachments
-        components={{ Attachment: AttachmentUI }}
+        components={{ Attachment: ComposerAttachmentUI }}
       />
     </div>
   );

@@ -8,6 +8,7 @@
 'use client';
 
 import { useChatRuntime } from "@assistant-ui/react-ai-sdk";
+import { TextStreamChatTransport } from "ai";
 import {
   Attachment,
   CompositeAttachmentAdapter,
@@ -150,11 +151,13 @@ export function usePersistedChatRuntime() {
 
   // Create runtime with thread persistence and authentication
   const runtime = useChatRuntime({
-    api: "/api/chat",
-    body: {
-      threadId: currentThreadId,
-    },
-    credentials: "include", // Include cookies for Supabase session
+    transport: new TextStreamChatTransport({
+      api: "/api/chat",
+      body: {
+        threadId: currentThreadId,
+      },
+      credentials: "include", // Include cookies for Supabase session
+    }),
     adapters: {
       attachments: new CompositeAttachmentAdapter([
         new PDFAttachmentAdapter(),
@@ -189,7 +192,7 @@ export function usePersistedChatRuntime() {
       setCurrentThreadId(threadId);
       
       // Switch runtime to new thread with loaded messages
-      runtime.switchToNewThread();
+      runtime.threads.switchToNewThread();
       
       // The messages will be loaded automatically via the API when threadId is set
       
@@ -201,7 +204,7 @@ export function usePersistedChatRuntime() {
   // Create new thread
   const createNewThread = useCallback(() => {
     setCurrentThreadId(null);
-    runtime.switchToNewThread();
+    runtime.threads.switchToNewThread();
     // Refresh threads list after creating new thread
     setTimeout(loadThreads, 1000);
   }, [runtime, loadThreads]);
@@ -218,7 +221,7 @@ export function usePersistedChatRuntime() {
         // If we're deleting the current thread, create a new one
         if (currentThreadId === threadId) {
           setCurrentThreadId(null);
-          runtime.switchToNewThread();
+          runtime.threads.switchToNewThread();
         }
         // Refresh threads list
         loadThreads();
