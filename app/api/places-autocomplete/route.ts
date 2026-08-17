@@ -39,13 +39,13 @@ export async function GET(req: NextRequest) {
     }
     
     const response = await fetch(url);
-    
+
     if (!response.ok) {
       throw new Error(`Google Places API error: ${response.status}`);
     }
-    
+
     const data = await response.json();
-    
+
     // Filter out irrelevant results and prioritize better matches
     let predictions = data.predictions || [];
     

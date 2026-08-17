@@ -1,31 +1,32 @@
 # Dependencies
-  node_modules/
-  .pnpm-store/
+node_modules/
+.pnpm-store/
 
-  # Next.js build output
-  .next/
-  out/
+# Next.js build output
+.next/
+out/
+tsconfig.tsbuildinfo
 
-  # Environment variables
-  .env
-  .env.local
-  .env.production.local
+# Environment variables
+.env
+.env.local
+.env.production.local
 
-  # Logs
-  npm-debug.log*
-  yarn-debug.log*
-  yarn-error.log*
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
 
-  # Cache
-  .cache/
+# Cache
+.cache/
 
-  # IDE
-  .vscode/
-  .idea/
+# IDE
+.vscode/
+.idea/
 
-  # OS
-  .DS_Store
-  Thumbs.db
+# OS
+.DS_Store
+Thumbs.db
 
 # Backup files
 *backup*

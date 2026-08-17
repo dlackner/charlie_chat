@@ -6,6 +6,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
+import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 
 // Function to normalize status values from database (handles both caps and title case)
 function normalizeStatus(status: string | null): string | null {
@@ -49,6 +50,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    // Auth stays on the session client above; the actual writes below go through the admin
+    // client so a near-expiry/stale session token (fine for auth.getUser(), but sometimes
+    // rejected by RLS on the immediately-following write) can't cause a false failure here.
+    const admin = createSupabaseAdminClient();
+
     const { property_id, property_data, action } = await req.json();
     
     if (!property_id) {
@@ -87,7 +93,7 @@ export async function POST(req: NextRequest) {
         });
 
 
-        const { error: propertyError } = await supabase
+        const { error: propertyError } = await admin
           .from('saved_properties')
           .upsert(filteredPropertyData, {
             onConflict: 'property_id'
@@ -100,7 +106,7 @@ export async function POST(req: NextRequest) {
       }
 
       // Then add to user favorites
-      const { data, error } = await supabase
+      const { data, error } = await admin
         .from('user_favorites')
         .upsert({
           user_id: user.id,
@@ -152,7 +158,7 @@ export async function POST(req: NextRequest) {
           }
         });
 
-        const { error: propertyError } = await supabase
+        const { error: propertyError } = await admin
           .from('saved_properties')
           .upsert(filteredPropertyData, {
             onConflict: 'property_id'
@@ -165,7 +171,7 @@ export async function POST(req: NextRequest) {
       }
 
       // Then remove from favorites (set is_active to false) using upsert to ensure record exists
-      const { error } = await supabase
+      const { error } = await admin
         .from('user_favorites')
         .upsert({
           user_id: user.id,
@@ -220,13 +226,14 @@ export async function DELETE(req: NextRequest) {
     }
 
     const { property_id } = await req.json();
-    
+
     if (!property_id) {
       return NextResponse.json({ error: 'Property ID is required' }, { status: 400 });
     }
 
-    // Delete from user_favorites table
-    const { data: deletedData, error } = await supabase
+    // Delete from user_favorites table - admin client for the same reason as POST above.
+    const admin = createSupabaseAdminClient();
+    const { data: deletedData, error } = await admin
       .from('user_favorites')
       .delete()
       .eq('user_id', user.id)

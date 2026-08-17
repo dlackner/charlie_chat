@@ -399,7 +399,12 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, on
                             <div className="flex flex-col sm:flex-row gap-3">
                               <button
                                 onClick={handleUpgrade}
-                                className="flex items-center justify-center space-x-2 bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+                                disabled={info.planName !== 'Core'}
+                                className={`flex items-center justify-center space-x-2 px-6 py-2 rounded-lg transition-colors ${
+                                  info.planName !== 'Core'
+                                    ? 'bg-gray-300 text-gray-600 cursor-not-allowed'
+                                    : 'bg-blue-600 text-white hover:bg-blue-700'
+                                }`}
                               >
                                 <ArrowRight className="w-4 h-4" />
                                 <span>Upgrade Plan</span>
