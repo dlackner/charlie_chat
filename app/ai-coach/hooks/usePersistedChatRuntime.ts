@@ -75,9 +75,11 @@ class PDFAttachmentAdapter {
         content: [
           {
             type: "text" as const,
-            text: `[File: ${result.name}]`,
-            // Store the OpenAI file ID for the server to use
-            fileId: result.fileId,
+            // fileId embedded in the text itself, not as a separate property on the part -
+            // the new UIMessage schema (ai v7) strips unrecognized properties off text parts
+            // during serialization, so a sibling `fileId` field silently never reaches the
+            // server. Text content always survives, so the ID rides along inside it instead.
+            text: `[File: ${result.name}] [FileID: ${result.fileId}]`,
           },
         ],
         status: { type: "complete" as const },
@@ -117,8 +119,7 @@ class PDFAttachmentAdapter {
         content: [
           {
             type: "text" as const,
-            text: `[File: ${attachment.file!.name}]`,
-            fileId: result.fileId,
+            text: `[File: ${attachment.file!.name}] [FileID: ${result.fileId}]`,
           },
         ],
       };

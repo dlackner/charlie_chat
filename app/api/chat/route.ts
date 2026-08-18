@@ -205,7 +205,10 @@ function extractFileIdsFromAssistantsUI(lastMessage: any): { fileIds: string[]; 
   const fileIds: string[] = [];
   const named: { id: string; name: string }[] = [];
   for (const part of getMessageParts(lastMessage)) {
-    const id = part?.fileId;
+    // fileId used to be a sibling property on the part; now embedded in the text itself as
+    // "[FileID: file-xxx]" since the new UIMessage schema strips unrecognized part properties
+    // during serialization (see the attachment adapter in usePersistedChatRuntime.ts).
+    const id = part?.fileId ?? part?.text?.match(/\[FileID:\s*(file-[^\]\s]+)\]/)?.[1];
     if (typeof id === "string" && id.startsWith("file-")) {
       fileIds.push(id);
       const name = part?.text?.match(/\[File:\s*(.+?)\]/)?.[1] || `File ${id}`;
