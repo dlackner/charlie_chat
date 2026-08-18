@@ -184,29 +184,35 @@ function extractText(res: any): string {
   return parts.join("\n").trim();
 }
 
+// message.content was renamed to message.parts in the ai SDK v5+ UIMessage format - check
+// both so this keeps working regardless of which shape the client actually sends.
+function getMessageParts(message: any): any[] {
+  if (Array.isArray(message?.parts)) return message.parts;
+  if (Array.isArray(message?.content)) return message.content;
+  return [];
+}
+
 function extractUserTextFromAssistantsUI(lastMessage: any): string {
   if (!lastMessage) return "";
   if (typeof lastMessage.content === "string") return lastMessage.content;
-  if (Array.isArray(lastMessage.content)) {
-    return lastMessage.content
-      .filter((p: any) => p?.type === "text" && p?.text)
-      .map((p: any) => p.text)
-      .join(" ");
-  }
-  return "";
+  return getMessageParts(lastMessage)
+    .filter((p: any) => p?.type === "text" && p?.text)
+    .map((p: any) => p.text)
+    .join(" ");
 }
 
 function extractFileIdsFromAssistantsUI(lastMessage: any): { fileIds: string[]; named: { id: string; name: string }[] } {
   const fileIds: string[] = [];
   const named: { id: string; name: string }[] = [];
-  if (Array.isArray(lastMessage?.content)) {
-    for (const part of lastMessage.content) {
-      const id = part?.fileId;
-      if (typeof id === "string" && id.startsWith("file-")) {
-        fileIds.push(id);
-        const name = part?.text?.match(/\[File:\s*(.+?)\]/)?.[1] || `File ${id}`;
-        named.push({ id, name });
-      }
+  for (const part of getMessageParts(lastMessage)) {
+    // fileId used to be a sibling property on the part; now embedded in the text itself as
+    // "[FileID: file-xxx]" since the new UIMessage schema strips unrecognized part properties
+    // during serialization (see the attachment adapter in usePersistedChatRuntime.ts).
+    const id = part?.fileId ?? part?.text?.match(/\[FileID:\s*(file-[^\]\s]+)\]/)?.[1];
+    if (typeof id === "string" && id.startsWith("file-")) {
+      fileIds.push(id);
+      const name = part?.text?.match(/\[File:\s*(.+?)\]/)?.[1] || `File ${id}`;
+      named.push({ id, name });
     }
   }
   return { fileIds, named };
@@ -225,8 +231,8 @@ function mapClientHistoryToResponsesInput(messages: any[]): any[] {
     if (m.role === "user" || m.role === "assistant") {
       let text = "";
       if (typeof m.content === "string") text = m.content;
-      else if (Array.isArray(m.content)) {
-        text = m.content.filter((p: any) => p?.type === "text" && p?.text).map((p: any) => p.text).join(" ");
+      else {
+        text = getMessageParts(m).filter((p: any) => p?.type === "text" && p?.text).map((p: any) => p.text).join(" ");
       }
       if (text?.trim()) out.push({ role: m.role, content: text.trim() });
     }
@@ -331,7 +337,7 @@ export async function POST(req: NextRequest) {
         const encoder = new TextEncoder();
         const stream = new ReadableStream({
           start(controller) {
-            controller.enqueue(encoder.encode(`0:${JSON.stringify(resetResponse)}\n`));
+            controller.enqueue(encoder.encode(resetResponse));
             controller.close();
           },
         });
@@ -428,14 +434,14 @@ export async function POST(req: NextRequest) {
     
     console.log("📝 Extracted text:", text);
 
-    // 6) Stream a single chunk for Assistants-UI compatibility
+    // 6) Stream a single chunk for Assistants-UI compatibility - raw text, no envelope,
+    // since the client reads this via TextStreamChatTransport.
     const encoder = new TextEncoder();
-    const streamData = `0:${JSON.stringify(text)}\n`;
-    console.log("📤 Streaming data:", streamData);
-    
+    console.log("📤 Streaming data:", text);
+
     const stream = new ReadableStream({
       start(controller) {
-        controller.enqueue(encoder.encode(streamData));
+        controller.enqueue(encoder.encode(text));
         controller.close();
       },
     });

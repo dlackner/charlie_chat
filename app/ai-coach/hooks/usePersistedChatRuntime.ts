@@ -8,6 +8,7 @@
 'use client';
 
 import { useChatRuntime } from "@assistant-ui/react-ai-sdk";
+import { TextStreamChatTransport } from "ai";
 import {
   Attachment,
   CompositeAttachmentAdapter,
@@ -74,9 +75,11 @@ class PDFAttachmentAdapter {
         content: [
           {
             type: "text" as const,
-            text: `[File: ${result.name}]`,
-            // Store the OpenAI file ID for the server to use
-            fileId: result.fileId,
+            // fileId embedded in the text itself, not as a separate property on the part -
+            // the new UIMessage schema (ai v7) strips unrecognized properties off text parts
+            // during serialization, so a sibling `fileId` field silently never reaches the
+            // server. Text content always survives, so the ID rides along inside it instead.
+            text: `[File: ${result.name}] [FileID: ${result.fileId}]`,
           },
         ],
         status: { type: "complete" as const },
@@ -116,8 +119,7 @@ class PDFAttachmentAdapter {
         content: [
           {
             type: "text" as const,
-            text: `[File: ${attachment.file!.name}]`,
-            fileId: result.fileId,
+            text: `[File: ${attachment.file!.name}] [FileID: ${result.fileId}]`,
           },
         ],
       };
@@ -150,11 +152,13 @@ export function usePersistedChatRuntime() {
 
   // Create runtime with thread persistence and authentication
   const runtime = useChatRuntime({
-    api: "/api/chat",
-    body: {
-      threadId: currentThreadId,
-    },
-    credentials: "include", // Include cookies for Supabase session
+    transport: new TextStreamChatTransport({
+      api: "/api/chat",
+      body: {
+        threadId: currentThreadId,
+      },
+      credentials: "include", // Include cookies for Supabase session
+    }),
     adapters: {
       attachments: new CompositeAttachmentAdapter([
         new PDFAttachmentAdapter(),
@@ -189,7 +193,7 @@ export function usePersistedChatRuntime() {
       setCurrentThreadId(threadId);
       
       // Switch runtime to new thread with loaded messages
-      runtime.switchToNewThread();
+      runtime.threads.switchToNewThread();
       
       // The messages will be loaded automatically via the API when threadId is set
       
@@ -201,7 +205,7 @@ export function usePersistedChatRuntime() {
   // Create new thread
   const createNewThread = useCallback(() => {
     setCurrentThreadId(null);
-    runtime.switchToNewThread();
+    runtime.threads.switchToNewThread();
     // Refresh threads list after creating new thread
     setTimeout(loadThreads, 1000);
   }, [runtime, loadThreads]);
@@ -218,7 +222,7 @@ export function usePersistedChatRuntime() {
         // If we're deleting the current thread, create a new one
         if (currentThreadId === threadId) {
           setCurrentThreadId(null);
-          runtime.switchToNewThread();
+          runtime.threads.switchToNewThread();
         }
         // Refresh threads list
         loadThreads();
