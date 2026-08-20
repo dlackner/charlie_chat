@@ -9,7 +9,8 @@ const ACTIVITY_COLUMNS: { key: string; label: string }[] = [
   { key: 'offers_created', label: 'Offers' },
   { key: 'lois_created', label: 'LOIs' },
   { key: 'marketing_letters_created', label: 'Marketing Letters' },
-  { key: 'emails_sent', label: 'Emails' }
+  { key: 'emails_sent', label: 'Emails' },
+  { key: 'deal_signals_markets', label: 'Deal Signals Markets' }
 ];
 
 interface UserMetrics {

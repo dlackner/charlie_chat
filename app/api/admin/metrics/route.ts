@@ -106,12 +106,32 @@ export async function GET(request: NextRequest) {
 
     const profileMap = new Map((profiles || []).map(p => [p.user_id, p]));
 
+    // Deal Signals market count is current state (up to 5 watched markets per user),
+    // not a monthly activity event, so it's fetched separately and kept out of `total`.
+    const { data: dealSignalMarketRows, error: dealSignalMarketsError } = userIds.length > 0
+      ? await supabase
+          .from('deal_signal_markets')
+          .select('user_id')
+          .in('user_id', userIds)
+      : { data: [], error: null };
+
+    if (dealSignalMarketsError) {
+      console.error('Error fetching deal signal markets:', dealSignalMarketsError);
+      return NextResponse.json({ error: 'Failed to fetch deal signals market counts' }, { status: 500 });
+    }
+
+    const dealSignalMarketCounts = new Map<string, number>();
+    for (const row of dealSignalMarketRows || []) {
+      dealSignalMarketCounts.set(row.user_id, (dealSignalMarketCounts.get(row.user_id) ?? 0) + 1);
+    }
+
     type UserMetrics = {
       user_id: string;
       email: string | null;
       full_name: string | null;
       user_class: string | null;
       total: number;
+      deal_signals_markets: number;
     } & Record<typeof ACTIVITY_TYPES[number], number>;
 
     const metricsByUser = new Map<string, UserMetrics>();
@@ -124,7 +144,8 @@ export async function GET(request: NextRequest) {
           email: profile?.email ?? null,
           full_name: profile?.full_name ?? null,
           user_class: profile?.user_class ?? null,
-          total: 0
+          total: 0,
+          deal_signals_markets: dealSignalMarketCounts.get(row.user_id) ?? 0
         };
         for (const type of ACTIVITY_TYPES) base[type] = 0;
         metricsByUser.set(row.user_id, base as UserMetrics);
@@ -139,10 +160,11 @@ export async function GET(request: NextRequest) {
 
     const users = Array.from(metricsByUser.values()).sort((a, b) => b.total - a.total);
 
-    const totals: Record<string, number> = { total: 0 };
+    const totals: Record<string, number> = { total: 0, deal_signals_markets: 0 };
     for (const type of ACTIVITY_TYPES) totals[type] = 0;
     for (const u of users) {
       totals.total += u.total;
+      totals.deal_signals_markets += u.deal_signals_markets;
       for (const type of ACTIVITY_TYPES) totals[type] += u[type];
     }
 

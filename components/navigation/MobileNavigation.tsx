@@ -53,13 +53,31 @@ export default function MobileNavigation() {
   
   // Get search params safely for client-side only
   const [contextParam, setContextParam] = useState<string | null>(null);
-  
+
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
       setContextParam(params.get('context'));
     }
   }, [pathname]);
+
+  // Temporary "Deal Signals" promo callout on the ONBOARD menu.
+  // Remove this block (and DEAL_SIGNALS_PROMO_STORAGE_KEY usages below) after the promo period ends.
+  const DEAL_SIGNALS_PROMO_STORAGE_KEY = 'mfos_deal_signals_promo_dismissed';
+  const [dealSignalsPromoDismissed, setDealSignalsPromoDismissed] = useState(true);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      setDealSignalsPromoDismissed(localStorage.getItem(DEAL_SIGNALS_PROMO_STORAGE_KEY) === 'true');
+    }
+  }, []);
+
+  const dismissDealSignalsPromo = () => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(DEAL_SIGNALS_PROMO_STORAGE_KEY, 'true');
+    }
+    setDealSignalsPromoDismissed(true);
+  };
 
   // Helper function to determine if a navigation item is active
   const isNavItemActive = (item: NavigationItem) => {
@@ -475,6 +493,9 @@ export default function MobileNavigation() {
   const desktopNav = buildDesktopNavigation();
 
   const toggleSubmenu = (itemName: string) => {
+    if (itemName === 'ONBOARD') {
+      dismissDealSignalsPromo();
+    }
     setOpenSubmenus(prev => ({
       // Close all other submenus and toggle the clicked one
       [itemName]: !prev[itemName]
@@ -587,7 +608,27 @@ export default function MobileNavigation() {
                           <ChevronDown className="h-4 w-4" />
                         )}
                       </button>
-                      
+
+                      {/* Temporary Deal Signals promo callout - remove after promo period */}
+                      {item.name === 'ONBOARD' && !item.disabled && !dealSignalsPromoDismissed && !isSubmenuOpen && (
+                        <div className="relative mx-4 mt-2">
+                          <div className="absolute -top-1.5 left-6 w-3 h-3 bg-blue-600 rotate-45" />
+                          <div className="relative bg-blue-600 text-white text-sm rounded-2xl shadow-lg p-3 flex items-start justify-between gap-2">
+                            <span>Check out <strong>Deal Signals</strong>!</span>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                dismissDealSignalsPromo();
+                              }}
+                              aria-label="Dismiss"
+                              className="text-white/80 hover:text-white flex-shrink-0"
+                            >
+                              <X className="h-4 w-4" />
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
                       {/* Submenu */}
                       {isSubmenuOpen && !item.disabled && (
                         <div className="ml-8 mt-1 space-y-1">
@@ -852,7 +893,27 @@ export default function MobileNavigation() {
                           {item.name}
                           <ChevronDown className={`ml-1 h-4 w-4 transition-transform ${isSubmenuOpen ? 'rotate-180' : ''}`} />
                         </button>
-                        
+
+                        {/* Temporary Deal Signals promo callout - remove after promo period */}
+                        {item.name === 'ONBOARD' && !item.disabled && !dealSignalsPromoDismissed && !isSubmenuOpen && (
+                          <div className="absolute left-1/2 -translate-x-1/2 mt-3 w-64 z-50">
+                            <div className="absolute -top-1.5 left-1/2 -translate-x-1/2 w-3 h-3 bg-blue-600 rotate-45" />
+                            <div className="relative bg-blue-600 text-white text-sm rounded-2xl shadow-lg p-3 flex items-start justify-between gap-2">
+                              <span>Check out <strong>Deal Signals</strong>!</span>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  dismissDealSignalsPromo();
+                                }}
+                                aria-label="Dismiss"
+                                className="text-white/80 hover:text-white flex-shrink-0"
+                              >
+                                <X className="h-4 w-4" />
+                              </button>
+                            </div>
+                          </div>
+                        )}
+
                         {/* Main Menu Dropdown */}
                         {isSubmenuOpen && !item.disabled && (
                           <div className="absolute left-0 mt-0 w-56 bg-white rounded-md shadow-lg border border-blue-600 z-50">
