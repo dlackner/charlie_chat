@@ -295,6 +295,24 @@ export default function OnboardingPage() {
     loadCompletedTasks();
   }, [user?.id, supabase]);
 
+  // Fire the Google Ads conversion once, the first time this user reaches onboarding.
+  // This page is only ever reached via client-side routing, which never triggers a
+  // real page-load event for Google's tag, so the conversion has to be fired manually.
+  useEffect(() => {
+    if (!user?.id || typeof window === 'undefined') return;
+
+    const storageKey = `mfos_onboarding_conversion_fired_${user.id}`;
+    if (localStorage.getItem(storageKey)) return;
+
+    const gtag = (window as any).gtag;
+    if (typeof gtag !== 'function') return;
+
+    gtag('event', 'conversion', {
+      send_to: 'AW-17677417757/kTLzCKGF0eUcEJ36n-1B',
+    });
+    localStorage.setItem(storageKey, 'true');
+  }, [user?.id]);
+
   const toggleTask = async (taskId: string) => {
     if (!user?.id || isSaving) return;
 
