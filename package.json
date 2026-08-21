@@ -2,11 +2,14 @@
   "name": "assistant-ui-starter",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": ">=20.9.0"
+  },
   "scripts": {
     "dev": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "eslint ."
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.116.0",
@@ -38,14 +41,12 @@
     "lucide-react": "^0.487.0",
     "mapbox-gl": "^3.15.0",
     "ml-kmeans": "^6.0.0",
-    "next": "^15.3.0",
+    "next": "16.3.2",
     "nodemailer": "^6.10.1",
     "number-to-words": "^1.2.4",
     "openai": "^4.95.1",
-    "react": "18.2.0",
-    "react-dom": "18.2.0",
-    "react-joyride": "^2.9.3",
-    "react-leaflet": "^4.2.1",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
     "react-map-gl": "^8.0.4",
     "react-markdown": "^10.1.0",
     "react-range": "^1.10.0",
@@ -58,17 +59,20 @@
     "zustand": "^5.0.5"
   },
   "devDependencies": {
-    "@eslint/eslintrc": "^3",
     "@tailwindcss/postcss": "^4",
     "@types/leaflet": "^1.9.20",
     "@types/node": "^20",
     "@types/nodemailer": "^6.4.17",
     "@types/number-to-words": "^1.2.3",
-    "@types/react": "^19",
-    "@types/react-dom": "^19",
+    "@types/react": "19.2.18",
+    "@types/react-dom": "19.2.4",
     "eslint": "^9",
-    "eslint-config-next": "15.3.0",
+    "eslint-config-next": "16.3.2",
     "tailwindcss": "^4",
     "typescript": "^5"
+  },
+  "overrides": {
+    "@types/react": "19.2.18",
+    "@types/react-dom": "19.2.4"
   }
 }
