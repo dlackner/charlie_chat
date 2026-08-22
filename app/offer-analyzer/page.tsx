@@ -2187,11 +2187,12 @@ export default function OfferAnalyzerPage() {
               type="number"
               id="closingCostsPercentage"
               value={closingCostsPercentage || ''}
-              onChange={(e) => setClosingCostsPercentage(Math.max(0, parseFloat(e.target.value) || 0))}
+              onChange={(e) => setClosingCostsPercentage(Math.min(10, Math.max(0, parseFloat(e.target.value) || 0)))}
               disabled={shouldDisableInputs}
               className={`w-full p-2.5 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow duration-150 ease-in-out shadow-sm ${shouldDisableInputs ? 'bg-gray-100 cursor-not-allowed' : 'bg-white'}`}
               step="0.1"
               min="0"
+              max="10"
             />
           </HelpTooltip>
         </div>
