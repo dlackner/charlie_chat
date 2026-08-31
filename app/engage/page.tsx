@@ -10,6 +10,7 @@ import { useState, useEffect, useRef, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Search, Heart, Grid3x3, Map, Filter, ChevronDown, FileText, MapPin, Trash2, Route } from 'lucide-react';
 import { AuthGuard } from '@/components/auth/AuthGuard';
+import { FeatureGuard } from '@/components/auth/FeatureGuard';
 import PropertyMapWithRents from '@/components/shared/PropertyMapWithRents';
 import { generate10YearCashFlowReport } from '../offer-analyzer/cash-flow-report';
 import { generateMarketingLetter, createMailtoLink } from '../templates/generateMarketingLetter';
@@ -2476,6 +2477,7 @@ function EngagePageContent() {
 export default function EngagePage() {
   return (
     <AuthGuard>
+    <FeatureGuard feature="engage">
     <Suspense fallback={
       <div className="min-h-screen bg-gray-50 p-6">
         <div className="max-w-7xl mx-auto">
@@ -2491,6 +2493,7 @@ export default function EngagePage() {
     }>
       <EngagePageContent />
     </Suspense>
+    </FeatureGuard>
     </AuthGuard>
   );
 }
