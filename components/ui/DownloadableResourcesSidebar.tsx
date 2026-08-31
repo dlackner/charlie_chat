@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import { Download, FileText } from 'lucide-react';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { useAuth } from '@/contexts/AuthContext';
 
 interface DownloadableResource {
@@ -22,8 +21,7 @@ interface DownloadableResource {
 export function DownloadableResourcesSidebar() {
   const [resources, setResources] = useState<DownloadableResource[]>([]);
   const [loading, setLoading] = useState(true);
-  const { user } = useAuth();
-  const supabase = createClientComponentClient();
+  const { user, supabase } = useAuth();
 
   useEffect(() => {
     fetchResources();

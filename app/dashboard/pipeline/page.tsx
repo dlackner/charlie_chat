@@ -9,6 +9,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Columns, Filter, ChevronDown, BarChart3, AlertCircle } from 'lucide-react';
 import { AuthGuard } from '@/components/auth/AuthGuard';
+import { FeatureGuard } from '@/components/auth/FeatureGuard';
 import { useAuth } from '@/contexts/AuthContext';
 import PropertyIntelligenceChart from '@/components/shared/PropertyIntelligenceChart';
 import {
@@ -567,6 +568,7 @@ export default function PipelinePage() {
 
   return (
     <AuthGuard>
+    <FeatureGuard feature="dashboard_pipeline">
       <DndContext
       sensors={sensors}
       collisionDetection={closestCenter}
@@ -830,6 +832,7 @@ export default function PipelinePage() {
           setSelectedProperty(null);
         }}
       />
+    </FeatureGuard>
     </AuthGuard>
   );
 }

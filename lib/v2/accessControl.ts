@@ -75,7 +75,6 @@ const PERMISSIONS: Record<Exclude<UserClass, null>, Feature[]> = {
   core: [
     'dashboard',
     'dashboard_community',
-    'dashboard_pipeline',
     'dashboard_onboarding',
     'discover',
     'discover_saved',

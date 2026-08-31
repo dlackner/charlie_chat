@@ -72,6 +72,10 @@ function DiscoverPageContent() {
     return searchParams.get('q') || '';
   });
   const [showMobileFilters, setShowMobileFilters] = useState(false);
+  const [viewingFavorites, setViewingFavorites] = useState(false);
+  const [favoritesProperties, setFavoritesProperties] = useState<any[]>([]);
+  const [isLoadingFavorites, setIsLoadingFavorites] = useState(false);
+  const [favoritesCurrentPage, setFavoritesCurrentPage] = useState(1);
   const [propertyCount, setPropertyCount] = useState(0);
   const [hasSearched, setHasSearched] = useState(false);
   const [showSaveModal, setShowSaveModal] = useState(false);
@@ -157,8 +161,6 @@ function DiscoverPageContent() {
         baseUrl.searchParams.set('q', searchQuery);
       }
       baseUrl.searchParams.set('hasResults', 'true');
-    } else if (!hasSearched && recentProperties.length > 0) {
-      baseUrl.searchParams.set('showingFavorites', 'true');
     }
     
     const backUrl = encodeURIComponent(baseUrl.toString());
@@ -175,11 +177,18 @@ function DiscoverPageContent() {
   const dailyEndIndex = dailyStartIndex + 12;
   const paginatedDailyProperties = dailyProperties.slice(dailyStartIndex, dailyEndIndex);
   
-  // Pagination calculations for search results  
+  // Pagination calculations for search results
   const totalSearchPages = Math.ceil(propertyCount / PROPERTIES_PER_PAGE);
   const searchStartIndex = (currentPage - 1) * PROPERTIES_PER_PAGE;
   const searchEndIndex = searchStartIndex + PROPERTIES_PER_PAGE;
   const paginatedSearchResults = searchResults.slice(searchStartIndex, searchEndIndex);
+
+  // Pagination calculations for favorites view - separate page state from search
+  // results so switching to/from favorites doesn't jump to whatever page search was on.
+  const totalFavoritesPages = Math.ceil(favoritesProperties.length / PROPERTIES_PER_PAGE);
+  const favoritesStartIndex = (favoritesCurrentPage - 1) * PROPERTIES_PER_PAGE;
+  const favoritesEndIndex = favoritesStartIndex + PROPERTIES_PER_PAGE;
+  const paginatedFavorites = favoritesProperties.slice(favoritesStartIndex, favoritesEndIndex);
   
   // Update recentProperties when daily properties page changes
   useEffect(() => {
@@ -515,98 +524,18 @@ function DiscoverPageContent() {
     }
   }, [user?.id, supabase, userClass]);
 
-  // Load recent favorited properties on page load
+  // Load saved searches on page load. (This effect used to also attempt loading
+  // favorited properties into recentProperties, but that never actually worked -
+  // it computed the mapped data and then discarded it instead of storing it, so
+  // recentProperties was always driven by loadDailyProperties()/dailyProperties
+  // in practice. Removed rather than fixed - the working "View Favorites" toggle
+  // covers that need now, backed by loadFavoritesProperties().)
   useEffect(() => {
-    const loadRecentProperties = async () => {
-      if (!user || !supabase) {
-        setIsLoadingRecent(false);
-        return;
-      }
-
-      // Don't load favorites if we're restoring search state from URL
-      const hasSearchFromUrl = searchParams.get('hasResults') === 'true';
-      if (hasSearchFromUrl) {
-        setIsLoadingRecent(false);
-        return;
-      }
-
-      try {
-        // Get favorites using API endpoint first
-        
-        const response = await fetch('/api/favorites');
-        
-        if (!response.ok) {
-          // Error loading favorites
-          setRecentProperties([]);
-          setPropertyCount(0);
-          setHasSearched(false);
-          setIsLoadingRecent(false);
-          return;
-        }
-        
-        const favoritesResult = await response.json();
-        // Extract property IDs from the new API format
-        const favoritePropertyIds = favoritesResult.favorites?.map((fav: any) => fav.property_id) || [];
-        
-        if (favoritePropertyIds.length > 0) {
-          // Show all favorite properties for users who have access to favorites
-          const limitedFavoriteIds = favoritePropertyIds;
-          
-          // Get real property data from saved_properties table using existing supabase client
-          if (supabase) {
-            // Load ALL property data for pagination to work correctly
-            const { data: propertiesData, error: propertiesError } = await supabase
-              .from('saved_properties')
-              .select('*')
-              .in('property_id', limitedFavoriteIds);
-            
-            if (propertiesError) {
-              // Error loading property data
-                  setRecentProperties([]);
-              setPropertyCount(0);
-            } else {
-              // Map database fields to component expected fields
-              const mappedProperties = propertiesData?.map(prop => ({
-                ...prop,
-                id: prop.property_id || prop.id, // Ensure PropertyMap has the id field it expects
-                units: prop.units_count || 0,
-                address_full: prop.address_full || prop.address_street || 'Address Not Available'
-              })) || [];
-              
-              // recentProperties will be set by the useEffect when paginatedFavorites changes
-              setHasSearched(false);
-              setIsLoadingRecent(false);
-              return;
-            }
-          }
-          
-          // Fallback: if no supabase client or error, show empty state
-          setRecentProperties([]);
-          setPropertyCount(0);
-          setHasSearched(false);
-          setIsLoadingRecent(false);
-        } else {
-          setRecentProperties([]);
-          setPropertyCount(0);
-          setHasSearched(false);
-          setIsLoadingRecent(false);
-        }
-
-      } catch (error) {
-        // Unexpected error loading recent properties
-        setRecentProperties([]);
-        setPropertyCount(0);
-        setHasSearched(false);
-        setIsLoadingRecent(false);
-      }
-    };
-
-    loadRecentProperties();
-    // Also load saved searches
+    setIsLoadingRecent(false);
     if (user) {
       loadMySearches();
     }
-  }, [user]); // Add user dependency for saved searches
+  }, [user]);
 
   
 
@@ -624,6 +553,12 @@ function DiscoverPageContent() {
       loadUserFavorites();
     }
   }, [user]);
+
+  // Keep the favorites view in sync when a card gets unfavorited from within it
+  useEffect(() => {
+    if (!viewingFavorites) return;
+    setFavoritesProperties(prev => prev.filter(p => favoritePropertyIds.includes(p.property_id || p.id)));
+  }, [favoritePropertyIds, viewingFavorites]);
 
   const loadDailyProperties = async () => {
     setIsLoadingDaily(true);
@@ -660,6 +595,43 @@ function DiscoverPageContent() {
       }
     } catch (error) {
       // Error loading user favorites
+    }
+  };
+
+  const loadFavoritesProperties = async () => {
+    if (!supabase) return;
+
+    // favoritePropertyIds is already loaded on mount by loadUserFavorites() - reuse it
+    // instead of hitting /api/favorites again just to re-derive the same ID list.
+    if (favoritePropertyIds.length === 0) {
+      setFavoritesProperties([]);
+      return;
+    }
+
+    setIsLoadingFavorites(true);
+    try {
+      const { data: propertiesData, error } = await supabase
+        .from('saved_properties')
+        .select('*')
+        .in('property_id', favoritePropertyIds);
+
+      if (error || !propertiesData) {
+        setFavoritesProperties([]);
+        return;
+      }
+
+      const mappedProperties = propertiesData.map((prop) => ({
+        ...prop,
+        id: prop.property_id || prop.id,
+        units: prop.units_count || 0,
+        address_full: prop.address_full || prop.address_street || 'Address Not Available'
+      }));
+
+      setFavoritesProperties(mappedProperties);
+    } catch (error) {
+      setFavoritesProperties([]);
+    } finally {
+      setIsLoadingFavorites(false);
     }
   };
 
@@ -2701,18 +2673,44 @@ function DiscoverPageContent() {
                     : `${propertyCount} properties`}
                 </span>
                 
-                {/* Favorite All Button - Only show for search results */}
-                {hasSearched && searchResults.length > 0 && (
-                  <FavoriteAllButton 
+                {/* Favorite All Button - Only show for search results, not while viewing favorites */}
+                {!viewingFavorites && hasSearched && searchResults.length > 0 && (
+                  <FavoriteAllButton
                     properties={searchResults}
                     userClass={userClass}
                     onShowUpgradeModal={() => setShowUpgradeModal(true)}
                     onFavoriteSuccess={handleFavoriteAllSuccess}
                   />
                 )}
-                
+
+                {/* View Favorites toggle */}
+                <button
+                  onClick={() => {
+                    const next = !viewingFavorites;
+                    setViewingFavorites(next);
+                    if (next) {
+                      setFavoritesCurrentPage(1);
+                      // Only refetch if we've never loaded, or the count looks stale
+                      // (e.g. something got favorited elsewhere since the last load) -
+                      // otherwise reuse what's already in state instead of hitting the
+                      // API + saved_properties again on every single toggle.
+                      if (favoritesProperties.length !== favoritePropertyIds.length) {
+                        loadFavoritesProperties();
+                      }
+                    }
+                  }}
+                  className={`flex items-center px-3 py-2 rounded-lg transition-colors text-sm ${
+                    viewingFavorites
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                  }`}
+                >
+                  <Heart className={`h-4 w-4 mr-2 fill-current ${viewingFavorites ? 'text-white' : 'text-red-500'}`} />
+                  {viewingFavorites ? 'Back to Search Results' : 'View Favorites'}
+                </button>
+
                 {/* View Toggle - Hidden on mobile */}
-                {(hasSearched || recentProperties.length > 0) && (
+                {(viewingFavorites || hasSearched || recentProperties.length > 0) && (
                   <div className="hidden md:flex items-center space-x-2">
                     <button
                       onClick={() => handleSetViewMode('cards')}
@@ -2752,6 +2750,107 @@ function DiscoverPageContent() {
                   {isRestoringSearch ? 'Restoring search results...' : 'Loading...'}
                 </span>
               </div>
+            ) : viewingFavorites ? (
+              isLoadingFavorites ? (
+                <div className="flex items-center justify-center py-12">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                  <span className="ml-3 text-gray-600">Loading your favorites...</span>
+                </div>
+              ) : favoritesProperties.length > 0 ? (
+                viewMode === 'cards' ? (
+                <div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pr-8">
+                    {paginatedFavorites.map((property, index) => (
+                      <RecentPropertyCard
+                        key={property.property_id || property.id || `favorite-${index}`}
+                        property={property}
+                        onToggleFavorite={toggleFavorite}
+                        searchQuery=""
+                        hasSearched={false}
+                        viewMode="cards"
+                        recentProperties={favoritesProperties}
+                        searchResults={[]}
+                        favoritePropertyIds={favoritePropertyIds}
+                        userClass={userClass}
+                        setShowUpgradeModal={setShowUpgradeModal}
+                        onViewDetails={handleViewDetails}
+                      />
+                    ))}
+                  </div>
+
+                  {totalFavoritesPages > 1 && (
+                    <div className="mt-8 flex items-center justify-center space-x-2">
+                      <button
+                        onClick={() => setFavoritesCurrentPage(prev => Math.max(1, prev - 1))}
+                        disabled={favoritesCurrentPage === 1}
+                        className="px-3 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        Previous
+                      </button>
+
+                      <div className="flex items-center space-x-1">
+                        {Array.from({ length: Math.min(5, totalFavoritesPages) }, (_, i) => {
+                          let pageNumber;
+                          if (totalFavoritesPages <= 5) {
+                            pageNumber = i + 1;
+                          } else if (favoritesCurrentPage <= 3) {
+                            pageNumber = i + 1;
+                          } else if (favoritesCurrentPage >= totalFavoritesPages - 2) {
+                            pageNumber = totalFavoritesPages - 4 + i;
+                          } else {
+                            pageNumber = favoritesCurrentPage - 2 + i;
+                          }
+
+                          return (
+                            <button
+                              key={i}
+                              onClick={() => setFavoritesCurrentPage(pageNumber)}
+                              className={`w-10 h-10 rounded-lg ${
+                                favoritesCurrentPage === pageNumber
+                                  ? 'bg-blue-600 text-white'
+                                  : 'border border-gray-300 text-gray-700 hover:bg-gray-50'
+                              }`}
+                            >
+                              {pageNumber}
+                            </button>
+                          );
+                        })}
+                      </div>
+
+                      <button
+                        onClick={() => setFavoritesCurrentPage(prev => Math.min(totalFavoritesPages, prev + 1))}
+                        disabled={favoritesCurrentPage === totalFavoritesPages}
+                        className="px-3 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        Next
+                      </button>
+
+                      <div className="ml-4 text-sm text-gray-600">
+                        Showing {favoritesStartIndex + 1}-{Math.min(favoritesEndIndex, favoritesProperties.length)} of {favoritesProperties.length} properties
+                      </div>
+                    </div>
+                  )}
+                </div>
+                ) : (
+                  <PropertyMapWithRents
+                    properties={favoritesProperties}
+                    className="h-[600px] w-full rounded-lg border border-gray-200"
+                    context="discover"
+                    currentViewMode={viewMode}
+                    isShowingFavorites={true}
+                    searchQuery=""
+                    hasSearched={false}
+                  />
+                )
+              ) : (
+                <div className="bg-white rounded-lg border border-gray-200 p-12 text-center">
+                  <Heart className="h-16 w-16 mx-auto mb-4 text-gray-300" />
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">No Favorites Yet</h3>
+                  <p className="text-gray-600">
+                    Click the heart icon on any property to save it here.
+                  </p>
+                </div>
+              )
             ) : recentProperties.length > 0 && !hasSearched ? (
               <div>
                 {/* Recent Properties Grid */}
@@ -2948,28 +3047,14 @@ function DiscoverPageContent() {
                 <p className="text-gray-600 mb-2 font-medium">OR</p>
                 <p className="text-blue-600 hover:text-blue-700 cursor-pointer transition-colors"
                    onClick={() => {
-                     // Clear search state and show favorites
-                     setSearchQuery('');
-                     setSearchResults([]);
-                     setHasSearched(false);
-                     
-                     // If we have recent properties, update count, otherwise reload them
-                     if (recentProperties.length > 0) {
-                       setPropertyCount(recentProperties.length);
-                     } else {
-                       // Reload favorites if none are currently loaded
-                       setIsLoadingRecent(true);
-                       loadUserFavorites().then(() => {
-                         // This will trigger the useEffect to reload recent properties
-                         window.location.reload();
-                       });
+                     setViewingFavorites(true);
+                     setFavoritesCurrentPage(1);
+                     if (favoritesProperties.length !== favoritePropertyIds.length) {
+                       loadFavoritesProperties();
                      }
-                     
-                     // Update URL to remove search params
-                     window.history.replaceState(null, '', window.location.pathname);
                    }}
                 >
-                  Show me my recent properties
+                  View your favorite properties
                 </p>
               </div>
             )}
