@@ -104,7 +104,18 @@ export default function MobileNavigation() {
   
   // Local state for user class
   const [localUserClass, setLocalUserClass] = useState<string | null>(null);
-  
+
+  // Viewport width is unknown during SSR - default to desktop (false) to match the server
+  // render, then correct after mount. Computing this inline via `typeof window` during render
+  // causes a guaranteed hydration mismatch, since the server always sees `window` as undefined.
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const checkIsMobile = () => setIsMobile(window.innerWidth < 768);
+    checkIsMobile();
+    window.addEventListener('resize', checkIsMobile);
+    return () => window.removeEventListener('resize', checkIsMobile);
+  }, []);
+
   // Fetch user class directly from profiles table and check trial status
   useEffect(() => {
     if (user?.id && !localUserClass) {
@@ -198,9 +209,6 @@ export default function MobileNavigation() {
     
     // If user is not logged in, disable protected items
     const isNotLoggedIn = !user;
-    
-    // Check if we're on mobile (screen width less than 768px)
-    const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
 
     // Build all navigation items with access control
     const allItems: (NavigationItem & { disabled?: boolean })[] = [

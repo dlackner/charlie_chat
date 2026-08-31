@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { createClient } from '@supabase/supabase-js';
+import { cookies } from 'next/headers';
 
 const ACTIVITY_TYPES = [
   'property_searches',
@@ -14,7 +15,7 @@ const ACTIVITY_TYPES = [
 export async function GET(request: NextRequest) {
   try {
     // Create Supabase client for auth verification (with anon key)
-    const cookieStore = await import('next/headers').then(m => m.cookies());
+    const cookieStore = await cookies();
     const anonSupabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,

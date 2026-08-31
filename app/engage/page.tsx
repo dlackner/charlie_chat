@@ -2165,7 +2165,7 @@ function EngagePageContent() {
                       : `bg-white text-gray-900 hover:shadow-md border-l-4 ${color.leftBorder} border-t border-r border-b border-gray-200`;
                   };
 
-                  const cardElements: React.ReactElement[] = [];
+                  const cardElements: React.ReactElement<any>[] = [];
                   
                   allMetrics.forEach((metric, index) => {
                     const isDisabled = metric.count === 0;

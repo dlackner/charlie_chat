@@ -54,7 +54,7 @@ export default function TermsOfServicePage() {
             <p>Your first login, continued use of the Services, or upgrade to any paid membership tier constitutes ongoing acceptance of these Terms as they may be updated from time to time. You cannot create an account, subscribe, or access the Services without agreeing to these Terms.</p>
 
             <h3 className="text-xl font-semibold text-gray-800 mb-3">1.3 Terms Availability</h3>
-            <p>These Terms are only available at https://multifamilyos.ai/about.</p>
+            <p>These Terms are only available at https://multifamilyos.ai/terms-of-service.</p>
             <p>You are responsible for reviewing these Terms before using the Services. Continued use of the Services after updates become effective constitutes acceptance of the revised Terms.</p>
 
 
@@ -68,6 +68,9 @@ export default function TermsOfServicePage() {
 
             <h3 className="text-xl font-semibold text-gray-800 mb-3">2.2 Plus Membership</h3>
             <p>Includes all Core benefits plus access to enhanced AI-powered analysis tools and expanded content libraries.</p>
+
+            <h3 className="text-xl font-semibold text-gray-800 mb-3">2.3 Pro Membership</h3>
+            <p>Pro access is granted to members of the MasterMind program, which is sold separately at multifamilyos.com, an independent business that is not owned or operated by MultifamilyOS.ai. Purchasing the MasterMind program grants access to Pro-tier features within the Services; the terms, billing, and conditions of the MasterMind program itself are governed by multifamilyos.com and are separate from these Terms. Your use of the Services as a Pro member remains subject to these Terms.</p>
 
             <p>Features, limits, and availability may change over time. Continued use after such changes constitutes acceptance.</p>
 

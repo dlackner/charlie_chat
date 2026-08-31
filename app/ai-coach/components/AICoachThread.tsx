@@ -12,6 +12,7 @@ import {
   ComposerPrimitive,
   MessagePrimitive,
   ThreadPrimitive,
+  useMessagePartText,
 } from "@assistant-ui/react";
 import type { FC } from "react";
 import { useState } from "react";
@@ -218,12 +219,24 @@ const Composer: FC<ComposerProps> = ({ userClass, setShowUpgradeModal }) => {
   );
 };
 
+// Strips the internal "[File: name.pdf] [FileID: file-xxx]" marker from display.
+// It has to stay in the actual message text (see PDFAttachmentAdapter) so the fileId
+// reaches the server, but it's not something the user should see in their own message.
+const FILE_MARKER_PATTERN = /\s*\[File:[^\]]*\]\s*\[FileID:[^\]]*\]/g;
+
+const UserMessageText: FC = () => {
+  const { text } = useMessagePartText();
+  const displayText = text.replace(FILE_MARKER_PATTERN, "").trim();
+  if (!displayText) return null;
+  return <p className="whitespace-pre-line">{displayText}</p>;
+};
+
 // User Message Component
 const UserMessage: FC = () => {
   return (
     <MessagePrimitive.Root className="grid w-full max-w-[var(--thread-max-width)] auto-rows-auto grid-cols-[minmax(72px,1fr)_auto] gap-y-2 py-4">
       <div className="bg-muted text-foreground col-start-2 row-start-1 max-w-xl break-words rounded-3xl px-5 py-2.5">
-        <MessagePrimitive.Content />
+        <MessagePrimitive.Content components={{ Text: UserMessageText }} />
       </div>
       <div className="col-start-2 row-start-2 mx-3 mt-1">
         <ActionBar />
