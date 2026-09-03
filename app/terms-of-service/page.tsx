@@ -12,7 +12,7 @@ export default function TermsOfServicePage() {
             </div>
 
             <p>
-              Welcome to MultifamilyOS.ai. These Terms of Service ("Terms") govern your access to and use of our website, applications, community platforms, memberships, and tools (collectively, the "Services").
+              MultifamilyOS.ai (the "Services") is provided by CostelloAI LLC, a Rhode Island limited liability company ("Company," "we," "us," or "our"). These Terms of Service ("Terms") govern your access to and use of our website, applications, community platforms, memberships, and tools (collectively, the "Services").
             </p>
 
             <p>
