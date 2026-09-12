@@ -68,7 +68,10 @@ export default function MobileNavigation() {
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      setDealSignalsPromoDismissed(localStorage.getItem(DEAL_SIGNALS_PROMO_STORAGE_KEY) === 'true');
+      // Temporarily forcing the promo to always show (ignoring past dismissals) for the
+      // maturity-wall email push - restore the line below to re-enable per-user dismissal.
+      // setDealSignalsPromoDismissed(localStorage.getItem(DEAL_SIGNALS_PROMO_STORAGE_KEY) === 'true');
+      setDealSignalsPromoDismissed(false);
     }
   }, []);
 
