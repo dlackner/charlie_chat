@@ -8,7 +8,7 @@
 
 import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { ChevronLeft, ChevronRight, TrendingUp, FileText, Mail, DollarSign, Building, Users, Target, Zap, Globe, Brain, BarChart3, MessageSquare, Calendar, CheckCircle, X, Crown, Play, AlertTriangle } from 'lucide-react';
+import { ChevronLeft, ChevronRight, TrendingUp, FileText, Mail, DollarSign, Building, Users, Target, Zap, Globe, Brain, BarChart3, MessageSquare, Calendar, CheckCircle, X, Crown, Play } from 'lucide-react';
 import Image from 'next/image';
 import { Dialog } from '@headlessui/react';
 import TypewriterChatDemo from '@/components/ui/TypewriterChatDemo';
@@ -356,43 +356,27 @@ export default function Home() {
                   </button>
                 </form>
               ) : (
-                <div className="bg-white rounded-lg border border-gray-200 p-6">
+                <div className="bg-[#0B1D3D] rounded-lg border-l-4 border-[#1E5DFC] p-8 w-full max-w-3xl mx-auto">
                   {/* Success Section */}
-                  <div className="flex items-start space-x-4 mb-6">
-                    <div className="flex-shrink-0">
-                      <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                        <CheckCircle className="w-5 h-5 text-blue-600" />
-                      </div>
-                    </div>
-                    <div className="flex-1">
-                      <h3 className="text-lg font-bold text-gray-900">Check Your Email</h3>
-                      <p className="text-sm text-gray-600">MultifamilyOS.ai</p>
-                      <p className="text-sm text-gray-600 mt-2">
-                        A confirmation link has been sent to <strong>{signupEmail}</strong>
-                      </p>
-                    </div>
+                  <div className="mb-6">
+                    <h3 className="text-2xl font-bold text-white">Check Your Email</h3>
+                    <p className="text-base text-gray-400">MultifamilyOS.ai</p>
+                    <p className="text-lg text-gray-300 mt-2">
+                      A confirmation link has been sent to <strong className="text-white">{signupEmail}</strong>
+                    </p>
                   </div>
 
                   {/* Warning Section */}
-                  <div className="border-t border-gray-200 pt-6">
-                    <div className="flex items-start space-x-4">
-                      <div className="flex-shrink-0">
-                        <div className="w-10 h-10 bg-amber-100 rounded-lg flex items-center justify-center">
-                          <AlertTriangle className="w-5 h-5 text-amber-600" />
-                        </div>
-                      </div>
-                      <div className="flex-1">
-                        <h4 className="font-bold text-gray-900 mb-2">Check Your Spam Folder</h4>
-                        <p className="text-sm text-gray-600 mb-3">
-                          Our confirmation email often gets filtered. If you don't see it in your inbox, check:
-                        </p>
-                        <ul className="text-sm text-gray-600 space-y-1 text-left">
-                          <li>• <strong>Gmail:</strong> Check "Promotions" or "Spam" tabs</li>
-                          <li>• <strong>Outlook:</strong> Check your "Junk" folder</li>
-                          <li>• <strong>Other providers:</strong> Search for "MultifamilyOS"</li>
-                        </ul>
-                      </div>
-                    </div>
+                  <div className="border-t border-white/10 pt-6">
+                    <h4 className="text-xl font-bold text-white mb-3">Check Your Spam Folder</h4>
+                    <p className="text-lg text-gray-300 mb-4">
+                      Our confirmation email often gets filtered. If you don't see it in your inbox, check:
+                    </p>
+                    <ul className="text-lg text-gray-300 space-y-2 text-left pl-6">
+                      <li>• <strong className="text-white">Gmail:</strong> Check "Promotions" or "Spam" tabs</li>
+                      <li>• <strong className="text-white">Outlook:</strong> Check your "Junk" folder</li>
+                      <li>• <strong className="text-white">Other providers:</strong> Search for "MultifamilyOS"</li>
+                    </ul>
                   </div>
                 </div>
               )}
@@ -701,7 +685,7 @@ export default function Home() {
           </div>
 
           {/* Email Sign Up Form */}
-          <div className="max-w-md mx-auto">
+          <div className={signupLinkSent ? 'max-w-2xl mx-auto' : 'max-w-md mx-auto'}>
             {!signupLinkSent ? (
               <div className="space-y-4">
                 <input
@@ -733,43 +717,27 @@ export default function Home() {
                 </p>
               </div>
             ) : (
-              <div className="bg-white rounded-lg border border-gray-200 p-6">
+              <div className="bg-[#0B1D3D] rounded-lg border-l-4 border-[#1E5DFC] p-8 w-full">
                 {/* Success Section */}
-                <div className="flex items-start space-x-4 mb-6">
-                  <div className="flex-shrink-0">
-                    <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                      <CheckCircle className="w-5 h-5 text-blue-600" />
-                    </div>
-                  </div>
-                  <div className="flex-1">
-                    <h3 className="text-lg font-bold text-gray-900">Check Your Email</h3>
-                    <p className="text-sm text-gray-600">MultifamilyOS.ai</p>
-                    <p className="text-sm text-gray-600 mt-2">
-                      A confirmation link has been sent to <strong>{email}</strong>
-                    </p>
-                  </div>
+                <div className="mb-6">
+                  <h3 className="text-2xl font-bold text-white">Check Your Email</h3>
+                  <p className="text-base text-gray-400">MultifamilyOS.ai</p>
+                  <p className="text-lg text-gray-300 mt-2">
+                    A confirmation link has been sent to <strong className="text-white">{email}</strong>
+                  </p>
                 </div>
 
                 {/* Warning Section */}
-                <div className="border-t border-gray-200 pt-6">
-                  <div className="flex items-start space-x-4">
-                    <div className="flex-shrink-0">
-                      <div className="w-10 h-10 bg-amber-100 rounded-lg flex items-center justify-center">
-                        <AlertTriangle className="w-5 h-5 text-amber-600" />
-                      </div>
-                    </div>
-                    <div className="flex-1">
-                      <h4 className="font-bold text-gray-900 mb-2">Check Your Spam Folder</h4>
-                      <p className="text-sm text-gray-600 mb-3">
-                        Our confirmation email often gets filtered. If you don't see it in your inbox, check:
-                      </p>
-                      <ul className="text-sm text-gray-600 space-y-1 text-left">
-                        <li>• <strong>Gmail:</strong> Check "Promotions" or "Spam" tabs</li>
-                        <li>• <strong>Outlook:</strong> Check your "Junk" folder</li>
-                        <li>• <strong>Other providers:</strong> Search for "MultifamilyOS"</li>
-                      </ul>
-                    </div>
-                  </div>
+                <div className="border-t border-white/10 pt-6">
+                  <h4 className="text-xl font-bold text-white mb-3">Check Your Spam Folder</h4>
+                  <p className="text-lg text-gray-300 mb-4">
+                    Our confirmation email often gets filtered. If you don't see it in your inbox, check:
+                  </p>
+                  <ul className="text-lg text-gray-300 space-y-2 text-left pl-6">
+                    <li>• <strong className="text-white">Gmail:</strong> Check "Promotions" or "Spam" tabs</li>
+                    <li>• <strong className="text-white">Outlook:</strong> Check your "Junk" folder</li>
+                    <li>• <strong className="text-white">Other providers:</strong> Search for "MultifamilyOS"</li>
+                  </ul>
                 </div>
               </div>
             )}
