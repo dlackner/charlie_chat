@@ -319,7 +319,7 @@ export default function DealSignalsSetupPage() {
       const payload: any = {
         property_type: 'MFR',
         count: true,
-        ids_only: false
+        ids_only: true
       };
 
       if (location.type === 'zip' && location.zip) {

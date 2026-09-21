@@ -298,7 +298,7 @@ export async function POST(req: NextRequest) {
     if (ids_only) {
       const ids = Array.isArray(data.data) ? data.data : [];
       console.log("🧠 Returning IDs only:", ids);
-      return NextResponse.json({ ids }); // ✅ wrapped in { ids }
+      return NextResponse.json({ ids, resultCount: data.resultCount }); // ✅ wrapped in { ids }
     }
 
     console.log("📍 Sample listing (before transformation):", data.data?.[0]);
