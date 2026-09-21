@@ -16,6 +16,7 @@ import { useDealSignalsAccess } from '@/lib/hooks/useDealSignalsAccess';
 import { SIGNALS, defaultWeights, type SignalDef as SignalDefFromCatalog } from '@/lib/dealSignalsCatalog';
 
 const MAX_MARKETS = 5;
+const MAX_CANDIDATE_PROPERTIES = 1000;
 
 // US states for recognition (full names and abbreviations)
 const US_STATES: Record<string, string> = {
@@ -173,6 +174,23 @@ interface MarketDraft {
   candidateCount: number | null;
   isChecking: boolean;
   error: string;
+}
+
+interface ExistingMarketRow {
+  id: string;
+  market_type: string;
+  city: string | null;
+  state: string | null;
+  zip: string | null;
+  county: string | null;
+  units_min: number | null;
+  units_max: number | null;
+  assessed_value_min: number | null;
+  assessed_value_max: number | null;
+  estimated_value_min: number | null;
+  estimated_value_max: number | null;
+  year_built_min: number | null;
+  year_built_max: number | null;
 }
 
 const makeEmptyMarket = (): MarketDraft => ({
@@ -439,7 +457,29 @@ export default function DealSignalsSetupPage() {
 
   const resetWeights = () => setWeights(defaultWeights);
 
-  const saveSetup = async () => {
+  // A market's criteria (location or any filter) determines what a baseline scan actually
+  // searches for - if it changes after a market's already been baselined, the old baseline
+  // no longer reflects reality and needs to run again. Compared against what's currently
+  // stored so an unrelated field (e.g. candidate_count itself) never falsely triggers a reset.
+  const marketCriteriaChanged = (m: MarketDraft, existing: ExistingMarketRow): boolean => {
+    return (
+      m.parsedLocation.type !== existing.market_type ||
+      (m.parsedLocation.city || null) !== existing.city ||
+      (m.parsedLocation.state || null) !== existing.state ||
+      (m.parsedLocation.zip || null) !== existing.zip ||
+      (m.parsedLocation.county || null) !== existing.county ||
+      toNullableNumber(m.filters.units_min) !== existing.units_min ||
+      toNullableNumber(m.filters.units_max) !== existing.units_max ||
+      toNullableNumber(m.filters.assessed_value_min) !== existing.assessed_value_min ||
+      toNullableNumber(m.filters.assessed_value_max) !== existing.assessed_value_max ||
+      toNullableNumber(m.filters.estimated_value_min) !== existing.estimated_value_min ||
+      toNullableNumber(m.filters.estimated_value_max) !== existing.estimated_value_max ||
+      toNullableNumber(m.filters.year_built_min) !== existing.year_built_min ||
+      toNullableNumber(m.filters.year_built_max) !== existing.year_built_max
+    );
+  };
+
+  const saveMarkets = async () => {
     if (!user || !supabase) return;
 
     const validMarkets = markets.filter((m) => {
@@ -457,55 +497,68 @@ export default function DealSignalsSetupPage() {
       return;
     }
 
+    const overCap = validMarkets.find((m) => m.candidateCount !== null && m.candidateCount > MAX_CANDIDATE_PROPERTIES);
+    if (overCap) {
+      setSaveError(
+        `${overCap.locationInput || 'One of your markets'} matches ${overCap.candidateCount!.toLocaleString()} properties, over the ${MAX_CANDIDATE_PROPERTIES.toLocaleString()} limit. Narrow its criteria before saving.`
+      );
+      setSaveSuccess(false);
+      return;
+    }
+
     setIsSaving(true);
     setSaveError('');
     setSaveSuccess(false);
 
     try {
       // Delete only markets the user actually removed - an upsert-by-id below preserves
-      // baseline_completed_at on markets that already exist, instead of wiping it on every
-      // save (which would silently re-trigger a full baseline for already-tracked markets).
+      // baseline_completed_at on markets whose criteria didn't change, instead of wiping it
+      // on every save (which would silently re-trigger a full baseline for no reason).
       const { data: existingMarkets, error: existingError } = await supabase
         .from('deal_signal_markets')
-        .select('id')
+        .select(
+          'id, market_type, city, state, zip, county, units_min, units_max, assessed_value_min, assessed_value_max, estimated_value_min, estimated_value_max, year_built_min, year_built_max'
+        )
         .eq('user_id', user.id);
       if (existingError) throw existingError;
 
+      const existingById = new Map<string, ExistingMarketRow>((existingMarkets || []).map((row: any) => [row.id, row]));
       const currentIds = new Set(validMarkets.map((m) => m.id));
-      const idsToDelete = (existingMarkets || []).map((m) => m.id).filter((id) => !currentIds.has(id));
+      const idsToDelete = Array.from(existingById.keys()).filter((id) => !currentIds.has(id));
 
       if (idsToDelete.length > 0) {
         const { error: deleteError } = await supabase.from('deal_signal_markets').delete().in('id', idsToDelete);
         if (deleteError) throw deleteError;
       }
 
-      const rows = validMarkets.map((m) => ({
-        id: m.id,
-        user_id: user.id,
-        market_type: m.parsedLocation.type,
-        city: m.parsedLocation.city || null,
-        state: m.parsedLocation.state || null,
-        zip: m.parsedLocation.zip || null,
-        county: m.parsedLocation.county || null,
-        units_min: toNullableNumber(m.filters.units_min),
-        units_max: toNullableNumber(m.filters.units_max),
-        assessed_value_min: toNullableNumber(m.filters.assessed_value_min),
-        assessed_value_max: toNullableNumber(m.filters.assessed_value_max),
-        estimated_value_min: toNullableNumber(m.filters.estimated_value_min),
-        estimated_value_max: toNullableNumber(m.filters.estimated_value_max),
-        year_built_min: toNullableNumber(m.filters.year_built_min),
-        year_built_max: toNullableNumber(m.filters.year_built_max),
-        candidate_count: m.candidateCount,
-        updated_at: new Date().toISOString()
-      }));
+      const rows = validMarkets.map((m) => {
+        const existing = existingById.get(m.id);
+        const needsRebaseline = !existing || marketCriteriaChanged(m, existing);
+
+        return {
+          id: m.id,
+          user_id: user.id,
+          market_type: m.parsedLocation.type,
+          city: m.parsedLocation.city || null,
+          state: m.parsedLocation.state || null,
+          zip: m.parsedLocation.zip || null,
+          county: m.parsedLocation.county || null,
+          units_min: toNullableNumber(m.filters.units_min),
+          units_max: toNullableNumber(m.filters.units_max),
+          assessed_value_min: toNullableNumber(m.filters.assessed_value_min),
+          assessed_value_max: toNullableNumber(m.filters.assessed_value_max),
+          estimated_value_min: toNullableNumber(m.filters.estimated_value_min),
+          estimated_value_max: toNullableNumber(m.filters.estimated_value_max),
+          year_built_min: toNullableNumber(m.filters.year_built_min),
+          year_built_max: toNullableNumber(m.filters.year_built_max),
+          candidate_count: m.candidateCount,
+          updated_at: new Date().toISOString(),
+          ...(needsRebaseline ? { baseline_completed_at: null, baseline_started_at: null } : {})
+        };
+      });
 
       const { error: upsertError } = await supabase.from('deal_signal_markets').upsert(rows, { onConflict: 'id' });
       if (upsertError) throw upsertError;
-
-      const { error: weightsError } = await supabase
-        .from('deal_signal_weights')
-        .upsert({ user_id: user.id, weights, updated_at: new Date().toISOString() }, { onConflict: 'user_id' });
-      if (weightsError) throw weightsError;
 
       setMarkets(validMarkets);
       if (!validMarkets.some((m) => m.id === activeMarketId)) {
@@ -514,7 +567,8 @@ export default function DealSignalsSetupPage() {
       setSaveSuccess(true);
 
       // Fire-and-forget: kick off a baseline scan for each market. The route itself is a
-      // no-op for markets already baselined, so it's safe to call for all of them.
+      // no-op for markets whose criteria didn't change (baseline_completed_at still set), and
+      // atomically locks against a second concurrent call for the same market.
       validMarkets.forEach((m) => {
         fetch('/api/deal-signals/baseline-market', {
           method: 'POST',
@@ -524,6 +578,27 @@ export default function DealSignalsSetupPage() {
           // Best-effort - no retry/catch-up mechanism yet if this fails silently.
         });
       });
+    } catch (err: any) {
+      setSaveError(err.message || 'Failed to save. Please try again.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const saveWeights = async () => {
+    if (!user || !supabase) return;
+
+    setIsSaving(true);
+    setSaveError('');
+    setSaveSuccess(false);
+
+    try {
+      const { error: weightsError } = await supabase
+        .from('deal_signal_weights')
+        .upsert({ user_id: user.id, weights, updated_at: new Date().toISOString() }, { onConflict: 'user_id' });
+      if (weightsError) throw weightsError;
+
+      setSaveSuccess(true);
     } catch (err: any) {
       setSaveError(err.message || 'Failed to save. Please try again.');
     } finally {
@@ -707,12 +782,21 @@ export default function DealSignalsSetupPage() {
 
                 {!activeMarket.isChecking && !activeMarket.error && activeMarket.candidateCount !== null && (
                   <div>
-                    <div className="text-3xl font-bold text-blue-600 tabular-nums leading-none">
+                    <div
+                      className={`text-3xl font-bold tabular-nums leading-none ${
+                        activeMarket.candidateCount > MAX_CANDIDATE_PROPERTIES ? 'text-red-600' : 'text-blue-600'
+                      }`}
+                    >
                       {activeMarket.candidateCount.toLocaleString()}
                     </div>
                     <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide mt-1.5">
                       Candidate {activeMarket.candidateCount === 1 ? 'property' : 'properties'}
                     </div>
+                    {activeMarket.candidateCount > MAX_CANDIDATE_PROPERTIES && (
+                      <div className="text-xs text-red-600 mt-2 max-w-sm">
+                        Over the {MAX_CANDIDATE_PROPERTIES.toLocaleString()} limit. Narrow your criteria.
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -822,12 +906,12 @@ export default function DealSignalsSetupPage() {
               )}
               <button
                 type="button"
-                onClick={saveSetup}
+                onClick={activeTab === 'markets' ? saveMarkets : saveWeights}
                 disabled={isSaving || isLoadingSetup}
                 className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium bg-blue-600 hover:bg-blue-700 disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed text-white transition-colors"
               >
                 {isSaving && <Loader2 size={15} className="animate-spin" />}
-                {isSaving ? 'Saving…' : 'Save Setup'}
+                {isSaving ? 'Saving…' : activeTab === 'markets' ? 'Save Markets' : 'Save Weights'}
               </button>
             </div>
           </div>

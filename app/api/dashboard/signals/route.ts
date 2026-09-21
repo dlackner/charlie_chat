@@ -61,6 +61,48 @@ const BASELINE_REASON_TEMPLATES: Record<string, string> = {
 
 const BASELINE_DETECTED_LABEL = 'in initial scan';
 
+// Supabase/PostgREST silently caps an unpaginated select at 1000 rows - with 5 markets easily
+// totaling tens of thousands of snapshot rows, that cap was dropping entire markets' worth of
+// data with no error. These helpers page through .range() until a page comes back short, and
+// batch large `.in()` id lists (which can also fail outright past a few hundred ids in one
+// request) into chunks instead of sending them all in a single filter.
+const SUPABASE_PAGE_SIZE = 1000;
+const ID_BATCH_SIZE = 200;
+
+async function fetchAllRows(admin: any, table: string, select: string, applyFilters: (q: any) => any) {
+  let all: any[] = [];
+  let from = 0;
+  while (true) {
+    const { data, error } = await applyFilters(admin.from(table).select(select).range(from, from + SUPABASE_PAGE_SIZE - 1));
+    if (error) return { data: null, error };
+    all = all.concat(data || []);
+    if (!data || data.length < SUPABASE_PAGE_SIZE) break;
+    from += SUPABASE_PAGE_SIZE;
+  }
+  return { data: all, error: null };
+}
+
+async function fetchAllRowsForIds(
+  admin: any,
+  table: string,
+  select: string,
+  idColumn: string,
+  ids: string[],
+  applyFilters?: (q: any) => any
+) {
+  let all: any[] = [];
+  for (let i = 0; i < ids.length; i += ID_BATCH_SIZE) {
+    const chunk = ids.slice(i, i + ID_BATCH_SIZE);
+    const { data, error } = await fetchAllRows(admin, table, select, (q) => {
+      const withIds = q.in(idColumn, chunk);
+      return applyFilters ? applyFilters(withIds) : withIds;
+    });
+    if (error) return { data: null, error };
+    all = all.concat(data || []);
+  }
+  return { data: all, error: null };
+}
+
 function formatRelativeTime(iso: string): string {
   const diffMs = Date.now() - new Date(iso).getTime();
   const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
@@ -134,10 +176,12 @@ export async function GET(_req: NextRequest) {
     const weights: Record<string, number> = { ...defaultWeights, ...(weightsRow?.weights || {}) };
     const totalWeight = Object.values(weights).reduce((sum, w) => sum + (w || 0), 0) || 1;
 
-    const { data: snapshotRows, error: snapshotsError } = await admin
-      .from('deal_signal_property_snapshots')
-      .select('property_id, location_key, flags')
-      .in('location_key', locationKeys);
+    const { data: snapshotRows, error: snapshotsError } = await fetchAllRows(
+      admin,
+      'deal_signal_property_snapshots',
+      'property_id, location_key, flags',
+      (q) => q.in('location_key', locationKeys)
+    );
 
     if (snapshotsError) {
       return NextResponse.json({ error: `Failed to load snapshots: ${snapshotsError.message}` }, { status: 500 });
@@ -152,11 +196,14 @@ export async function GET(_req: NextRequest) {
 
     // Exclude properties the user has already decided on (favorited OR rejected) via the
     // existing Buy Box favorites mechanism - any row means "already reviewed."
-    const { data: favoriteRows } = await admin
-      .from('user_favorites')
-      .select('property_id')
-      .eq('user_id', user.id)
-      .in('property_id', propertyIds);
+    const { data: favoriteRows } = await fetchAllRowsForIds(
+      admin,
+      'user_favorites',
+      'property_id',
+      'property_id',
+      propertyIds,
+      (q) => q.eq('user_id', user.id)
+    );
     const decidedPropertyIds = new Set((favoriteRows || []).map((f: any) => f.property_id));
 
     const remainingSnapshots = activeSnapshots.filter((s: any) => !decidedPropertyIds.has(s.property_id));
@@ -169,20 +216,26 @@ export async function GET(_req: NextRequest) {
     // "Not interested right now" - soft, unlike the favorites exclusion above. Only hides a
     // property while its latest event is no newer than the dismissal; a genuinely new signal
     // (real escalation) makes it reappear with no un-dismiss action needed.
-    const { data: dismissalRows } = await admin
-      .from('deal_signal_dismissals')
-      .select('property_id, dismissed_at')
-      .eq('user_id', user.id)
-      .in('property_id', remainingIds);
+    const { data: dismissalRows } = await fetchAllRowsForIds(
+      admin,
+      'deal_signal_dismissals',
+      'property_id, dismissed_at',
+      'property_id',
+      remainingIds,
+      (q) => q.eq('user_id', user.id)
+    );
     const dismissedAtByProperty = new Map<string, string>(
       (dismissalRows || []).map((d: any) => [d.property_id, d.dismissed_at])
     );
 
-    const { data: eventRows, error: eventsError } = await admin
-      .from('deal_signal_events')
-      .select('property_id, signal_key, detected_at, property_snapshot, is_baseline')
-      .in('property_id', remainingIds)
-      .order('detected_at', { ascending: false });
+    const { data: eventRows, error: eventsError } = await fetchAllRowsForIds(
+      admin,
+      'deal_signal_events',
+      'property_id, signal_key, detected_at, property_snapshot, is_baseline',
+      'property_id',
+      remainingIds,
+      (q) => q.order('detected_at', { ascending: false })
+    );
 
     if (eventsError) {
       return NextResponse.json({ error: `Failed to load events: ${eventsError.message}` }, { status: 500 });
