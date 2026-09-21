@@ -60,6 +60,45 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ skipped: true, reason: 'Already baselined' });
     }
 
+    // Atomic claim: only succeeds if no one else has started (or a stale start from a crashed
+    // run more than 10 minutes ago) - prevents two near-simultaneous Save Setup clicks (e.g.
+    // Markets tab then Weights tab before the first baseline finishes) from both running a
+    // full, separately-paid baseline scan for the same market. Two separate attempts instead
+    // of a single .or() filter - combining .or() with .update() in supabase-js/PostgREST
+    // throws "column does not exist" here even for a column that plainly exists.
+    const { data: freshLock, error: freshLockError } = await admin
+      .from('deal_signal_markets')
+      .update({ baseline_started_at: new Date().toISOString() })
+      .eq('id', marketId)
+      .is('baseline_completed_at', null)
+      .is('baseline_started_at', null)
+      .select('id');
+
+    if (freshLockError) {
+      return NextResponse.json({ error: `Failed to claim baseline lock: ${freshLockError.message}` }, { status: 500 });
+    }
+
+    let lockedRows = freshLock;
+    if (!lockedRows || lockedRows.length === 0) {
+      const staleCutoff = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+      const { data: staleLock, error: staleLockError } = await admin
+        .from('deal_signal_markets')
+        .update({ baseline_started_at: new Date().toISOString() })
+        .eq('id', marketId)
+        .is('baseline_completed_at', null)
+        .lt('baseline_started_at', staleCutoff)
+        .select('id');
+
+      if (staleLockError) {
+        return NextResponse.json({ error: `Failed to claim baseline lock: ${staleLockError.message}` }, { status: 500 });
+      }
+      lockedRows = staleLock;
+    }
+
+    if (!lockedRows || lockedRows.length === 0) {
+      return NextResponse.json({ skipped: true, reason: 'Baseline already in progress' });
+    }
+
     const { data: weightsRow } = await admin
       .from('deal_signal_weights')
       .select('weights, min_signal_strength')
