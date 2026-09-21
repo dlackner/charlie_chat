@@ -59,8 +59,10 @@ async function scanSteadyState(supabase: any, location: DistinctLocation, locati
   // Free per-signal queries instead of one broad "what changed" query - narrows candidates
   // to properties whose change was an actual trigger signal, before any paid lookup. A
   // property that changed for an unrelated reason (e.g. a value-estimate refresh) never
-  // shows up here and never gets paid for.
-  const candidateIds = new Set<string>();
+  // shows up here and never gets paid for. Track WHICH signal(s) each property matched, not
+  // just that it matched something - needed below to tell a genuinely new flag apart from a
+  // signal that was already true before today's scan.
+  const hitsByProperty = new Map<string, Set<TriggerSignal>>();
   for (const signalKey of TRIGGER_SIGNALS) {
     const result = await searchRealEstateApi({
       property_type: 'MFR',
@@ -77,12 +79,41 @@ async function scanSteadyState(supabase: any, location: DistinctLocation, locati
     }
 
     const ids: string[] = Array.isArray(result.data?.data) ? result.data.data : [];
-    for (const id of ids) candidateIds.add(String(id));
+    for (const id of ids) {
+      const key = String(id);
+      const set = hitsByProperty.get(key) || new Set<TriggerSignal>();
+      set.add(signalKey);
+      hitsByProperty.set(key, set);
+    }
   }
 
-  let eventsCreated = 0;
+  if (hitsByProperty.size === 0) {
+    return { candidatesChecked: 0, candidatesPaidFor: 0, eventsCreated: 0 };
+  }
 
-  for (const id of candidateIds) {
+  // Cheap pre-check against already-stored flags (data we already have, zero API cost) - a
+  // property whose only matched signal(s) were already true before today's scan can't produce
+  // a new event, even though RealEstateAPI says the record changed for some other reason.
+  // Skip paying for those entirely instead of discovering that fact via a paid lookup.
+  const candidateIds = Array.from(hitsByProperty.keys());
+  const { data: existingSnapshots } = await supabase
+    .from('deal_signal_property_snapshots')
+    .select('property_id, flags')
+    .in('property_id', candidateIds);
+
+  const priorFlagsByProperty = new Map<string, Record<string, boolean>>(
+    (existingSnapshots || []).map((r: any) => [r.property_id, r.flags || {}])
+  );
+
+  let eventsCreated = 0;
+  let candidatesPaidFor = 0;
+
+  for (const [id, signalsHit] of hitsByProperty) {
+    const priorFlags: Record<string, boolean> = priorFlagsByProperty.get(id) || {};
+    const hasGenuinelyNewSignal = Array.from(signalsHit).some((key) => !priorFlags[key]);
+    if (!hasGenuinelyNewSignal) continue;
+
+    candidatesPaidFor++;
     const detailResult = await searchRealEstateApi({
       ids: [parseInt(id, 10)],
       size: 1,
@@ -100,14 +131,6 @@ async function scanSteadyState(supabase: any, location: DistinctLocation, locati
     if (!record) continue;
 
     const currentFlags = extractCurrentFlags(record);
-
-    const { data: existingSnapshot } = await supabase
-      .from('deal_signal_property_snapshots')
-      .select('flags')
-      .eq('property_id', id)
-      .maybeSingle();
-
-    const priorFlags: Record<string, boolean> = existingSnapshot?.flags || {};
     const newlyTriggered = TRIGGER_SIGNALS.filter((key) => currentFlags[key] && !priorFlags[key]);
 
     // Snapshot must be written before the event - deal_signal_events.property_id has a
@@ -142,7 +165,7 @@ async function scanSteadyState(supabase: any, location: DistinctLocation, locati
     }
   }
 
-  return { candidatesChecked: candidateIds.size, eventsCreated };
+  return { candidatesChecked: hitsByProperty.size, candidatesPaidFor, eventsCreated };
 }
 
 async function scanMarketWatchForMarket(supabase: any, market: MarketForBaseline) {
