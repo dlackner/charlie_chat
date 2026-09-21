@@ -44,6 +44,7 @@ import {
 import {
   TRIGGER_SIGNALS,
   type TriggerSignal,
+  buildSignalFilterPayload,
   extractCurrentFlags,
   buildEventPropertySnapshot,
   MARKET_WATCH_SIGNALS,
@@ -55,20 +56,30 @@ import { buildMarketCriteriaPayload, type MarketForBaseline } from '@/lib/server
 async function scanSteadyState(supabase: any, location: DistinctLocation, locationKey: string, lastScannedAt: string) {
   const locationPayload = buildLocationPayload(location);
 
-  const candidatesResult = await searchRealEstateApi({
-    property_type: 'MFR',
-    ids_only: true,
-    size: 10000,
-    ...locationPayload,
-    last_update_date_min: lastScannedAt
-  });
+  // Free per-signal queries instead of one broad "what changed" query - narrows candidates
+  // to properties whose change was an actual trigger signal, before any paid lookup. A
+  // property that changed for an unrelated reason (e.g. a value-estimate refresh) never
+  // shows up here and never gets paid for.
+  const candidateIds = new Set<string>();
+  for (const signalKey of TRIGGER_SIGNALS) {
+    const result = await searchRealEstateApi({
+      property_type: 'MFR',
+      ids_only: true,
+      size: 10000,
+      ...locationPayload,
+      last_update_date_min: lastScannedAt,
+      ...buildSignalFilterPayload(signalKey)
+    });
 
-  if (!candidatesResult.ok) {
-    console.error(`Deal Signals steady state: candidate query failed for ${locationKey}: ${candidatesResult.error}`);
-    return { candidatesChecked: 0, eventsCreated: 0 };
+    if (!result.ok) {
+      console.error(`Deal Signals steady state: ${signalKey} query failed for ${locationKey}: ${result.error}`);
+      continue;
+    }
+
+    const ids: string[] = Array.isArray(result.data?.data) ? result.data.data : [];
+    for (const id of ids) candidateIds.add(String(id));
   }
 
-  const candidateIds: string[] = Array.isArray(candidatesResult.data?.data) ? candidatesResult.data.data : [];
   let eventsCreated = 0;
 
   for (const id of candidateIds) {
@@ -131,7 +142,7 @@ async function scanSteadyState(supabase: any, location: DistinctLocation, locati
     }
   }
 
-  return { candidatesChecked: candidateIds.length, eventsCreated };
+  return { candidatesChecked: candidateIds.size, eventsCreated };
 }
 
 async function scanMarketWatchForMarket(supabase: any, market: MarketForBaseline) {
